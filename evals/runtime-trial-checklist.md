@@ -20,7 +20,9 @@ Choose one before runtime testing:
 2. Copy or link this repository under a home-local plugin directory.
 3. Register this plugin through a marketplace file after choosing the target marketplace root.
 
-Do not create or update `.agents/plugins/marketplace.json` until the target mode is chosen.
+Chosen for v0.1 trial: personal marketplace rooted at `/Users/daxiong`, pointing `groundwork` to `./.codex/plugins/groundwork`. This lean package is synced from this repository and excludes `.git/` and `refer/` so the installed plugin cache contains only package-relevant files. CLI marketplace registration is complete, but CLI did not expose a per-plugin install/enable command; install or enable Groundwork from the Codex App plugin UI before running the smoke prompts.
+
+Do not create or update additional personal/global marketplace files until explicitly requested.
 
 ## Runtime Trial Prompt Set
 
@@ -28,14 +30,14 @@ First run explicit invocation smoke prompts. These do not count toward the 8/10 
 
 | ID | Prompt | Expected behavior |
 | --- | --- | --- |
-| sx-001 | Use to-prd for this: 把这段需求整理成 PRD。 | Loads `to-prd`; no file write by default. |
-| sx-002 | Use to-issues for this: 基于这个 PRD 拆 issues。 | Loads `to-issues`; tracker-neutral issue slices. |
-| sx-003 | Use triage for this: 这个 issue 能不能给 agent 做？ | Loads `triage`; readiness verdict before plan. |
-| sx-004 | Use write-plan for this: 给这个任务写实现计划。 | Loads `write-plan`; no invented exact paths before inspection. |
-| sx-005 | Use prototype for this: 做个静态 HTML 原型评审这个流程。 | Loads `prototype`; prototype question and cleanup decision. |
-| sx-006 | Use implement for this: 按这个 plan 实现，但先确认是不是真 bug。 | Loads `implement`; diagnose before edits. |
-| sx-007 | Use verify for this: 验证一下能不能给前端联调。 | Loads `verify`; skeptical evidence split. |
-| sx-008 | Use handoff for this: 给下个 session 做 handoff。 | Loads `handoff`; compact continuation. |
+| sx-001 | Use to-prd for this: 需求是“标注任务列表支持按手机号搜索，并在多活动任务中支持按活动名称筛选”。Do not edit files. | Loads `to-prd`; no file write by default. |
+| sx-002 | Use to-issues for this accepted PRD: “标注任务列表支持手机号搜索和活动名称筛选；验收：手机号精确命中，活动筛选只在多活动任务展示，列表字段不回归”。Do not edit files. | Loads `to-issues`; tracker-neutral issue slices. |
+| sx-003 | Use triage for this issue: “给标注任务列表增加手机号搜索；验收清楚；相关接口路径未知；不能改远端数据”。Do not edit files. | Loads `triage`; readiness verdict before plan. |
+| sx-004 | Use write-plan for this accepted task: “在标注任务列表增加手机号搜索参数；先检查接口和列表字段，不要编造文件路径”。Do not edit files. | Loads `write-plan`; no invented exact paths before inspection. |
+| sx-005 | Use prototype for this: “评审多活动任务下的活动筛选交互，问题是筛选器默认展示还是仅多活动展示”。Do not edit files. | Loads `prototype`; prototype question and cleanup decision. |
+| sx-006 | Use implement for this: “列表手机号搜索疑似无效，请先确认是否真 bug，再说明最小修改路径”。Do not edit files. | Loads `implement`; diagnose before edits. |
+| sx-007 | Use verify for this: “验证手机号搜索能否给前端联调和客户 UAT；已有证据只有代码 diff，没有运行结果”。Do not edit files. | Loads `verify`; skeptical evidence split. |
+| sx-008 | Use handoff for this: “下个 session 继续验证手机号搜索；已有 PRD 和 diff，不要重复全文，只交代状态、证据、风险、下一步”。Do not edit files. | Loads `handoff`; compact continuation. |
 
 Use a small representative set before running the full 40 prompt fixtures:
 
