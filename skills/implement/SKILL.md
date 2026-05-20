@@ -1,6 +1,6 @@
 ---
 name: implement
-description: Execute or review scoped code changes, fixes, or implementation work against task scope, source evidence, and tests.
+description: Execute or review scoped code changes, fixes, or implementation work. Use for 按 plan 实现, 改代码, 修 bug, or 先确认 bug 再改.
 ---
 
 # implement
