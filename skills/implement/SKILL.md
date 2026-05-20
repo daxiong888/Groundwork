@@ -1,13 +1,13 @@
 ---
 name: implement
-description: Execute or review scoped code changes, fixes, or implementation work, and gate push/deploy/publish/发布/推送 when paired with code delivery.
+description: Execute or review scoped code changes, fixes, or implementation work against task scope, source evidence, and tests.
 ---
 
 # implement
 
 ## Trigger Contract
 
-Use this skill when the user asks for code changes, implementation execution, implementation review, or a push/deploy/publish request paired with code delivery.
+Use this skill when the user asks for code changes, implementation execution, implementation review, or diagnosis before a scoped fix.
 
 Should trigger:
 
@@ -15,7 +15,7 @@ Should trigger:
 - "根据这个 plan 改代码"
 - "修一下这个 confirmed bug"
 - "实现这个接口调整"
-- "这个修复看起来可以了，帮我 push 并发布到测试环境"
+- "先确认是不是真 bug，再做最小修改"
 - "review 这次实现是否符合 PRD"
 
 Should not trigger:

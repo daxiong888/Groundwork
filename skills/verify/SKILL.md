@@ -1,20 +1,20 @@
 ---
 name: verify
-description: Gate push/deploy/publish/发布/推送 before external writes, and verify readiness evidence for code/test/runtime/data/UAT/SIT/release.
+description: Skeptically verify readiness evidence for code, tests, runtime behavior, data, environment, UAT/SIT, or release confidence.
 ---
 
 # verify
 
 ## Trigger Contract
 
-Use this skill when the user asks for readiness, evidence, UAT/SIT, runtime behavior, release confidence, customer/front-end handoff verification, or push/deploy/publish after a fix appears ready.
+Use this skill when the user asks for readiness, evidence, UAT/SIT, runtime behavior, release confidence, or customer/front-end handoff verification.
 
 Should trigger:
 
 - "验证一下能不能给前端验"
 - "这个可以给客户 UAT 吗"
 - "检查一下 release readiness"
-- "这个修复看起来可以了，帮我 push 并发布到测试环境"
+- "发布前确认证据链是否完整"
 - "跑一遍证据链"
 - "确认这次实现是否真的生效"
 

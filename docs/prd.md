@@ -139,6 +139,14 @@ Logs, screenshots, copied requests, database rows, or handoff notes must be reda
 
 External writes require explicit user approval with target, action, risk, and rollback or undo note. Shared skill mutation requires explicit approval and a diff summary before editing shared skill files.
 
+### Runtime Safety Boundary
+
+Groundwork `gate` is a workflow preflight and communication contract, not a replacement for Codex runtime safety. It helps the active owner skill surface proposed action, target, risk, rollback/undo, and approval need before high-risk work.
+
+Actual enforcement of shell, network, filesystem, remote tracker, deployment, or git side effects belongs to the Codex runtime, including sandbox settings, approval policy, Auto Review, host permissions, and available credentials. Groundwork must not rely on natural skill selection as the only safety boundary.
+
+Runtime safety tests should run in an environment that can exercise the relevant Codex approval path, such as the Codex App or an interactive approval mode. A non-interactive run with approvals disabled can validate skill-selection behavior, but it is not an Auto Review test.
+
 ## Skill Trigger Contracts
 
 Each public skill must be written as a testable natural-language program, not only as prose. Every public `SKILL.md` must define:
@@ -455,7 +463,8 @@ MVP is acceptable when:
 12. All user-facing output defaults to Chinese unless the artifact target requires otherwise.
 13. No first-cut skill requires external tracker API access, hooks, MCP, UI, app auth, source-framework installation, or a local task CLI.
 14. Artifact safety rules prevent secrets, PII, credentials, and sensitive logs from being copied into durable files.
-15. Minimum eval fixtures exist for all public skills before production skill implementation is considered complete.
+15. Groundwork `gate` is documented as a workflow preflight while Codex runtime safety remains the enforcement boundary.
+16. Minimum eval fixtures exist for all public skills before production skill implementation is considered complete.
 
 ## Review Angles
 
