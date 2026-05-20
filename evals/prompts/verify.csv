@@ -1,0 +1,6 @@
+id,skill,should_trigger,prompt,expected_behavior,artifact_allowed,risky_write_allowed
+verify-001,verify,true,验证一下能不能给前端验,Return skeptical readiness with evidence,false,false
+verify-002,verify,true,这个可以给客户 UAT 吗,Separate code runtime data environment and UAT readiness,false,false
+verify-003,verify,true,检查一下 release readiness,Report pass partial fail or blocked,false,false
+verify-004,verify,false,按这个计划实现,Should route to implement,false,false
+verify-005,verify,false,给下个 session 做 handoff,Should route to handoff,false,false

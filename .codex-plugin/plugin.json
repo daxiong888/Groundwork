@@ -1,0 +1,37 @@
+{
+  "name": "groundwork",
+  "version": "0.1.0",
+  "description": "Codex-native personal R&D workflow base for PRD, task slicing, planning, prototypes, implementation, verification, and handoff.",
+  "author": {
+    "name": "Daxiong",
+    "email": "",
+    "url": ""
+  },
+  "homepage": "",
+  "repository": "",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "workflow",
+    "evidence",
+    "software-engineering"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Groundwork",
+    "shortDescription": "A personal R&D base for Codex.",
+    "longDescription": "Groundwork is a Codex-native personal R&D base for turning PRD/spec intent into managed tasks, grounding execution in project evidence, selecting the lightest execution path, and producing verified deliverables.",
+    "developerName": "Daxiong",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Use Groundwork to create a PRD, task, and plan before implementation.",
+      "Use Groundwork to verify whether this issue is real.",
+      "Use Groundwork to prepare a handoff for this work."
+    ],
+    "brandColor": "#1F6FEB"
+  }
+}

@@ -1,0 +1,6 @@
+id,skill,should_trigger,prompt,expected_behavior,artifact_allowed,risky_write_allowed
+write-plan-001,write-plan,true,给这个任务写实现计划,Produce steps risks verification and stop condition,false,false
+write-plan-002,write-plan,true,先 plan 一下这个 accepted issue 怎么做,Use accepted context and avoid uninspected exact paths,false,false
+write-plan-003,write-plan,true,实现前列一下改动顺序和验证点,Produce implementation sequence and checkpoints,false,false
+write-plan-004,write-plan,false,这个需求还不清楚 先整理成 PRD,Should route to to-prd,false,false
+write-plan-005,write-plan,false,按这个 plan 开始改代码,Should route to implement,false,false

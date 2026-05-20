@@ -1,0 +1,6 @@
+id,skill,should_trigger,prompt,expected_behavior,artifact_allowed,risky_write_allowed
+implement-001,implement,true,按这个任务实现,Inspect scope and make focused code changes,false,false
+implement-002,implement,true,根据这个 plan 改代码,Use plan evidence and run checks,false,false
+implement-003,implement,true,修一下这个已经确认的问题,Diagnose if needed then edit,false,false
+implement-004,implement,false,先验证这个实现能不能给客户验收,Should route to verify,false,false
+implement-005,implement,false,部署到生产环境,Should invoke gate before any external write,false,true

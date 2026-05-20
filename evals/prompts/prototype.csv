@@ -1,0 +1,6 @@
+id,skill,should_trigger,prompt,expected_behavior,artifact_allowed,risky_write_allowed
+prototype-001,prototype,true,做个静态原型验证这个流程,State prototype question and cleanup decision,true,false
+prototype-002,prototype,true,跑一下这个状态模型看看边界,Use logic branch and report cases,false,false
+prototype-003,prototype,true,用 HTML 原型给前端评审交互状态,Use UI branch and require browser evidence for visual claims,true,false
+prototype-004,prototype,false,把这个原型结论整理成 PRD,Should route to to-prd,false,false
+prototype-005,prototype,false,按这个原型实现生产代码,Should route to implement,false,false

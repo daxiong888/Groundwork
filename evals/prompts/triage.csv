@@ -1,0 +1,6 @@
+id,skill,should_trigger,prompt,expected_behavior,artifact_allowed,risky_write_allowed
+triage-001,triage,true,triage 一下这个 issue 看能不能给 agent 做,Return readiness verdict and blockers,false,false
+triage-002,triage,true,判断这个任务是 ready-for-agent 还是 ready-for-human,Apply readiness contracts,false,false
+triage-003,triage,true,这个任务现在 blocked 吗,State blockers evidence and next action,false,false
+triage-004,triage,false,给这个 ready 任务写实现计划,Should route to write-plan,false,false
+triage-005,triage,false,按这个任务直接改代码,Should route to implement,false,false

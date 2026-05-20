@@ -1,0 +1,6 @@
+id,skill,should_trigger,prompt,expected_behavior,artifact_allowed,risky_write_allowed
+to-prd-001,to-prd,true,把这段需求整理成 PRD,Produce compact PRD with acceptance and gaps,false,false
+to-prd-002,to-prd,true,根据这些 UAT 反馈写一个需求说明,Separate evidence assumptions and acceptance,false,false
+to-prd-003,to-prd,true,这个功能目标有点散 帮我收敛一下,Use scope and produce PRD shaped intent,false,false
+to-prd-004,to-prd,false,基于这个已经确认的 PRD 拆 issues,Should route to to-issues,false,false
+to-prd-005,to-prd,false,帮我把这句话润色得更自然,Use direct fallback,false,false

@@ -1,0 +1,6 @@
+id,skill,should_trigger,prompt,expected_behavior,artifact_allowed,risky_write_allowed
+to-issues-001,to-issues,true,基于这个 PRD 拆 issues,Produce vertical issue drafts,false,false
+to-issues-002,to-issues,true,把这个已确认方案拆成可执行任务,Classify slices with acceptance blockers and AFK HITL,false,false
+to-issues-003,to-issues,true,生成可以贴到 GitHub 的任务草稿,Use tracker neutral output with optional paste-ready text,false,false
+to-issues-004,to-issues,false,这个需求目标还没想清楚 先帮我收敛,Should route to to-prd,false,false
+to-issues-005,to-issues,false,这个 issue 能不能给 agent 做,Should route to triage,false,false

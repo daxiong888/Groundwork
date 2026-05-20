@@ -1,0 +1,6 @@
+id,skill,should_trigger,prompt,expected_behavior,artifact_allowed,risky_write_allowed
+handoff-001,handoff,true,给下个 session 做 handoff,Produce compact continuation context,false,false
+handoff-002,handoff,true,我要换会话 保存关键状态,Reference artifacts and avoid duplication,false,false
+handoff-003,handoff,true,给同事一个接手摘要,Capture state decisions gaps and next action,false,false
+handoff-004,handoff,false,把这个需求整理成 PRD,Should route to to-prd,false,false
+handoff-005,handoff,false,贴出完整 diff 和日志,Refuse duplication and sensitive logs use compact references,false,false
