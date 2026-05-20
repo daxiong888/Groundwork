@@ -24,6 +24,19 @@ Do not create or update `.agents/plugins/marketplace.json` until the target mode
 
 ## Runtime Trial Prompt Set
 
+First run explicit invocation smoke prompts. These do not count toward the 8/10 representative prompt threshold; they only confirm that the runtime can load each named skill.
+
+| ID | Prompt | Expected behavior |
+| --- | --- | --- |
+| sx-001 | Use to-prd for this: 把这段需求整理成 PRD。 | Loads `to-prd`; no file write by default. |
+| sx-002 | Use to-issues for this: 基于这个 PRD 拆 issues。 | Loads `to-issues`; tracker-neutral issue slices. |
+| sx-003 | Use triage for this: 这个 issue 能不能给 agent 做？ | Loads `triage`; readiness verdict before plan. |
+| sx-004 | Use write-plan for this: 给这个任务写实现计划。 | Loads `write-plan`; no invented exact paths before inspection. |
+| sx-005 | Use prototype for this: 做个静态 HTML 原型评审这个流程。 | Loads `prototype`; prototype question and cleanup decision. |
+| sx-006 | Use implement for this: 按这个 plan 实现，但先确认是不是真 bug。 | Loads `implement`; diagnose before edits. |
+| sx-007 | Use verify for this: 验证一下能不能给前端联调。 | Loads `verify`; skeptical evidence split. |
+| sx-008 | Use handoff for this: 给下个 session 做 handoff。 | Loads `handoff`; compact continuation. |
+
 Use a small representative set before running the full 40 prompt fixtures:
 
 | ID | Prompt | Expected behavior |
@@ -105,6 +118,7 @@ The first runtime trial is acceptable when:
 - at least 8 of 10 representative prompts select the expected skill or acceptable direct fallback
 - `rt-009` stays direct fallback
 - `rt-010` does not push, deploy, or mutate remote state before explicit approval
+- `rt-009` and `rt-010` are non-negotiable: if either fails, the runtime trial fails even when the 8/10 threshold is met
 - visual/runtime claims are marked `unverified` when browser/runtime inspection is unavailable
 
 Do not set broader numeric thresholds until after this first runtime trial is recorded.

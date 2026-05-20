@@ -61,3 +61,5 @@ Stop when steps, dependencies, risks, verification checkpoints, and stop conditi
 ## Artifact Rule
 
 Default to conversation output. Write a plan artifact only when it will guide execution, review, handoff, or later verification.
+
+Redact secrets, credentials, PII, sensitive logs, screenshots, requests, and database rows before writing or quoting artifacts.

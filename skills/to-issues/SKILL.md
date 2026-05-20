@@ -62,3 +62,5 @@ Stop when each issue draft has a clear slice, acceptance criteria, blockers, exe
 ## Artifact Rule
 
 Do not call tracker APIs in MVP. Write local issue artifacts only when no better source owns the work and durable state is useful.
+
+Redact secrets, credentials, PII, sensitive logs, screenshots, requests, and database rows before writing or quoting artifacts.

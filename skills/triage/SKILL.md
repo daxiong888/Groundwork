@@ -59,3 +59,5 @@ Stop when the state, blockers, AFK/HITL classification, readiness reason, and ne
 ## Artifact Rule
 
 Do not create `OUT-OF-SCOPE.md` in MVP. Write an agent brief only when it will be reused for execution, review, or handoff.
+
+Redact secrets, credentials, PII, sensitive logs, screenshots, requests, and database rows before writing or quoting artifacts.

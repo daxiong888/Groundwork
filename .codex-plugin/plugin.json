@@ -28,7 +28,7 @@
       "Write"
     ],
     "defaultPrompt": [
-      "Use Groundwork to create a PRD, task, and plan before implementation.",
+      "Use Groundwork only when context, risk, or reuse justifies a workflow.",
       "Use Groundwork to verify whether this issue is real.",
       "Use Groundwork to prepare a handoff for this work."
     ],

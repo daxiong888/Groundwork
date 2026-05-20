@@ -1,6 +1,6 @@
 ---
 name: to-prd
-description: Turn rough product or engineering intent into a compact PRD or spec grounded in evidence and acceptance criteria. Use when the user asks to整理成 PRD, 写需求, clarify acceptance, turn feedback into spec, or shape ambiguous requirements before task slicing.
+description: Create or revise a compact PRD/spec from rough product or engineering intent, evidence, feedback, or unclear acceptance. Use for 整理成 PRD, 写需求说明, clarify acceptance, or shape ambiguous requirements before task slicing. Do not use for tiny title or wording rewrites.
 ---
 
 # to-prd
@@ -61,3 +61,5 @@ Stop when the PRD/spec intent, acceptance criteria, open questions, and next act
 ## Artifact Rule
 
 Default to conversation output. Write or update a PRD file only when the user asks, when the output needs review/reuse/handoff, or when it becomes a task source of truth.
+
+Redact secrets, credentials, PII, sensitive logs, screenshots, requests, and database rows before writing or quoting artifacts.

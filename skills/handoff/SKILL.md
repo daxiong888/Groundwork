@@ -54,6 +54,12 @@ Artifact Recommendation
 
 Stop when the next session can resume without rediscovering core context.
 
+## Gate Rule
+
+Do not post, push, publish, update trackers, mutate shared skill files, or write remote handoff artifacts without explicit approval with Target, Action, Risk, and Rollback/Undo.
+
 ## Artifact Rule
 
 Keep handoff compact by default. Write a handoff file only when durable continuation is needed. Reference secret locations abstractly and never quote secret values.
+
+Redact secrets, credentials, PII, sensitive logs, screenshots, requests, and database rows before writing or quoting artifacts.

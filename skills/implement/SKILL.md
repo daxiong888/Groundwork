@@ -57,6 +57,12 @@ Artifact Recommendation
 
 Stop when the requested scoped change is implemented or blocked with evidence. Final readiness belongs to `verify` or the user.
 
+## Gate Rule
+
+If implementation would require or is paired with push, deploy, publish, migration, destructive command, data write, remote tracker mutation, or shared skill mutation, stop before execution and output Proposed Action, Target, Risk, Rollback/Undo, and Approval Needed. Do not execute until explicit user approval.
+
 ## Artifact Rule
 
-Do not create durable artifacts unless they are needed for execution, review, verification, or handoff. Never mutate remote systems, data, deploy targets, git remotes, or shared skills without explicit approval.
+Do not create durable artifacts unless they are needed for execution, review, verification, or handoff.
+
+Redact secrets, credentials, PII, sensitive logs, screenshots, requests, and database rows before writing or quoting artifacts.
