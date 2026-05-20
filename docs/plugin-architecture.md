@@ -14,19 +14,18 @@ It should also not become a blind Superpowers + mattpocock bundle. The borrowed 
 
 ## Current Stage
 
-The repository is in the v0.1 review-package stage.
+The repository is in the v0.1 RC / tag-review stage.
 
 Current contents:
 
 - `.codex-plugin/plugin.json`
 - `docs/` product and architecture docs
-- `evals/` prompt fixtures, scenario fixtures, baselines, and runtime trial checklist
+- `evals/` prompt fixtures, scenario fixtures, fixture repo, baselines, and runtime trial checklist
 - `research/` source research and scenario analysis
 - `skills/` eight shallow public skills plus required first-cut references
 - `scripts/` optional future scripts directory, currently empty except `.gitkeep`
-- `refer/github/frameworks/` local source clones for peer-framework research
 
-No production-hardened Groundwork skills, task tools, hooks, MCP servers, or runtime trial results are finalized yet.
+The repository includes v0.1 runtime and eval evidence, including plugin discovery, representative workflow trial, fixture runtime trial, and Codex App runtime-safety follow-up. It still intentionally excludes production-hardened skill behavior, task tools, hooks, MCP servers, marketplace publishing flow, and task CRUD.
 
 ## MVP Surface
 

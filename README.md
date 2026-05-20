@@ -8,7 +8,7 @@ The practical starting point is a curated base: use Superpowers as the Codex plu
 
 ## Current Stage
 
-Groundwork is in the v0.1 review-package stage. `docs/prd.md` is the product source of truth for this cut.
+Groundwork is in the v0.1 RC / tag-review stage. `docs/prd.md` is the product source of truth for this cut.
 
 This repository currently contains:
 
@@ -19,10 +19,10 @@ This repository currently contains:
 - eight first-cut public skills
 - skill trigger fixtures
 - R&D workflow scenario fixtures
-- spec-level and local discovery baselines
+- spec-level, local discovery, runtime, fixture, and App runtime-safety baselines
 - runtime trial checklist
 
-It intentionally does not yet contain production-hardened skill behavior, runtime trial results, task tools, hooks, MCP servers, or local task CRUD. Those should be added only after the v0.1 runtime trial exposes a real need.
+It intentionally does not yet contain production-hardened skill behavior, task tools, hooks, MCP servers, marketplace publishing flow, or local task CRUD. Those should be added only after repeated real usage exposes a need.
 
 ## Working Thesis
 
@@ -64,4 +64,4 @@ PRD/spec -> task -> plan -> prototype/contract/design as needed -> implementatio
 - `docs/plugin-architecture.md` - staged Codex plugin architecture
 - `.codex-plugin/plugin.json` - Codex plugin manifest
 - `skills/` - eight shallow public skills for v0.1
-- `evals/` - prompt fixtures, scenario fixtures, baselines, and runtime trial checklist
+- `evals/` - prompt fixtures, scenario fixtures, fixture repo, baselines, and runtime trial checklist
