@@ -1,6 +1,6 @@
 ---
 name: implement
-description: Execute or review scoped code changes, fixes, or implementation work. Use for 按 plan 实现, 改代码, 修 bug, or 先确认 bug 再改.
+description: Execute or review scoped code changes, fixes, or implementation work. Use for 按 plan 实现, 改代码, 修一下这个问题, 修 bug, 先确认 bug 再改, or review 这次实现.
 ---
 
 # implement
@@ -14,6 +14,7 @@ Should trigger:
 - "按这个任务实现"
 - "根据这个 plan 改代码"
 - "修一下这个 confirmed bug"
+- "修一下这个问题"
 - "实现这个接口调整"
 - "先确认是不是真 bug，再做最小修改"
 - "review 这次实现是否符合 PRD"
@@ -25,6 +26,7 @@ Should not trigger:
 - Task readiness is unknown; use `triage`.
 - The user only asks for a plan; use `write-plan`.
 - The user asks if the finished work is ready; use `verify`.
+- The user asks whether an implementation can pass UAT or release; use `verify`.
 
 ## Required Evidence
 

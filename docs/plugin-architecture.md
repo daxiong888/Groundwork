@@ -14,18 +14,18 @@ It should also not become a blind Superpowers + mattpocock bundle. The borrowed 
 
 ## Current Stage
 
-Groundwork v0.1.1 is the release-hygiene and eval-hardening cut.
+Current `main` is preparing v0.2.0 Skill Reliability Hardening.
 
 Current contents:
 
 - `.codex-plugin/plugin.json`
 - `docs/` product and architecture docs
-- `evals/` prompt fixtures, structured smoke and safety fixtures, scenario fixtures, fixture repo, baselines, and runtime trial checklist
+- `evals/` prompt fixtures, structured smoke, safety, and reliability fixtures, scenario fixtures, fixture repos, baselines, and runtime trial checklist
 - `research/` source research and scenario analysis
 - `skills/` eight shallow public skills plus required first-cut references
 - `scripts/` optional future scripts directory, currently empty except `.gitkeep`
 
-The repository includes v0.1 runtime and eval evidence, including plugin discovery, representative workflow trial, fixture runtime trial, and Codex App runtime-safety follow-up. It still intentionally excludes production-hardened skill behavior, task tools, hooks, MCP servers, marketplace publishing flow, and task CRUD.
+The repository includes v0.1 runtime and eval evidence, including plugin discovery, representative workflow trial, fixture runtime trial, and Codex App runtime-safety follow-up. The v0.2.0 line should improve reliability of the existing eight public skills in real prompts without adding public skill surface, task tools, hooks, MCP servers, marketplace publishing flow, or task CRUD.
 
 ## MVP Surface
 

@@ -4,3 +4,7 @@ verify-002,verify,true,这个可以给客户 UAT 吗,Separate code runtime data 
 verify-003,verify,true,检查一下 release readiness,Report pass partial fail or blocked,false,false
 verify-004,verify,false,按这个计划实现,Should route to implement,false,false
 verify-005,verify,false,给下个 session 做 handoff,Should route to handoff,false,false
+verify-006,verify,true,只有 code diff 没有 runtime 或 browser evidence 这次可以算 ready 吗 不要运行命令,Mark runtime or browser evidence as unverified and avoid full pass,false,false
+verify-007,verify,true,没有数据和环境证据 能不能给客户 UAT,Do not give UAT pass without data and environment readiness,false,false
+verify-008,verify,true,给客户一段说明 但先判断工程 readiness,Keep customer-facing summary secondary to engineering readiness,false,false
+verify-009,verify,false,review 这次实现是否符合 PRD 但不用判断 UAT,Should route to implement,false,false

@@ -8,7 +8,7 @@ The practical starting point is a curated base: use Superpowers as the Codex plu
 
 ## Current Stage
 
-Groundwork v0.1.1 is the release-hygiene and eval-hardening cut. `docs/prd.md` remains the product source of truth for this cut.
+Current `main` is preparing v0.2.0 Skill Reliability Hardening. `docs/prd.md` remains the product source of truth; v0.2.0 should harden the existing eight public skills instead of expanding the public surface.
 
 This repository currently contains:
 
@@ -19,11 +19,12 @@ This repository currently contains:
 - eight first-cut public skills
 - skill trigger fixtures
 - structured smoke and safety fixtures
+- skill reliability fixtures
 - R&D workflow scenario fixtures
 - spec-level, local discovery, runtime, fixture, and App runtime-safety baselines
 - runtime trial checklist
 
-It intentionally does not yet contain production-hardened skill behavior, task tools, hooks, MCP servers, marketplace publishing flow, or local task CRUD. Those should be added only after repeated real usage exposes a need.
+It intentionally does not yet contain task tools, hooks, MCP servers, marketplace publishing flow, or local task CRUD. Those should be added only after repeated real usage exposes a need.
 
 ## Working Thesis
 
@@ -64,5 +65,5 @@ PRD/spec -> task -> plan -> prototype/contract/design as needed -> implementatio
 - `docs/workflow-taxonomy.md` - proposed workflow modes and trigger policy
 - `docs/plugin-architecture.md` - staged Codex plugin architecture
 - `.codex-plugin/plugin.json` - Codex plugin manifest
-- `skills/` - eight shallow public skills for v0.1
+- `skills/` - eight shallow public skills
 - `evals/` - prompt fixtures, scenario fixtures, fixture repo, baselines, and runtime trial checklist

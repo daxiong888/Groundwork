@@ -1,6 +1,6 @@
 ---
 name: write-plan
-description: Write a concise implementation plan for accepted task context with dependencies stop conditions and verification checkpoints. Use when the user asks to 写实现计划, plan accepted work, sequence changes, or prepare execution before edits.
+description: Write a concise implementation plan for accepted task context with dependencies stop conditions and verification checkpoints. Use for 写实现计划, plan accepted work, sequence changes, or prepare execution before edits without inventing paths.
 ---
 
 # write-plan
@@ -27,7 +27,7 @@ Should not trigger:
 
 ## Required Evidence
 
-Use the accepted task, PRD/spec, issue, current source references, and known verification expectations. Do not invent exact file paths, APIs, schemas, or commands before inspection.
+Use the accepted task, PRD/spec, issue, current source references, and known verification expectations. Do not invent exact file paths, APIs, schemas, or commands before inspection. If the workspace has no source or tests, say so and plan first inspection or validation steps instead of naming fictional files.
 
 ## Workflow
 

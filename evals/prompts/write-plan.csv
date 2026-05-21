@@ -4,3 +4,7 @@ write-plan-002,write-plan,true,先 plan 一下这个 accepted issue 怎么做,Us
 write-plan-003,write-plan,true,实现前列一下改动顺序和验证点,Produce implementation sequence and checkpoints,false,false
 write-plan-004,write-plan,false,这个需求还不清楚 先整理成 PRD,Should route to to-prd,false,false
 write-plan-005,write-plan,false,按这个 plan 开始改代码,Should route to implement,false,false
+write-plan-006,write-plan,true,这个任务已 accepted：在 evals/fixtures/empty-workspace 里给 TASK 写实现计划 不要编造路径,Report missing source and no exact paths,false,false
+write-plan-007,write-plan,true,在 evals/fixtures/minimal-task-search 里给 TASK.md 写实现计划 先检查 src 和 test,Use real src/taskSearch.mjs and test/taskSearch.test.mjs after inspection,false,false
+write-plan-008,write-plan,true,在 evals/fixtures/no-tests-task 里写实现计划 有 TASK.md 但没有 tests 只输出计划 不要编辑文件,Mark test evidence gap and propose focused verification,false,false
+write-plan-009,write-plan,false,先确认 bug 再改,Should route to implement,false,false

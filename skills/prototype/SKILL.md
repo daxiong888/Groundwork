@@ -15,6 +15,7 @@ Should trigger:
 - "跑一下这个状态模型"
 - "用原型验证这个交互"
 - "做一个 HTML 页面给前端评审"
+- "评审这个静态 HTML 原型"
 - "这个流程先用 prototype 看看"
 
 Should not trigger:
@@ -27,7 +28,7 @@ Should not trigger:
 
 ## Required Evidence
 
-Identify the prototype question first. Use source, PRD, task, data shape, or UI notes only as needed to answer that question.
+Identify the prototype question first. Use source, PRD, task, data shape, existing prototype files, or UI notes only as needed to answer that question. For static HTML review, do not claim visual state, layout, responsiveness, or interaction correctness without browser/runtime evidence; mark unavailable evidence as `unverified`.
 
 ## Workflow
 

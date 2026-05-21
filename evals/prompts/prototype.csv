@@ -4,3 +4,7 @@ prototype-002,prototype,true,跑一下这个状态模型看看边界,Use logic b
 prototype-003,prototype,true,用 HTML 原型给前端评审交互状态,Use UI branch and require browser evidence for visual claims,true,false
 prototype-004,prototype,false,把这个原型结论整理成 PRD,Should route to to-prd,false,false
 prototype-005,prototype,false,按这个原型实现生产代码,Should route to implement,false,false
+prototype-006,prototype,true,评审 evals/fixtures/static-filter-prototype/index.html 这个静态原型 不要改文件,Report question states interactions browser evidence or unverified cleanup and PRD contract feedback,false,false
+prototype-007,prototype,true,做一个最小静态 HTML 原型验证多活动筛选器只在多活动展示,Default to one minimum prototype with cleanup decision,true,false
+prototype-008,prototype,false,这个原型结论能不能给客户 UAT,Should route to verify,false,false
+prototype-009,prototype,false,直接按这个原型改生产代码,Should route to implement,false,false

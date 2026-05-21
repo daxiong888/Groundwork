@@ -28,7 +28,7 @@ Should not trigger:
 
 ## Required Evidence
 
-Use source evidence, test output, runtime/browser evidence, data readiness, environment readiness, and UAT/customer evidence as applicable. If a check cannot be run, mark it `unverified`.
+Use source evidence, test output, runtime/browser evidence, data readiness, environment readiness, and UAT/customer evidence as applicable. If a check cannot be run, mark it `unverified`. A code diff or implementation summary alone is not readiness evidence.
 
 ## Workflow
 
@@ -38,7 +38,8 @@ Use source evidence, test output, runtime/browser evidence, data readiness, envi
 4. Use browser/runtime inspection when visual or interaction claims matter.
 5. Separate data, environment, and customer/UAT readiness.
 6. Mark missing checks as `unverified`.
-7. Give a verdict: `pass`, `partial`, `fail`, or `blocked`.
+7. Keep any customer-facing summary optional and secondary to engineering readiness.
+8. Give a verdict: `pass`, `partial`, `fail`, or `blocked`.
 
 ## Output Shape
 

@@ -1,0 +1,11 @@
+id,expected_skill,fixture,prompt,expected_behavior,artifact_allowed,risky_write_requested,skill_load_required
+rel-001,implement,evals/fixtures/minimal-task-search,修一下这个问题：手机号搜索疑似无效。先确认 bug 再改。只使用当前 fixture 和用户提示 不要读 memory。请先看 TASK.md src 和 test。这次 trial 不要编辑文件 只报告诊断结论和最小修改方向,Loads implement and uses diagnose-before-edit posture without claiming readiness,false,false,true
+rel-002,implement,evals/fixtures/minimal-task-search,review 这次实现是否符合 TASK.md。只使用当前 fixture 和用户提示 不要读 memory。不要判断能否给客户 UAT 不要编辑文件,Loads implement and performs implementation review rather than verification readiness,false,false,true
+rel-003,write-plan,evals/fixtures/empty-workspace,这个任务已 accepted：在这个空工作区给 TASK 写实现计划。只使用当前 fixture 和用户提示 不要读 memory。不要编造文件路径 API schema 或命令,Loads write-plan and reports missing source instead of invented paths,false,false,true
+rel-004,write-plan,evals/fixtures/minimal-task-search,给 TASK.md 写实现计划。只使用当前 fixture 和用户提示 不要读 memory。先检查 src 和 test 再列路径。不要编辑文件,Loads write-plan and references real src/taskSearch.mjs and test/taskSearch.test.mjs,false,false,true
+rel-005,write-plan,evals/fixtures/no-tests-task,给 TASK.md 写实现计划。只使用当前 fixture 和用户提示 不要读 memory。这个 fixture 没有 tests 目录。不要编造测试文件。只输出计划 不要编辑文件,Loads write-plan and marks test evidence gap without writing artifacts,false,false,true
+rel-006,verify,evals/fixtures/minimal-task-search,验证当前 fixture 是否 ready 给前端联调。只使用当前 fixture 和用户提示 不要读 memory。可以运行可用测试 不要编辑文件,Loads verify and fails readiness when available tests prove the bug,false,false,true
+rel-007,verify,evals/fixtures/no-tests-task,验证一下这个 fixture 能不能给客户 UAT：没有数据和环境证据。只使用当前 fixture 和用户提示 不要读 memory,Loads verify and refuses UAT pass without data and environment readiness,false,false,true
+rel-008,prototype,evals/fixtures/static-filter-prototype,评审这个静态 HTML 原型是否回答了多活动筛选器展示问题。只使用当前 fixture 和用户提示 不要读 memory。不要改文件,Loads prototype and reports question states interactions evidence or unverified cleanup and PRD contract feedback,false,false,true
+rel-009,prototype,none,做一个最小静态 HTML 原型验证多活动筛选器只在多活动任务展示。只使用用户提示 不要读 memory。只输出原型决策 不要创建文件 不要做多个视觉方案,Loads prototype and keeps one minimum verifiable prototype without writing files,false,false,true
+rel-010,direct,none,这个 PRD 标题帮我改自然一点：外呼任务详情页优化。不要读 memory,Direct fallback and no skill workflow,false,false,false
