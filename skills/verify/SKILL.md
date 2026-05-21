@@ -68,6 +68,9 @@ If verification would require or is paired with push, deploy, publish, migration
 
 ## Artifact Rule
 
+
+Follow `skills/_shared/AUDIENCE-FIRST-ARTIFACT.md`: every new or materially updated durable artifact must include the required audience-first header fields exactly.
+Follow `skills/_shared/ARTIFACT-DIRECTORY-POLICY.md`: local artifact placement must follow the directory policy, and `.groundwork/*` runtime directories are ignored by default and not committed unless explicitly approved.
 Write verification artifacts only when they are needed for UAT/SIT, release, review, or handoff.
 
 Redact secrets, credentials, PII, sensitive logs, screenshots, requests, and database rows before writing or quoting artifacts.
