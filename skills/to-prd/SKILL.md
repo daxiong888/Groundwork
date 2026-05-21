@@ -27,19 +27,26 @@ Should not trigger:
 
 ## Required Evidence
 
-Use user-provided context first. Inspect source, docs, prototype output, tickets, or data only when they materially affect correctness. If evidence is missing, state the gap instead of inventing product truth.
+Use user-provided context first. Inspect source, docs, prototype output, tickets, or data only when they materially affect correctness. If evidence is missing, state the gap and tag unknowns as **NEEDS CLARIFICATION** instead of inventing product truth.
 
 ## Workflow
 
 1. Identify the target reader and decision the PRD must support.
-2. Separate verified facts, assumptions, open questions, and inferred intent.
-3. Use `scope` if acceptance or user intent is unclear.
-4. Keep the PRD compact and implementation-ready.
-5. Recommend `to-issues` only when the PRD/spec is accepted enough to slice.
+2. Run the grill-before-write gate: explicitly list target reader, known facts, assumptions, and open questions before drafting.
+3. Mark every unknown business state or missing field as **NEEDS CLARIFICATION**; never invent product truth.
+4. Use `scope` if acceptance or user intent is unclear.
+5. Keep the PRD compact and implementation-ready.
+6. Recommend `to-issues` only when the PRD/spec is accepted enough to slice.
 
 ## Output Shape
 
+Use `GRILL-BEFORE-WRITE.md` and `PRD-TEMPLATE.md` as the default structure.
+
 ```text
+Target Reader
+Known Facts
+Assumptions
+Open Questions
 PRD Summary
 Problem
 Goal
@@ -48,8 +55,6 @@ Scope
 Out Of Scope
 Acceptance Criteria
 Evidence
-Assumptions
-Open Questions
 Next Action
 Artifact Recommendation
 ```

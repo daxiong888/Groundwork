@@ -4,3 +4,4 @@ to-prd-002,to-prd,true,根据这些 UAT 反馈写一个需求说明,Separate evi
 to-prd-003,to-prd,true,这个功能目标有点散 帮我收敛一下,Use scope and produce PRD shaped intent,false,false
 to-prd-004,to-prd,false,基于这个已经确认的 PRD 拆 issues,Should route to to-issues,false,false
 to-prd-005,to-prd,false,帮我把这句话润色得更自然,Use direct fallback,false,false
+to-prd-006,to-prd,true,把这个模糊需求写成 PRD 但很多业务字段没给,Must run grill-before-write and label unknown business fields NEEDS CLARIFICATION,false,false
