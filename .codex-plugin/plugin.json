@@ -1,14 +1,14 @@
 {
   "name": "groundwork",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Codex-native personal R&D workflow base for PRD, task slicing, planning, prototypes, implementation, verification, and handoff.",
   "author": {
     "name": "Daxiong",
     "email": "",
     "url": ""
   },
-  "homepage": "",
-  "repository": "",
+  "homepage": "https://github.com/daxiong888/Groundwork",
+  "repository": "https://github.com/daxiong888/Groundwork",
   "license": "MIT",
   "keywords": [
     "codex",

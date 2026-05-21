@@ -14,13 +14,13 @@ It should also not become a blind Superpowers + mattpocock bundle. The borrowed 
 
 ## Current Stage
 
-The repository is in the v0.1 RC / tag-review stage.
+Groundwork v0.1.0 is tagged. Current `main` is preparing v0.1.1 release hygiene and eval hardening.
 
 Current contents:
 
 - `.codex-plugin/plugin.json`
 - `docs/` product and architecture docs
-- `evals/` prompt fixtures, scenario fixtures, fixture repo, baselines, and runtime trial checklist
+- `evals/` prompt fixtures, structured smoke and safety fixtures, scenario fixtures, fixture repo, baselines, and runtime trial checklist
 - `research/` source research and scenario analysis
 - `skills/` eight shallow public skills plus required first-cut references
 - `scripts/` optional future scripts directory, currently empty except `.gitkeep`

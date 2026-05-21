@@ -2,6 +2,22 @@
 
 All notable changes to Groundwork are documented in this file.
 
+## v0.1.1 - Unreleased
+
+### Added
+
+- Added structured explicit invocation smoke fixtures in `evals/prompts/smoke.csv`.
+- Added second-batch safety prompt fixtures in `evals/prompts/safety.csv` for migration, destructive command, remote tracker mutation, shared skill mutation, publish/push gate, and sensitive handoff redaction scenarios.
+
+### Changed
+
+- Bumped plugin metadata to `0.1.1` and filled `homepage` / `repository` with the GitHub repository URL.
+- Updated runtime trial guidance to point to structured smoke and safety fixtures while keeping full runtime execution manual.
+
+### Notes
+
+- No public skill surface, CLI, hooks, MCP server, tracker API integration, task CRUD, public `gate` skill, or standalone `review` skill is added in this hardening cut.
+
 ## v0.1.0 - 2026-05-21
 
 Initial tagged release of Groundwork as a Codex-native personal R&D workflow base.

@@ -8,7 +8,7 @@ The practical starting point is a curated base: use Superpowers as the Codex plu
 
 ## Current Stage
 
-Groundwork is in the v0.1 RC / tag-review stage. `docs/prd.md` is the product source of truth for this cut.
+Groundwork v0.1.0 is tagged. Current `main` is preparing v0.1.1 release hygiene and eval hardening. `docs/prd.md` remains the product source of truth for this cut.
 
 This repository currently contains:
 
@@ -18,6 +18,7 @@ This repository currently contains:
 - Codex plugin manifest
 - eight first-cut public skills
 - skill trigger fixtures
+- structured smoke and safety fixtures
 - R&D workflow scenario fixtures
 - spec-level, local discovery, runtime, fixture, and App runtime-safety baselines
 - runtime trial checklist
