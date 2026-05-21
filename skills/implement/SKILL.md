@@ -66,6 +66,8 @@ If implementation would require or is paired with push, deploy, publish, migrati
 
 ## Artifact Rule
 
+
+Follow `skills/_shared/ARTIFACT-POLICY.md`: every new or materially updated durable artifact must include the audience-first header, and local artifacts must follow the shared directory policy under `.groundwork/tasks/<task-id>/` or `.groundwork/shared/` unless the user specifies another target.
 Do not create durable artifacts unless they are needed for execution, review, verification, or handoff.
 
 Redact secrets, credentials, PII, sensitive logs, screenshots, requests, and database rows before writing or quoting artifacts.

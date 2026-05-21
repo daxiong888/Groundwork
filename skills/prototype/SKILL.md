@@ -61,6 +61,8 @@ Stop when the prototype question is answered, the decision or remaining gap is e
 
 ## Artifact Rule
 
+
+Follow `skills/_shared/ARTIFACT-POLICY.md`: every new or materially updated durable artifact must include the audience-first header, and local artifacts must follow the shared directory policy under `.groundwork/tasks/<task-id>/` or `.groundwork/shared/` unless the user specifies another target.
 Create prototype files only when they answer a concrete question. Delete or absorb prototype code after the question is answered unless there is a clear temporary retention reason.
 
 Redact secrets, credentials, PII, sensitive logs, screenshots, requests, and database rows before writing or quoting artifacts.

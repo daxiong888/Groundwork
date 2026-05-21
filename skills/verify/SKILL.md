@@ -68,6 +68,8 @@ If verification would require or is paired with push, deploy, publish, migration
 
 ## Artifact Rule
 
+
+Follow `skills/_shared/ARTIFACT-POLICY.md`: every new or materially updated durable artifact must include the audience-first header, and local artifacts must follow the shared directory policy under `.groundwork/tasks/<task-id>/` or `.groundwork/shared/` unless the user specifies another target.
 Write verification artifacts only when they are needed for UAT/SIT, release, review, or handoff.
 
 Redact secrets, credentials, PII, sensitive logs, screenshots, requests, and database rows before writing or quoting artifacts.
