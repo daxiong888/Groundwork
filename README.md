@@ -8,7 +8,7 @@ The practical starting point is a curated base: use Superpowers as the Codex plu
 
 ## Current Stage
 
-Current `main` is preparing v0.2.0 Skill Reliability Hardening. `docs/prd.md` remains the product source of truth; v0.2.0 should harden the existing eight public skills instead of expanding the public surface.
+Current `main` contains v0.2.0 Skill Reliability Hardening. `docs/prd.md` remains the product source of truth; v0.2.0 hardens the existing eight public skills instead of expanding the public surface.
 
 This repository currently contains:
 

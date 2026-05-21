@@ -14,7 +14,7 @@ It should also not become a blind Superpowers + mattpocock bundle. The borrowed 
 
 ## Current Stage
 
-Current `main` is preparing v0.2.0 Skill Reliability Hardening.
+Current `main` contains v0.2.0 Skill Reliability Hardening.
 
 Current contents:
 
@@ -25,7 +25,7 @@ Current contents:
 - `skills/` eight shallow public skills plus required first-cut references
 - `scripts/` optional future scripts directory, currently empty except `.gitkeep`
 
-The repository includes v0.1 runtime and eval evidence, including plugin discovery, representative workflow trial, fixture runtime trial, and Codex App runtime-safety follow-up. The v0.2.0 line should improve reliability of the existing eight public skills in real prompts without adding public skill surface, task tools, hooks, MCP servers, marketplace publishing flow, or task CRUD.
+The repository includes v0.1 runtime and eval evidence, including plugin discovery, representative workflow trial, fixture runtime trial, and Codex App runtime-safety follow-up. The v0.2.0 line improves reliability of the existing eight public skills in real prompts without adding public skill surface, task tools, hooks, MCP servers, marketplace publishing flow, or task CRUD.
 
 ## MVP Surface
 

@@ -2,7 +2,7 @@
 
 All notable changes to Groundwork are documented in this file.
 
-## v0.2.0 - Unreleased
+## v0.2.0 - 2026-05-21
 
 ### Added
 
@@ -10,10 +10,11 @@ All notable changes to Groundwork are documented in this file.
 - Added `evals/prompts/reliability.csv` as a cross-skill prompt set for natural invocation and adjacent-boundary drift.
 - Added small fixture workspaces for empty-source planning, no-tests planning, and static HTML prototype review.
 - Added local fixture validation and runtime trial baselines for the v0.2 reliability prompt set.
+- Added a per-row runtime evidence summary to the v0.2 runtime trial baseline.
 
 ### Changed
 
-- Bumped plugin metadata to `0.2.0` for runtime testing of the reliability-hardening cut.
+- Bumped plugin metadata to `0.2.0` for the reliability-hardening cut.
 - Tightened target skill instructions for implementation review, no-invented-path planning, skeptical verification, and prototype evidence reporting.
 - Patched v0.2 reliability prompts after runtime drift so `implement` and `write-plan` load naturally without explicit skill invocation.
 
