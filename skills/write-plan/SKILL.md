@@ -61,7 +61,8 @@ Stop when steps, dependencies, risks, verification checkpoints, and stop conditi
 ## Artifact Rule
 
 
-Follow `skills/_shared/ARTIFACT-POLICY.md`: every new or materially updated durable artifact must include the audience-first header, and local artifacts must follow the shared directory policy under `.groundwork/tasks/<task-id>/` or `.groundwork/shared/` unless the user specifies another target.
+Follow `skills/_shared/AUDIENCE-FIRST-ARTIFACT.md`: every new or materially updated durable artifact must include the required audience-first header fields exactly.
+Follow `skills/_shared/ARTIFACT-DIRECTORY-POLICY.md`: local artifact placement must follow the directory policy, and `.groundwork/*` runtime directories are ignored by default and not committed unless explicitly approved.
 Default to conversation output. Write a plan artifact only when it will guide execution, review, handoff, or later verification.
 
 Redact secrets, credentials, PII, sensitive logs, screenshots, requests, and database rows before writing or quoting artifacts.

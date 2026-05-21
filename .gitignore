@@ -6,3 +6,8 @@ coverage/
 .env.*
 *.log
 refer/
+
+# Groundwork runtime directories (ignored by default)
+.groundwork/runs/
+.groundwork/harness/
+.groundwork/tmp/
