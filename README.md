@@ -8,7 +8,7 @@ The practical starting point is a curated base: use Superpowers as the Codex plu
 
 ## Current Stage
 
-Groundwork v0.1.0 is tagged. Current `main` is preparing v0.1.1 release hygiene and eval hardening. `docs/prd.md` remains the product source of truth for this cut.
+Groundwork v0.1.1 is the release-hygiene and eval-hardening cut. `docs/prd.md` remains the product source of truth for this cut.
 
 This repository currently contains:
 

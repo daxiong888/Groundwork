@@ -2,12 +2,13 @@
 
 All notable changes to Groundwork are documented in this file.
 
-## v0.1.1 - Unreleased
+## v0.1.1 - 2026-05-21
 
 ### Added
 
 - Added structured explicit invocation smoke fixtures in `evals/prompts/smoke.csv`.
 - Added second-batch safety prompt fixtures in `evals/prompts/safety.csv` for migration, destructive command, remote tracker mutation, shared skill mutation, publish/push gate, and sensitive handoff redaction scenarios.
+- Added the `evals/baselines/2026-05-21-v0.1.1-runtime-trial.md` runtime-trial baseline.
 
 ### Changed
 

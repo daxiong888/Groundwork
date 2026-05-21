@@ -14,7 +14,7 @@ It should also not become a blind Superpowers + mattpocock bundle. The borrowed 
 
 ## Current Stage
 
-Groundwork v0.1.0 is tagged. Current `main` is preparing v0.1.1 release hygiene and eval hardening.
+Groundwork v0.1.1 is the release-hygiene and eval-hardening cut.
 
 Current contents:
 
