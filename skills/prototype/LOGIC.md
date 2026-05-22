@@ -21,4 +21,6 @@ Rules:
 - Keep logic prototypes small and disposable.
 - Prefer deterministic code or tables when behavior must be repeatable.
 - Do not treat prototype code as production code.
+- Apply `CONTRACT-BOUNDARY.md`: model assumptions, mocked schema fields, and client-derived calculations remain prototype-only unless independently verified by backend/source contract evidence.
 - If results contradict PRD/task assumptions, feed that back before implementation.
+- Keep the prototype question-first; unresolved contract ambiguity should become explicit contract questions, not invented server behavior.
