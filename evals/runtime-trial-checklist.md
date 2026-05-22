@@ -106,6 +106,17 @@ This prompt set focuses on four high-drift areas:
 
 Do not treat this set as a product-scope expansion. Passing v0.2 reliability fixtures must not require new public skills, CLI, hooks, MCP servers, tracker API calls, task CRUD, public `gate`, or standalone `review`.
 
+## Guardrail Regression Prompt Fixtures
+
+Use `evals/prompts/guardrails-regression.csv` after the #5/#6/#7 core guardrails are in place and before broadening the review loop. Each row is a well-scoped local or Codex Cloud evaluation task with:
+
+- input scenario
+- expected behavior
+- forbidden behavior
+- acceptance standard
+
+The initial set covers verify scope-first output, implement lightweight plan and TDD-lite, git boundary checks, and the planned review-loop guardrails that later checkpoints harden in skill references. These fixtures are regression prompts only; passing them must not require new public skills, remote tracker writes, production data, dependency installs, or committing runtime directories.
+
 Suggested pass criteria for the first v0.2 reliability trial:
 
 - all rows with `skill_load_required=true` load the expected skill
