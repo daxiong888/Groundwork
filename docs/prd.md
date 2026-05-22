@@ -521,3 +521,4 @@ Use this PRD for multi-angle review before implementation:
 5. `prototype/UI.md` defaults to one minimum verifiable prototype. Multiple variants are used only when requested or when the problem is explicitly about visual or interaction tradeoffs.
 6. `verify` keeps engineering readiness as the main output. It may add a short optional customer/UAT note, but it is not a customer-message generator.
 7. Plugin docs must include suggested Chinese trigger phrases for every public skill.
+8. Implementation notes are conversation-only by default. Durable implementation notes are optional decision artifacts only for nontrivial review, verification, or handoff needs, and follow `docs/implementation-notes-policy.md`; Groundwork does not require a running `implementation-notes.html` or Markdown file during `implement`.
