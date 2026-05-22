@@ -66,4 +66,3 @@ Reject or keep quarantined when:
 - the patch changes production systems, remote trackers, shared global skills, or runtime directories
 - the patch depends on a tool or API not available in the target environment
 - the patch duplicates an existing PRD, plan, or source artifact
-

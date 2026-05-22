@@ -48,4 +48,3 @@ A failed metric may generate a patch proposal only when:
 - human review can accept or reject it
 
 Patch proposals remain proposals. They do not mutate `main`, push, open PRs, write trackers, or edit runtime directories automatically.
-

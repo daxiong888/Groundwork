@@ -22,4 +22,3 @@ Frontend Contract
 ```
 
 Keep the artifact focused on what the frontend needs to call, render, branch, retry, or display. Move backend-internal details to engineering notes only when the target reader explicitly needs them.
-

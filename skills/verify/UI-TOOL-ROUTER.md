@@ -35,4 +35,3 @@ Rules:
 - If no UI tool is available, mark the visual or interaction claim `unverified`.
 - State why a tool was chosen when switching from Browser to DevTools, extension tooling, Playwright, or Puppeteer.
 - Do not bypass security or certificate interstitials as a verification shortcut.
-

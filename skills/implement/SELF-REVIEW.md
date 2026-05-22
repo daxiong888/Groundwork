@@ -27,4 +27,3 @@ Rules:
 - `Git boundary` summarizes staged/unstaged/unrelated files when commits or handoff are in scope.
 - `Remaining gaps` lists missing evidence, no-test justification, or risks.
 - `Verify next` recommends `verify` for readiness when user-facing, UAT, release, or cross-environment confidence is needed.
-

@@ -48,4 +48,3 @@ Rules:
 - Mark missing backend source truth as `unverified`; do not convert a draft into fact.
 - Keep implementation notes out of frontend-facing docs unless the target reader needs them to call the API.
 - Use `skills/_shared/FRONTEND-CONTRACT-DOC.md` when creating or rewriting a frontend-facing contract artifact.
-

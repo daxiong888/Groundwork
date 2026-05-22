@@ -41,4 +41,3 @@ When `implement` receives a verify failure:
 5. Report any unresolved gap back to `verify`.
 
 Do not turn one failed check into broad cleanup or unrelated behavior changes.
-

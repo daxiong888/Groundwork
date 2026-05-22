@@ -32,4 +32,3 @@ Rules:
 - Do not hide unverified claims; put them in `Open Risks` or `Do-Not-Assume`.
 - Include file boundaries when a future session may stage, commit, or continue edits.
 - Redact secrets, tokens, credentials, PII, sensitive logs, and private request payloads.
-

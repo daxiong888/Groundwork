@@ -68,4 +68,3 @@ Give one verdict after the scope and evidence matrix:
 - `partial`: some claims are supported, but material gaps remain.
 - `fail`: evidence contradicts a material claim.
 - `blocked`: required evidence cannot be obtained without a decision, approval, unavailable system, or scope expansion.
-

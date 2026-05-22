@@ -61,4 +61,3 @@ Implementation notes must not become:
 ## Acceptance Standard
 
 Implementation notes are useful only when another reader can make a decision or safely resume work from them. If no target reader or reader action exists, keep the information in the normal implementation response and do not create a durable artifact.
-

@@ -20,4 +20,3 @@ Use a named lens when the user asks for a specific kind of verification. If seve
 | git boundary review | Verifying commit/staging scope. | `git status --short`, intended allowlist, explicit denylist, `git diff --name-only`, `git diff --cached --name-only`. | `git add .`, ignored runtime dirs, unrelated files staged, or no statement of unrelated changes. |
 
 Named lenses do not expand scope by themselves. If a lens would require migration, production access, destructive commands, remote tracker mutation, push, deploy, or shared skill mutation, use the gate rule before taking action.
-

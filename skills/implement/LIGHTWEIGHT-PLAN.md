@@ -27,4 +27,3 @@ Rules:
 - Recommend `write-plan` only when sequencing, dependencies, stop conditions, or scope are too large to safely hold inline.
 
 Use this lightweight plan as an execution checkpoint, not a durable artifact, unless the user asks for a written implementation plan.
-

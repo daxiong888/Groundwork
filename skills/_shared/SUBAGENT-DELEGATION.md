@@ -42,4 +42,3 @@ Rules:
 - State that the subagent cannot modify files unless file mutation is explicitly delegated.
 - Require findings to cite the supplied artifacts, paths, commands, or observations.
 - If evidence is missing, require `unverified` or `blocked`, not invented facts.
-

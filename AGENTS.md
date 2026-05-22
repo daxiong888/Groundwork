@@ -38,4 +38,3 @@ Groundwork is a Codex-native evidence-first R&D workflow base. The public skill 
 - Durable artifacts must have a target reader, reader action, decision supported, scope, out-of-scope boundary, and evidence level.
 - Prefer updating canonical docs or eval fixtures over creating duplicates.
 - Do not copy secrets, credentials, PII, sensitive logs, long diffs, or private request payloads into artifacts.
-

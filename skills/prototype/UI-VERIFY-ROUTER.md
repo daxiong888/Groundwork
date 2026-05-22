@@ -28,4 +28,3 @@ Browser / Runtime Evidence
 ```
 
 If the tool cannot run, write `unverified` for visual and interaction claims. Do not silently replace runtime evidence with visual guesses from source code.
-
