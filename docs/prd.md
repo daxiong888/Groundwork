@@ -330,7 +330,7 @@ A task with only a title, vague request, or missing evidence path is `needs-info
 
 `implement` may execute code changes and report local evidence, but it must stop before claiming final readiness. Readiness is decided by `verify` or by the user.
 
-When a suspected bug or failing behavior is involved, `implement` must run `diagnose` first and distinguish confirmed cause from plausible hypothesis before editing.
+When a suspected bug or failing behavior is involved, `implement` must use its embedded `diagnose` branch: reproduce or inspect first, distinguish confirmed cause from plausible hypothesis, and avoid speculative edits.
 
 ### `verify`
 

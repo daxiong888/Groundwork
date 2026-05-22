@@ -46,10 +46,14 @@ Use this as the default denylist unless the user explicitly narrows or expands i
 .groundwork/*
 .trellis/*
 refer/*
+PRODUCT.md unless the current issue explicitly scopes it
 *.log
 *.tmp
+*.sql unless the current task explicitly scopes SQL or migration work
 .env
 .env.*
+historical SQL / archived migrations / scratch SQL
+temporary tests outside the scoped fixture or task
 production data dumps
 unrelated docs
 dependency or lock files unrelated to the task

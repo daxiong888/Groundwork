@@ -34,7 +34,7 @@ Should not trigger:
 
 ## Required Evidence
 
-Start with `SCOPE-EVIDENCE-TEMPLATE.md`. Use source evidence, test output, runtime/browser evidence, data readiness, environment readiness, and UAT/customer evidence as applicable. Select the narrowest matching named lens from `LENSES.md` when the user asks for PRD review, document review, contract review, implementation review, UAT review, UI review, or git boundary review.
+Start with `SCOPE-EVIDENCE-TEMPLATE.md`. Use source evidence, test output, runtime/browser evidence, data readiness, environment readiness, and UAT/customer evidence as applicable. Select the narrowest matching named lens from `LENSES.md` when the user asks for PRD review, document review, contract review, implementation evidence review, UAT review, UI review, or git boundary review.
 
 Use specialized references when they apply:
 

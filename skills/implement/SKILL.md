@@ -46,7 +46,7 @@ If using a subagent for review, use `skills/_shared/SUBAGENT-DELEGATION.md`. The
 
 1. Confirm source task, scope, and stop condition.
 2. Run `git status --short`; if the worktree is dirty, inspect relevant diffs before editing.
-3. If a bug or failing behavior is suspected, run `diagnose` first.
+3. If a bug or failing behavior is suspected, use the embedded diagnosis branch inside `implement`: reproduce or inspect first, separate confirmed cause from hypothesis, and do not edit speculatively.
 4. Inspect relevant code and tests before editing.
 5. Write the `Implementation Mini-Plan` from `LIGHTWEIGHT-PLAN.md`.
 6. Use TDD-lite where feasible: RED, GREEN, REFACTOR.
