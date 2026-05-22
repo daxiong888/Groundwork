@@ -64,8 +64,15 @@ If a check cannot be run, mark it `unverified`. A code diff or implementation su
 ## Output Shape
 
 ```text
+Verification Scope
+- In Scope:
+- Out of Scope:
+- Covered:
+- Not Covered:
+- Evidence Sources:
+- User-visible Claim Being Verified:
+
 Verification Summary
-- Verification Scope
 - Lens
 - Verdict: pass / partial / fail / blocked
 - Claimed Behavior
