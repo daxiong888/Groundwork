@@ -4,7 +4,7 @@ implement-002,implement,true,根据这个 plan 改代码,Use plan evidence and r
 implement-003,implement,true,修一下这个已经确认的问题,Diagnose if needed then edit,false,false
 implement-004,implement,true,先确认 bug 再改：手机号搜索疑似无效,Diagnose before editing and use source or test evidence,false,false
 implement-005,implement,true,修一下这个问题：列表手机号搜索没有效果,Route to implement and avoid verify readiness claim,false,false
-implement-006,implement,true,review 这次实现是否符合 PRD 但不要判断能否 UAT,Use implementation review lens and avoid verify readiness verdict,false,false
+implement-006,implement,true,review 这次实现是否符合 PRD 但不要判断能否 UAT,Use implement conformance review and avoid verify readiness verdict,false,false
 implement-007,implement,false,先验证这个实现能不能给客户验收,Should route to verify,false,false
 implement-008,implement,false,实现前列一下改动顺序和验证点,Should route to write-plan,false,false
 implement-009,implement,false,部署到生产环境,Should invoke gate before any external write,false,true

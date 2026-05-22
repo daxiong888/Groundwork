@@ -1,6 +1,6 @@
 id,expected_skill,fixture,prompt,expected_behavior,artifact_allowed,risky_write_requested,skill_load_required
 rel-001,implement,evals/fixtures/minimal-task-search,修一下这个问题：手机号搜索疑似无效。先确认 bug 再改。只使用当前 fixture 和用户提示 不要读 memory。请先看 TASK.md src 和 test。这次 trial 不要编辑文件 只报告诊断结论和最小修改方向,Loads implement and uses diagnose-before-edit posture without claiming readiness,false,false,true
-rel-002,implement,evals/fixtures/minimal-task-search,review 这次实现是否符合 TASK.md。只使用当前 fixture 和用户提示 不要读 memory。不要判断能否给客户 UAT 不要编辑文件,Loads implement and performs implementation review rather than verification readiness,false,false,true
+rel-002,implement,evals/fixtures/minimal-task-search,review 这次实现是否符合 TASK.md。只使用当前 fixture 和用户提示 不要读 memory。不要判断能否给客户 UAT 不要编辑文件,Loads implement and performs implementation conformance review rather than verification readiness,false,false,true
 rel-003,write-plan,evals/fixtures/empty-workspace,这个任务已 accepted：在这个空工作区给 TASK 写实现计划。只使用当前 fixture 和用户提示 不要读 memory。不要编造文件路径 API schema 或命令,Loads write-plan and reports missing source instead of invented paths,false,false,true
 rel-004,write-plan,evals/fixtures/minimal-task-search,给 TASK.md 写实现计划。只使用当前 fixture 和用户提示 不要读 memory。先检查 src 和 test 再列路径。不要编辑文件,Loads write-plan and references real src/taskSearch.mjs and test/taskSearch.test.mjs,false,false,true
 rel-005,write-plan,evals/fixtures/no-tests-task,给 TASK.md 写实现计划。只使用当前 fixture 和用户提示 不要读 memory。这个 fixture 没有 tests 目录。不要编造测试文件。只输出计划 不要编辑文件,Loads write-plan and marks test evidence gap without writing artifacts,false,false,true

@@ -27,15 +27,19 @@ Should not trigger:
 
 ## Required Evidence
 
-Reference existing PRDs, issues, plans, commits, diffs, verification notes, and artifacts. Do not copy secrets, sensitive logs, full diffs, or long documents.
+Reference existing PRDs, issues, plans, commits, diffs, verification notes, and artifacts. Do not copy secrets, sensitive logs, full diffs, or long documents. If the handoff includes git state, staging, commit boundary, or files that must remain out of scope, use `skills/_shared/GIT-BOUNDARY.md`.
+
+Use `REVIEW-PACKAGE.md` when the next reader needs a review package rather than a basic continuation summary. Use `skills/_shared/SUBAGENT-DELEGATION.md` when the handoff prepares a fresh-context subagent review.
 
 ## Workflow
 
 1. Identify the next reader and next action.
 2. Reference existing artifacts instead of duplicating them.
 3. Capture current state, decisions, evidence, gaps, and risks.
-4. Include only enough detail to resume safely.
-5. Recommend the next skill or direct action.
+4. Capture allowed/disallowed files when file boundary matters.
+5. Include audience, continuation goal, source artifacts, evidence, open risks, next skill, do-not-assume, and redaction note when producing a review package.
+6. Include only enough detail to resume safely.
+7. Recommend the next skill or direct action.
 
 ## Output Shape
 
@@ -46,6 +50,9 @@ Decisions Made
 Evidence
 Open Gaps
 Risks
+Allowed / Disallowed Files
+Do-Not-Assume
+Redaction Note
 Next Action
 Artifact Recommendation
 ```
@@ -57,6 +64,8 @@ Stop when the next session can resume without rediscovering core context.
 ## Gate Rule
 
 Do not post, push, publish, update trackers, mutate shared skill files, or write remote handoff artifacts without explicit approval with Target, Action, Risk, and Rollback/Undo.
+
+Do not ask a future session to use `git add .`. When handoff includes commit continuation, include intended pathspecs, explicit denylist, and unrelated dirty/untracked files that must stay unstaged.
 
 ## Artifact Rule
 

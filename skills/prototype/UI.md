@@ -25,8 +25,10 @@ Rules:
 
 - Default to one minimum verifiable prototype.
 - Create multiple variants only when the user asks for options or the problem is explicitly a visual or interaction tradeoff.
-- Use browser/runtime verification when layout, responsiveness, hover/focus, animation, or state-transition claims matter.
+- Use `UI-VERIFY-ROUTER.md` when layout, responsiveness, hover/focus, animation, or state-transition claims matter.
 - If browser/runtime inspection is unavailable, mark visual and interaction claims as `unverified`.
+- Browser/runtime evidence must include tool, URL/context, action, observation, and limitation.
+- Distinguish Browser plugin, Chrome DevTools MCP, Chrome extension tooling, and Playwright/Puppeteer instead of using them interchangeably.
 - Apply `CONTRACT-BOUNDARY.md` before any PRD/issue/contract feedback: do not elevate UI mock fields, placeholder payloads, or frontend-only derived values into backend API contract.
 - Distinguish real backend fields from mock display fields; label mock display fields `mock / illustrative / not backend contract`.
 - Label client-side derivations `derived / illustrative / not backend contract`.

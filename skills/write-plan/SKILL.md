@@ -23,6 +23,7 @@ Should not trigger:
 - Work units are not split; use `to-issues`.
 - The user asks whether the task is ready; use `triage`.
 - The user asks to make code changes now; use `implement`.
+- The user asks to implement now and only needs an inline mini-plan; `implement` uses `skills/implement/LIGHTWEIGHT-PLAN.md`.
 - The user asks for proof after changes; use `verify`.
 
 ## Required Evidence
@@ -57,6 +58,8 @@ Artifact Recommendation
 ## Stop Condition
 
 Stop when steps, dependencies, risks, verification checkpoints, and stop condition are clear enough for implementation.
+
+If implementation can safely proceed with only What, Why, Files likely touched, Test/check, and Risk, keep the plan inside `implement` instead of forcing this full-plan workflow.
 
 ## Artifact Rule
 
