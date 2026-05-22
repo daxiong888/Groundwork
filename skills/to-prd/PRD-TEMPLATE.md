@@ -3,6 +3,9 @@
 ## Target Reader
 - [Role or person who must review/decide] **NEEDS CLARIFICATION**
 
+## Decision Supported
+- [Decision or action this PRD enables] **NEEDS CLARIFICATION**
+
 ## Known Facts
 - [Verified fact from user input or evidence]
 
@@ -10,7 +13,8 @@
 - [Assumption not yet verified]
 
 ## Open Questions
-- [Question that blocks scope or acceptance] **NEEDS CLARIFICATION**
+- Q1: [Highest-impact question that blocks scope or acceptance] **NEEDS CLARIFICATION**
+  - Recommended Answer: [Recommended default or decision, or `NEEDS CLARIFICATION` if no evidence supports one]
 
 ## PRD Summary
 - [One-paragraph summary of the requested change]
@@ -31,8 +35,8 @@
   - [Item]
 
 ## Acceptance Criteria
-- [Testable criterion]
-- [Unknown criterion detail] **NEEDS CLARIFICATION**
+- AC-1: [Testable criterion]
+- AC-2: [Unknown criterion detail] **NEEDS CLARIFICATION**
 
 ## Evidence
 - [Source reference: user statement, doc, code, ticket]

@@ -27,16 +27,20 @@ Should not trigger:
 
 ## Required Evidence
 
-Use user-provided context first. Inspect source, docs, prototype output, tickets, or data only when they materially affect correctness. If evidence is missing, state the gap and tag unknowns as **NEEDS CLARIFICATION** instead of inventing product truth.
+Use user-provided context first. Inspect source, docs, prototype output, tickets, or data when they can answer a question or materially affect correctness. If evidence is missing, state the gap and tag unknowns as **NEEDS CLARIFICATION** instead of inventing product truth.
 
 ## Workflow
 
 1. Identify the target reader and decision the PRD must support.
-2. Run the grill-before-write gate: explicitly list target reader, known facts, assumptions, and open questions before drafting.
-3. Mark every unknown business state or missing field as **NEEDS CLARIFICATION**; never invent product truth.
-4. Use `scope` if acceptance or user intent is unclear.
-5. Keep the PRD compact and implementation-ready.
-6. Recommend `to-issues` only when the PRD/spec is accepted enough to slice.
+2. Run the grill-before-write gate: explicitly list target reader, decision supported, known facts, assumptions, and open questions before drafting.
+3. Inspect local code/docs/tickets/data first when they can answer a clarification question.
+4. Ask at most 5 high-impact clarification questions; in interactive work, ask one question at a time.
+5. Include a recommended answer or default decision for each clarification question when evidence supports one.
+6. Mark every unknown backend field, business state, unsupported ability, or missing acceptance detail as **NEEDS CLARIFICATION**; never invent product truth or mutate it from prototype-only mock data.
+7. Use `scope` if acceptance or user intent is unclear.
+8. Keep the PRD compact and implementation-ready.
+9. Include stable acceptance criteria IDs such as `AC-1`, `AC-2`.
+10. Recommend `to-issues` only when the PRD/spec is accepted enough to slice.
 
 ## Output Shape
 
@@ -44,6 +48,7 @@ Use `GRILL-BEFORE-WRITE.md` and `PRD-TEMPLATE.md` as the default structure.
 
 ```text
 Target Reader
+Decision Supported
 Known Facts
 Assumptions
 Open Questions
@@ -53,7 +58,7 @@ Goal
 Users / Actors
 Scope
 Out Of Scope
-Acceptance Criteria
+Acceptance Criteria (AC IDs required)
 Evidence
 Next Action
 Artifact Recommendation
