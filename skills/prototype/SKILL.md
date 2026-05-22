@@ -36,6 +36,7 @@ Identify the prototype question first. Use source, PRD, task, data shape, existi
 2. Choose `LOGIC.md` for state, data, reducer, or business-rule prototypes.
 3. Choose `UI.md` for UI/static HTML prototypes, visual states, and interaction review.
 4. Keep the artifact throwaway and narrow.
+4a. Apply `CONTRACT-BOUNDARY.md` so prototype-only fields or client-derived logic are never treated as backend contract truth.
 5. Verify runtime/browser behavior when visual or interaction claims matter.
 6. Feed findings back into PRD, issue, contract, or implementation notes.
 7. State cleanup decision: delete, absorb, or keep temporarily with reason.
@@ -45,8 +46,14 @@ Identify the prototype question first. Use source, PRD, task, data shape, existi
 ```text
 Prototype Question
 Decision Needed
+Contract Status
+Confirmed Backend Fields
+Mock / Illustrative Fields
+Client-derived Logic
+Contract Impact: none / needs confirmation / confirmed update
 States Covered
 Interactions Covered
+Browser / Runtime Evidence
 Known Gaps
 Implementation Implications
 PRD / Issue / Contract Updates
@@ -54,6 +61,16 @@ Cleanup Decision
 Next Action
 Artifact Recommendation
 ```
+
+Contract boundary outputs must explicitly separate:
+
+- Backend contract candidates (source-backed when available; otherwise clearly marked proposed hypotheses)
+- Confirmed backend fields (source-backed or explicitly user-confirmed)
+- Mock / illustrative fields (`mock / illustrative / not backend contract`)
+- Client-derived logic (`derived / illustrative / not backend contract`)
+- Contract impact (`none`, `needs confirmation`, or `confirmed update`)
+
+Prototype output is not a frontend contract unless contract claims are source-backed or explicitly confirmed by the user.
 
 ## Stop Condition
 
