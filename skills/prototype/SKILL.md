@@ -46,8 +46,14 @@ Identify the prototype question first. Use source, PRD, task, data shape, existi
 ```text
 Prototype Question
 Decision Needed
+Contract Status
+Confirmed Backend Fields
+Mock / Illustrative Fields
+Client-derived Logic
+Contract Impact: none / needs confirmation / confirmed update
 States Covered
 Interactions Covered
+Browser / Runtime Evidence
 Known Gaps
 Implementation Implications
 PRD / Issue / Contract Updates
@@ -59,8 +65,12 @@ Artifact Recommendation
 Contract boundary outputs must explicitly separate:
 
 - Backend contract candidates (source-backed when available; otherwise clearly marked proposed hypotheses)
-- Prototype-only placeholders/mocks (must not become contract)
-- Client-derived/transient logic (must not be promoted as API contract)
+- Confirmed backend fields (source-backed or explicitly user-confirmed)
+- Mock / illustrative fields (`mock / illustrative / not backend contract`)
+- Client-derived logic (`derived / illustrative / not backend contract`)
+- Contract impact (`none`, `needs confirmation`, or `confirmed update`)
+
+Prototype output is not a frontend contract unless contract claims are source-backed or explicitly confirmed by the user.
 
 ## Stop Condition
 
