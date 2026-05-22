@@ -38,6 +38,10 @@ Use `LIGHTWEIGHT-PLAN.md` before editing: What, Why, Files likely touched, Test/
 
 Use `TDD-LITE.md` for behavior changes when feasible: RED failing test/reproduction, GREEN minimal change, REFACTOR only after green. If no failing test or reproduction is feasible, give a no-test justification and do not claim TDD.
 
+If the work starts from a verification failure, use `skills/verify/QA-FIX-QA.md`: confirm expected, actual, reproduction, severity, minimal diagnosis, fix plan, and re-QA requirement before editing. Fix only the scoped failure and rerun the original failing check.
+
+If using a subagent for review, use `skills/_shared/SUBAGENT-DELEGATION.md`. The reviewer gets fresh context and cannot expand scope or modify files unless explicitly delegated.
+
 ## Workflow
 
 1. Confirm source task, scope, and stop condition.
@@ -49,9 +53,10 @@ Use `TDD-LITE.md` for behavior changes when feasible: RED failing test/reproduct
 7. Make minimal focused changes.
 8. Run the fastest relevant checks, including the original failing check when one exists.
 9. Add or update a focused regression test/check when feasible and proportional to risk.
-10. Run self-review from `SELF-REVIEW.md`.
-11. Report local evidence and remaining gaps, but do not claim final readiness.
-12. Recommend `verify` for readiness.
+10. If fixing a verify failure, confirm the original failure was re-QA'd or explain why it remains unverified.
+11. Run self-review from `SELF-REVIEW.md`.
+12. Report local evidence and remaining gaps, but do not claim final readiness.
+13. Recommend `verify` for readiness.
 
 ## Output Shape
 

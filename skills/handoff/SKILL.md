@@ -29,14 +29,17 @@ Should not trigger:
 
 Reference existing PRDs, issues, plans, commits, diffs, verification notes, and artifacts. Do not copy secrets, sensitive logs, full diffs, or long documents. If the handoff includes git state, staging, commit boundary, or files that must remain out of scope, use `skills/_shared/GIT-BOUNDARY.md`.
 
+Use `REVIEW-PACKAGE.md` when the next reader needs a review package rather than a basic continuation summary. Use `skills/_shared/SUBAGENT-DELEGATION.md` when the handoff prepares a fresh-context subagent review.
+
 ## Workflow
 
 1. Identify the next reader and next action.
 2. Reference existing artifacts instead of duplicating them.
 3. Capture current state, decisions, evidence, gaps, and risks.
 4. Capture allowed/disallowed files when file boundary matters.
-5. Include only enough detail to resume safely.
-6. Recommend the next skill or direct action.
+5. Include audience, continuation goal, source artifacts, evidence, open risks, next skill, do-not-assume, and redaction note when producing a review package.
+6. Include only enough detail to resume safely.
+7. Recommend the next skill or direct action.
 
 ## Output Shape
 
@@ -47,6 +50,9 @@ Decisions Made
 Evidence
 Open Gaps
 Risks
+Allowed / Disallowed Files
+Do-Not-Assume
+Redaction Note
 Next Action
 Artifact Recommendation
 ```

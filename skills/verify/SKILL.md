@@ -20,6 +20,9 @@ Should trigger:
 - "review 这个 PRD 的验收是否够清楚"
 - "做一次 git boundary review"
 - "验证这份前端联调文档是否符合后端事实"
+- "验证失败后给我 QA -> fix -> QA 处理建议"
+- "确认这个 UI 验证该用 Browser 还是 DevTools"
+- "给子代理准备一个 fresh context review prompt"
 
 Should not trigger:
 
@@ -31,7 +34,16 @@ Should not trigger:
 
 ## Required Evidence
 
-Start with `SCOPE-EVIDENCE-TEMPLATE.md`. Use source evidence, test output, runtime/browser evidence, data readiness, environment readiness, and UAT/customer evidence as applicable. Select the narrowest matching named lens from `LENSES.md` when the user asks for PRD review, document review, contract review, implementation review, UAT review, UI review, or git boundary review. If a check cannot be run, mark it `unverified`. A code diff or implementation summary alone is not readiness evidence.
+Start with `SCOPE-EVIDENCE-TEMPLATE.md`. Use source evidence, test output, runtime/browser evidence, data readiness, environment readiness, and UAT/customer evidence as applicable. Select the narrowest matching named lens from `LENSES.md` when the user asks for PRD review, document review, contract review, implementation review, UAT review, UI review, or git boundary review.
+
+Use specialized references when they apply:
+
+- `QA-FIX-QA.md` for failed verification that needs expected/actual/reproduction/severity/diagnosis/fix/re-QA.
+- `CONTRACT-DOC-REVIEW.md` for frontend-facing contract documentation.
+- `UI-TOOL-ROUTER.md` for visual, responsive, interaction, browser, console, network, or scripted UI evidence.
+- `skills/_shared/SUBAGENT-DELEGATION.md` for fresh-context subagent review prompts.
+
+If a check cannot be run, mark it `unverified`. A code diff or implementation summary alone is not readiness evidence.
 
 ## Workflow
 
@@ -40,12 +52,14 @@ Start with `SCOPE-EVIDENCE-TEMPLATE.md`. Use source evidence, test output, runti
 3. State claimed behavior before judging it.
 4. Inspect source/diff/test evidence.
 5. Run or report relevant checks when available.
-6. Use browser/runtime inspection when visual or interaction claims matter.
-7. Separate data, environment, and customer/UAT readiness.
-8. Map `Claim / AC -> Evidence -> Result -> Gap -> Severity`.
-9. Mark missing checks as `unverified`.
-10. Keep any customer-facing summary optional and secondary to engineering readiness.
-11. Give a verdict: `pass`, `partial`, `fail`, or `blocked`.
+6. Use `UI-TOOL-ROUTER.md` when visual or interaction claims matter.
+7. Use `CONTRACT-DOC-REVIEW.md` when frontend-facing docs or API contract claims matter.
+8. Separate data, environment, and customer/UAT readiness.
+9. Map `Claim / AC -> Evidence -> Result -> Gap -> Severity`.
+10. If verification fails, include the `QA Failure` shape from `QA-FIX-QA.md`.
+11. Mark missing checks as `unverified`.
+12. Keep any customer-facing summary optional and secondary to engineering readiness.
+13. Give a verdict: `pass`, `partial`, `fail`, or `blocked`.
 
 ## Output Shape
 
@@ -63,6 +77,8 @@ Verification Summary
 - Environment Readiness
 - Customer / UAT Readiness
 - Git Boundary
+- QA Failure
+- UI Evidence
 - Risks
 - Unverified Claims
 - Next Action
@@ -77,6 +93,8 @@ Stop when evidence supports a verdict or the blocking missing evidence is explic
 If verification would require or is paired with push, deploy, publish, migration, destructive command, data write, remote tracker mutation, or shared skill mutation, stop before execution and output Proposed Action, Target, Risk, Rollback/Undo, and Approval Needed. Do not execute until explicit user approval.
 
 Before git-boundary review, staging, or commit-related verification, follow `skills/_shared/GIT-BOUNDARY.md`. Never approve `git add .`; require explicit pathspec staging and a statement of unrelated modified, untracked, or ignored files.
+
+Before delegating a review to a subagent, use `skills/_shared/SUBAGENT-DELEGATION.md`. The subagent must receive fresh context, must not rely on parent session history, and must not expand scope or modify files unless explicitly delegated.
 
 ## Artifact Rule
 
