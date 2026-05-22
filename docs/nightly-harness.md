@@ -79,7 +79,7 @@ Use `docs/skill-success-metrics.md` as the metrics vocabulary. The harness shoul
 
 ## Quarantined Learning Proposals
 
-Repeated failures may produce a quarantined learning proposal. The harness may suggest a patch, but human review decides whether to accept, reject, or promote it. See `docs/quarantined-learnings.md` once that policy exists.
+Repeated failures may produce a quarantined learning proposal. The harness may suggest a patch, but human review decides whether to accept, reject, or promote it. See `docs/quarantined-learnings.md` for the proposal format and promotion boundary.
 
 ## Non-Goals
 
@@ -91,4 +91,3 @@ Repeated failures may produce a quarantined learning proposal. The harness may s
 - no tracker mutation
 - no dependency upgrades
 - no self-modifying skill changes without human review
-
