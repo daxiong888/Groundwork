@@ -58,7 +58,7 @@ Artifact Recommendation
 
 Contract boundary outputs must explicitly separate:
 
-- Backend contract candidates (server-owned, source-backed)
+- Backend contract candidates (source-backed when available; otherwise clearly marked proposed hypotheses)
 - Prototype-only placeholders/mocks (must not become contract)
 - Client-derived/transient logic (must not be promoted as API contract)
 

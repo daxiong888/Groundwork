@@ -8,14 +8,16 @@ Prevent prototype artifacts from silently redefining server contract.
 
 Prototype artifacts are question tools, not contract sources.
 
+Do **not** assume backend APIs already exist during prototyping. In early discovery, treat backend shape as unknown until verified.
+
 ## Boundary Model
 
 Classify every field/rule you reference into one class:
 
 1. **Backend Contract Candidate**
-   - Server-owned field/rule.
+   - Server-owned field/rule when such ownership exists.
    - Backed by explicit API/schema/spec/source evidence.
-   - Safe to propose as contract input (with citation/evidence).
+   - If backend is not implemented yet, record this as a **proposed contract hypothesis** (not accepted fact).
 
 2. **Prototype Placeholder / Mock**
    - Added to make screens/flows understandable.
@@ -34,6 +36,7 @@ When producing prototype findings:
 
 - Keep outputs **question-first**: answer the prototype question; do not over-specify backend.
 - Add explicit contract uncertainty notes whenever backend evidence is missing.
+- If backend implementation has not started, mark contract fields/rules as `proposed` and list open confirmation questions.
 - Convert ambiguity into concrete questions (for backend/PRD/issue), not invented fields.
 - If a field/rule appears only in mock data or client derivation, mark it `prototype-only`.
 
