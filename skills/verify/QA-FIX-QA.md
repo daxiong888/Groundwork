@@ -9,7 +9,7 @@ Evidence Level: Groundwork issue #8 acceptance criteria and existing verify/impl
 
 ## Verify Failure Report
 
-When verification fails, report:
+When verification fails, or when the user asks for QA -> fix -> QA handling after a failure, report the failure in this exact shape after the `Verification Scope` block:
 
 ```text
 QA Failure
@@ -20,6 +20,8 @@ QA Failure
 - Minimal Diagnosis:
 - Fix Plan:
 - Re-QA Required:
+- Regression Note:
+- Scoped Next Action:
 ```
 
 Rules:
@@ -27,8 +29,11 @@ Rules:
 - Keep diagnosis minimal and evidence-backed.
 - If cause is uncertain, say what is confirmed and what is still hypothesis.
 - Do not skip `Expected`, `Actual`, or `Reproduction` for behavior failures.
+- If the prompt does not provide concrete failure details, inspect the available fixture/checks when allowed. If details still cannot be confirmed, keep the field and write `not provided` or `unverified`; do not replace the report with a generic QA process.
 - Do not hide severity in prose.
 - Re-QA must name the original failing check or manual reproduction that has to be rerun.
+- Regression note must state the smallest adjacent behavior that should be rechecked, or `not identified` when there is no evidence yet.
+- Scoped next action must say whether the next step belongs to `implement`, `verify`, or a human decision, and must avoid broad refactors.
 
 ## Implement Fix Loop
 

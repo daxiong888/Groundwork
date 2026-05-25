@@ -9,6 +9,10 @@ Evidence Level: Groundwork issue #12 acceptance criteria and Groundwork subagent
 
 ## Required Package
 
+When this package is prepared from the `verify` skill, it must come after the `Verification Scope` block required by `skills/verify/SCOPE-EVIDENCE-TEMPLATE.md`. The subagent package is delegated review content, not a replacement for verify's own scope and evidence boundary.
+
+For verify responses, do not start with edit status, directory status, or the generated prompt itself. Start with `Verification Scope`, then include the package and any blocked or missing-evidence notes.
+
 ```text
 Subagent Review Package
 - Role / Lens:

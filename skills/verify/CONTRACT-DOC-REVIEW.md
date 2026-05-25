@@ -27,6 +27,8 @@ Frontend contract docs exclude:
 
 ## Review Checklist
 
+When used by `verify`, this checklist is secondary to the required opening from `SCOPE-EVIDENCE-TEMPLATE.md`. Do not start the response with `Frontend Contract Review`, `Findings`, or the cleaned contract; start with `Verification Scope`, then include the contract review fields.
+
 ```text
 Frontend Contract Review
 - Target Reader:
@@ -46,5 +48,6 @@ Rules:
 
 - Check contract claims against backend source, API schema, docs, or explicitly confirmed user evidence.
 - Mark missing backend source truth as `unverified`; do not convert a draft into fact.
+- If no draft or backend/source truth is present in the current eval context, return `blocked` or `unverified` after the scope block instead of inventing endpoint, request, response, or error details.
 - Keep implementation notes out of frontend-facing docs unless the target reader needs them to call the API.
 - Use `skills/_shared/FRONTEND-CONTRACT-DOC.md` when creating or rewriting a frontend-facing contract artifact.

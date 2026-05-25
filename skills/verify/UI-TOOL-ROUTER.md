@@ -18,7 +18,7 @@ Evidence Level: Groundwork issue #10 acceptance criteria and existing prototype 
 
 ## Evidence Format
 
-Use this format for UI verification evidence:
+Use this format for UI verification evidence after the required `Verification Scope` block from `SCOPE-EVIDENCE-TEMPLATE.md`; it never replaces the scope block:
 
 ```text
 UI Evidence
@@ -31,6 +31,7 @@ UI Evidence
 
 Rules:
 
+- Stay in `verify` for UI tool-choice or UI evidence-routing prompts, even when the fixture is a static prototype. Do not replace verify's scope-first output with a prototype review or browser-only conclusion.
 - Do not claim layout, color, responsiveness, hover/focus, animation, or state-transition correctness without browser/runtime evidence.
 - If no UI tool is available, mark the visual or interaction claim `unverified`.
 - State why a tool was chosen when switching from Browser to DevTools, extension tooling, Playwright, or Puppeteer.

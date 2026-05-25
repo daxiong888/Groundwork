@@ -9,7 +9,7 @@ Evidence Level: Groundwork issue #5 acceptance criteria and `docs/prd.md` verifi
 
 ## Required Opening
 
-Every `verify` output starts with this block before any summary or verdict:
+Every `verify` output starts with this block before any summary, verdict, findings list, contract review, UI evidence, git-boundary note, or subagent prompt:
 
 ```text
 Verification Scope
@@ -23,6 +23,9 @@ Verification Scope
 
 Rules:
 
+- The first user-visible line must be exactly `Verification Scope`.
+- Do not write a preface such as "I'll verify..." or "Conclusion..." before the scope block.
+- Specialized formats such as `Frontend Contract Review`, `UI Evidence`, `Git Boundary`, `Subagent Review Package`, or `QA Failure` appear after the scope block, never instead of it.
 - Keep scope concrete enough that another reviewer can tell what was and was not checked.
 - Put known exclusions in `Out of Scope` or `Not Covered`; do not hide them in risks.
 - Treat missing tests, runtime/browser checks, data readiness, environment readiness, UAT evidence, and customer validation as `unverified` unless actually checked.

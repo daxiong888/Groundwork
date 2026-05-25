@@ -117,6 +117,8 @@ Use `evals/prompts/guardrails-regression.csv` after the #5/#6/#7 core guardrails
 
 The initial set covers verify scope-first output, implement lightweight plan and TDD-lite, git boundary checks, and the planned review-loop guardrails that later checkpoints harden in skill references. These fixtures are regression prompts only; passing them must not require new public skills, remote tracker writes, production data, dependency installs, or committing runtime directories.
 
+`gr-008` is a git-boundary row and must be run from the source repository root in read-only mode. Do not run it from an isolated empty temp directory, because that cannot expose the real dirty, untracked, ignored, or staged state. If a harness isolates all `fixture=none` rows, run `gr-008` as an explicit supplemental repo-root check and record that context in the baseline.
+
 Suggested pass criteria for the first v0.2 reliability trial:
 
 - all rows with `skill_load_required=true` load the expected skill

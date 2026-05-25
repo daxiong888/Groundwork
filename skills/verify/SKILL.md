@@ -22,7 +22,9 @@ Should trigger:
 - "验证这份前端联调文档是否符合后端事实"
 - "验证失败后给我 QA -> fix -> QA 处理建议"
 - "确认这个 UI 验证该用 Browser 还是 DevTools"
+- "验证这个 UI 原型的浏览器行为。说明该用 Browser 还是 DevTools 还是 Playwright。"
 - "给子代理准备一个 fresh context review prompt"
+- "准备让子代理 review 这次实现。生成 prompt 但不要让子代理改文件。"
 
 Should not trigger:
 
@@ -34,11 +36,15 @@ Should not trigger:
 
 ## Required Evidence
 
-Start with `SCOPE-EVIDENCE-TEMPLATE.md`. Use source evidence, test output, runtime/browser evidence, data readiness, environment readiness, and UAT/customer evidence as applicable. Select the narrowest matching named lens from `LENSES.md` when the user asks for PRD review, document review, contract review, implementation evidence review, UAT review, UI review, or git boundary review.
+Start with `SCOPE-EVIDENCE-TEMPLATE.md`. The first user-visible line of every `verify` response must be exactly `Verification Scope`, with no preface, findings, conclusion, or handoff text before it. This applies to all verify branches, including contract-doc review, UI/browser tool routing, git-boundary review, QA failure handling, and fresh-context subagent prompt preparation.
+
+If the requested deliverable is itself a tool recommendation, browser verification note, QA-fix-QA package, contract review note, or subagent prompt, keep the verify wrapper first: emit `Verification Scope` before the specialized payload.
+
+Use source evidence, test output, runtime/browser evidence, data readiness, environment readiness, and UAT/customer evidence as applicable. Select the narrowest matching named lens from `LENSES.md` when the user asks for PRD review, document review, contract review, implementation evidence review, UAT review, UI review, or git boundary review.
 
 Use specialized references when they apply:
 
-- `QA-FIX-QA.md` for failed verification that needs expected/actual/reproduction/severity/diagnosis/fix/re-QA.
+- `QA-FIX-QA.md` for failed verification or QA-to-fix-to-QA advice that needs expected/actual/reproduction/severity/diagnosis/fix/re-QA.
 - `CONTRACT-DOC-REVIEW.md` for frontend-facing contract documentation.
 - `UI-TOOL-ROUTER.md` for visual, responsive, interaction, browser, console, network, or scripted UI evidence.
 - `skills/_shared/SUBAGENT-DELEGATION.md` for fresh-context subagent review prompts.
@@ -47,7 +53,7 @@ If a check cannot be run, mark it `unverified`. A code diff or implementation su
 
 ## Workflow
 
-1. Start with the exact `Verification Scope` block from `SCOPE-EVIDENCE-TEMPLATE.md`.
+1. Start with the exact `Verification Scope` block from `SCOPE-EVIDENCE-TEMPLATE.md`; do not put any status sentence, finding, or conclusion before it.
 2. State the named lens or lenses being used.
 3. State claimed behavior before judging it.
 4. Inspect source/diff/test evidence.
@@ -56,7 +62,7 @@ If a check cannot be run, mark it `unverified`. A code diff or implementation su
 7. Use `CONTRACT-DOC-REVIEW.md` when frontend-facing docs or API contract claims matter.
 8. Separate data, environment, and customer/UAT readiness.
 9. Map `Claim / AC -> Evidence -> Result -> Gap -> Severity`.
-10. If verification fails, include the `QA Failure` shape from `QA-FIX-QA.md`.
+10. If verification fails or the user asks how to handle a QA failure, include the `QA Failure` shape from `QA-FIX-QA.md`. If concrete failure details are missing, still emit the shape and mark missing fields as `not provided` or `unverified`; do not substitute a generic process.
 11. Mark missing checks as `unverified`.
 12. Keep any customer-facing summary optional and secondary to engineering readiness.
 13. Give a verdict: `pass`, `partial`, `fail`, or `blocked`.
