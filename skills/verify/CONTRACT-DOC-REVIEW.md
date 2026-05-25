@@ -27,7 +27,7 @@ Frontend contract docs exclude:
 
 ## Review Checklist
 
-When used by `verify`, this checklist is secondary to the required opening from `SCOPE-EVIDENCE-TEMPLATE.md`. Do not start the response with `Frontend Contract Review`, `Findings`, or the cleaned contract; start with `Verification Scope`, then include the contract review fields.
+When used by `verify`, this checklist is secondary to the required final report opening from `SCOPE-EVIDENCE-TEMPLATE.md`. Do not start the final verification report with `Frontend Contract Review`, `Findings`, `Reviewed against`, or the cleaned contract; start the report with the full six-field `Verification Scope` block, then include the contract review fields. A bare `Verification Scope` heading is not enough.
 
 ```text
 Frontend Contract Review

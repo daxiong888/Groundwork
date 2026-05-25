@@ -26,6 +26,7 @@ QA Failure
 
 Rules:
 
+- Hard instruction: keep every field in the shape even when information is missing. Use `not provided` for absent prompt details and `unverified` for details not checked. Do not replace this block with a generic QA process.
 - Keep diagnosis minimal and evidence-backed.
 - If cause is uncertain, say what is confirmed and what is still hypothesis.
 - Do not skip `Expected`, `Actual`, or `Reproduction` for behavior failures.

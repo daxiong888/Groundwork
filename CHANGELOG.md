@@ -2,6 +2,37 @@
 
 All notable changes to Groundwork are documented in this file.
 
+## v0.2.3 - 2026-05-25
+
+### Changed
+
+- Tightened `verify` final-report opening compliance so every verify branch starts the final report with `Verification Scope`, including UI routing, contract review, QA failure handling, git-boundary review, approval gates, release readiness, and subagent prompt preparation.
+- Required the full `Verification Scope` field block before specialized verify payloads, and clarified routing boundaries so implementation conformance review stays in `implement` while prototype contract-boundary review stays in `prototype`.
+- Front-loaded the exact `QA Failure` shape in `verify` and made missing failure details explicit as `not provided` or `unverified`.
+- Split the git-boundary regression prompt into isolated fixture context (`gr-008a`) and repo-root context (`gr-008b`) with explicit intended and unrelated file scopes.
+- Bumped plugin metadata to `0.2.3` for the runtime-drift hardening cut.
+
+### Notes
+
+- No `STATE.md`, CLI, new public skill, hook, MCP server, task CRUD, tracker integration, marketplace publishing flow, or standalone `review` skill is added.
+
+## v0.2.2 - 2026-05-25
+
+### Added
+
+- Added reader-first artifact policy, artifact directory policy, implementation notes policy, nightly harness design, skill success metrics, and quarantined learning guidance.
+- Added guardrail regression prompts and frontend contract fixture coverage for verify, implement, to-prd, prototype, handoff, and git-boundary behavior.
+- Added `evals/baselines/2026-05-22-v0.2.2-runtime-baseline.md` as the real Codex CLI runtime baseline and drift report for the v0.2.x runtime.
+
+### Changed
+
+- Tightened verify scope-first output, QA-fix-QA shape, contract review, UI tool routing, subagent delegation, and git-boundary guidance.
+- Hardened `to-prd` grill-before-write behavior, prototype contract-boundary handling, implementation mini-plan/self-review flow, and handoff review-package shape.
+
+### Notes
+
+- The v0.2.2 runtime report recorded the then-current `0.2.0` manifest as observed evidence. v0.2.3 updates the manifest and closes the remaining runtime-drift metadata gap.
+
 ## v0.2.0 - 2026-05-21
 
 ### Added

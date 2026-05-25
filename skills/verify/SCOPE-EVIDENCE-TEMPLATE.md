@@ -7,9 +7,9 @@ Scope: Scope-first verification reports, claim-to-evidence mapping, and missing-
 Out of Scope: Running checks, implementing fixes, or creating customer-facing summaries as the primary output.
 Evidence Level: Groundwork issue #5 acceptance criteria and `docs/prd.md` verification contract.
 
-## Required Opening
+## Required Report Opening
 
-Every `verify` output starts with this block before any summary, verdict, findings list, contract review, UI evidence, git-boundary note, or subagent prompt:
+Every final `verify` report starts with this complete block before any summary, verdict, findings list, contract review, UI evidence, git-boundary note, QA failure block, approval gate, or subagent prompt:
 
 ```text
 Verification Scope
@@ -23,8 +23,11 @@ Verification Scope
 
 Rules:
 
-- The first user-visible line must be exactly `Verification Scope`.
-- Do not write a preface such as "I'll verify..." or "Conclusion..." before the scope block.
+- The first line of the final verification report must be exactly `Verification Scope`.
+- The full six-field block is mandatory. A bare `Verification Scope` heading is not compliant.
+- Keep every field even when information is missing; write `not provided` for absent prompt context and `unverified` for facts not checked.
+- A brief progress or tool-use preface may appear before the final report only if it contains no verdict, findings, specialized payload, contract conclusion, QA decision, UI tool recommendation, approval decision, or subagent prompt body.
+- Do not write report-body prefaces such as `Conclusion`, `Findings`, `Frontend Contract Review`, `Reviewed against`, or `UI Evidence` before the scope block.
 - Specialized formats such as `Frontend Contract Review`, `UI Evidence`, `Git Boundary`, `Subagent Review Package`, or `QA Failure` appear after the scope block, never instead of it.
 - Keep scope concrete enough that another reviewer can tell what was and was not checked.
 - Put known exclusions in `Out of Scope` or `Not Covered`; do not hide them in risks.

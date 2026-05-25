@@ -1,6 +1,6 @@
 ---
 name: implement
-description: Execute or review scoped code changes with a lightweight plan TDD-lite diagnosis self-review and focused git boundary.
+description: Execute code changes or read-only implementation conformance reviews against TASK or PRD with lightweight planning TDD-lite diagnosis self-review and focused git boundary.
 ---
 
 # implement
@@ -18,6 +18,8 @@ Should trigger:
 - "实现这个接口调整"
 - "先确认是不是真 bug，再做最小修改"
 - "review 这次实现是否符合 PRD"
+- "review 这次实现是否符合 TASK.md 但不要判断 UAT"
+- "review this implementation against the task without readiness judgment"
 - "按这个任务实现并做最小自测"
 
 Should not trigger:
@@ -36,6 +38,8 @@ Inspect relevant files, direct callers/callees, tests, config, and diffs before 
 
 Use `LIGHTWEIGHT-PLAN.md` before editing: What, Why, Files likely touched, Test/check, Risk. Map acceptance criteria to changes and checks.
 
+For read-only implementation conformance review, do not force a fix plan. Inspect the task/PRD, source, tests, and git boundary when available; report whether the implementation satisfies acceptance, what evidence was checked, what gaps remain, and explicitly avoid UAT/release/readiness verdicts unless the user asks for them.
+
 Use `TDD-LITE.md` for behavior changes when feasible: RED failing test/reproduction, GREEN minimal change, REFACTOR only after green. If no failing test or reproduction is feasible, give a no-test justification and do not claim TDD.
 
 If the work starts from a verification failure, use `skills/verify/QA-FIX-QA.md`: confirm expected, actual, reproduction, severity, minimal diagnosis, fix plan, and re-QA requirement before editing. Fix only the scoped failure and rerun the original failing check.
@@ -48,7 +52,7 @@ If using a subagent for review, use `skills/_shared/SUBAGENT-DELEGATION.md`. The
 2. Run `git status --short`; if the worktree is dirty, inspect relevant diffs before editing.
 3. If a bug or failing behavior is suspected, use the embedded diagnosis branch inside `implement`: reproduce or inspect first, separate confirmed cause from hypothesis, and do not edit speculatively.
 4. Inspect relevant code and tests before editing.
-5. Write the `Implementation Mini-Plan` from `LIGHTWEIGHT-PLAN.md`.
+5. If this is read-only implementation review, output conformance findings and stop without edits. Otherwise write the `Implementation Mini-Plan` from `LIGHTWEIGHT-PLAN.md`.
 6. Use TDD-lite where feasible: RED, GREEN, REFACTOR.
 7. Make minimal focused changes.
 8. Run the fastest relevant checks, including the original failing check when one exists.

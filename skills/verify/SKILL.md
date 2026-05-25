@@ -1,13 +1,30 @@
 ---
 name: verify
-description: Skeptically verify scope-first readiness evidence using review lenses for PRD docs contracts code UI UAT git boundary or release confidence.
+description: Skeptically verify scope-first readiness, source-truth, UAT/release evidence, UI evidence, git boundary, or frontend contract confidence; not for implementation conformance review or prototype contract-boundary classification.
 ---
 
 # verify
 
+## Final Report Opening Rule
+
+The final verification report must begin with the complete six-field `Verification Scope` block from `SCOPE-EVIDENCE-TEMPLATE.md`. Once the response enters the verification report body, the first report line must be `Verification Scope`, followed by all required scope fields, not a conclusion, findings heading, contract payload, QA payload, tool recommendation, or subagent prompt.
+
+A bare `Verification Scope` heading is not compliant. If details are missing, keep the field and write `not provided` or `unverified`.
+
+Brief progress or tool-use prefaces are allowed before the final report only when they do not contain a verdict, findings, customer/UAT readiness conclusion, contract conclusion, QA decision, UI tool recommendation, approval decision, or subagent prompt body.
+
+No exception for report bodies: UI tool routing, frontend/backend contract review, QA failure handling, git-boundary review, approval gates, release readiness, and fresh-context subagent prompt preparation all start the final report with the scope block.
+
+Short branch examples:
+
+- UI routing report: `Verification Scope` block first, then `UI Evidence` and Browser/DevTools/Playwright choice.
+- Contract review report: `Verification Scope` block first, then `Frontend Contract Review` or source-truth findings.
+- Subagent review package: `Verification Scope` block first, then the fresh-context review prompt.
+- QA failure report: `Verification Scope` block first, then the exact `QA Failure` block.
+
 ## Trigger Contract
 
-Use this skill when the user asks for readiness, evidence, UAT/SIT, runtime behavior, release confidence, or customer/front-end handoff verification.
+Use this skill when the user asks for readiness, evidence, UAT/SIT, runtime behavior, release confidence, source-truth validation, or customer/front-end handoff verification.
 
 Should trigger:
 
@@ -29,6 +46,8 @@ Should trigger:
 Should not trigger:
 
 - The user asks to implement code; use `implement`.
+- The user asks to review whether an implementation conforms to a task or PRD, especially when they explicitly exclude UAT/readiness; use `implement`.
+- The user asks to review a static prototype, HTML prototype, prototype-only fields, or prototype contract-boundary classification without source-truth verification; use `prototype`.
 - The user asks to write a plan before edits; use `write-plan`.
 - The user asks whether an issue is ready to start; use `triage`.
 - The user asks for only PRD wording; use `to-prd`.
@@ -36,11 +55,13 @@ Should not trigger:
 
 ## Required Evidence
 
-Start with `SCOPE-EVIDENCE-TEMPLATE.md`. The first user-visible line of every `verify` response must be exactly `Verification Scope`, with no preface, findings, conclusion, or handoff text before it. This applies to all verify branches, including contract-doc review, UI/browser tool routing, git-boundary review, QA failure handling, and fresh-context subagent prompt preparation.
+Use the complete block from `SCOPE-EVIDENCE-TEMPLATE.md` as the required opening for the final verification report. The final-report opening rule above is mandatory for every verify branch.
 
 If the requested deliverable is itself a tool recommendation, browser verification note, QA-fix-QA package, contract review note, or subagent prompt, keep the verify wrapper first: emit `Verification Scope` before the specialized payload.
 
-Use source evidence, test output, runtime/browser evidence, data readiness, environment readiness, and UAT/customer evidence as applicable. Select the narrowest matching named lens from `LENSES.md` when the user asks for PRD review, document review, contract review, implementation evidence review, UAT review, UI review, or git boundary review.
+Use source evidence, test output, runtime/browser evidence, data readiness, environment readiness, and UAT/customer evidence as applicable. Select the narrowest matching named lens from `LENSES.md` when the user asks for PRD review, document review, contract review, UAT review, UI review, or git boundary review.
+
+Use implementation evidence review only when the user asks whether a finished implementation is ready, verified, releaseable, handoff-ready, or evidence-supported. For a read-only conformance review of implementation against TASK/PRD with no UAT/readiness judgment, use `implement`.
 
 Use specialized references when they apply:
 
@@ -53,7 +74,7 @@ If a check cannot be run, mark it `unverified`. A code diff or implementation su
 
 ## Workflow
 
-1. Start with the exact `Verification Scope` block from `SCOPE-EVIDENCE-TEMPLATE.md`; do not put any status sentence, finding, or conclusion before it.
+1. Start the final verification report with the complete six-field `Verification Scope` block from `SCOPE-EVIDENCE-TEMPLATE.md`; do not put any finding, verdict, recommendation, or conclusion before that block.
 2. State the named lens or lenses being used.
 3. State claimed behavior before judging it.
 4. Inspect source/diff/test evidence.
@@ -78,6 +99,17 @@ Verification Scope
 - Evidence Sources:
 - User-visible Claim Being Verified:
 
+QA Failure
+- Expected:
+- Actual:
+- Reproduction:
+- Severity: P0 / P1 / P2 / P3
+- Minimal Diagnosis:
+- Fix Plan:
+- Re-QA Required:
+- Regression Note:
+- Scoped Next Action:
+
 Verification Summary
 - Lens
 - Verdict: pass / partial / fail / blocked
@@ -90,12 +122,13 @@ Verification Summary
 - Environment Readiness
 - Customer / UAT Readiness
 - Git Boundary
-- QA Failure
 - UI Evidence
 - Risks
 - Unverified Claims
 - Next Action
 ```
+
+Omit the `QA Failure` block only when there is no failed verification and the user did not ask for QA -> fix -> QA handling. When it appears, keep every field; write `not provided` for missing prompt details and `unverified` for details that were not checked.
 
 ## Stop Condition
 

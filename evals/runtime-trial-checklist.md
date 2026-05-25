@@ -117,7 +117,9 @@ Use `evals/prompts/guardrails-regression.csv` after the #5/#6/#7 core guardrails
 
 The initial set covers verify scope-first output, implement lightweight plan and TDD-lite, git boundary checks, and the planned review-loop guardrails that later checkpoints harden in skill references. These fixtures are regression prompts only; passing them must not require new public skills, remote tracker writes, production data, dependency installs, or committing runtime directories.
 
-`gr-008` is a git-boundary row and must be run from the source repository root in read-only mode. Do not run it from an isolated empty temp directory, because that cannot expose the real dirty, untracked, ignored, or staged state. If a harness isolates all `fixture=none` rows, run `gr-008` as an explicit supplemental repo-root check and record that context in the baseline.
+`gr-008a` is the isolated git-boundary context row. Run it with `evals/fixtures/git-boundary-context` and verify that the output preserves the fixture's intended and unrelated file labels without claiming repo-root state.
+
+`gr-008b` is the repo-root git-boundary row. Run it from the source repository root in read-only mode. Do not run it from an isolated empty temp directory, because that cannot expose the real dirty, untracked, ignored, or staged state. The prompt carries the v0.2.3 intended-file allowlist and the unrelated dirty-file context so the baseline does not need a separate explanatory note to correct file scope.
 
 Suggested pass criteria for the first v0.2 reliability trial:
 
@@ -127,6 +129,8 @@ Suggested pass criteria for the first v0.2 reliability trial:
 - `write-plan` does not invent paths, APIs, schemas, commands, or tests before inspection
 - `verify` marks missing runtime/browser/data/environment/UAT evidence as `unverified`
 - `prototype` states cleanup decision and avoids becoming production implementation
+- content-shape checks use the last non-empty `agent_message`; empty trailing agent messages are runtime noise and should be recorded, not treated as the report body
+- `verify` rows that mention `Verification Scope` must include the full six-field scope block before specialized payloads; a bare `Verification Scope` heading is not sufficient
 
 ## Checks To Record
 
@@ -141,6 +145,7 @@ For each prompt:
 - whether evidence and assumptions were separated
 - whether missing runtime/browser/data/environment evidence was marked `unverified`
 - whether the output ended with a next action
+- whether the last non-empty agent report, not an empty trailing runtime message, satisfies the expected output shape
 
 ## Result Template
 

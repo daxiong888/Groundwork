@@ -1,6 +1,6 @@
 ---
 name: prototype
-description: Build revise or review throwaway logic state or UI static HTML prototypes that answer a specific question. Use when the user asks to 做静态原型, prototype UI, run a state model, test interactions, or explore business rules before PRD or implementation.
+description: Build revise or review throwaway logic state or UI static HTML prototypes, including prototype contract-boundary classification, to answer a product interaction visual or business-rule question before PRD or implementation.
 ---
 
 # prototype
@@ -16,6 +16,8 @@ Should trigger:
 - "用原型验证这个交互"
 - "做一个 HTML 页面给前端评审"
 - "评审这个静态 HTML 原型"
+- "评审静态筛选器原型并判断哪些字段能进入后端合同"
+- "从原型里区分 backend contract candidate、mock 和 client-derived logic"
 - "这个流程先用 prototype 看看"
 
 Should not trigger:
@@ -23,12 +25,15 @@ Should not trigger:
 - The user only needs PRD wording; use `to-prd`.
 - The user asks to implement production code; use `implement`.
 - The user asks for readiness evidence after implementation; use `verify`.
+- The user asks to verify frontend contract claims against backend source truth; use `verify`.
 - The task is a small direct explanation with no artifact value.
 - The user asks for multiple visual variants only as decoration without a decision need.
 
 ## Required Evidence
 
 Identify the prototype question first. Use source, PRD, task, data shape, existing prototype files, or UI notes only as needed to answer that question. For static HTML review, do not claim visual state, layout, responsiveness, or interaction correctness without browser/runtime evidence; mark unavailable evidence as `unverified`.
+
+Prototype contract-boundary review stays in `prototype` when the source of truth is a prototype, mock, screenshot, or static HTML. Classify backend contract candidates, mock/illustrative fields, and client-derived logic, but do not verify source truth or mark backend contract as confirmed unless backend source, API schema, or explicit user confirmation is actually present.
 
 ## Workflow
 
