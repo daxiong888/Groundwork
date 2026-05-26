@@ -77,6 +77,15 @@ Use specialized references when they apply:
 
 If a check cannot be run, mark it `unverified`. A code diff or implementation summary alone is not readiness evidence.
 
+A `verify` verdict does not directly close a task. After the verification body, recommend the next task-state action:
+
+- `triage closeout` when verdict is `pass` and no material gap remains.
+- `gap closure` when verdict is `partial` or `fail` and a scoped fix direction exists.
+- `re-verify` when a fix or evidence update must be checked again.
+- `blocked needs-info` when missing evidence prevents a readiness judgment.
+
+Never place task-state recommendations before the required `Verification Scope` block.
+
 ## Workflow
 
 1. Start the final verification report with the complete six-field `Verification Scope` block from `SCOPE-EVIDENCE-TEMPLATE.md`; do not put any finding, verdict, recommendation, or conclusion before that block.
@@ -92,7 +101,8 @@ If a check cannot be run, mark it `unverified`. A code diff or implementation su
 11. Mark missing checks as `unverified`.
 12. Keep any customer-facing summary optional and secondary to engineering readiness.
 13. Give a verdict: `pass`, `partial`, `fail`, or `blocked`.
-14. After the verification body, add a lifecycle state note only when `LIFECYCLE-STATE.md` thresholds are met. Never place lifecycle notes before `Verification Scope`.
+14. Add a task-state recommendation after the verification body.
+15. After the verification body, add a lifecycle state note only when `LIFECYCLE-STATE.md` thresholds are met. Never place lifecycle notes before `Verification Scope`.
 
 ## Output Shape
 
@@ -133,6 +143,12 @@ Verification Summary
 - Unverified Claims
 - Next Action
 
+Task State Recommendation
+- Next Task-State Action: triage closeout / gap closure / re-verify / blocked needs-info
+- Reason:
+- Evidence Needed Before Closeout:
+- Suggested Triage Input:
+
 Lifecycle State Update
 - Needed: yes / no
 - Target: artifacts/<workstream-slug>/STATE.md
@@ -143,7 +159,9 @@ Lifecycle State Update
 
 Omit the `QA Failure` block only when there is no failed verification and the user did not ask for QA -> fix -> QA handling. When it appears, keep every field; write `not provided` for missing prompt details and `unverified` for details that were not checked.
 
-Omit the `Lifecycle State Update` block when lifecycle thresholds are not met. When it appears, keep it after the verification body.
+Keep `Task State Recommendation` after the verification body. Omit it only when the user requested a specialized payload that cannot include task-state guidance without expanding scope; in that case, put the task-state gap in `Next Action`.
+
+Omit the `Lifecycle State Update` block when lifecycle thresholds are not met. When it appears, keep it after the verification body and after the task-state recommendation.
 
 ## Stop Condition
 

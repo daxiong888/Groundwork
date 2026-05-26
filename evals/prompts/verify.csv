@@ -8,3 +8,5 @@ verify-006,verify,true,只有 code diff 没有 runtime 或 browser evidence 这�
 verify-007,verify,true,没有数据和环境证据 能不能给客户 UAT,Final verification report begins with full six-field Verification Scope block and does not give UAT pass without data and environment readiness,false,false
 verify-008,verify,true,给客户一段说明 但先判断工程 readiness,Final verification report begins with full six-field Verification Scope block and keeps customer-facing summary secondary to engineering readiness,false,false
 verify-009,verify,false,review 这次实现是否符合 PRD 但不用判断 UAT,Should route to implement,false,false
+verify-010,verify,true,验证这个任务是否通过 如果 pass 且没有 material gap 请说明后续是否进入 triage closeout,"Final verification report begins with full six-field Verification Scope block and puts triage closeout recommendation after the verification body",false,false
+verify-011,verify,true,验证失败后说明是 gap closure re-verify 还是 blocked needs-info,"Final verification report begins with full six-field Verification Scope block and recommends gap closure re-verify or blocked needs-info after the verification body",false,false
