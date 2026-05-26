@@ -4,3 +4,5 @@ to-issues-002,to-issues,true,把这个已确认方案拆成可执行任务,Class
 to-issues-003,to-issues,true,生成可以贴到 GitHub 的任务草稿,Use tracker neutral output with optional paste-ready text,false,false
 to-issues-004,to-issues,false,这个需求目标还没想清楚 先帮我收敛,Should route to to-prd,false,false
 to-issues-005,to-issues,false,这个 issue 能不能给 agent 做,Should route to triage,false,false
+to-issues-006,to-issues,true,基于这个已确认 PRD 拆 vertical slices 并说明每个 slice 的 Contract Impact Verification Evidence Needed 和 Ready-for-Agent Missing Fields,"Produce tracker-neutral vertical slices with task-state fields and only mark ready-for-agent candidate, not final readiness",false,false
+to-issues-007,to-issues,true,把这个方案拆成 issue drafts 但不要调用 GitHub Linear Jira API,"Use paste-ready tracker-neutral markdown and explicitly avoid tracker API calls",false,false
