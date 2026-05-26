@@ -64,6 +64,7 @@ Do not collapse everything into one document. Different artifacts have different
 - implementation review: PRD/spec/diff/test/verification gaps
 - UAT readiness note: capability, data, environment, and customer-validation status
 - handoff summary: current state, evidence, blockers, changed files, commands, next action
+- lifecycle state: workstream-scoped recovery state for cross-session continuation, gap closure, UAT/release reuse, and pending decisions
 
 If the target reader and downstream action are unclear, clarify them before generating or rewriting the artifact.
 
@@ -103,7 +104,7 @@ The gate should show intent, target, command/action, expected effect, rollback o
 
 Codex-specific workflow behavior should live in the Groundwork plugin or repo-local files. Do not mutate shared `~/.agents/skills` assets for Codex-only preferences.
 
-If Groundwork needs repo-local durable files, prefer the real task source first: an issue, PRD/spec file, current conversation, or future orchestration context. Use small human-readable artifacts under `.groundwork/tasks/<task-id>/` only when no better task source already owns the work. Do not mirror `.trellis/`, `.planning/`, `.scratch/`, or `.gsd/` structures.
+If Groundwork needs repo-local durable files, prefer the real task source first: an issue, PRD/spec file, current conversation, or future orchestration context. Use `artifacts/<workstream-slug>/STATE.md` only when lifecycle-state thresholds are met for one resumable workstream, and optional `artifacts/<workstream-slug>/ROADMAP.md` only for true multi-milestone work. Older `.groundwork/tasks/<task-id>/` language is local scratch or fallback context, not lifecycle state, not the default durable artifact location, and not a project task database. Do not mirror `.trellis/`, `.planning/`, `.scratch/`, or `.gsd/` structures.
 
 ## MVP Principles
 

@@ -27,7 +27,7 @@ Groundwork starts explicit-first: the user can ask for a mode directly, or Codex
 
 ## Direct
 
-Direct is not a Groundwork mode. It is the default path when a workflow adds no value.
+Direct is not a public Groundwork skill or project lifecycle mode. It is the default route when a workflow adds no value, and it may appear in lifecycle state only as a low-ceremony continuation route.
 
 Use direct work for:
 
@@ -89,7 +89,7 @@ Required evidence:
 
 - source request, PRD/spec, issue, task document, or current conversation
 - external issue/task source when one exists
-- existing `.groundwork/tasks/<task-id>/` artifact if local fallback already owns the work
+- existing external issue, PRD, or local artifact if it already owns the work
 - nearest source/runtime evidence when task scope depends on current behavior
 
 Output:
@@ -298,7 +298,9 @@ Required evidence:
 Output:
 
 - concise resume-ready summary
-- optional `.groundwork/tasks/<task-id>/handoff.md` artifact for long-running or reusable state
+- existing `artifacts/<workstream-slug>/STATE.md` reference when lifecycle state exists
+- optional recommendation to create or update workstream-scoped lifecycle state when pause/resume, gap closure, UAT/release reuse, or pending decision thresholds are met
+- no full PRD, plan, issue, diff, log, or project-global state copy
 
 Stop when:
 

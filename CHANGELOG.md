@@ -2,6 +2,28 @@
 
 All notable changes to Groundwork are documented in this file.
 
+## v0.3.0 - 2026-05-26
+
+### Added
+
+- Added `skills/_shared/LIFECYCLE-STATE.md` as a narrow shared lifecycle state contract.
+- Defined optional workstream-scoped `artifacts/<workstream-slug>/STATE.md` for resumable multi-session R&D work.
+- Defined optional `artifacts/<workstream-slug>/ROADMAP.md` for multi-milestone or multi-stage initiatives.
+- Added lifecycle state boundary references to `handoff`, `verify`, `triage`, and `write-plan`.
+- Added `evals/prompts/lifecycle-state.csv` regression prompts for small-task no-state behavior, pause/resume, verify gap closure, re-verify closure, multi-milestone roadmap, stale-state conflict, and GSD clone prevention.
+
+### Changed
+
+- Bumped plugin metadata to `0.3.0` for the lifecycle-state contract release.
+- Clarified that lifecycle state is opt-in durable artifact state, not a project task database.
+- Clarified that `handoff` references lifecycle state but does not own it.
+- Clarified that `.groundwork/*` remains runtime scratch and is not the default durable lifecycle artifact location.
+- Clarified legacy `.groundwork/tasks/<task-id>/` wording where it could be confused with lifecycle state.
+
+### Notes
+
+- No new public skill, public CLI, installed hook, runtime daemon, task CRUD, tracker integration, statusline hook, MCP server, `.planning`, `.gsd`, or project-global lifecycle `STATE.md` is added.
+
 ## v0.2.3 - 2026-05-25
 
 ### Changed

@@ -27,7 +27,9 @@ Should not trigger:
 
 ## Required Evidence
 
-Inspect the task source, PRD/spec, current conversation, known blockers, source references, and verification expectations. If the evidence source is unknown, classify as `needs-info`.
+Inspect the task source, PRD/spec, current conversation, known blockers, source references, lifecycle state, and verification expectations. If the evidence source is unknown, classify as `needs-info`.
+
+Use `skills/_shared/LIFECYCLE-STATE.md` only to decide whether workstream-scoped lifecycle state is justified. Do not create a task database, and do not recommend state just because a task is `ready-for-agent`.
 
 ## Workflow
 
@@ -36,7 +38,8 @@ Inspect the task source, PRD/spec, current conversation, known blockers, source 
 3. Apply the readiness contracts from `docs/prd.md`.
 4. If `ready-for-agent`, produce an agent-ready brief using `AGENT-BRIEF.md`.
 5. If `ready-for-human`, state the decision needed and options.
-6. Recommend `write-plan`, `to-prd`, direct user decision, or closeout as appropriate.
+6. Decide whether lifecycle state is needed for cross-session recovery, gap closure, UAT/release reuse, or decision-pending continuation.
+7. Recommend `write-plan`, `to-prd`, direct user decision, or closeout as appropriate.
 
 ## Output Shape
 
@@ -47,6 +50,11 @@ Execution: AFK / HITL
 Evidence
 Blockers
 Readiness Check
+Lifecycle State Recommendation
+- Needed: yes / no
+- Reason:
+- Artifact:
+- External Task Source:
 Agent Brief or Human Decision
 Next Action
 Artifact Recommendation

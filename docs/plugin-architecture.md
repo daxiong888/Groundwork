@@ -185,7 +185,9 @@ Task breakdown should use vertical slices rather than horizontal layer buckets. 
 
 ## Repo-Local Artifacts
 
-Groundwork should default to direct answers and normal repo files. Use `.groundwork/tasks/<task-id>/` only as a local fallback when a durable unit of work helps implementation, review, UAT, release, or handoff and no better task source already owns the work.
+Groundwork should default to direct answers and normal repo files. Use `artifacts/<workstream-slug>/STATE.md` only for workstream-scoped lifecycle state that meets the pause/resume, gap closure, UAT/release reuse, multi-stage, or pending-decision thresholds. Use optional `artifacts/<workstream-slug>/ROADMAP.md` only for true multi-milestone or sequencing work.
+
+Older `.groundwork/tasks/<task-id>/` language is local scratch or fallback context when no better task source owns the work. It is not lifecycle state, not the default durable artifact location, and not a project task database.
 
 Possible future artifact shape after real usage proves the need:
 

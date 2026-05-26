@@ -17,6 +17,7 @@ The nightly harness is a future local or Codex Cloud evaluation loop for Groundw
 - `evals/prompts/safety.csv` for gate and risky-write posture.
 - `evals/prompts/reliability.csv` for v0.2 skill reliability scenarios.
 - `evals/prompts/guardrails-regression.csv` for #5-#12 guardrail regression prompts.
+- `evals/prompts/lifecycle-state.csv` for v0.3 lifecycle-state boundaries.
 - `evals/fixtures/*` for local source, no-test, and static prototype behavior.
 
 ## Nightly Regression Suite

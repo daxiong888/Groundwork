@@ -27,19 +27,23 @@ Should not trigger:
 
 ## Required Evidence
 
-Reference existing PRDs, issues, plans, commits, diffs, verification notes, and artifacts. Do not copy secrets, sensitive logs, full diffs, or long documents. If the handoff includes git state, staging, commit boundary, or files that must remain out of scope, use `skills/_shared/GIT-BOUNDARY.md`.
+Reference existing PRDs, issues, plans, commits, diffs, verification notes, lifecycle state, and artifacts. Do not copy secrets, sensitive logs, full diffs, or long documents. If the handoff includes git state, staging, commit boundary, or files that must remain out of scope, use `skills/_shared/GIT-BOUNDARY.md`.
 
 Use `REVIEW-PACKAGE.md` when the next reader needs a review package rather than a basic continuation summary. Use `skills/_shared/SUBAGENT-DELEGATION.md` when the handoff prepares a fresh-context subagent review.
+
+Use `skills/_shared/LIFECYCLE-STATE.md` when the user asks to pause, resume, switch sessions, save state, continue later, or otherwise preserve workstream recovery state.
 
 ## Workflow
 
 1. Identify the next reader and next action.
 2. Reference existing artifacts instead of duplicating them.
-3. Capture current state, decisions, evidence, gaps, and risks.
-4. Capture allowed/disallowed files when file boundary matters.
-5. Include audience, continuation goal, source artifacts, evidence, open risks, next skill, do-not-assume, and redaction note when producing a review package.
-6. Include only enough detail to resume safely.
-7. Recommend the next skill or direct action.
+3. Check whether a workstream `artifacts/<workstream-slug>/STATE.md` exists when lifecycle threshold is met.
+4. Reference existing `STATE.md` when present, or recommend creating/updating it when the threshold is met.
+5. Capture current state, decisions, evidence, gaps, and risks.
+6. Capture allowed/disallowed files when file boundary matters.
+7. Include audience, continuation goal, source artifacts, evidence, open risks, next skill, do-not-assume, and redaction note when producing a review package.
+8. Include only enough detail to resume safely.
+9. Recommend the next skill or direct action.
 
 ## Output Shape
 
@@ -50,6 +54,10 @@ Decisions Made
 Evidence
 Open Gaps
 Risks
+Lifecycle State
+- State Artifact:
+- State Freshness:
+- State Update Needed:
 Allowed / Disallowed Files
 Do-Not-Assume
 Redaction Note

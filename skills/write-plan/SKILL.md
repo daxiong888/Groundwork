@@ -28,16 +28,20 @@ Should not trigger:
 
 ## Required Evidence
 
-Use the accepted task, PRD/spec, issue, current source references, and known verification expectations. Do not invent exact file paths, APIs, schemas, or commands before inspection. If the workspace has no source or tests, say so and plan first inspection or validation steps instead of naming fictional files.
+Use the accepted task, PRD/spec, issue, current source references, existing lifecycle state, roadmap, and known verification expectations. Do not invent exact file paths, APIs, schemas, or commands before inspection. If the workspace has no source or tests, say so and plan first inspection or validation steps instead of naming fictional files.
+
+Use `skills/_shared/LIFECYCLE-STATE.md` when planning a multi-stage or multi-session workstream. Do not create lifecycle files for ordinary implementation plans.
 
 ## Workflow
 
 1. State the task source and accepted goal.
-2. Inspect source when exact paths, APIs, schemas, or commands matter.
-3. Use `contract` if API/DB/state/frontend/docs alignment matters.
-4. List focused implementation steps and dependencies.
-5. Include stop conditions and verification checkpoints.
-6. Recommend `implement` only when the plan is executable.
+2. Read existing `STATE.md` / `ROADMAP.md` when the workstream is multi-stage, cross-session, or release/UAT gated.
+3. Check canonical sources before trusting lifecycle state.
+4. Inspect source when exact paths, APIs, schemas, or commands matter.
+5. Use `contract` if API/DB/state/frontend/docs alignment matters.
+6. List focused implementation steps and dependencies.
+7. Include stop conditions and verification checkpoints.
+8. Recommend `implement` only when the plan is executable.
 
 ## Output Shape
 
@@ -45,6 +49,11 @@ Use the accepted task, PRD/spec, issue, current source references, and known ver
 Plan Summary
 Source
 Assumptions
+Lifecycle Inputs
+- STATE.md:
+- ROADMAP.md:
+- Stale State Risk:
+- Roadmap Needed:
 Files / Areas Inspected
 Implementation Steps
 Contract Notes

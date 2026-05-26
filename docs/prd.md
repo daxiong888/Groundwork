@@ -127,7 +127,7 @@ The next step runs only after the user says to continue or explicitly asks for i
 
 Default to conversation output. Write files only when the result must be reused, reviewed, executed, verified, or handed off.
 
-When a real external source exists, link or update that source rather than duplicating it locally. Local fallback files under `.groundwork/tasks/<task-id>/` are a continuity scratchpad, not a task database.
+When a real external source exists, link or update that source rather than duplicating it locally. Workstream-scoped lifecycle state belongs under `artifacts/<workstream-slug>/STATE.md`, with optional `artifacts/<workstream-slug>/ROADMAP.md` only for true multi-milestone work. Older local fallback files under `.groundwork/tasks/<task-id>/` are scratch or fallback context, not lifecycle state, not the default durable artifact location, and not a task database.
 
 Do not create empty template files for completeness. Create only files with real content.
 
@@ -254,6 +254,8 @@ groundwork/
   .codex-plugin/
     plugin.json
   skills/
+    _shared/
+      LIFECYCLE-STATE.md
     to-prd/
       SKILL.md
     to-issues/
@@ -336,9 +338,17 @@ When a suspected bug or failing behavior is involved, `implement` must use its e
 
 `verify` is skeptical by default. It must not summarize implementation intent as evidence.
 
-Suggested `verify` output shape:
+`verify` final reports begin with the complete six-field `Verification Scope` block before the verification summary or any specialized payload:
 
 ```text
+Verification Scope
+- In Scope:
+- Out of Scope:
+- Covered:
+- Not Covered:
+- Evidence Sources:
+- User-visible Claim Being Verified:
+
 Verification Summary
 - Verdict: pass / partial / fail / blocked
 - Claimed Behavior

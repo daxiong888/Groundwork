@@ -67,7 +67,7 @@ The current public surface should stay unchanged. v0.3 is a lifecycle-state refi
 Groundwork already has several relevant contracts:
 
 - durable artifacts require an audience-first header;
-- durable artifacts should prefer `artifacts/<feature-slug>/`;
+- durable artifacts should prefer `artifacts/<feature-slug>/`, and v0.3 uses `artifacts/<workstream-slug>/` for lifecycle state;
 - `.groundwork/runs`, `.groundwork/harness`, and `.groundwork/tmp` are runtime support, ignored by default;
 - `handoff` should be compact and reference existing artifacts instead of copying long documents, diffs, or logs;
 - `verify` already uses scope/evidence discipline, QA-FIX-QA structure, and readiness boundaries;
@@ -325,11 +325,11 @@ Stop Condition:
 
 `Evidence Level` describes how strong the current evidence is.
 
-`Last Updated` marks freshness.
+`Last Updated` marks freshness. Use an exact timestamp with timezone, preferably ISO 8601 such as `2026-05-26T18:30:00+08:00`. Author or session metadata is optional unless a downstream review or audit explicitly needs it.
 
 `Canonical Sources` links the true sources of facts.
 
-`Current Workflow Mode` uses Groundwork modes, not GSD phases:
+`Current Workflow Mode` records the current Groundwork route or state, not a GSD phase. `direct` is allowed as a route value for low-ceremony continuation, but it is not a public skill or project lifecycle mode.
 
 ```text
 direct
@@ -364,7 +364,18 @@ done
 
 `Stop Condition` tells the next session when to stop.
 
-### 8.3 Length rule
+### 8.3 Workstream slug rule
+
+`<workstream-slug>` should be a stable lowercase kebab-case identifier for one independently resumable workstream.
+
+Rules:
+
+- use short business or engineering words, for example `admin-user-filter` or `release-v0-3`;
+- do not include spaces, slashes, backslashes, path traversal, shell metacharacters, or project-global names such as `project`, `all`, `global`, or `current`;
+- prefer the existing issue, PRD, feature, release, or bug-fix slug when one already exists;
+- rename only when the old slug is misleading and references can be updated.
+
+### 8.4 Length rule
 
 `STATE.md` should stay under 100 lines.
 
@@ -376,7 +387,7 @@ Rules:
 - do not keep historical gap logs;
 - close or replace `Current Gap Closure` after re-verify.
 
-### 8.4 Forbidden content
+### 8.5 Forbidden content
 
 `STATE.md` must not contain:
 
@@ -782,7 +793,13 @@ Expected behavior:
 
 ## 15. Eval Plan
 
-Add `evals/prompts/lifecycle-state.csv` or extend `evals/prompts/guardrails-regression.csv`.
+Add lifecycle regression rows in a new file:
+
+```text
+evals/prompts/lifecycle-state.csv
+```
+
+Do not append the v0.3 lifecycle suite to `guardrails-regression.csv`; keep it focused on existing guardrail regressions.
 
 Suggested rows:
 
@@ -835,6 +852,7 @@ skills/write-plan/SKILL.md
 docs/product-principles.md
 docs/workflow-taxonomy.md
 docs/prd.md
+docs/plugin-architecture.md
 CHANGELOG.md
 .codex-plugin/plugin.json
 ```
@@ -845,23 +863,20 @@ Add evals:
 evals/prompts/lifecycle-state.csv
 ```
 
-or append lifecycle rows to:
-
-```text
-evals/prompts/guardrails-regression.csv
-```
-
-Optional:
+Defer by default:
 
 ```text
 scripts/check_lifecycle_state.py
 ```
+
+Do not add `scripts/check_lifecycle_state.py` in the first v0.3 implementation unless lifecycle-state evals reveal repeated format drift that a small maintainer-only validator would catch.
 
 ### 16.2 Implementation constraints
 
 - small patches only;
 - avoid broad frontmatter trigger rewrites unless necessary;
 - avoid verify scope-first regression;
+- update stale `.groundwork/tasks/<task-id>/` and `Verification Summary` wording found by repository search when it conflicts with the v0.3 lifecycle boundary or current verify contract;
 - do not change public skill surface;
 - do not add runtime directories;
 - do not add hooks;
@@ -879,6 +894,12 @@ python3 -m json.tool .codex-plugin/plugin.json >/dev/null
 python3 -c "import csv, pathlib; [list(csv.DictReader(open(p, newline=''))) for p in pathlib.Path('evals/prompts').glob('*.csv')]; print('csv ok')"
 ```
 
+Required stale-state pass:
+
+- search for `.groundwork/tasks/<task-id>/`, `Verification Summary`, `artifacts/<feature-slug>`, `STATE.md`, `ROADMAP.md`, `TODO`, `TBD`, `open question`, `待确认`, `待办`, `未确认`, `假设`, and `风险`;
+- update only occurrences that conflict with the v0.3 lifecycle-state contract or the current verify scope-first contract;
+- leave unrelated historical baselines alone when they are explicitly dated evidence, but do not let current docs preserve obsolete guidance.
+
 If skill descriptions change materially, run targeted runtime evals for:
 
 - lifecycle-state rows;
@@ -890,7 +911,7 @@ If skill descriptions change materially, run targeted runtime evals for:
 
 ### AC-1: Shared contract exists
 
-`skills/_shared/LIFECYCLE-STATE.md` exists and defines `STATE.md`, `ROADMAP.md`, paths, triggers, fields, forbidden content, stale state, multi-session behavior, and skill boundaries.
+`skills/_shared/LIFECYCLE-STATE.md` exists and defines `STATE.md`, `ROADMAP.md`, paths, triggers, fields, `Last Updated` timestamp format, workstream slug rules, forbidden content, stale state, multi-session behavior, and skill boundaries.
 
 ### AC-2: State is workstream-scoped
 
@@ -936,11 +957,11 @@ Lifecycle artifacts follow audience-first header, directory policy, redaction, a
 
 ### AC-11: Eval coverage
 
-Lifecycle-state eval rows exist and cover small-task no-state behavior, pause/resume, verify gap closure, re-verify closure, multi-milestone roadmap, GSD clone prevention, handoff references, and stale state conflict.
+`evals/prompts/lifecycle-state.csv` exists and covers small-task no-state behavior, pause/resume, verify gap closure, re-verify closure, multi-milestone roadmap, GSD clone prevention, handoff references, and stale state conflict.
 
 ### AC-12: Validation passes
 
-Required static checks pass. Targeted runtime evals pass when run for touched skill descriptions.
+Required static checks and stale-state pass complete. Targeted runtime evals pass when run for touched skill descriptions.
 
 ## 19. Risks And Mitigations
 
@@ -1001,6 +1022,14 @@ Mitigation:
 - hooks deferred;
 - no automatic state mutation or commits.
 
+### Risk: current docs keep stale lifecycle guidance
+
+Mitigation:
+
+- search-driven updates include `docs/prd.md`, `docs/product-principles.md`, `docs/workflow-taxonomy.md`, and `docs/plugin-architecture.md`;
+- older `.groundwork/tasks/<task-id>/` language is retained only as non-lifecycle scratch/fallback context when still accurate;
+- current docs must not preserve obsolete `Verification Summary`-first verify guidance.
+
 ## 20. Release Notes Draft
 
 ```md
@@ -1019,6 +1048,7 @@ Mitigation:
 - Clarified that lifecycle state is opt-in durable artifact state, not a project task database.
 - Clarified that `handoff` references lifecycle state but does not own it.
 - Clarified that `.groundwork/*` remains runtime scratch and is not the default durable lifecycle artifact location.
+- Clarified legacy `.groundwork/tasks/<task-id>/` wording where it could be confused with lifecycle state.
 
 ### Not Included
 
@@ -1034,15 +1064,25 @@ Mitigation:
 - No project-global `STATE.md`.
 ```
 
-## 21. Open Questions
+## 21. Implementation Defaults And Remaining Questions
 
-1. Should v0.3 update older `.groundwork/tasks/<task-id>/` wording in `docs/prd.md`, or only clarify the lifecycle boundary in the new shared contract?
-2. Should lifecycle eval rows live in a new `evals/prompts/lifecycle-state.csv`, or be appended to `guardrails-regression.csv`?
-3. Should `.codex-plugin/plugin.json` be bumped to `0.3.0` in the PRD-only commit, or only when implementation lands?
-4. Should optional `scripts/check_lifecycle_state.py` be included in v0.3 implementation, or deferred until evals reveal repeated format drift?
-5. Should `Last Updated` require timezone and exact author/session format?
-6. Should workstream slug normalization be documented in v0.3?
-7. If a user explicitly requests a project-global summary, should Groundwork keep it conversation-only by default, or allow a durable non-lifecycle project summary with a different artifact name?
+### Implementation Defaults
+
+Use these decisions for v0.3 implementation:
+
+1. Update current docs that conflict with the lifecycle-state boundary, including `docs/prd.md`, `docs/product-principles.md`, `docs/workflow-taxonomy.md`, and `docs/plugin-architecture.md`. Legacy `.groundwork/tasks/<task-id>/` wording may remain only when it is clearly described as non-lifecycle scratch or fallback state.
+2. Add lifecycle regression coverage in a new `evals/prompts/lifecycle-state.csv` file. Do not append the v0.3 lifecycle suite to `guardrails-regression.csv`.
+3. Bump `.codex-plugin/plugin.json` to `0.3.0` when the v0.3 implementation lands. Do not treat the PRD-only commit as the version bump.
+4. Defer `scripts/check_lifecycle_state.py` unless lifecycle evals reveal repeated format drift that a small maintainer-only validator would catch.
+5. Require `Last Updated` to include an exact timestamp with timezone. Author or session metadata remains optional.
+6. Document workstream slug normalization in v0.3: lowercase kebab-case, no path separators, no shell metacharacters, and no project-global names.
+7. If a user explicitly requests a project-global summary, do not create project-global lifecycle `STATE.md`. Keep it conversation-only by default, or create a separate non-lifecycle artifact only when it has a target reader, action, scope, and evidence level.
+8. Treat `direct` as a route value for low-ceremony continuation, not a public skill or project lifecycle mode.
+9. Update stale current-document examples that still imply `verify` starts with `Verification Summary`; the current contract is the full `Verification Scope` block first.
+
+### Remaining Open Questions
+
+None for v0.3 implementation. Future hook enforcement, project index artifacts, and lifecycle validation scripts remain outside v0.3 unless later evidence justifies a new PRD or issue.
 
 ## 22. Final Decision
 

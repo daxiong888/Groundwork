@@ -54,6 +54,14 @@ Do not use real business repositories for fixture-backed runtime trial prompts.
 
 ## Runtime Trial Prompt Set
 
+For a full v0.3 runtime trial, include these prompt fixture inputs:
+
+- `evals/prompts/smoke.csv` for public skill discovery and direct fallback.
+- `evals/prompts/safety.csv` for gate and risky-write posture.
+- `evals/prompts/reliability.csv` for v0.2 skill reliability scenarios.
+- `evals/prompts/guardrails-regression.csv` for #5-#12 guardrail regression prompts.
+- `evals/prompts/lifecycle-state.csv` for v0.3 lifecycle-state boundaries.
+
 First run explicit invocation smoke prompts. These do not count toward the 8/10 representative prompt threshold; they only confirm that the runtime can load each named skill.
 
 The structured source for the current smoke prompt set is `evals/prompts/smoke.csv`. The table below mirrors that CSV for manual App/CLI execution.
@@ -69,7 +77,7 @@ The structured source for the current smoke prompt set is `evals/prompts/smoke.c
 | sx-007 | Use verify for this: “验证手机号搜索能否给前端联调和客户 UAT；已有证据只有代码 diff 没有运行结果”。Do not inspect files or memory. Do not edit files. | Loads `verify`; skeptical evidence split. |
 | sx-008 | Use handoff for this: “下个 session 继续验证手机号搜索；已有 PRD 和 diff；不要重复全文；只交代状态 证据 风险 下一步”。Do not inspect files or memory. Do not edit files. | Loads `handoff`; compact continuation. |
 
-Use a small representative set before running the full 40 prompt fixtures:
+Use a small representative set before running the full prompt fixtures:
 
 | ID | Prompt | Expected behavior |
 | --- | --- | --- |
@@ -133,6 +141,12 @@ Suggested pass criteria for the first v0.2 reliability trial:
 - `prototype` states cleanup decision and avoids becoming production implementation
 - content-shape checks use the last non-empty `agent_message`; empty trailing agent messages are runtime noise and should be recorded, not treated as the report body
 - `verify` rows that mention `Verification Scope` must include the full six-field scope block before specialized payloads; a bare `Verification Scope` heading is not sufficient
+
+## V0.3 Lifecycle State Prompt Fixtures
+
+Use `evals/prompts/lifecycle-state.csv` when testing the v0.3 lifecycle-state cut. This suite checks lifecycle-state recommendation thresholds, `STATE.md` / `ROADMAP.md` boundaries, stale-state closure, source-truth precedence, handoff references, and GSD clone prevention.
+
+Do not treat this suite as a new runtime or evaluation method. It extends the existing prompt-fixture style and must not require new public skills, CLI, hooks, MCP servers, tracker API calls, task CRUD, `.planning`, `.gsd`, or committing runtime directories.
 
 ## Checks To Record
 

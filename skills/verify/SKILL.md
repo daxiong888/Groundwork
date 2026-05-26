@@ -70,6 +70,7 @@ Use specialized references when they apply:
 - `QA-FIX-QA.md` for failed verification or QA-to-fix-to-QA advice that needs expected/actual/reproduction/severity/diagnosis/fix/re-QA.
 - `CONTRACT-DOC-REVIEW.md` for frontend-facing contract documentation.
 - `UI-TOOL-ROUTER.md` for visual, responsive, interaction, browser, console, network, or scripted UI evidence.
+- `skills/_shared/LIFECYCLE-STATE.md` when a verification gap, re-verify chain, UAT/SIT/release state, or cross-session decision must survive the current response.
 - `skills/_shared/SUBAGENT-DELEGATION.md` for fresh-context subagent review prompts.
 
 If a check cannot be run, mark it `unverified`. A code diff or implementation summary alone is not readiness evidence.
@@ -89,6 +90,7 @@ If a check cannot be run, mark it `unverified`. A code diff or implementation su
 11. Mark missing checks as `unverified`.
 12. Keep any customer-facing summary optional and secondary to engineering readiness.
 13. Give a verdict: `pass`, `partial`, `fail`, or `blocked`.
+14. After the verification body, add a lifecycle state note only when `LIFECYCLE-STATE.md` thresholds are met. Never place lifecycle notes before `Verification Scope`.
 
 ## Output Shape
 
@@ -128,9 +130,18 @@ Verification Summary
 - Risks
 - Unverified Claims
 - Next Action
+
+Lifecycle State Update
+- Needed: yes / no
+- Target: artifacts/<workstream-slug>/STATE.md
+- Current Gap Closure:
+- Re-verify Required:
+- State Freshness Risk:
 ```
 
 Omit the `QA Failure` block only when there is no failed verification and the user did not ask for QA -> fix -> QA handling. When it appears, keep every field; write `not provided` for missing prompt details and `unverified` for details that were not checked.
+
+Omit the `Lifecycle State Update` block when lifecycle thresholds are not met. When it appears, keep it after the verification body.
 
 ## Stop Condition
 
