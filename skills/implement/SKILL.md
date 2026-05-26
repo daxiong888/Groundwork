@@ -1,6 +1,6 @@
 ---
 name: implement
-description: Execute code changes, scoped fixes, bug diagnosis, or read-only implementation conformance reviews against TASK/PRD/diff when the user says phrases like "review 这次实现是否符合 TASK.md", "检查这次实现是否满足 TASK.md", or asks for implementation review without readiness, UAT, release, or customer/front-end handoff verification.
+description: Execute code changes, scoped fixes, bug diagnosis, diagnose-before-edit prompts like "先确认 bug 再改" or "只报告诊断结论和最小修改方向", and read-only implementation conformance reviews against TASK/PRD/diff when the user says phrases like "review 这次实现是否符合 TASK.md", "检查这次实现是否满足 TASK.md", or asks for implementation review without readiness, UAT, release, or customer/front-end handoff verification.
 ---
 
 # implement
@@ -16,7 +16,9 @@ Should trigger:
 - "修一下这个 confirmed bug"
 - "修一下这个问题"
 - "实现这个接口调整"
+- "先确认 bug 再改"
 - "先确认是不是真 bug，再做最小修改"
+- "只报告诊断结论和最小修改方向"
 - "review 这次实现是否符合 PRD"
 - "review 这次实现是否符合 TASK.md 但不要判断 UAT"
 - "review 这次实现是否符合 TASK.md，不要判断能否给客户 UAT，不要编辑文件"
