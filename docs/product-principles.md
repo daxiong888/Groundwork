@@ -57,7 +57,7 @@ Adopt a pattern only when it improves the user's actual R&D flow. Exclude patter
 Do not collapse everything into one document. Different artifacts have different readers and acceptance signals:
 
 - PRD: business scope, rules, acceptance, non-goals
-- task record: durable unit of work, state, priority, source, linked artifacts, and verification expectation
+- task record: durable unit of work, state, priority, source, linked artifacts, contract impact, readiness gaps, and verification expectation
 - plan: implementation slices, order, dependencies, and checks
 - static prototype: executable requirement evidence
 - implementation contract: routes, requests, fields, enums, states, examples, and edge cases
@@ -111,8 +111,8 @@ If Groundwork needs repo-local durable files, prefer the real task source first:
 The first useful Groundwork cut should be a small complete workflow, not a skill-only bundle. User-visible skill names should be action-oriented and allowed to borrow mattpocock naming when the name is clearer. Do not repeat a `groundwork-` prefix inside the plugin; the plugin already provides the namespace.
 
 1. `to-prd` for turning conversation, evidence, prototype notes, UAT feedback, or rough requirements into PRD/spec intent and acceptance.
-2. `to-issues` for splitting PRD/spec/plan into vertical slices and linking them to the best task source.
-3. `triage` for task state, AFK/HITL classification, `ready-for-agent` briefs, blockers, and closeout.
+2. `to-issues` for splitting PRD/spec/plan into vertical slices with task-state fields and linking them to the best task source.
+3. `triage` for task state, severity, state transition reason, AFK/HITL classification, `ready-for-agent` briefs, blockers, and closeout.
 4. `write-plan` for implementation slices and verification checkpoints.
 5. `prototype` for throwaway logic/state or UI/static HTML prototypes that answer a specific requirement, interaction, state, or design question.
 6. `implement` for code execution or implementation review.
@@ -127,10 +127,12 @@ Supporting behaviors can remain internal at first:
 - `diagnose` for confirm-before-edit bug work
 - `gate` for risky writes and remote mutations
 
-The core chain is:
+The core task-state chain is:
 
 ```text
-PRD/spec -> task -> plan -> prototype/contract/design as needed -> implementation -> verification/UAT -> release/handoff
+to-prd -> to-issues -> triage -> write-plan/implement -> verify -> triage closeout/gap closure -> handoff when needed
 ```
+
+This chain stays tracker-neutral by default. It can produce paste-ready text for external issues, but it does not call GitHub, Linear, Jira, or other tracker APIs unless the user explicitly requests and approves that remote write. It also does not force every task into lifecycle state; `STATE.md` is reserved for workstream-scoped continuation under the lifecycle-state thresholds.
 
 Groundwork should become useful before it becomes broad, but it should still cover the whole R&D loop at a thin level before deepening any single mode.

@@ -18,7 +18,7 @@ LAST = RUN / "last"
 WORKSPACES = RUN / "workspaces"
 RESULTS = RUN / "results.jsonl"
 
-SUITES = [
+DEFAULT_SUITES = [
     "smoke.csv",
     "safety.csv",
     "reliability.csv",
@@ -62,9 +62,13 @@ def boolish(value):
     return str(value).strip().lower() == "true"
 
 
-def read_rows():
+def prompt_suites():
+    return sorted(p.name for p in (REPO / "evals" / "prompts").glob("*.csv"))
+
+
+def read_rows(suites):
     out = []
-    for suite in SUITES:
+    for suite in suites:
         path = REPO / "evals" / "prompts" / suite
         with path.open(newline="") as fh:
             for row in csv.DictReader(fh):
@@ -334,6 +338,8 @@ def run_row(row):
         rc = proc.returncode
     except subprocess.TimeoutExpired as exc:
         stdout = exc.stdout or ""
+        if isinstance(stdout, bytes):
+            stdout = stdout.decode("utf-8", errors="replace")
         rc = 124
 
     log_path.write_text(stdout, encoding="utf-8")
@@ -394,8 +400,11 @@ def main():
     LOGS.mkdir(parents=True, exist_ok=True)
     LAST.mkdir(parents=True, exist_ok=True)
     WORKSPACES.mkdir(parents=True, exist_ok=True)
-    rows = read_rows()
-    target_ids = set(sys.argv[1:])
+    args = sys.argv[1:]
+    all_prompts = "--all-prompts" in args
+    target_ids = set(arg for arg in args if arg != "--all-prompts")
+    suites = prompt_suites() if all_prompts or target_ids else DEFAULT_SUITES
+    rows = read_rows(suites)
     if target_ids:
         rows = [row for row in rows if row["id"] in target_ids]
         missing = sorted(target_ids - {row["id"] for row in rows})

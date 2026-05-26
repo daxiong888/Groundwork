@@ -179,9 +179,21 @@ Task breakdown should use vertical slices rather than horizontal layer buckets. 
 - `AFK`: an agent can implement it with no further human context.
 - `HITL`: it requires human judgment, design review, access, or manual validation.
 
+Each `to-issues` slice should also carry task-state fields that make later `triage` deterministic:
+
+- `Contract Impact`: API / DB / UI state / docs / verification contract / none.
+- `Verification Evidence Needed`: the evidence required before closeout.
+- `Ready-for-Agent Missing Fields`: readiness-blocking fields that must be completed before `triage` can mark the task ready.
+
+`to-issues` may identify a `ready-for-agent candidate`, but only `triage` can make the final readiness decision.
+
 `ready-for-agent` should mean the task has an agent-ready brief, not merely a title. The brief should include current behavior, desired behavior, key interfaces, acceptance criteria, blockers, out-of-scope boundaries, verification expectations, known source/evidence location or first inspection step, risk or required `gate`, clear stop condition, and AFK/HITL decision points. When an external issue tracker owns the task, Groundwork should post or generate this brief in that source rather than duplicating it locally.
 
 `ready-for-human` should mean Groundwork has gathered enough evidence, options, tradeoffs, and risks for a human decision, but should not continue autonomously. It requires an explicit decision needed, clear options or recommendation, separated evidence and uncertainty, stated risk for each option, a specific next human action, and no hidden implementation or external write.
+
+`triage` verdicts should include severity and transition reason. Severity describes the current blocker or gap impact, not overall task priority. If a task moves from `needs-info` to `ready-for-agent`, the verdict must identify the evidence added or fields completed.
+
+`verify` does not close tasks directly. After the verification body it should recommend `triage closeout`, `gap closure`, `re-verify`, or `blocked needs-info` so task state returns to `triage` with evidence.
 
 ## Repo-Local Artifacts
 

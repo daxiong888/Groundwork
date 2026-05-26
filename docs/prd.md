@@ -463,13 +463,13 @@ MVP is acceptable when:
 2. Each skill has a trigger contract, concise trigger description, and clear stop conditions.
 3. Small, one-off work falls back to direct work without creating artifacts.
 4. `to-prd` can produce a PRD/spec from conversation and evidence.
-5. `to-issues` can split a PRD/spec/plan into vertical slices with acceptance criteria, blockers, and AFK/HITL classification.
-6. `triage` can decide `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`, or closeout, and `ready-for-agent` follows the readiness contract.
+5. `to-issues` can split a PRD/spec/plan into vertical slices with acceptance criteria, blockers, AFK/HITL classification, contract impact, verification evidence needed, and ready-for-agent missing fields.
+6. `triage` can decide `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`, or closeout, includes severity and state transition reason, and `ready-for-agent` follows the readiness contract.
 7. `write-plan` can produce executable implementation steps without forcing subagent-first or commit-heavy workflow, and does not invent exact file paths, APIs, schemas, or commands before inspection.
 8. `prototype` supports both `LOGIC.md` and `UI.md` branches and always states the question being answered.
 9. `implement` respects PRD/task/plan/source/diff/test evidence, runs diagnosis before speculative bug fixes, does not invent exact file paths, APIs, schemas, or commands before inspection, and does not claim final readiness.
-10. `verify` separates claimed behavior, source evidence, test evidence, runtime/browser evidence, data readiness, environment readiness, customer/UAT readiness, and unverified assumptions.
-11. `handoff` is compact by default and references existing artifacts instead of duplicating them.
+10. `verify` separates claimed behavior, source evidence, test evidence, runtime/browser evidence, data readiness, environment readiness, customer/UAT readiness, and unverified assumptions, then recommends `triage closeout`, `gap closure`, `re-verify`, or `blocked needs-info` after the verification body.
+11. `handoff` is compact by default and references existing artifacts, including existing `STATE.md`, instead of duplicating them.
 12. All user-facing output defaults to Chinese unless the artifact target requires otherwise.
 13. No first-cut skill requires external tracker API access, hooks, MCP, UI, app auth, source-framework installation, or a local task CLI.
 14. Artifact safety rules prevent secrets, PII, credentials, and sensitive logs from being copied into durable files.

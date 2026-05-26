@@ -544,6 +544,9 @@ Lifecycle State Update
 v0.3 adds:
 
 - decide whether lifecycle state is justified;
+- include severity for the current blocker or gap;
+- include state transition reason, evidence added, and evidence still missing;
+- require `needs-info -> ready-for-agent` transitions to explain what evidence or fields were added;
 - keep small tasks direct;
 - do not equate `ready-for-agent` with needing state;
 - recommend state only when cross-session, gap closure, UAT/release, or decision-pending conditions apply;
@@ -580,7 +583,9 @@ Lifecycle Inputs
 
 ### 11.5 Other skills
 
-`to-prd`, `to-issues`, `prototype`, and `implement` do not require major v0.3 changes. They continue to follow artifact policy when durable files are created.
+`to-prd`, `prototype`, and `implement` do not require lifecycle-specific behavior unless a durable artifact is created under the normal artifact policy.
+
+`to-issues` remains non-lifecycle by default, but v0.3.x strengthens it as the task-state spine entry point. Each vertical slice should carry `Contract Impact`, `Verification Evidence Needed`, and `Ready-for-Agent Missing Fields` so `triage` can make an evidence-backed readiness decision without forcing local lifecycle state.
 
 ## 12. Multi-session Behavior
 

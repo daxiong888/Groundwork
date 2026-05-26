@@ -6,6 +6,31 @@ This taxonomy defines Groundwork's internal workflow modes and the public action
 
 Groundwork starts explicit-first: the user can ask for a mode directly, or Codex can choose a mode when the trigger is clear. Automatic heavy activation should wait until real-task validation proves low false positives.
 
+## Task-State Spine
+
+Groundwork's task-state spine is tracker-neutral markdown, not an external tracker integration or task database:
+
+```text
+to-prd
+  -> accepted enough
+to-issues
+  -> vertical slice with task-state fields
+triage
+  -> needs-info / ready-for-agent / ready-for-human
+write-plan or implement
+  -> execution evidence
+verify
+  -> pass / partial / fail / blocked
+triage
+  -> closeout or gap closure
+handoff
+  -> reference STATE.md only when durable continuation exists
+```
+
+This flow does not call GitHub, Linear, Jira, or other tracker APIs. External issues may own the task source, but Groundwork outputs remain paste-ready or conversation-local unless the user explicitly requests a remote write.
+
+Do not force every issue into `STATE.md`. Lifecycle state remains opt-in and workstream-scoped under `artifacts/<workstream-slug>/STATE.md` only when `skills/_shared/LIFECYCLE-STATE.md` thresholds are met.
+
 ## Priority Model
 
 | Priority | Public skill / mode | Product role |
@@ -97,6 +122,7 @@ Output:
 - task id or external reference
 - title, status, priority, type, source, and AFK/HITL classification
 - vertical slices with blockers and acceptance criteria when splitting work
+- contract impact, verification evidence needed, and ready-for-agent missing fields for each slice
 - linked artifact list
 - current state and next action
 - verification expectation
@@ -126,9 +152,12 @@ Stop when:
 ### Output
 
 - task state
+- severity for the current blocker or gap
+- state transition reason, including evidence added and evidence still missing
 - AFK/HITL classification
 - missing information or blocker list
 - agent-ready brief when state becomes `ready-for-agent`
+- human decision, options, risks, and next action when state becomes `ready-for-human`
 - closeout note when work is done or `wontfix`
 
 ## `write-plan`
@@ -272,6 +301,7 @@ Output:
 - verification result split into code/test, runtime, data, environment, and customer validation when relevant
 - blockers
 - minimal safe fix path
+- task-state recommendation: `triage closeout`, `gap closure`, `re-verify`, or `blocked needs-info`
 - stakeholder-safe wording when needed
 
 Stop when:
@@ -299,6 +329,7 @@ Output:
 
 - concise resume-ready summary
 - existing `artifacts/<workstream-slug>/STATE.md` reference when lifecycle state exists
+- state freshness and update-needed status without copying the full state
 - optional recommendation to create or update workstream-scoped lifecycle state when pause/resume, gap closure, UAT/release reuse, or pending decision thresholds are met
 - no full PRD, plan, issue, diff, log, or project-global state copy
 
