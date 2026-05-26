@@ -6,7 +6,7 @@ All notable changes to Groundwork are documented in this file.
 
 ### Changed
 
-- Tightened `verify` final-report opening compliance so every verify branch starts the final report with `Verification Scope`, including UI routing, contract review, QA failure handling, git-boundary review, approval gates, release readiness, and subagent prompt preparation.
+- Tightened `verify` final-report opening compliance so every verify-loaded report body starts with the full `Verification Scope` block, including UI routing, contract review, QA failure handling, git-boundary review, verify-owned approval gates, release readiness, and subagent prompt preparation. Runtime safety gates that preempt skill loading are treated as no-execution gate evidence, not verify scope-first evidence.
 - Required the full `Verification Scope` field block before specialized verify payloads, and clarified routing boundaries so implementation conformance review stays in `implement` while prototype contract-boundary review stays in `prototype`.
 - Front-loaded the exact `QA Failure` shape in `verify` and made missing failure details explicit as `not provided` or `unverified`.
 - Split the git-boundary regression prompt into isolated fixture context (`gr-008a`) and repo-root context (`gr-008b`) with explicit intended and unrelated file scopes.

@@ -24,6 +24,8 @@ Verification Scope
 Rules:
 
 - The first line of the final verification report must be exactly `Verification Scope`.
+- Accepted criterion: the final non-empty verification report body starts with the complete `Verification Scope` block.
+- Not required: the absolute first user-visible assistant line starts with `Verification Scope`; brief progress or tool-use prefaces are allowed under the preface rule below.
 - The full six-field block is mandatory. A bare `Verification Scope` heading is not compliant.
 - Keep every field even when information is missing; write `not provided` for absent prompt context and `unverified` for facts not checked.
 - A brief progress or tool-use preface may appear before the final report only if it contains no verdict, findings, specialized payload, contract conclusion, QA decision, UI tool recommendation, approval decision, or subagent prompt body.

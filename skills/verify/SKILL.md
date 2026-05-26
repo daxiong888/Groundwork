@@ -1,6 +1,6 @@
 ---
 name: verify
-description: Skeptically verify scope-first readiness, source-truth, UAT/release evidence, UI evidence, git boundary, or frontend contract confidence; not for implementation conformance review or prototype contract-boundary classification.
+description: Skeptically verify scope-first readiness, implementation acceptance evidence with tests/checks, source-truth, UAT/release evidence, UI evidence, git boundary, or frontend contract confidence; not for plain implementation conformance review without readiness or acceptance verification, and not for prototype contract-boundary classification.
 ---
 
 # verify
@@ -34,6 +34,8 @@ Should trigger:
 - "发布前确认证据链是否完整"
 - "跑一遍证据链"
 - "确认这次实现是否真的生效"
+- "验证 TASK.md 的实现是否满足验收"
+- "验证 PRD/TASK 的实现是否满足验收"
 - "review 这个 PRD 的验收是否够清楚"
 - "做一次 git boundary review"
 - "验证这份前端联调文档是否符合后端事实"
