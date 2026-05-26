@@ -1,6 +1,6 @@
 ---
 name: implement
-description: Execute code changes or read-only implementation conformance reviews against TASK or PRD with lightweight planning TDD-lite diagnosis self-review and focused git boundary.
+description: Execute code changes, scoped fixes, bug diagnosis, or read-only implementation conformance reviews against TASK/PRD/diff when the user says phrases like "review 这次实现是否符合 TASK.md", "检查这次实现是否满足 TASK.md", or asks for implementation review without readiness, UAT, release, or customer/front-end handoff verification.
 ---
 
 # implement
@@ -19,6 +19,8 @@ Should trigger:
 - "先确认是不是真 bug，再做最小修改"
 - "review 这次实现是否符合 PRD"
 - "review 这次实现是否符合 TASK.md 但不要判断 UAT"
+- "review 这次实现是否符合 TASK.md，不要判断能否给客户 UAT，不要编辑文件"
+- "检查这次实现是否满足 TASK.md，但不做 readiness / UAT 判断"
 - "review this implementation against the task without readiness judgment"
 - "按这个任务实现并做最小自测"
 

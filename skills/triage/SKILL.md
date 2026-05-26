@@ -1,6 +1,6 @@
 ---
 name: triage
-description: Classify task readiness blockers AFK HITL ready-for-agent ready-for-human needs-info wontfix or closeout based on evidence. Use when the user asks to triage an issue, 看能不能给 agent 做, decide readiness, unblock, or close a task.
+description: Classify task readiness blockers AFK HITL ready-for-agent ready-for-human needs-info wontfix closeout, or lifecycle-state ownership decisions based on evidence. Use when the user asks to triage an issue, 看能不能给 agent 做, decide readiness, decide whether local lifecycle state is needed, decide external source-of-truth ownership, unblock, or close a task.
 ---
 
 # triage
@@ -16,6 +16,9 @@ Should trigger:
 - "这个任务现在 blocked 吗"
 - "判断一下 ready-for-agent 还是 ready-for-human"
 - "这个 issue 要不要 close"
+- "判断是否还要本地 lifecycle state"
+- "外部 GitHub issue 已经完整拥有状态，判断是否还要本地 lifecycle state"
+- "这个任务状态应该由外部 issue 还是本地 STATE.md 拥有"
 
 Should not trigger:
 

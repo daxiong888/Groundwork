@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: Preserve compact continuation state for long-running R&D work without duplicating PRDs plans issues commits or diffs. Use when the user asks for handoff, 下个 session, continuation context, resume notes, or compact state transfer.
+description: Preserve or write compact continuation state for long-running R&D work without duplicating PRDs plans issues commits or diffs. Use when the user asks to create a handoff, save state for next session, prepare continuation context, resume notes, or compact state transfer; do not use for one-off explanations of what handoff means.
 ---
 
 # handoff
@@ -19,6 +19,7 @@ Should trigger:
 
 Should not trigger:
 
+- The user asks what handoff is or asks for a one-off explanation of Groundwork handoff; answer directly.
 - The user asks for a PRD; use `to-prd`.
 - The user asks for issue slicing; use `to-issues`.
 - The user asks for readiness proof; use `verify`.

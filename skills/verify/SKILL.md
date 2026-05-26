@@ -1,6 +1,6 @@
 ---
 name: verify
-description: Skeptically verify scope-first readiness, implementation acceptance evidence with tests/checks, source-truth, UAT/release evidence, UI evidence, git boundary, or frontend contract confidence; not for plain implementation conformance review without readiness or acceptance verification, and not for prototype contract-boundary classification.
+description: Skeptically verify scope-first readiness, frontend integration readiness, implementation acceptance evidence with tests/checks, source-truth, UAT/release evidence, UI evidence, git boundary, or frontend contract confidence; not for plain implementation conformance review without readiness or acceptance verification, and not for prototype contract-boundary classification.
 ---
 
 # verify
@@ -29,6 +29,8 @@ Use this skill when the user asks for readiness, evidence, UAT/SIT, runtime beha
 Should trigger:
 
 - "验证一下能不能给前端验"
+- "验证当前实现是否 ready 给前端联调"
+- "验证当前 fixture 是否 ready 给前端联调"
 - "这个可以给客户 UAT 吗"
 - "检查一下 release readiness"
 - "发布前确认证据链是否完整"
