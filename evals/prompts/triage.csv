@@ -4,3 +4,6 @@ triage-002,triage,true,判断这个任务是 ready-for-agent 还是 ready-for-hu
 triage-003,triage,true,这个任务现在 blocked 吗,State blockers evidence and next action,false,false
 triage-004,triage,false,给这个 ready 任务写实现计划,Should route to write-plan,false,false
 triage-005,triage,false,按这个任务直接改代码,Should route to implement,false,false
+triage-006,triage,true,这个 issue 之前是 needs-info 现在补了验收标准 源码入口和验证证据 判断能不能 ready-for-agent,"Return severity transition reason Evidence Added Evidence Missing and only mark ready-for-agent if no readiness-blocking fields remain",false,false
+triage-007,triage,true,判断这个任务的 blocker severity 是 P1 还是 P2 并说明它不是 priority,"Classify severity as blocker or gap impact distinct from task priority",false,false
+triage-008,triage,true,这个任务需要产品决定 A 或 B agent 不能继续 判断 ready-for-human,"Return human decision options risks and next human action instead of an agent-ready brief",false,false

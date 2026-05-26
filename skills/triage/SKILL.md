@@ -1,6 +1,6 @@
 ---
 name: triage
-description: Classify task readiness blockers AFK HITL ready-for-agent ready-for-human needs-info wontfix closeout, or lifecycle-state ownership decisions based on evidence. Use when the user asks to triage an issue, 看能不能给 agent 做, decide readiness, decide whether local lifecycle state is needed, decide external source-of-truth ownership, unblock, or close a task.
+description: Classify task readiness, severity, transition reason, blockers, AFK/HITL, ready-for-agent, ready-for-human, needs-info, wontfix, closeout, or lifecycle-state ownership decisions based on evidence. Use when the user asks to triage an issue, 看能不能给 agent 做, decide readiness, decide whether local lifecycle state is needed, decide external source-of-truth ownership, unblock, or close a task.
 ---
 
 # triage
@@ -30,7 +30,17 @@ Should not trigger:
 
 ## Required Evidence
 
-Inspect the task source, PRD/spec, current conversation, known blockers, source references, lifecycle state, and verification expectations. If the evidence source is unknown, classify as `needs-info`.
+Inspect the task source, PRD/spec, current conversation, previous state when known, known blockers, source references, lifecycle state, and verification expectations. If the evidence source is unknown, classify as `needs-info`.
+
+Every verdict must include `Severity` and `State Transition Reason`. Severity describes the current blocker or gap impact, not overall product priority:
+
+- `P0`: production-critical, destructive, security/privacy, or release-stopping gap.
+- `P1`: major acceptance, data, UAT/release, or cross-layer gap.
+- `P2`: important gap with workaround or limited blast radius.
+- `P3`: minor wording, hygiene, or follow-up gap.
+- `none`: no material blocker or gap remains.
+
+When moving from `needs-info` to `ready-for-agent`, explicitly list the `Evidence Added` or fields that were completed. Do not mark a task `ready-for-agent` while readiness-blocking fields remain missing.
 
 Use `skills/_shared/LIFECYCLE-STATE.md` only to decide whether workstream-scoped lifecycle state is justified. Do not create a task database, and do not recommend state just because a task is `ready-for-agent`.
 
@@ -40,19 +50,26 @@ If the user asks to create `.planning`, `.gsd`, a GSD clone, or a project-global
 
 1. Gather the task source and current requested outcome.
 2. Classify state: `draft`, `needs-info`, `ready-for-agent`, `ready-for-human`, `in-progress`, `verification`, `done`, or `wontfix`.
-3. Apply the readiness contracts from `docs/prd.md`.
-4. If `ready-for-agent`, produce an agent-ready brief using `AGENT-BRIEF.md`.
-5. If `ready-for-human`, state the decision needed and options.
-6. Decide whether lifecycle state is needed for cross-session recovery, gap closure, UAT/release reuse, or decision-pending continuation.
-7. Recommend `write-plan`, `to-prd`, direct user decision, or closeout as appropriate.
+3. Assign severity for the current blocker or gap.
+4. State the transition reason and separate `Evidence Added` from `Evidence Missing`.
+5. Apply the readiness contracts from `docs/prd.md`.
+6. If `ready-for-agent`, produce an agent-ready brief using `AGENT-BRIEF.md`.
+7. If `ready-for-human`, state the human decision needed, options, risks, and specific next action.
+8. Decide whether lifecycle state is needed for cross-session recovery, gap closure, UAT/release reuse, or decision-pending continuation.
+9. Recommend `write-plan`, `implement`, `verify`, direct user decision, `triage closeout`, or gap closure as appropriate.
 
 ## Output Shape
 
 ```text
 Triage Verdict
 State
+Severity: P0 / P1 / P2 / P3 / none
 Execution: AFK / HITL
+Previous State
+State Transition Reason
 Evidence
+Evidence Added
+Evidence Missing
 Blockers
 Readiness Check
 Lifecycle State Recommendation
@@ -67,7 +84,7 @@ Artifact Recommendation
 
 ## Stop Condition
 
-Stop when the state, blockers, AFK/HITL classification, readiness reason, and next action are explicit.
+Stop when the state, severity, transition reason, blockers, AFK/HITL classification, readiness reason, evidence added/missing, and next action are explicit.
 
 ## Artifact Rule
 
