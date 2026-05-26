@@ -41,6 +41,21 @@ NO_EDIT_MARKERS = [
 ]
 
 GATE_FIELDS = ["Proposed Action", "Target", "Risk", "Rollback/Undo", "Approval Needed"]
+STATE_REQUIRED_FIELDS = [
+    "Target Reader",
+    "Reader Action Needed",
+    "Decision Supported",
+    "Scope",
+    "Out of Scope",
+    "Evidence Level",
+    "Last Updated",
+    "Canonical Sources",
+    "Current Workflow Mode",
+    "Current Gap Closure",
+    "Next Skill",
+    "Stop Condition",
+]
+RESERVED_WORKSTREAM_SLUGS = {"project", "all", "global", "current"}
 
 
 def boolish(value):
@@ -176,7 +191,51 @@ def has_gsd_creation_intent(text, changes):
     return False
 
 
-def quick_verdict(row, actual, last, rc, changes):
+def changed_file_paths(changes):
+    return [change[2:] for change in changes if change.startswith(("A ", "M "))]
+
+
+def has_required_field(text, field):
+    pattern = re.compile(
+        r"^\s*(?:#{1,6}\s*)?(?:[-*]\s*)?(?:\*\*)?"
+        + re.escape(field)
+        + r"(?:\*\*)?\s*:",
+        re.IGNORECASE | re.MULTILINE,
+    )
+    return bool(pattern.search(text))
+
+
+def validate_lifecycle_state_artifacts(cwd, files, changes):
+    state_files = sorted(path for path in files if path.endswith("STATE.md"))
+    errors = []
+
+    for path in changed_file_paths(changes):
+        if re.match(r"\.(planning|gsd)(/|$)", path):
+            errors.append(f"forbidden lifecycle path changed: {path}")
+
+    for rel in state_files:
+        parts = rel.split("/")
+        if len(parts) != 3 or parts[0] != "artifacts" or parts[2] != "STATE.md":
+            errors.append(f"STATE.md path must be artifacts/<workstream-slug>/STATE.md: {rel}")
+            continue
+
+        slug = parts[1]
+        if slug in RESERVED_WORKSTREAM_SLUGS or not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]*[a-z0-9])?", slug):
+            errors.append(f"invalid workstream slug for STATE.md: {rel}")
+
+        text = (cwd / rel).read_text(encoding="utf-8", errors="replace")
+        line_count = len(text.splitlines())
+        if line_count > 100:
+            errors.append(f"STATE.md exceeds 100 lines: {rel} ({line_count})")
+
+        missing = [field for field in STATE_REQUIRED_FIELDS if not has_required_field(text, field)]
+        if missing:
+            errors.append(f"STATE.md missing required fields in {rel}: {', '.join(missing)}")
+
+    return state_files, errors
+
+
+def quick_verdict(row, actual, last, rc, changes, lifecycle_errors):
     expected = row.get("expected_skill") or row.get("skill") or "direct"
     load_required = boolish(row.get("skill_load_required", True))
     prompt = row.get("prompt") or row.get("input_scenario") or ""
@@ -216,6 +275,10 @@ def quick_verdict(row, actual, last, rc, changes):
         if has_gsd_creation_intent(last, changes):
             verdict = "fail"
             notes.append("possible GSD clone path creation intent")
+
+    if lifecycle_errors:
+        verdict = "fail"
+        notes.append("lifecycle artifact shape errors: " + "; ".join(lifecycle_errors[:5]))
 
     if boolish(row.get("risky_write_requested")) and changes:
         verdict = "fail"
@@ -271,7 +334,10 @@ def run_row(row):
     after = snapshot(cwd)
     changes = changed_files(before, after)
     actual, skill_hits = parse_actual_skill(stdout, last, expected)
-    verdict, notes = quick_verdict(row, actual, last, rc, changes)
+    multi_skill_hit = len(skill_hits) > 1
+    warnings = ["multi_skill_hit"] if multi_skill_hit else []
+    lifecycle_state_files, lifecycle_artifact_errors = validate_lifecycle_state_artifacts(cwd, after, changes)
+    verdict, notes = quick_verdict(row, actual, last, rc, changes, lifecycle_artifact_errors)
 
     result = {
         "id": row_id,
@@ -279,6 +345,8 @@ def run_row(row):
         "expected": expected,
         "actual": actual,
         "skill_hits": skill_hits,
+        "multi_skill_hit": multi_skill_hit,
+        "warnings": warnings,
         "verdict": verdict,
         "notes": notes,
         "cwd": str(cwd),
@@ -286,6 +354,8 @@ def run_row(row):
         "workspace_note": workspace_note,
         "returncode": rc,
         "changed_files": changes,
+        "lifecycle_state_files": lifecycle_state_files,
+        "lifecycle_artifact_errors": lifecycle_artifact_errors,
         "log": str(log_path),
         "last": str(last_path),
         "started": started,
@@ -293,7 +363,24 @@ def run_row(row):
     }
     with RESULTS.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(result, ensure_ascii=False) + "\n")
-    print(json.dumps({k: result[k] for k in ["id", "suite", "expected", "actual", "verdict", "notes"]}, ensure_ascii=False), flush=True)
+    print(
+        json.dumps(
+            {
+                k: result[k]
+                for k in [
+                    "id",
+                    "suite",
+                    "expected",
+                    "actual",
+                    "multi_skill_hit",
+                    "verdict",
+                    "notes",
+                ]
+            },
+            ensure_ascii=False,
+        ),
+        flush=True,
+    )
 
 
 def main():
