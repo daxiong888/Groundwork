@@ -206,7 +206,14 @@ def has_required_field(text, field):
 
 
 def validate_lifecycle_state_artifacts(cwd, files, changes):
-    state_files = sorted(path for path in files if path.endswith("STATE.md"))
+    state_files = sorted(
+        set(
+            path
+            for path in files
+            if re.fullmatch(r"artifacts/[^/]+/STATE\.md", path)
+        )
+        | set(path for path in changed_file_paths(changes) if path.endswith("STATE.md"))
+    )
     errors = []
 
     for path in changed_file_paths(changes):

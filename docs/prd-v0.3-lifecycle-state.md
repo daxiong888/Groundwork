@@ -1004,6 +1004,7 @@ Mitigation:
 
 - minimal frontmatter changes;
 - adjacent routing evals.
+- P2 follow-up: monitor frontmatter phrase creep; future routing fixes should prefer stable intent grammar over appending case-specific Chinese phrases, with no frontmatter refactor in this P2 patch.
 
 ### Risk: GSD clone creep
 

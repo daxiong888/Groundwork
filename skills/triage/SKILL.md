@@ -34,6 +34,8 @@ Inspect the task source, PRD/spec, current conversation, known blockers, source 
 
 Use `skills/_shared/LIFECYCLE-STATE.md` only to decide whether workstream-scoped lifecycle state is justified. Do not create a task database, and do not recommend state just because a task is `ready-for-agent`.
 
+If the user asks to create `.planning`, `.gsd`, a GSD clone, or a project-global task directory/database for all tasks, reject that request as stated. Do not offer `.planning` / `.gsd` as scaffold options. If durable continuation state is actually justified, redirect to Groundwork's workstream-scoped `artifacts/<workstream-slug>/STATE.md` boundary; otherwise keep the decision conversation-only or recommend a short PRD to define an external system contract.
+
 ## Workflow
 
 1. Gather the task source and current requested outcome.
