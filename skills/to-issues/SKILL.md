@@ -29,15 +29,21 @@ Should not trigger:
 
 Start from the accepted PRD/spec/plan. If it is missing acceptance criteria, blockers, source context, contract impact, or verification evidence, record the missing details in `Ready-for-Agent Missing Fields` instead of fabricating readiness.
 
+Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` and `skills/_shared/ARTIFACT-PROMOTION.md` before issue splitting. If the source is raw, draft-only, unaccepted, or conversation-only without a named canonical owner, stop at the source-of-truth / promotion gate instead of producing fake-precise issues. An accepted PRD that will drive another session, remote issue creation, implementation, verification, or handoff must be promoted to a canonical artifact or explicitly tied to an external source of truth.
+
+Use `skills/_shared/LOCALE-GUARD.md` for issue titles, issue bodies, headings, summaries, and artifact prose. The user's current session language overrides the English wording of this skill template; keep code identifiers, paths, labels, and CLI flags literal.
+
 `to-issues` can mark a slice as a `ready-for-agent candidate`, but final readiness belongs to `triage`.
 
 ## Workflow
 
 1. Confirm the source of truth and whether it is accepted enough to slice.
-2. Split into vertical user-visible or behavior-visible slices, not horizontal layer buckets.
-3. Include acceptance criteria, blockers, risk, AFK/HITL classification, contract impact, verification evidence needed, and ready-for-agent missing fields for each slice.
-4. Prefer tracker-neutral markdown. Include paste-ready GitHub/Linear wording only when useful, but do not call tracker APIs.
-5. Recommend `triage` for final readiness classification or `write-plan` for an accepted slice.
+2. If the PRD/spec/plan is not accepted enough, stop and request acceptance, canonical artifact promotion, or a named external source of truth.
+3. Apply the locale guard before drafting user-visible headings or issue text.
+4. Split into vertical user-visible or behavior-visible slices, not horizontal layer buckets.
+5. Include acceptance criteria, blockers, risk, AFK/HITL classification, contract impact, verification evidence needed, and ready-for-agent missing fields for each slice.
+6. Prefer tracker-neutral markdown. Include paste-ready GitHub/Linear wording only when useful, but do not call tracker APIs.
+7. Recommend `triage` for final readiness classification or `write-plan` for an accepted slice.
 
 ## Output Shape
 
@@ -69,6 +75,7 @@ Stop when each issue draft has a clear vertical slice, acceptance criteria, bloc
 
 Follow `skills/_shared/AUDIENCE-FIRST-ARTIFACT.md`: every new or materially updated durable artifact must include the required audience-first header fields exactly.
 Follow `skills/_shared/ARTIFACT-DIRECTORY-POLICY.md`: local artifact placement must follow the directory policy, and `.groundwork/*` runtime directories are ignored by default and not committed unless explicitly approved.
+Follow `skills/_shared/ARTIFACT-PROMOTION.md`: do not let accepted PRD or issue source truth remain only in conversation when it will drive downstream work.
 Do not call tracker APIs in MVP. Write local issue artifacts only when no better source owns the work and durable state is useful. Do not force `STATE.md` for every issue; lifecycle state remains opt-in under `skills/_shared/LIFECYCLE-STATE.md`.
 
 Redact secrets, credentials, PII, sensitive logs, screenshots, requests, and database rows before writing or quoting artifacts.

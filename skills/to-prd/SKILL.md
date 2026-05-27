@@ -29,10 +29,12 @@ Should not trigger:
 
 Use user-provided context first. Inspect source, docs, prototype output, tickets, or data when they can answer a question or materially affect correctness. If evidence is missing, state the gap and tag unknowns as **NEEDS CLARIFICATION** instead of inventing product truth.
 
+Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` before shaping new requirements, version enhancements, workflow changes, or product decisions. Treat raw requirements as `Requirement State: raw` and route to grill-before-write / PRD shaping by default. Do not proceed directly to implementation or issue splitting until the requirement is accepted enough to move downstream, unless the user explicitly requests that bypass.
+
 ## Workflow
 
 1. Identify the target reader and decision the PRD must support.
-2. Run the grill-before-write gate: explicitly list target reader, decision supported, known facts, assumptions, and open questions before drafting.
+2. Run lifecycle preflight and the grill-before-write gate: explicitly list target reader, decision supported, known facts, assumptions, and open questions before drafting.
 3. Inspect local code/docs/tickets/data first when they can answer a clarification question.
 4. Ask at most 5 high-impact clarification questions; in interactive work, ask one question at a time.
 5. Include a recommended answer or default decision for each clarification question when evidence supports one.

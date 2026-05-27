@@ -61,6 +61,8 @@ Should not trigger:
 
 Use the complete block from `SCOPE-EVIDENCE-TEMPLATE.md` as the required opening for the final verification report. The final-report opening rule above is mandatory for every verify branch.
 
+Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` before judging readiness when lifecycle state, task state, source truth, or downstream closeout is involved. Source truth beats `STATE.md`: if lifecycle state conflicts with source code, tests, runtime evidence, accepted PRD/issue, or user-confirmed decisions, mark the state stale or insufficient and follow the canonical source.
+
 If the requested deliverable is itself a tool recommendation, browser verification note, QA-fix-QA package, contract review note, or subagent prompt, keep the verify wrapper first: emit `Verification Scope` before the specialized payload.
 
 Use source evidence, test output, runtime/browser evidence, data readiness, environment readiness, and UAT/customer evidence as applicable. Select the narrowest matching named lens from `LENSES.md` when the user asks for PRD review, document review, contract review, UAT review, UI review, or git boundary review.
@@ -72,6 +74,7 @@ Use specialized references when they apply:
 - `QA-FIX-QA.md` for failed verification or QA-to-fix-to-QA advice that needs expected/actual/reproduction/severity/diagnosis/fix/re-QA.
 - `CONTRACT-DOC-REVIEW.md` for frontend-facing contract documentation.
 - `UI-TOOL-ROUTER.md` for visual, responsive, interaction, browser, console, network, or scripted UI evidence.
+- `skills/_shared/LIFECYCLE-PREFLIGHT.md` for source-truth precedence, lifecycle-state staleness, artifact promotion, and git-topology gates before readiness or closeout.
 - `skills/_shared/LIFECYCLE-STATE.md` when a verification gap, re-verify chain, UAT/SIT/release state, or cross-session decision must survive the current response.
 - `skills/_shared/SUBAGENT-DELEGATION.md` for fresh-context subagent review prompts.
 
@@ -91,18 +94,19 @@ Never place task-state recommendations before the required `Verification Scope` 
 1. Start the final verification report with the complete six-field `Verification Scope` block from `SCOPE-EVIDENCE-TEMPLATE.md`; do not put any finding, verdict, recommendation, or conclusion before that block.
 2. State the named lens or lenses being used.
 3. State claimed behavior before judging it.
-4. Inspect source/diff/test evidence.
-5. Run or report relevant checks when available.
-6. Use `UI-TOOL-ROUTER.md` when visual or interaction claims matter.
-7. Use `CONTRACT-DOC-REVIEW.md` when frontend-facing docs or API contract claims matter.
-8. Separate data, environment, and customer/UAT readiness.
-9. Map `Claim / AC -> Evidence -> Result -> Gap -> Severity`.
-10. If verification fails or the user asks how to handle a QA failure, include the `QA Failure` shape from `QA-FIX-QA.md`. If concrete failure details are missing, still emit the shape and mark missing fields as `not provided` or `unverified`; do not substitute a generic process.
-11. Mark missing checks as `unverified`.
-12. Keep any customer-facing summary optional and secondary to engineering readiness.
-13. Give a verdict: `pass`, `partial`, `fail`, or `blocked`.
-14. Add a task-state recommendation after the verification body.
-15. After the verification body, add a lifecycle state note only when `LIFECYCLE-STATE.md` thresholds are met. Never place lifecycle notes before `Verification Scope`.
+4. Run lifecycle preflight when `STATE.md`, task-state, source-truth, UAT/release, or closeout claims are in scope.
+5. Inspect source/diff/test evidence; do not pass readiness from `STATE.md` alone.
+6. Run or report relevant checks when available.
+7. Use `UI-TOOL-ROUTER.md` when visual or interaction claims matter.
+8. Use `CONTRACT-DOC-REVIEW.md` when frontend-facing docs or API contract claims matter.
+9. Separate data, environment, and customer/UAT readiness.
+10. Map `Claim / AC -> Evidence -> Result -> Gap -> Severity`.
+11. If verification fails or the user asks how to handle a QA failure, include the `QA Failure` shape from `QA-FIX-QA.md`. If concrete failure details are missing, still emit the shape and mark missing fields as `not provided` or `unverified`; do not substitute a generic process.
+12. Mark missing checks as `unverified`.
+13. Keep any customer-facing summary optional and secondary to engineering readiness.
+14. Give a verdict: `pass`, `partial`, `fail`, or `blocked`.
+15. Add a task-state recommendation after the verification body.
+16. After the verification body, add a lifecycle state note only when `LIFECYCLE-STATE.md` thresholds are met. Never place lifecycle notes before `Verification Scope`.
 
 ## Output Shape
 
