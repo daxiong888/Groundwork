@@ -51,6 +51,7 @@ Should not trigger:
 
 - The user asks to implement code; use `implement`.
 - The user asks to review whether an implementation conforms to a task or PRD, especially when they explicitly exclude UAT/readiness; use `implement`.
+- The user asks for code-quality review only, with no acceptance, readiness, or evidence claim; use `implement` or direct review.
 - The user asks to review a static prototype, HTML prototype, prototype-only fields, or prototype contract-boundary classification without source-truth verification; use `prototype`.
 - The user asks to write a plan before edits; use `write-plan`.
 - The user asks whether an issue is ready to start; use `triage`.
@@ -62,6 +63,8 @@ Should not trigger:
 Use the complete block from `SCOPE-EVIDENCE-TEMPLATE.md` as the required opening for the final verification report. The final-report opening rule above is mandatory for every verify branch.
 
 Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` before judging readiness when lifecycle state, task state, source truth, or downstream closeout is involved. Source truth beats `STATE.md`: if lifecycle state conflicts with source code, tests, runtime evidence, accepted PRD/issue, or user-confirmed decisions, mark the state stale or insufficient and follow the canonical source.
+
+When lifecycle state is stale or insufficient but lifecycle thresholds do not justify updating `STATE.md`, still report the stale or insufficient state under `Risks` or `Unverified Claims`.
 
 If the requested deliverable is itself a tool recommendation, browser verification note, QA-fix-QA package, contract review note, or subagent prompt, keep the verify wrapper first: emit `Verification Scope` before the specialized payload.
 

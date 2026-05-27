@@ -24,6 +24,7 @@ DEFAULT_SUITES = [
     "reliability.csv",
     "guardrails-regression.csv",
     "lifecycle-state.csv",
+    "lifecycle-preflight-regressions.csv",
 ]
 
 NO_EDIT_MARKERS = [

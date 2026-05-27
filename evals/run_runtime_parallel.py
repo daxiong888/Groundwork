@@ -5,6 +5,9 @@ This additive wrapper runs the existing `evals/run_runtime.py` one case at a tim
 parallel child processes. Each child gets its own runtime root, so the current
 runner's shared `results.jsonl` file is not written by multiple workers.
 
+It does not enforce future `parallel_safe` or `resource_keys` metadata yet. Use
+it for targeted smoke runs, not full mixed-resource scheduler runs.
+
 It is intentionally conservative and can later be folded into `run_runtime.py`.
 """
 
@@ -36,6 +39,7 @@ DEFAULT_SUITES = [
     "reliability.csv",
     "guardrails-regression.csv",
     "lifecycle-state.csv",
+    "lifecycle-preflight-regressions.csv",
 ]
 
 
@@ -143,6 +147,28 @@ def run_case(row: dict[str, str], timeout_s: int) -> dict[str, Any]:
     return result
 
 
+def wrapper_exception_result(row: dict[str, str], exc: BaseException) -> dict[str, Any]:
+    case_id = safe_id(row.get("id", "unknown"))
+    stdout_path = CHILD_STDOUT / f"{case_id}.txt"
+    stdout_path.write_text(
+        f"wrapper_exception={type(exc).__name__}: {exc}\n",
+        encoding="utf-8",
+    )
+    result: dict[str, Any] = {
+        "id": row.get("id"),
+        "suite": row.get("_suite"),
+        "expected": row.get("expected_skill") or row.get("skill") or "direct",
+        "actual": "unknown",
+        "verdict": "blocked",
+        "notes": f"wrapper exception: {type(exc).__name__}: {exc}",
+        "wrapper_stdout": str(stdout_path),
+        "wrapper_finished": datetime.now(timezone.utc).isoformat(),
+    }
+    case_path = CASES / f"{case_id}.json"
+    case_path.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return result
+
+
 def summarize(results: list[dict[str, Any]], jobs: int, suites: list[str]) -> dict[str, Any]:
     counts: dict[str, int] = {}
     for result in results:
@@ -224,7 +250,11 @@ def main(argv: list[str] | None = None) -> int:
         with ThreadPoolExecutor(max_workers=jobs) as executor:
             future_to_row = {executor.submit(run_case, row, args.case_timeout): row for row in rows}
             for future in as_completed(future_to_row):
-                result = future.result()
+                row = future_to_row[future]
+                try:
+                    result = future.result()
+                except Exception as exc:  # Keep one wrapper failure from aborting the full run.
+                    result = wrapper_exception_result(row, exc)
                 results.append(result)
                 print(json.dumps({k: result.get(k) for k in ["id", "suite", "verdict", "notes"]}, ensure_ascii=False), flush=True)
 

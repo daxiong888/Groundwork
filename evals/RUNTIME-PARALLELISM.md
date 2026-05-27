@@ -61,6 +61,8 @@ Default behavior should be conservative:
 - browser, shared Codex state, or flaky groups should be limited or serial;
 - cases may declare `parallel_safe`, `resource_keys`, `timeout_s`, and `flake_policy` in future CSV metadata.
 
+Current wrapper limitation: `evals/run_runtime_parallel.py` does not yet enforce `parallel_safe`, `resource_keys`, or resource-specific serial groups. Use it for targeted smoke runs, not full mixed-resource scheduler runs.
+
 ## Acceptance
 
 - independent cases can run with `--jobs N`;
