@@ -28,6 +28,7 @@ python evals/run_runtime_parallel.py --jobs 4
 python evals/run_runtime_parallel.py --serial
 python evals/run_runtime_parallel.py --all-prompts --jobs 3
 python evals/run_runtime_parallel.py --rerun-failures /path/to/results
+python evals/run_runtime_parallel.py --all-prompts --serial --case-timeout 720 --retry-timeouts 1
 ```
 
 Future integration may fold this behavior into `evals/run_runtime.py` as:
@@ -63,11 +64,15 @@ Default behavior should be conservative:
 
 Current wrapper limitation: `evals/run_runtime_parallel.py` does not yet enforce `parallel_safe`, `resource_keys`, or resource-specific serial groups. Use it for targeted smoke runs, not full mixed-resource scheduler runs.
 
+The wrapper passes its per-case timeout to `run_runtime.py` as the child `codex exec` timeout, leaving 30 seconds for wrapper cleanup.
+
 ## Acceptance
 
 - independent cases can run with `--jobs N`;
 - each case writes its own result file;
 - aggregate summary distinguishes pass / fail / blocked / timeout / flake when available;
 - failures can be rerun without scanning unrelated cases;
+- timeout retries are explicit and do not retry semantic failures;
+- per-case wrapper timeout also controls the child `codex exec` timeout;
 - serial mode remains available for reproduction;
 - browser/shared-state cases can be limited by metadata in future work.

@@ -1,6 +1,6 @@
 ---
 name: verify
-description: Skeptically verify scope-first readiness, frontend integration readiness, implementation acceptance evidence with tests/checks, source-truth, UAT/release evidence, UI evidence, git boundary, or frontend contract confidence; not for plain implementation conformance review without readiness or acceptance verification, and not for prototype contract-boundary classification.
+description: Skeptically verify scope-first readiness, frontend integration readiness, implementation acceptance evidence with tests/checks, source-truth, UAT/release evidence, UI evidence, git boundary, or frontend contract confidence. Use for no-command readiness or evidence-sufficiency prompts such as "不要运行命令", "只有 code diff 没有 runtime 或 browser evidence 这次可以算 ready 吗", and other questions about whether code diff alone without runtime or browser evidence can count as ready; these are verify reports and must start with Verification Scope, not a direct short answer. Not for plain implementation conformance review without readiness or acceptance verification, and not for prototype contract-boundary classification.
 ---
 
 # verify
@@ -10,6 +10,22 @@ description: Skeptically verify scope-first readiness, frontend integration read
 The final verification report must begin with the complete six-field `Verification Scope` block from `SCOPE-EVIDENCE-TEMPLATE.md`. Once the response enters the verification report body, the first report line must be `Verification Scope`, followed by all required scope fields, not a conclusion, findings heading, contract payload, QA payload, tool recommendation, or subagent prompt.
 
 A bare `Verification Scope` heading is not compliant. If details are missing, keep the field and write `not provided` or `unverified`.
+
+Questions that ask whether missing evidence is enough for readiness, including code-diff-only, no-runtime-evidence, no-browser-evidence, no-command, or "can this count as ready" prompts, are verification reports. Do not answer them as a direct short judgment; start with `Verification Scope`.
+
+Do not bold, decorate, translate, or rename the opening line. `**Verification Scope**`, `Verification Scope:`, `验证范围`, and a bare heading without the six fields are not compliant.
+
+For code-diff-only readiness questions, use this exact opening shape before any verdict:
+
+```text
+Verification Scope
+- In Scope: whether code diff alone is sufficient readiness evidence
+- Out of Scope: command execution, file inspection, runtime execution, browser verification
+- Covered: evidence sufficiency based on the user's stated evidence
+- Not Covered: tests, runtime behavior, browser behavior, data readiness, environment readiness
+- Evidence Sources: user-provided statement only
+- User-visible Claim Being Verified: code diff without runtime or browser evidence can count as ready
+```
 
 Brief progress or tool-use prefaces are allowed before the final report only when they do not contain a verdict, findings, customer/UAT readiness conclusion, contract conclusion, QA decision, UI tool recommendation, approval decision, or subagent prompt body.
 
@@ -35,6 +51,8 @@ Should trigger:
 - "检查一下 release readiness"
 - "发布前确认证据链是否完整"
 - "跑一遍证据链"
+- "只有 code diff 没有 runtime 或 browser evidence 这次可以算 ready 吗"
+- "不要运行命令，只判断现有证据能不能算 ready"
 - "确认这次实现是否真的生效"
 - "验证 TASK.md 的实现是否满足验收"
 - "验证 PRD/TASK 的实现是否满足验收"
@@ -82,6 +100,8 @@ Use specialized references when they apply:
 - `skills/_shared/SUBAGENT-DELEGATION.md` for fresh-context subagent review prompts.
 
 If a check cannot be run, mark it `unverified`. A code diff or implementation summary alone is not readiness evidence.
+
+When the user forbids running commands, browser checks, or file inspection, still emit the full `Verification Scope` block first. Treat the requested readiness claim as an evidence sufficiency check, put the forbidden checks under `Not Covered`, and mark missing runtime/browser/test evidence as `unverified` instead of answering with a direct no-scope summary.
 
 A `verify` verdict does not directly close a task. After the verification body, recommend the next task-state action:
 

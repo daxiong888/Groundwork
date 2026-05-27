@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: Preserve or write compact continuation state for long-running R&D work without duplicating PRDs plans issues commits or diffs. Use when the user asks to create a handoff, save state for next session, prepare continuation context, resume notes, or compact state transfer; do not use for one-off explanations of what handoff means.
+description: Preserve or write compact continuation state for long-running R&D work without duplicating PRDs plans issues commits or diffs. Use when the user asks to create a handoff, save state for next session, continue in the next session, prepare continuation context, resume notes, or compact state transfer; do not use for one-off explanations of what handoff means.
 ---
 
 # handoff
@@ -12,6 +12,7 @@ Use this skill when the user needs compact state transfer across sessions, agent
 Should trigger:
 
 - "给下个 session 做 handoff"
+- "下个 session 继续验证"
 - "整理一下后续接手上下文"
 - "我要换会话，保存关键状态"
 - "给同事一个接手摘要"

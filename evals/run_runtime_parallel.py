@@ -47,6 +47,25 @@ def safe_id(value: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]+", "-", value).strip("-") or "case"
 
 
+def boolish(value: object) -> bool:
+    return str(value).strip().lower() == "true"
+
+
+def expected_skill_for_row(row: dict[str, str]) -> str:
+    if row.get("expected_skill"):
+        return row["expected_skill"]
+
+    expected = row.get("skill") or "direct"
+    behavior = row.get("expected_behavior") or ""
+    if not boolish(row.get("should_trigger", "true")):
+        route_match = re.search(r"Should route to ([A-Za-z0-9_-]+)", behavior)
+        if route_match:
+            return route_match.group(1)
+        return "direct"
+
+    return expected
+
+
 def prompt_suites() -> list[str]:
     return sorted(p.name for p in (REPO / "evals" / "prompts").glob("*.csv"))
 
@@ -98,7 +117,7 @@ def parse_child_result(stdout: str, row: dict[str, str], returncode: int) -> dic
         parsed = {
             "id": row["id"],
             "suite": row.get("_suite"),
-            "expected": row.get("expected_skill") or row.get("skill") or "direct",
+            "expected": expected_skill_for_row(row),
             "actual": "unknown",
             "verdict": "blocked" if returncode else "unknown",
             "notes": "child run produced no parseable per-case summary",
@@ -113,6 +132,7 @@ def run_case(row: dict[str, str], timeout_s: int) -> dict[str, Any]:
     case_root.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()
     env["GROUNDWORK_RUNTIME_ROOT"] = str(case_root)
+    env["GROUNDWORK_CODEX_TIMEOUT"] = str(max(60, timeout_s - 30))
 
     cmd = [sys.executable, str(REPO / "evals" / "run_runtime.py"), row["id"]]
     try:
@@ -147,6 +167,26 @@ def run_case(row: dict[str, str], timeout_s: int) -> dict[str, Any]:
     return result
 
 
+def is_timeout_result(result: dict[str, Any]) -> bool:
+    notes = str(result.get("notes") or "")
+    return result.get("child_returncode") == 124 or "codex exec exit 124" in notes
+
+
+def run_case_with_retries(row: dict[str, str], timeout_s: int, retry_timeouts: int) -> dict[str, Any]:
+    attempts = 0
+    result: dict[str, Any] | None = None
+    while attempts <= retry_timeouts:
+        attempts += 1
+        result = run_case(row, timeout_s)
+        if not is_timeout_result(result):
+            break
+    assert result is not None
+    result["wrapper_attempts"] = attempts
+    if attempts > 1:
+        result["wrapper_retried_timeout"] = True
+    return result
+
+
 def wrapper_exception_result(row: dict[str, str], exc: BaseException) -> dict[str, Any]:
     case_id = safe_id(row.get("id", "unknown"))
     stdout_path = CHILD_STDOUT / f"{case_id}.txt"
@@ -157,7 +197,7 @@ def wrapper_exception_result(row: dict[str, str], exc: BaseException) -> dict[st
     result: dict[str, Any] = {
         "id": row.get("id"),
         "suite": row.get("_suite"),
-        "expected": row.get("expected_skill") or row.get("skill") or "direct",
+        "expected": expected_skill_for_row(row),
         "actual": "unknown",
         "verdict": "blocked",
         "notes": f"wrapper exception: {type(exc).__name__}: {exc}",
@@ -217,6 +257,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--serial", action="store_true", help="Force serial execution, equivalent to --jobs 1.")
     parser.add_argument("--rerun-failures", type=Path, help="Path to a previous summary.json or run directory.")
     parser.add_argument("--case-timeout", type=int, default=420, help="Wrapper timeout per case in seconds.")
+    parser.add_argument("--retry-timeouts", type=int, default=0, help="Retry codex exec timeout results per case. Default: 0.")
     args = parser.parse_args(argv)
 
     jobs = 1 if args.serial else max(1, args.jobs)
@@ -243,12 +284,15 @@ def main(argv: list[str] | None = None) -> int:
     results: list[dict[str, Any]] = []
     if jobs == 1:
         for row in rows:
-            result = run_case(row, args.case_timeout)
+            result = run_case_with_retries(row, args.case_timeout, args.retry_timeouts)
             results.append(result)
             print(json.dumps({k: result.get(k) for k in ["id", "suite", "verdict", "notes"]}, ensure_ascii=False), flush=True)
     else:
         with ThreadPoolExecutor(max_workers=jobs) as executor:
-            future_to_row = {executor.submit(run_case, row, args.case_timeout): row for row in rows}
+            future_to_row = {
+                executor.submit(run_case_with_retries, row, args.case_timeout, args.retry_timeouts): row
+                for row in rows
+            }
             for future in as_completed(future_to_row):
                 row = future_to_row[future]
                 try:
