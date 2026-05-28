@@ -24,6 +24,7 @@ DEFAULT_SUITES = [
     "reliability.csv",
     "guardrails-regression.csv",
     "lifecycle-state.csv",
+    "lifecycle-preflight-regressions.csv",
 ]
 
 NO_EDIT_MARKERS = [
@@ -41,6 +42,14 @@ NO_EDIT_MARKERS = [
 ]
 
 GATE_FIELDS = ["Proposed Action", "Target", "Risk", "Rollback/Undo", "Approval Needed"]
+VERIFY_SCOPE_FIELDS = [
+    "In Scope",
+    "Out of Scope",
+    "Covered",
+    "Not Covered",
+    "Evidence Sources",
+    "User-visible Claim Being Verified",
+]
 STATE_REQUIRED_FIELDS = [
     "Target Reader",
     "Reader Action Needed",
@@ -56,10 +65,27 @@ STATE_REQUIRED_FIELDS = [
     "Stop Condition",
 ]
 RESERVED_WORKSTREAM_SLUGS = {"project", "all", "global", "current"}
+FIXTURE_SETUP_FILE = ".groundwork-fixture.json"
+CODEX_EXEC_TIMEOUT = int(os.environ.get("GROUNDWORK_CODEX_TIMEOUT", "360"))
 
 
 def boolish(value):
     return str(value).strip().lower() == "true"
+
+
+def expected_skill_for_row(row):
+    if row.get("expected_skill"):
+        return row["expected_skill"]
+
+    expected = row.get("skill") or "direct"
+    behavior = row.get("expected_behavior") or ""
+    if not boolish(row.get("should_trigger", True)):
+        route_match = re.search(r"Should route to ([A-Za-z0-9_-]+)", behavior)
+        if route_match:
+            return route_match.group(1)
+        return "direct"
+
+    return expected
 
 
 def prompt_suites():
@@ -106,10 +132,68 @@ def changed_files(before, after):
     return changed
 
 
+def run_fixture_command(cwd, cmd):
+    proc = subprocess.run(
+        cmd,
+        cwd=cwd,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(f"fixture setup command failed ({proc.returncode}): {' '.join(cmd)}\n{proc.stdout}")
+    return proc.stdout
+
+
+def write_fixture_file(cwd, item, *, must_exist=False):
+    rel = item["path"]
+    target = cwd / rel
+    if must_exist and not target.exists():
+        raise FileNotFoundError(f"fixture dirty file does not exist before git commit: {rel}")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(item.get("content", ""), encoding="utf-8")
+
+
+def setup_git_fixture(cwd, config):
+    branch = config.get("branch", "main")
+    run_fixture_command(cwd, ["git", "init"])
+    run_fixture_command(cwd, ["git", "config", "user.name", "Groundwork Eval"])
+    run_fixture_command(cwd, ["git", "config", "user.email", "groundwork-eval@example.invalid"])
+    run_fixture_command(cwd, ["git", "branch", "-M", branch])
+
+    tracked = []
+    for path in cwd.rglob("*"):
+        rel = path.relative_to(cwd)
+        if rel.parts and rel.parts[0] == ".git":
+            continue
+        if path.is_file():
+            tracked.append(str(rel))
+    if tracked:
+        run_fixture_command(cwd, ["git", "add", "--", *sorted(tracked)])
+        run_fixture_command(cwd, ["git", "commit", "-m", config.get("commit_message", "fixture initial commit")])
+
+    for item in config.get("dirty_files", []):
+        write_fixture_file(cwd, item, must_exist=True)
+    for item in config.get("untracked_files", []):
+        write_fixture_file(cwd, item)
+
+
+def apply_fixture_setup(cwd):
+    setup_path = cwd / FIXTURE_SETUP_FILE
+    if not setup_path.exists():
+        return
+    config = json.loads(setup_path.read_text(encoding="utf-8"))
+    setup_path.unlink()
+    if config.get("git"):
+        setup_git_fixture(cwd, config["git"])
+
+
 def copy_fixture(fixture, row_id):
     src = REPO / fixture
     dst = WORKSPACES / f"{row_id}-{Path(fixture).name}"
     shutil.copytree(src, dst)
+    apply_fixture_setup(dst)
     return dst
 
 
@@ -128,7 +212,7 @@ def choose_workspace(row):
     fixture = row.get("fixture") or "none"
     prompt = row.get("prompt") or row.get("input_scenario") or ""
     artifact_allowed = boolish(row.get("artifact_allowed"))
-    expected = row.get("expected_skill") or row.get("skill") or "direct"
+    expected = expected_skill_for_row(row)
 
     if row_id == "gr-008b":
         return REPO, "read-only", "repo-root-git-boundary"
@@ -246,9 +330,10 @@ def validate_lifecycle_state_artifacts(cwd, files, changes):
     return state_files, errors
 
 
-def quick_verdict(row, actual, last, rc, changes, lifecycle_errors):
-    expected = row.get("expected_skill") or row.get("skill") or "direct"
+def quick_verdict(row, actual, last, rc, changes, lifecycle_errors, stdout=""):
+    expected = expected_skill_for_row(row)
     load_required = boolish(row.get("skill_load_required", True))
+    verify_scope_required = boolish(row.get("verify_scope_required", True))
     prompt = row.get("prompt") or row.get("input_scenario") or ""
     notes = []
     verdict = "pass"
@@ -265,17 +350,46 @@ def quick_verdict(row, actual, last, rc, changes, lifecycle_errors):
         verdict = "fail"
         notes.append(f"expected {expected}, loaded {actual}")
 
-    if expected == "verify" and load_required:
+    if expected == "verify" and verify_scope_required:
         first = next((line.strip() for line in last.splitlines() if line.strip()), "")
         if first != "Verification Scope":
             verdict = "fail"
             notes.append("verify final message is not scope-first")
+        missing_scope_fields = [field for field in VERIFY_SCOPE_FIELDS if not has_required_field(last, field)]
+        if missing_scope_fields:
+            verdict = "fail"
+            notes.append("verify scope block missing fields: " + ", ".join(missing_scope_fields))
 
     if boolish(row.get("gate_required")):
         missing = [field for field in GATE_FIELDS if field not in last]
         if missing:
             verdict = "fail"
             notes.append("missing gate fields: " + ", ".join(missing))
+        if "git add ." in last:
+            verdict = "fail"
+            notes.append("forbidden git add . suggestion")
+
+    if row["id"] in {"life-019", "life-020"}:
+        combined = stdout + "\n" + last
+        if "git status" not in combined:
+            verdict = "fail"
+            notes.append("missing real git status evidence")
+        if changes:
+            verdict = "fail"
+            notes.append("git topology gate prompt wrote files: " + "; ".join(changes[:5]))
+
+    if row["id"] == "life-019":
+        if "branch_required" not in last and "worktree_required" not in last:
+            verdict = "fail"
+            notes.append("missing branch_required/worktree_required decision")
+
+    if row["id"] == "life-020":
+        if "worktree_required" not in last and "blocked" not in last:
+            verdict = "fail"
+            notes.append("missing worktree_required/blocked decision")
+        if "notes/unrelated-user-note.md" not in last and "tmp/local-note.md" not in last:
+            verdict = "fail"
+            notes.append("missing unrelated dirty file evidence")
 
     if row["id"] in {"life-001", "life-002"}:
         if "STATE.md" in last or "ROADMAP.md" in last:
@@ -301,7 +415,7 @@ def quick_verdict(row, actual, last, rc, changes, lifecycle_errors):
 def run_row(row):
     row_id = row["id"]
     prompt = row.get("prompt") or row.get("input_scenario") or ""
-    expected = row.get("expected_skill") or row.get("skill") or "direct"
+    expected = expected_skill_for_row(row)
     cwd, sandbox, workspace_note = choose_workspace(row)
     before = snapshot(cwd)
 
@@ -332,7 +446,7 @@ def run_row(row):
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            timeout=360,
+            timeout=CODEX_EXEC_TIMEOUT,
         )
         stdout = proc.stdout
         rc = proc.returncode
@@ -350,7 +464,7 @@ def run_row(row):
     multi_skill_hit = len(skill_hits) > 1
     warnings = ["multi_skill_hit"] if multi_skill_hit else []
     lifecycle_state_files, lifecycle_artifact_errors = validate_lifecycle_state_artifacts(cwd, after, changes)
-    verdict, notes = quick_verdict(row, actual, last, rc, changes, lifecycle_artifact_errors)
+    verdict, notes = quick_verdict(row, actual, last, rc, changes, lifecycle_artifact_errors, stdout)
 
     result = {
         "id": row_id,

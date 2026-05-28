@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: Preserve or write compact continuation state for long-running R&D work without duplicating PRDs plans issues commits or diffs. Use when the user asks to create a handoff, save state for next session, prepare continuation context, resume notes, or compact state transfer; do not use for one-off explanations of what handoff means.
+description: Preserve or write compact continuation state for long-running R&D work without duplicating PRDs plans issues commits or diffs. Use when the user asks to create a handoff, save state for next session, continue in the next session, prepare continuation context, resume notes, or compact state transfer; do not use for one-off explanations of what handoff means.
 ---
 
 # handoff
@@ -12,6 +12,7 @@ Use this skill when the user needs compact state transfer across sessions, agent
 Should trigger:
 
 - "给下个 session 做 handoff"
+- "下个 session 继续验证"
 - "整理一下后续接手上下文"
 - "我要换会话，保存关键状态"
 - "给同事一个接手摘要"
@@ -30,6 +31,8 @@ Should not trigger:
 
 Reference existing PRDs, issues, plans, commits, diffs, verification notes, lifecycle state, and artifacts. Do not copy secrets, sensitive logs, full diffs, or long documents. If the handoff includes git state, staging, commit boundary, or files that must remain out of scope, use `skills/_shared/GIT-BOUNDARY.md`.
 
+Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` to decide whether lifecycle state is needed, stale, or only referenced. Use `skills/_shared/ARTIFACT-PROMOTION.md` to separate canonical artifacts from recoverable lifecycle state: handoff should cite PRDs, issue maps, verification reports, and external issues instead of copying them.
+
 Use `REVIEW-PACKAGE.md` when the next reader needs a review package rather than a basic continuation summary. Use `skills/_shared/SUBAGENT-DELEGATION.md` when the handoff prepares a fresh-context subagent review.
 
 Use `skills/_shared/LIFECYCLE-STATE.md` when the user asks to pause, resume, switch sessions, save state, continue later, or otherwise preserve workstream recovery state.
@@ -39,14 +42,15 @@ When an existing workstream `artifacts/<workstream-slug>/STATE.md` is present, h
 ## Workflow
 
 1. Identify the next reader and next action.
-2. Reference existing artifacts instead of duplicating them.
-3. Check whether a workstream `artifacts/<workstream-slug>/STATE.md` exists when lifecycle threshold is met.
-4. Reference existing `STATE.md` by path when present, with freshness and update-needed status, or recommend creating/updating it when the threshold is met.
-5. Capture current state, decisions, evidence, gaps, and risks.
-6. Capture allowed/disallowed files when file boundary matters.
-7. Include audience, continuation goal, source artifacts, evidence, open risks, next skill, do-not-assume, and redaction note when producing a review package.
-8. Include only enough detail to resume safely.
-9. Recommend the next skill or direct action.
+2. Run lifecycle preflight for source truth, artifact promotion, lifecycle-state need, git topology, and stop condition.
+3. Reference existing canonical artifacts instead of duplicating them.
+4. Check whether a workstream `artifacts/<workstream-slug>/STATE.md` exists when lifecycle threshold is met.
+5. Reference existing `STATE.md` by path when present, with freshness and update-needed status, or recommend creating/updating it when the threshold is met.
+6. Capture current state, decisions, evidence, gaps, and risks.
+7. Capture allowed/disallowed files when file boundary matters.
+8. Include audience, continuation goal, source artifacts, evidence, open risks, next skill, do-not-assume, and redaction note when producing a review package.
+9. Include only enough detail to resume safely.
+10. Recommend the next skill or direct action.
 
 ## Output Shape
 
@@ -84,6 +88,7 @@ Do not ask a future session to use `git add .`. When handoff includes commit con
 
 Follow `skills/_shared/AUDIENCE-FIRST-ARTIFACT.md`: every new or materially updated durable artifact must include the required audience-first header fields exactly.
 Follow `skills/_shared/ARTIFACT-DIRECTORY-POLICY.md`: local artifact placement must follow the directory policy, and `.groundwork/*` runtime directories are ignored by default and not committed unless explicitly approved.
+Follow `skills/_shared/ARTIFACT-PROMOTION.md`: canonical artifacts remain the source of truth, while `STATE.md` remains compact recovery state.
 Keep handoff compact by default. Write a handoff file only when durable continuation is needed. Reference secret locations abstractly and never quote secret values. Existing `STATE.md` remains the lifecycle state owner; handoff is the transfer package, not the durable state layer.
 
 Redact secrets, credentials, PII, sensitive logs, screenshots, requests, and database rows before writing or quoting artifacts.

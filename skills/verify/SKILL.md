@@ -1,6 +1,6 @@
 ---
 name: verify
-description: Skeptically verify scope-first readiness, frontend integration readiness, implementation acceptance evidence with tests/checks, source-truth, UAT/release evidence, UI evidence, git boundary, or frontend contract confidence; not for plain implementation conformance review without readiness or acceptance verification, and not for prototype contract-boundary classification.
+description: Skeptically verify scope-first readiness, frontend integration readiness, implementation acceptance evidence with tests/checks, source-truth, UAT/release evidence, UI evidence, git boundary, or frontend contract confidence. Use for no-command readiness or evidence-sufficiency prompts such as "不要运行命令", "只有 code diff 没有 runtime 或 browser evidence 这次可以算 ready 吗", and other questions about whether code diff alone without runtime or browser evidence can count as ready; these are verify reports and must start with Verification Scope, not a direct short answer. Not for plain implementation conformance review without readiness or acceptance verification, and not for prototype contract-boundary classification.
 ---
 
 # verify
@@ -10,6 +10,22 @@ description: Skeptically verify scope-first readiness, frontend integration read
 The final verification report must begin with the complete six-field `Verification Scope` block from `SCOPE-EVIDENCE-TEMPLATE.md`. Once the response enters the verification report body, the first report line must be `Verification Scope`, followed by all required scope fields, not a conclusion, findings heading, contract payload, QA payload, tool recommendation, or subagent prompt.
 
 A bare `Verification Scope` heading is not compliant. If details are missing, keep the field and write `not provided` or `unverified`.
+
+Questions that ask whether missing evidence is enough for readiness, including code-diff-only, no-runtime-evidence, no-browser-evidence, no-command, or "can this count as ready" prompts, are verification reports. Do not answer them as a direct short judgment; start with `Verification Scope`.
+
+Do not bold, decorate, translate, or rename the opening line. `**Verification Scope**`, `Verification Scope:`, `验证范围`, and a bare heading without the six fields are not compliant.
+
+For code-diff-only readiness questions, use this exact opening shape before any verdict:
+
+```text
+Verification Scope
+- In Scope: whether code diff alone is sufficient readiness evidence
+- Out of Scope: command execution, file inspection, runtime execution, browser verification
+- Covered: evidence sufficiency based on the user's stated evidence
+- Not Covered: tests, runtime behavior, browser behavior, data readiness, environment readiness
+- Evidence Sources: user-provided statement only
+- User-visible Claim Being Verified: code diff without runtime or browser evidence can count as ready
+```
 
 Brief progress or tool-use prefaces are allowed before the final report only when they do not contain a verdict, findings, customer/UAT readiness conclusion, contract conclusion, QA decision, UI tool recommendation, approval decision, or subagent prompt body.
 
@@ -35,6 +51,8 @@ Should trigger:
 - "检查一下 release readiness"
 - "发布前确认证据链是否完整"
 - "跑一遍证据链"
+- "只有 code diff 没有 runtime 或 browser evidence 这次可以算 ready 吗"
+- "不要运行命令，只判断现有证据能不能算 ready"
 - "确认这次实现是否真的生效"
 - "验证 TASK.md 的实现是否满足验收"
 - "验证 PRD/TASK 的实现是否满足验收"
@@ -51,6 +69,7 @@ Should not trigger:
 
 - The user asks to implement code; use `implement`.
 - The user asks to review whether an implementation conforms to a task or PRD, especially when they explicitly exclude UAT/readiness; use `implement`.
+- The user asks for code-quality review only, with no acceptance, readiness, or evidence claim; use `implement` or direct review.
 - The user asks to review a static prototype, HTML prototype, prototype-only fields, or prototype contract-boundary classification without source-truth verification; use `prototype`.
 - The user asks to write a plan before edits; use `write-plan`.
 - The user asks whether an issue is ready to start; use `triage`.
@@ -60,6 +79,10 @@ Should not trigger:
 ## Required Evidence
 
 Use the complete block from `SCOPE-EVIDENCE-TEMPLATE.md` as the required opening for the final verification report. The final-report opening rule above is mandatory for every verify branch.
+
+Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` before judging readiness when lifecycle state, task state, source truth, or downstream closeout is involved. Source truth beats `STATE.md`: if lifecycle state conflicts with source code, tests, runtime evidence, accepted PRD/issue, or user-confirmed decisions, mark the state stale or insufficient and follow the canonical source.
+
+When lifecycle state is stale or insufficient but lifecycle thresholds do not justify updating `STATE.md`, still report the stale or insufficient state under `Risks` or `Unverified Claims`.
 
 If the requested deliverable is itself a tool recommendation, browser verification note, QA-fix-QA package, contract review note, or subagent prompt, keep the verify wrapper first: emit `Verification Scope` before the specialized payload.
 
@@ -72,10 +95,13 @@ Use specialized references when they apply:
 - `QA-FIX-QA.md` for failed verification or QA-to-fix-to-QA advice that needs expected/actual/reproduction/severity/diagnosis/fix/re-QA.
 - `CONTRACT-DOC-REVIEW.md` for frontend-facing contract documentation.
 - `UI-TOOL-ROUTER.md` for visual, responsive, interaction, browser, console, network, or scripted UI evidence.
+- `skills/_shared/LIFECYCLE-PREFLIGHT.md` for source-truth precedence, lifecycle-state staleness, artifact promotion, and git-topology gates before readiness or closeout.
 - `skills/_shared/LIFECYCLE-STATE.md` when a verification gap, re-verify chain, UAT/SIT/release state, or cross-session decision must survive the current response.
 - `skills/_shared/SUBAGENT-DELEGATION.md` for fresh-context subagent review prompts.
 
 If a check cannot be run, mark it `unverified`. A code diff or implementation summary alone is not readiness evidence.
+
+When the user forbids running commands, browser checks, or file inspection, still emit the full `Verification Scope` block first. Treat the requested readiness claim as an evidence sufficiency check, put the forbidden checks under `Not Covered`, and mark missing runtime/browser/test evidence as `unverified` instead of answering with a direct no-scope summary.
 
 A `verify` verdict does not directly close a task. After the verification body, recommend the next task-state action:
 
@@ -91,18 +117,19 @@ Never place task-state recommendations before the required `Verification Scope` 
 1. Start the final verification report with the complete six-field `Verification Scope` block from `SCOPE-EVIDENCE-TEMPLATE.md`; do not put any finding, verdict, recommendation, or conclusion before that block.
 2. State the named lens or lenses being used.
 3. State claimed behavior before judging it.
-4. Inspect source/diff/test evidence.
-5. Run or report relevant checks when available.
-6. Use `UI-TOOL-ROUTER.md` when visual or interaction claims matter.
-7. Use `CONTRACT-DOC-REVIEW.md` when frontend-facing docs or API contract claims matter.
-8. Separate data, environment, and customer/UAT readiness.
-9. Map `Claim / AC -> Evidence -> Result -> Gap -> Severity`.
-10. If verification fails or the user asks how to handle a QA failure, include the `QA Failure` shape from `QA-FIX-QA.md`. If concrete failure details are missing, still emit the shape and mark missing fields as `not provided` or `unverified`; do not substitute a generic process.
-11. Mark missing checks as `unverified`.
-12. Keep any customer-facing summary optional and secondary to engineering readiness.
-13. Give a verdict: `pass`, `partial`, `fail`, or `blocked`.
-14. Add a task-state recommendation after the verification body.
-15. After the verification body, add a lifecycle state note only when `LIFECYCLE-STATE.md` thresholds are met. Never place lifecycle notes before `Verification Scope`.
+4. Run lifecycle preflight when `STATE.md`, task-state, source-truth, UAT/release, or closeout claims are in scope.
+5. Inspect source/diff/test evidence; do not pass readiness from `STATE.md` alone.
+6. Run or report relevant checks when available.
+7. Use `UI-TOOL-ROUTER.md` when visual or interaction claims matter.
+8. Use `CONTRACT-DOC-REVIEW.md` when frontend-facing docs or API contract claims matter.
+9. Separate data, environment, and customer/UAT readiness.
+10. Map `Claim / AC -> Evidence -> Result -> Gap -> Severity`.
+11. If verification fails or the user asks how to handle a QA failure, include the `QA Failure` shape from `QA-FIX-QA.md`. If concrete failure details are missing, still emit the shape and mark missing fields as `not provided` or `unverified`; do not substitute a generic process.
+12. Mark missing checks as `unverified`.
+13. Keep any customer-facing summary optional and secondary to engineering readiness.
+14. Give a verdict: `pass`, `partial`, `fail`, or `blocked`.
+15. Add a task-state recommendation after the verification body.
+16. After the verification body, add a lifecycle state note only when `LIFECYCLE-STATE.md` thresholds are met. Never place lifecycle notes before `Verification Scope`.
 
 ## Output Shape
 
