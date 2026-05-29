@@ -61,9 +61,13 @@ If using a subagent for review, use `skills/_shared/SUBAGENT-DELEGATION.md`. The
 
 1. Confirm source task, scope, and stop condition.
 2. Run lifecycle preflight and `skills/_shared/GIT-TOPOLOGY-GATE.md`; inspect current branch, dirty state, relevant diffs, and whether branch/worktree is required before editing.
-3. If a bug or failing behavior is suspected, use the embedded diagnosis branch inside `implement`: reproduce or inspect first, separate confirmed cause from hypothesis, and do not edit speculatively.
+3. Choose the implementation branch before output or edits:
+   - Bug diagnosis or diagnose-before-edit: reproduce or inspect first, separate confirmed cause from hypothesis, then continue only with the minimum scoped fix or stop with diagnosis evidence.
+   - Read-only conformance review: inspect the task/PRD, source, tests, and git boundary when available; output conformance findings and stop without edits.
+   - PR-bound implementation, push, PR, or issue closeout: run the git topology and remote-write gates first, then continue only when branch/worktree and approval requirements are satisfied.
+   - Ordinary scoped implementation: continue with the lightweight plan and focused edit path.
 4. Inspect relevant code and tests before editing.
-5. If this is read-only implementation review, output conformance findings and stop without edits. Otherwise write the `Implementation Mini-Plan` from `LIGHTWEIGHT-PLAN.md`.
+5. For edit paths, write the `Implementation Mini-Plan` from `LIGHTWEIGHT-PLAN.md`.
 6. Use TDD-lite where feasible: RED, GREEN, REFACTOR.
 7. Make minimal focused changes.
 8. Run the fastest relevant checks, including the original failing check when one exists.

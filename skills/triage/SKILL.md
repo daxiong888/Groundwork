@@ -32,7 +32,7 @@ Should not trigger:
 
 Inspect the task source, PRD/spec, current conversation, previous state when known, known blockers, source references, lifecycle state, and verification expectations. If the evidence source is unknown, classify as `needs-info`.
 
-Every verdict must include `Severity` and `State Transition Reason`. Severity describes the current blocker or gap impact, not overall product priority:
+Every verdict must include `Severity` and `State Transition Reason`. Severity describes the current blocker or gap impact, **not overall product priority**:
 
 - `P0`: production-critical, destructive, security/privacy, or release-stopping gap.
 - `P1`: major acceptance, data, UAT/release, or cross-layer gap.
@@ -43,8 +43,6 @@ Every verdict must include `Severity` and `State Transition Reason`. Severity de
 When moving from `needs-info` to `ready-for-agent`, explicitly list the `Evidence Added` or fields that were completed. Do not mark a task `ready-for-agent` while readiness-blocking fields remain missing.
 
 Use `skills/_shared/LIFECYCLE-STATE.md` only to decide whether workstream-scoped lifecycle state is justified. Do not create a task database, and do not recommend state just because a task is `ready-for-agent`.
-
-If the user asks to create `.planning`, `.gsd`, a GSD clone, or a project-global task directory/database for all tasks, reject that request as stated. Do not offer `.planning` / `.gsd` as scaffold options. If durable continuation state is actually justified, redirect to Groundwork's workstream-scoped `artifacts/<workstream-slug>/STATE.md` boundary; otherwise keep the decision conversation-only or recommend a short PRD to define an external system contract.
 
 ## Workflow
 
@@ -85,6 +83,10 @@ Artifact Recommendation
 ## Stop Condition
 
 Stop when the state, severity, transition reason, blockers, AFK/HITL classification, readiness reason, evidence added/missing, and next action are explicit.
+
+## Gate Rule
+
+If the user asks to create `.planning`, `.gsd`, a GSD clone, or a project-global task directory/database for all tasks, reject that request as stated. Do not offer `.planning` / `.gsd` as scaffold options. If durable continuation state is actually justified, redirect to Groundwork's workstream-scoped `artifacts/<workstream-slug>/STATE.md` boundary; otherwise keep the decision conversation-only or recommend a short PRD to define an external system contract.
 
 ## Artifact Rule
 

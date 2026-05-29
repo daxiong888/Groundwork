@@ -1,6 +1,6 @@
 ---
 name: to-prd
-description: Create or revise a compact PRD/spec from rough product or engineering intent, evidence, feedback, or unclear acceptance. Use for 整理成 PRD, 写需求说明, clarify acceptance, or shape ambiguous requirements before task slicing. Do not use for tiny title or wording rewrites.
+description: Use grill-before-write to shape raw or ambiguous product/engineering intent into a compact PRD/spec before task slicing or implementation, without inventing product truth. Use for 新需求, 需求收敛, 整理成 PRD, 写需求说明, clarify acceptance, UAT feedback, or version/workflow changes. Do not use for tiny title or wording rewrites.
 ---
 
 # to-prd
@@ -11,6 +11,7 @@ Use this skill when the user asks to turn rough intent, conversation, prototype 
 
 Should trigger:
 
+- "新需求：先帮我梳理需求和验收"
 - "把这个需求整理成 PRD"
 - "根据这些反馈写一个需求说明"
 - "这个功能目标还不清楚，帮我收敛一下"

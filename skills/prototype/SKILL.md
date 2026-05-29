@@ -41,10 +41,10 @@ Prototype contract-boundary review stays in `prototype` when the source of truth
 2. Choose `LOGIC.md` for state, data, reducer, or business-rule prototypes.
 3. Choose `UI.md` for UI/static HTML prototypes, visual states, and interaction review.
 4. Keep the artifact throwaway and narrow.
-4a. Apply `CONTRACT-BOUNDARY.md` so prototype-only fields or client-derived logic are never treated as backend contract truth.
-5. Verify runtime/browser behavior when visual or interaction claims matter.
-6. Feed findings back into PRD, issue, contract, or implementation notes.
-7. State cleanup decision: delete, absorb, or keep temporarily with reason.
+5. Apply `CONTRACT-BOUNDARY.md` so prototype-only fields or client-derived logic are never treated as backend contract truth.
+6. Verify runtime/browser behavior when visual or interaction claims matter.
+7. Feed findings back into PRD, issue, contract, or implementation notes.
+8. State cleanup decision: delete, absorb, or keep temporarily with reason and review timing.
 
 ## Output Shape
 
@@ -86,6 +86,6 @@ Stop when the prototype question is answered, the decision or remaining gap is e
 
 Follow `skills/_shared/AUDIENCE-FIRST-ARTIFACT.md`: every new or materially updated durable artifact must include the required audience-first header fields exactly.
 Follow `skills/_shared/ARTIFACT-DIRECTORY-POLICY.md`: local artifact placement must follow the directory policy, and `.groundwork/*` runtime directories are ignored by default and not committed unless explicitly approved.
-Create prototype files only when they answer a concrete question. Delete or absorb prototype code after the question is answered unless there is a clear temporary retention reason.
+Create prototype files only when they answer a concrete question. Delete or absorb prototype code after the question is answered unless there is a clear temporary retention reason. Temporary retention should normally expire within one iteration or at the next PRD/issue/implementation handoff, whichever comes first.
 
 Redact secrets, credentials, PII, sensitive logs, screenshots, requests, and database rows before writing or quoting artifacts.

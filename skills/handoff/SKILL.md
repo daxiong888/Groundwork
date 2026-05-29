@@ -49,7 +49,7 @@ When an existing workstream `artifacts/<workstream-slug>/STATE.md` is present, h
 6. Capture current state, decisions, evidence, gaps, and risks.
 7. Capture allowed/disallowed files when file boundary matters.
 8. Include audience, continuation goal, source artifacts, evidence, open risks, next skill, do-not-assume, and redaction note when producing a review package.
-9. Include only enough detail to resume safely.
+9. Include only enough detail to resume safely; default to a one-screen continuation summary when no durable handoff file is needed.
 10. Recommend the next skill or direct action.
 
 ## Output Shape
@@ -89,6 +89,6 @@ Do not ask a future session to use `git add .`. When handoff includes commit con
 Follow `skills/_shared/AUDIENCE-FIRST-ARTIFACT.md`: every new or materially updated durable artifact must include the required audience-first header fields exactly.
 Follow `skills/_shared/ARTIFACT-DIRECTORY-POLICY.md`: local artifact placement must follow the directory policy, and `.groundwork/*` runtime directories are ignored by default and not committed unless explicitly approved.
 Follow `skills/_shared/ARTIFACT-PROMOTION.md`: canonical artifacts remain the source of truth, while `STATE.md` remains compact recovery state.
-Keep handoff compact by default. Write a handoff file only when durable continuation is needed. Reference secret locations abstractly and never quote secret values. Existing `STATE.md` remains the lifecycle state owner; handoff is the transfer package, not the durable state layer.
+Keep handoff compact by default: cite canonical artifacts, summarize only resume-critical state, and avoid copying full PRDs, issue bodies, plans, diffs, logs, or transcripts. Write a handoff file only when durable continuation is needed. Reference secret locations abstractly and never quote secret values. Existing `STATE.md` remains the lifecycle state owner; handoff is the transfer package, not the durable state layer.
 
 Redact secrets, credentials, PII, sensitive logs, screenshots, requests, and database rows before writing or quoting artifacts.
