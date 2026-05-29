@@ -16,6 +16,8 @@ Groundwork is a Codex-native evidence-first R&D workflow base. The public skill 
 
 - Read relevant skill files, docs, fixtures, and issue context before editing.
 - Run the fastest relevant eval or validation for the touched area.
+- Before treating Groundwork runtime or `codex exec` evals as evidence, confirm whether they use the installed plugin cache. If touched files affect plugin behavior, refresh through the supported marketplace/install path or state that runtime evidence was not refreshed and is not release-gating.
+- Runtime/eval reports must name the installed plugin root, local marketplace/source used, cache/source equivalence check or refresh step, and whether the run was a targeted subset or full suite.
 - For broad Groundwork changes, include these checks when applicable:
   - `git status --short`
   - `git diff --check`

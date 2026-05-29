@@ -26,6 +26,62 @@ This repository currently contains:
 
 It intentionally does not yet contain task tools, hooks, MCP servers, marketplace publishing flow, or local task CRUD. Those should be added only after repeated real usage exposes a need.
 
+## Local Installation
+
+Target Reader: Someone who found this repository and wants to install Groundwork into their local Codex setup.
+Reader Action Needed: Register the Groundwork marketplace, install the plugin, and enable it in Codex.
+Decision Supported: Whether this repository can be used directly as a local Codex plugin.
+Scope: Local personal installation from this repository through Codex's plugin marketplace flow.
+Out of Scope: Public marketplace publishing, remote plugin distribution, task CRUD, hooks, MCP servers, and production integrations.
+Evidence Level: `.agents/plugins/marketplace.json` exposes the plugin to Codex, and `.codex-plugin/plugin.json` declares the plugin metadata and bundled `skills/` path.
+
+Groundwork is currently intended to be installed as a local personal Codex plugin. The recommended path is to add this repository as a Codex marketplace, then install the plugin from that marketplace:
+
+```bash
+codex plugin marketplace add daxiong888/Groundwork --ref main
+codex plugin add groundwork@groundwork
+```
+
+If you already have Codex open, you can also ask Codex to install it for you:
+
+```text
+Install the Groundwork Codex plugin from GitHub. Please run:
+codex plugin marketplace add daxiong888/Groundwork --ref main
+codex plugin add groundwork@groundwork
+Then verify that groundwork@groundwork is installed and enabled.
+```
+
+The same marketplace and plugin state is local to the machine. If you use both Codex CLI and the Codex desktop app on the same computer, restart the app or refresh the plugin list after installing from the CLI.
+
+If you are testing an unpublished local checkout, add the checkout path as the marketplace source instead:
+
+```bash
+git clone https://github.com/daxiong888/Groundwork.git ~/.codex/plugins/groundwork
+codex plugin marketplace add ~/.codex/plugins/groundwork
+codex plugin add groundwork@groundwork
+```
+
+You can also install interactively by running `codex`, opening `/plugins`, choosing the `Groundwork` marketplace, and selecting `Install plugin`. Codex should discover the plugin from `.codex-plugin/plugin.json` and load the eight public skills from `skills/`.
+
+## Update
+
+To update an installation that was added from GitHub:
+
+```bash
+codex plugin marketplace upgrade groundwork
+codex plugin add groundwork@groundwork
+```
+
+To update an installation that was added from a local checkout:
+
+```bash
+cd ~/.codex/plugins/groundwork
+git pull --ff-only
+codex plugin add groundwork@groundwork
+```
+
+Restart Codex or refresh the plugin list after upgrading. You should not need to edit Codex's plugin cache manually; Codex installs plugins under `~/.codex/plugins/cache/<marketplace>/<plugin>/<version>/` and records enabled state in `~/.codex/config.toml`.
+
 ## Working Thesis
 
 Groundwork should help Codex:
