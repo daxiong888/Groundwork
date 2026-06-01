@@ -45,6 +45,30 @@ Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` before shaping new requirements, ver
 9. Include stable acceptance criteria IDs such as `AC-1`, `AC-2`.
 10. Recommend `to-issues` only when the PRD/spec is accepted enough to slice.
 
+## CHECKPOINTS
+
+- STOP before drafting PRD content if target reader, decision supported, known facts, assumptions, or open questions are missing.
+- STOP before creating or updating a PRD file unless the user asked for a durable artifact, the output must become a source of truth, or artifact promotion is explicitly justified.
+- STOP before recommending `to-issues` when the PRD/spec is raw, draft-only, or still has blocking **NEEDS CLARIFICATION** items.
+
+## Failure Branches
+
+| Trigger | Action | Output Requirement |
+|---|---|---|
+| Available evidence is missing | Mark source truth as `unknown` and ask the highest-impact clarification question. | Keep unknown fields as **NEEDS CLARIFICATION**. |
+| Evidence conflicts with user input | Name the conflict and separate verified facts from assumptions. | Do not choose product truth unless a canonical source is clear. |
+| User asks for a PRD file but facts are incomplete | Produce a draft with blocking gaps or stop for clarification. | Do not present the artifact as accepted or issue-ready. |
+| User asks to split issues from raw intent | Stop before `to-issues`. | State that PRD/spec acceptance is required first. |
+
+## Do Not
+
+- Do not turn raw, draft-only, or contradictory requirements into accepted product truth.
+- Do not invent backend fields, business states, metrics, owners, timelines, APIs, or acceptance details.
+- Do not promote prototype-only mock data into confirmed source truth.
+- Do not write or update a durable PRD file just because the output looks reusable; require user intent, source-of-truth need, or artifact promotion.
+- Do not recommend `to-issues`, `implement`, or `verify` while blocking **NEEDS CLARIFICATION** items remain unresolved.
+- Do not expose secrets, credentials, PII, sensitive logs, screenshots, private request payloads, or database rows in PRD artifacts.
+
 ## Output Shape
 
 Use `GRILL-BEFORE-WRITE.md` and `PRD-TEMPLATE.md` as the default structure.
