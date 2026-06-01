@@ -6,6 +6,36 @@ It exists to make Codex more useful in real project work where correctness depen
 
 The practical starting point is a curated base: use Superpowers as the Codex plugin packaging reference, use mattpocock/skills as the strongest lightweight workflow/skill reference, and keep Groundwork-specific choices tied to the user's R&D scenarios.
 
+## How maintainers use Groundwork
+
+Groundwork is a lightweight, evidence-first workflow for maintainers using Codex on real open-source work. It complements GitHub issues, CI, and human review; it does not replace them. It helps each change stay tied to a clear request, source-of-truth checks, fresh verification evidence, and a review-ready handoff.
+
+A typical maintainer loop looks like this:
+
+```text
+rough request / bug / review concern
+  -> to-prd
+  -> implement
+  -> verify
+  -> handoff
+  -> review / merge / next issue
+```
+
+Maintainers use Groundwork to:
+
+| Maintainer task | Groundwork path | Output |
+| --- | --- | --- |
+| Clarify an ambiguous feature, bug, or review concern | `to-prd` | A small PRD/spec with known facts, assumptions, unresolved decisions, and acceptance criteria |
+| Turn accepted work into scoped implementation | `implement` | Minimal edits, inspected evidence, check results, and remaining gaps |
+| Check whether a change is actually supported | `verify` | Scope-first claim-to-evidence mapping across source, tests, runtime, docs, UAT, and unverified claims |
+| Transfer work across sessions or reviewers | `handoff` | A compact review package with artifacts, evidence, risks, boundaries, and next action |
+
+Groundwork stays conversation-first for small tasks. Durable artifacts are created only when they are useful for review, reuse, execution, verification, UAT, or handoff.
+
+For Codex for Open Source reviewers, these docs show the maintainer work Groundwork supports: issue clarification, scoped implementation, evidence checks, review transfer, and release handoff.
+
+See [`docs/maintainer-workflows.md`](docs/maintainer-workflows.md) and [`examples/`](examples/) for maintainer-facing workflows and real Groundwork maintenance case studies.
+
 ## Current Stage
 
 Current `main` contains v0.2.0 Skill Reliability Hardening. `docs/prd.md` remains the product source of truth; v0.2.0 hardens the existing eight public skills instead of expanding the public surface.
@@ -15,6 +45,8 @@ This repository currently contains:
 - project vision and boundaries
 - framework comparison research
 - user work scenario analysis
+- maintainer workflow documentation
+- real maintenance case studies
 - Codex plugin manifest
 - eight first-cut public skills
 - skill trigger fixtures
@@ -118,8 +150,10 @@ PRD/spec -> task -> plan -> prototype/contract/design as needed -> implementatio
 - `research/framework-comparison.md` - source framework analysis
 - `research/user-work-scenarios.md` - real work scenarios Groundwork must support
 - `docs/product-principles.md` - principles that guide design
+- `docs/maintainer-workflows.md` - maintainer-facing Groundwork workflow guide
 - `docs/workflow-taxonomy.md` - proposed workflow modes and trigger policy
 - `docs/plugin-architecture.md` - staged Codex plugin architecture
+- `examples/` - real Groundwork maintenance case studies and draft previews
 - `.codex-plugin/plugin.json` - Codex plugin manifest
 - `skills/` - eight shallow public skills
 - `evals/` - prompt fixtures, scenario fixtures, fixture repo, baselines, and runtime trial checklist
