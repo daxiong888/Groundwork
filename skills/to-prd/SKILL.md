@@ -47,7 +47,7 @@ Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` before shaping new requirements, ver
 
 ## CHECKPOINTS
 
-- STOP before drafting PRD content if target reader, decision supported, known facts, assumptions, or open questions are missing.
+- STOP before drafting PRD content if the target reader, decision supported, known facts, assumptions, or Open Questions bucket is missing. The Open Questions bucket may be `None` only when explicitly justified.
 - STOP before creating or updating a PRD file unless the user asked for a durable artifact, the output must become a source of truth, or artifact promotion is explicitly justified.
 - STOP before recommending `to-issues` when the PRD/spec is raw, draft-only, or still has blocking **NEEDS CLARIFICATION** items.
 
@@ -66,7 +66,8 @@ Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` before shaping new requirements, ver
 - Do not invent backend fields, business states, metrics, owners, timelines, APIs, or acceptance details.
 - Do not promote prototype-only mock data into confirmed source truth.
 - Do not write or update a durable PRD file just because the output looks reusable; require user intent, source-of-truth need, or artifact promotion.
-- Do not recommend `to-issues`, `implement`, or `verify` while blocking **NEEDS CLARIFICATION** items remain unresolved.
+- Do not recommend `to-issues` or `implement` while blocking **NEEDS CLARIFICATION** items remain unresolved.
+- Recommend `verify` only for evidence/consistency review, not for readiness or downstream delivery, while blocking **NEEDS CLARIFICATION** items remain.
 - Do not expose secrets, credentials, PII, sensitive logs, screenshots, private request payloads, or database rows in PRD artifacts.
 
 ## Output Shape
