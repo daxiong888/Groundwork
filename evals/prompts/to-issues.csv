@@ -6,3 +6,4 @@ to-issues-004,to-issues,false,这个需求目标还没想清楚 先帮我收敛,
 to-issues-005,to-issues,false,这个 issue 能不能给 agent 做,Should route to triage,false,false
 to-issues-006,to-issues,true,基于这个已确认 PRD 拆 vertical slices 并说明每个 slice 的 Contract Impact Verification Evidence Needed 和 Ready-for-Agent Missing Fields,"Produce tracker-neutral vertical slices with task-state fields and only mark ready-for-agent candidate, not final readiness",false,false
 to-issues-007,to-issues,true,把这个方案拆成 issue drafts 但不要调用 GitHub Linear Jira API,"Use paste-ready tracker-neutral markdown and explicitly avoid tracker API calls",false,false
+to-issues-008,to-issues,true,Use to-issues for this accepted PRD: 标注任务列表支持手机号搜索和活动名称筛选；验收：手机号精确命中；活动筛选只在多活动任务展示；列表字段不回归。Do not edit files.,"Allow issue drafts from clear acceptance text even when stable AC IDs are missing, and record missing stable IDs in Ready-for-Agent Missing Fields",false,false

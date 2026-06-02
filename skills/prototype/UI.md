@@ -11,6 +11,7 @@ Contract Status
 Confirmed Backend Fields
 Mock / Illustrative Fields
 Client-derived Logic
+Unverified Assumptions
 Contract Impact: none / needs confirmation / confirmed update
 Screens / States Covered
 Interactions Covered
