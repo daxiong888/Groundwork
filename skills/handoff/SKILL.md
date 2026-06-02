@@ -52,6 +52,30 @@ When an existing workstream `artifacts/<workstream-slug>/STATE.md` is present, h
 9. Include only enough detail to resume safely; default to a one-screen continuation summary when no durable handoff file is needed.
 10. Recommend the next skill or direct action.
 
+## CHECKPOINTS
+
+- STOP before producing a final handoff or review package if the continuation goal, source artifacts, evidence, open risks, next skill or direct action, or `Do-Not-Assume` boundary is missing.
+- STOP before marking open risks as `None` unless the source artifacts, evidence, git boundary, and verification gaps were checked closely enough to justify that claim.
+- STOP before copying PRDs, plans, issue bodies, commits, full lifecycle state, long diffs, logs, or transcripts; cite canonical artifacts and summarize only resume-critical state.
+- STOP before asking the next reader to act if the next skill, target file/path/artifact, first command/check, or human decision needed is not executable from the handoff.
+
+## Failure Branches
+
+| Trigger | Action | Output Requirement |
+|---|---|---|
+| Evidence is insufficient for a claim | Move the claim to `Open Gaps`, `Risks`, or `Do-Not-Assume`. | Name the missing source, check, runtime evidence, or artifact instead of presenting the claim as verified. |
+| Open risks are missing or unclassified | Stop and classify each material risk by impact on continuation, verification, git boundary, customer/UAT, or artifact scope. | Use `None` only when the checked evidence supports no remaining material risk. |
+| Git status or file boundary is unclear | Run or request the git-boundary evidence required for the handoff scope. | Include intended files, explicit denylist, staged/unstaged status, and unrelated dirty/untracked files; never rely on `git add .`. |
+| Next step is not executable | Rewrite the next action as a concrete next skill or direct action with target, input artifact, and first check. | If a human decision is required, state the decision and options instead of delegating vague follow-up. |
+
+## Do Not
+
+- Do not turn the handoff into a diary, transcript, or chronological status log.
+- Do not copy long diffs, full PRDs, issue bodies, plans, commits, lifecycle state, raw logs, or transcripts.
+- Do not hide unverified claims; label them as open gaps, risks, or `Do-Not-Assume`.
+- Do not duplicate canonical artifacts when a stable path, issue ID, commit, or redacted source identifier is enough.
+- Do not change the compact continuation-state boundary: handoff is a transfer package, not the PRD, plan, issue map, commit history, or durable lifecycle-state owner.
+
 ## Output Shape
 
 ```text

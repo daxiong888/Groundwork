@@ -77,6 +77,31 @@ If using a subagent for review, use `skills/_shared/SUBAGENT-DELEGATION.md`. The
 12. Report local evidence and remaining gaps, but do not claim final readiness.
 13. Recommend `verify` for readiness.
 
+## CHECKPOINTS
+
+- STOP before file edits unless the inline `Implementation Mini-Plan` has five bounded lines: What/scope, Why, Files likely touched, Test/check, and Risk.
+- STOP before fixing a suspected bug unless at least one evidence seam exists: a reproduction, a confirmed cause, a failing test/check, or a specific test seam to add. Without that seam, output only the diagnosis conclusion, confidence, and minimum modification direction.
+- STOP before staging, committing, or reporting commit readiness unless the git boundary is confirmed from `skills/_shared/GIT-BOUNDARY.md`; preserve explicit pathspec staging and never use `git add .`.
+- Keep the mini-plan lightweight. Do not route small scoped implementation work to `write-plan` only because these checkpoints exist.
+
+## Failure Branches
+
+| Trigger | Action | Output Requirement |
+|---|---|---|
+| Bug cannot be reproduced or confirmed | Stop before edits or continue only with source-level diagnosis when enough evidence exists. | Separate confirmed facts from hypotheses and state the smallest safe next check or modification direction. |
+| No test seam or feasible check exists | Give a no-test justification before any edit, or stop if the behavior would be speculative. | Name the missing seam, why it is unavailable, alternate evidence, and follow-up verification. |
+| Dirty worktree state is present or unclear | Inspect relevant diffs before edits and decide whether the current worktree is safe. | List intended files, unrelated dirty/untracked files, and whether edits are blocked, scoped, or require a separate topology. |
+| Unrelated files appear in the diff, staged set, or intended commit | Stop staging/commit work until the boundary is explicit. | Report allowlist, denylist, `git diff --name-only`, and `git diff --cached --name-only`; leave unrelated files unstaged. |
+| Acceptance criteria or scoped source truth is unclear | Stop before implementation or ask the highest-impact clarification question. | Do not infer product behavior; state what is known, what is missing, and the minimum clarification needed. |
+
+## Do Not
+
+- Do not use `git add .` or stage without an explicit intended pathspec allowlist.
+- Do not claim done, fixed, tested, or ready without naming the checks actually run and their results.
+- Do not expand scope beyond the accepted task, original failure, or user-approved fix boundary.
+- Do not invent APIs, schemas, fields, lifecycle states, or runtime behavior that were not inspected or provided.
+- Do not force small scoped tasks into a full `write-plan` flow when the inline lightweight plan is sufficient.
+
 ## Output Shape
 
 ```text

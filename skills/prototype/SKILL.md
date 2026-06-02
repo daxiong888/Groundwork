@@ -46,6 +46,28 @@ Prototype contract-boundary review stays in `prototype` when the source of truth
 7. Feed findings back into PRD, issue, contract, or implementation notes.
 8. State cleanup decision: delete, absorb, or keep temporarily with reason and review timing.
 
+## CHECKPOINTS
+
+- STOP before handing prototype findings to frontend, PRD, issue, or contract notes unless confirmed backend fields, mock / illustrative fields, client-derived logic, and unverified assumptions are separated.
+- STOP before calling any field, state, enum, payload, or rule a confirmed backend contract unless it is source-backed by backend source, API/schema evidence, or explicit user confirmation.
+- STOP before promoting a prototype artifact into a durable source of truth unless `Contract Impact` is `confirmed update`; otherwise record `needs confirmation` and concrete confirmation questions.
+
+## Failure Branches
+
+| Trigger | Action | Output Requirement |
+|---|---|---|
+| A field has no backend source | Classify it as mock / illustrative or proposed hypothesis. | Do not list it under confirmed backend fields. |
+| A state, status, enum, transition, or rule has no source | Mark it as unverified assumption or client-derived logic. | Ask the smallest contract confirmation question instead of treating it as accepted behavior. |
+| Client-derived logic is being treated as backend contract | Reclassify it as `derived / illustrative / not backend contract`. | Set `Contract Impact` to `needs confirmation` unless backend evidence or user confirmation exists. |
+| Prototype behavior conflicts with API/schema/source evidence | Name the conflict and stop contract promotion. | Keep prototype observations separate from confirmed source truth and route source-truth verification to `verify` when needed. |
+
+## Do Not
+
+- Do not treat mock data, placeholder payloads, sample IDs, sample states, or visual-only labels as product truth.
+- Do not invent backend fields, enums, statuses, endpoints, or persistence rules just to express a prototype rule.
+- Do not let prototype polish, browser behavior, or interaction smoothness imply real backend or frontend implementation capability.
+- Do not turn prototype into implementation or verification; keep it a throwaway decision aid and route production changes to `implement` or source-truth evidence review to `verify`.
+
 ## Output Shape
 
 ```text
@@ -55,6 +77,7 @@ Contract Status
 Confirmed Backend Fields
 Mock / Illustrative Fields
 Client-derived Logic
+Unverified Assumptions
 Contract Impact: none / needs confirmation / confirmed update
 States Covered
 Interactions Covered
@@ -73,6 +96,7 @@ Contract boundary outputs must explicitly separate:
 - Confirmed backend fields (source-backed or explicitly user-confirmed)
 - Mock / illustrative fields (`mock / illustrative / not backend contract`)
 - Client-derived logic (`derived / illustrative / not backend contract`)
+- Unverified assumptions (unknown source, missing schema/API evidence, or needs user/backend confirmation)
 - Contract impact (`none`, `needs confirmation`, or `confirmed update`)
 
 Prototype output is not a frontend contract unless contract claims are source-backed or explicitly confirmed by the user.

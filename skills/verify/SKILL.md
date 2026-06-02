@@ -112,6 +112,29 @@ A `verify` verdict does not directly close a task. After the verification body, 
 
 Never place task-state recommendations before the required `Verification Scope` block.
 
+## CHECKPOINTS
+
+- STOP before any verdict unless `Verification Scope` includes concrete `Covered`, `Not Covered`, and `Evidence Sources` fields.
+- STOP before claiming `pass`, readiness, UAT, release, or handoff confidence unless fresh in-scope evidence has been inspected or run.
+- If only source, doc, diff, summary, or historical evidence is available, state that evidence boundary and do not upgrade it into runtime, browser, data, environment, or UAT evidence.
+
+## Failure Branches
+
+| Trigger | Action | Output Requirement |
+|---|---|---|
+| Evidence is missing | Mark the claim `unverified` or `blocked`. | Put the missing evidence in `Not Covered`, `Gap`, or `Unverified Claims`; no `pass`. |
+| Evidence conflicts | Name the conflict and separate source, diff, test, runtime, and user-provided claims. | Do not choose a readiness verdict until the canonical source is clear. |
+| Tests were not run | Report tests as not run. | Do not claim test-backed behavior passed. |
+| UI tool choice does not match the claim | Use `UI-TOOL-ROUTER.md` or mark UI evidence `unverified`. | Do not claim visual, responsive, interaction, console, or network evidence from the wrong tool. |
+| UAT/customer readiness is claimed without runtime evidence | Separate source, test, runtime/browser, data, environment, and UAT/customer readiness. | Do not give UAT/customer `pass` without the required runtime and readiness evidence. |
+
+## Do Not
+
+- Do not use a user summary, implementation summary, changelog, issue comment, or old handoff as evidence unless it is explicitly labeled as the claim being checked.
+- Do not treat a diff summary, old test run, or stale runtime note as current readiness evidence.
+- Do not issue a review verdict before declaring scope, coverage, and evidence sources.
+- Do not hide source/doc-only or no-command boundaries in prose after the verdict.
+
 ## Workflow
 
 1. Start the final verification report with the complete six-field `Verification Scope` block from `SCOPE-EVIDENCE-TEMPLATE.md`; do not put any finding, verdict, recommendation, or conclusion before that block.
