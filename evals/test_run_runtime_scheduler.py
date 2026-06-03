@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 import run_runtime
+import run_runtime_parallel
 
 
 def row(**kwargs):
@@ -115,6 +116,22 @@ class RuntimeSchedulerTests(unittest.TestCase):
                 run_runtime.SUMMARY = old_summary
                 run_runtime.FAILURES = old_failures
                 run_runtime.CASES = old_cases
+
+    def test_parallel_wrapper_preserves_legacy_default_timeout(self):
+        self.assertEqual(
+            run_runtime_parallel.with_parallel_compat_defaults(["--jobs", "4"]),
+            ["--case-timeout", "390", "--jobs", "4"],
+        )
+
+    def test_parallel_wrapper_preserves_explicit_timeout(self):
+        self.assertEqual(
+            run_runtime_parallel.with_parallel_compat_defaults(["--case-timeout", "500", "--jobs", "4"]),
+            ["--case-timeout", "500", "--jobs", "4"],
+        )
+        self.assertEqual(
+            run_runtime_parallel.with_parallel_compat_defaults(["--case-timeout=500", "--jobs", "4"]),
+            ["--case-timeout=500", "--jobs", "4"],
+        )
 
 
 if __name__ == "__main__":
