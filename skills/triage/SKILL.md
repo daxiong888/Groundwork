@@ -56,6 +56,26 @@ Use `skills/_shared/LIFECYCLE-STATE.md` only to decide whether workstream-scoped
 8. Decide whether lifecycle state is needed for cross-session recovery, gap closure, UAT/release reuse, or decision-pending continuation.
 9. Recommend `write-plan`, `implement`, `verify`, direct user decision, `triage closeout`, or gap closure as appropriate.
 
+## CHECKPOINTS
+
+- STOP before marking `ready-for-agent` unless acceptance criteria, source/evidence or first inspection step, expected output, stop condition, AFK/HITL decision points, blockers, and out-of-scope boundaries are explicit.
+- STOP before changing state unless the previous/current state, severity, transition reason, `Evidence Added`, and `Evidence Missing` can be tied to the task source.
+- STOP before recommending lifecycle state, closeout, or external ownership changes when the source of truth is unclear, mixed, or would duplicate an external issue without a recovery need.
+
+## Failure Branches
+
+| Trigger | Action | Output Requirement |
+|---|---|---|
+| Evidence source is unknown or missing | Classify as `needs-info`. | Ask for the highest-impact missing source, field, or first inspection step. |
+| Blocker is unresolved or a human choice is required | Classify as `ready-for-human` or keep `needs-info`. | Name options, risks, and the exact human decision needed; do not produce an agent-ready brief. |
+| Source truth or ownership conflicts | Mark source truth as `mixed` or `unknown`. | Explain the conflict and stop before lifecycle duplication, closeout, or tracker mutation. |
+
+## Do Not
+
+- Do not treat severity as product priority; it is only the current blocker or gap impact.
+- Do not generate an agent-ready brief while any readiness-blocking field remains missing.
+- Do not create local lifecycle state, task databases, or closeout actions just because a task is `ready-for-agent`.
+
 ## Output Shape
 
 ```text

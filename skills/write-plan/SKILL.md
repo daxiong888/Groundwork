@@ -43,6 +43,27 @@ Use `skills/_shared/LIFECYCLE-STATE.md` when planning a multi-stage or multi-ses
 7. Include stop conditions and verification checkpoints.
 8. Recommend `implement` only when the plan is executable.
 
+## CHECKPOINTS
+
+- STOP before writing a full plan unless the task context is accepted enough: accepted PRD/spec, issue, task brief, or user-confirmed implementation goal with boundaries.
+- STOP before naming exact files, APIs, schemas, commands, or tests unless they were inspected or provided by a canonical source; otherwise plan the first inspection step.
+- STOP before recommending `implement` unless dependencies, stop conditions, and verification checkpoints are clear enough for execution.
+- Keep small scoped implementation tasks in `implement` with `skills/implement/LIGHTWEIGHT-PLAN.md` when the inline mini-plan is sufficient.
+
+## Failure Branches
+
+| Trigger | Action | Output Requirement |
+|---|---|---|
+| Task context is raw, draft-only, or readiness is unknown | Stop planning and route to `to-prd`, `to-issues`, or `triage`. | State the missing acceptance or readiness evidence. |
+| Dependencies or ordering cannot be resolved from available evidence | Keep the plan at inspection/checkpoint level. | Mark unresolved dependencies and the next evidence-gathering step; do not invent sequence certainty. |
+| Verification path or stop condition is missing | Stop before executable handoff. | Ask for the missing check or include it as a blocking plan gap. |
+
+## Do Not
+
+- Do not force a full `write-plan` workflow for small implementation tasks that only need the `implement` lightweight plan.
+- Do not invent source paths, commands, schemas, owners, dependencies, or verification evidence to make the plan look executable.
+- Do not create lifecycle artifacts for ordinary implementation plans or ordinary single-session work.
+
 ## Output Shape
 
 ```text
