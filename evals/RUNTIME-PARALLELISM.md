@@ -24,19 +24,15 @@ Naive shell parallelism is risky because cases may share:
 ## Target CLI
 
 ```bash
-python evals/run_runtime_parallel.py --jobs 4
-python evals/run_runtime_parallel.py --serial
-python evals/run_runtime_parallel.py --all-prompts --jobs 3
-python evals/run_runtime_parallel.py --rerun-failures /path/to/results
-python evals/run_runtime_parallel.py --all-prompts --serial --case-timeout 720 --retry-timeouts 1
-```
-
-Future integration may fold this behavior into `evals/run_runtime.py` as:
-
-```bash
 python evals/run_runtime.py --jobs 4 --resource-policy auto
 python evals/run_runtime.py --serial
+python evals/run_runtime.py --all-prompts --jobs 3
+python evals/run_runtime.py --rerun-failures /path/to/results
+python evals/run_runtime.py --jobs 2 --group browser
 ```
+
+`evals/run_runtime_parallel.py` remains as a compatibility entrypoint and
+delegates to `evals/run_runtime.py`.
 
 ## Result Layout
 
@@ -62,9 +58,15 @@ Default behavior should be conservative:
 - browser, shared Codex state, or flaky groups should be limited or serial;
 - cases may declare `parallel_safe`, `resource_keys`, `timeout_s`, and `flake_policy` in future CSV metadata.
 
-Current wrapper limitation: `evals/run_runtime_parallel.py` does not yet enforce `parallel_safe`, `resource_keys`, or resource-specific serial groups. Use it for targeted smoke runs, not full mixed-resource scheduler runs.
+When metadata is absent, the runner infers conservative defaults from the
+existing CSV fields. Prompt-only, read-only, isolated workspace cases may run in
+the bounded pool. Browser, shared Codex state, repo-root, and flaky cases are
+kept out of that pool and run serially after the parallel-safe cases.
 
-The wrapper passes its per-case timeout to `run_runtime.py` as the child `codex exec` timeout, leaving 30 seconds for wrapper cleanup.
+`--group <name>` filters the selected rows to an explicit `group` metadata
+value, an inferred group such as `browser`, `shared`, `flaky`, `isolated`, or
+`serial`, or a declared resource key. For example, `--group browser` runs only
+browser-resource cases with the selected suite/id filters.
 
 ## Acceptance
 

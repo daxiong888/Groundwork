@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import csv
+import argparse
 import hashlib
 import json
 import os
@@ -7,6 +8,7 @@ import re
 import shutil
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -17,6 +19,9 @@ LOGS = RUN / "logs"
 LAST = RUN / "last"
 WORKSPACES = RUN / "workspaces"
 RESULTS = RUN / "results.jsonl"
+CASES = RUN / "cases"
+SUMMARY = RUN / "summary.json"
+FAILURES = RUN / "failures.md"
 
 DEFAULT_SUITES = [
     "smoke.csv",
@@ -73,6 +78,16 @@ def boolish(value):
     return str(value).strip().lower() == "true"
 
 
+def optional_boolish(value):
+    if value is None or str(value).strip() == "":
+        return None
+    return str(value).strip().lower() in {"1", "true", "yes", "y"}
+
+
+def safe_id(value):
+    return re.sub(r"[^A-Za-z0-9_.-]+", "-", str(value)).strip("-") or "case"
+
+
 def expected_skill_for_row(row):
     if row.get("expected_skill"):
         return row["expected_skill"]
@@ -101,6 +116,143 @@ def read_rows(suites):
                 row["_suite"] = suite
                 out.append(row)
     return out
+
+
+def split_resource_keys(value):
+    if not value:
+        return []
+    text = str(value).strip()
+    if not text:
+        return []
+    if text.startswith("["):
+        try:
+            parsed = json.loads(text)
+        except json.JSONDecodeError:
+            parsed = None
+        if isinstance(parsed, list):
+            return [str(item).strip() for item in parsed if str(item).strip()]
+    return [item for item in re.split(r"[\s,;]+", text) if item]
+
+
+def infer_resource_keys(row):
+    explicit = split_resource_keys(row.get("resource_keys"))
+    if explicit:
+        return explicit
+
+    keys = []
+    prompt = (row.get("prompt") or row.get("input_scenario") or "").lower()
+    fixture = row.get("fixture") or "none"
+    flake_policy = (row.get("flake_policy") or "").strip().lower()
+
+    if row.get("id") == "gr-008b":
+        keys.extend(["repo:groundwork", "codex_home"])
+    if fixture and fixture != "none":
+        keys.append("workspace")
+    if "browser" in prompt or "devtools" in prompt or "chrome" in prompt:
+        keys.append("browser")
+    if flake_policy and flake_policy != "none":
+        keys.append("flaky")
+    if boolish(row.get("risky_write_requested")) or boolish(row.get("gate_required")):
+        keys.append("codex_home")
+
+    return unique_in_order(keys)
+
+
+def metadata_timeout(row, default_timeout=None):
+    raw = row.get("timeout_s")
+    if raw is None or str(raw).strip() == "":
+        return default_timeout or CODEX_EXEC_TIMEOUT
+    try:
+        return max(1, int(str(raw).strip()))
+    except ValueError:
+        return default_timeout or CODEX_EXEC_TIMEOUT
+
+
+def metadata_flake_policy(row):
+    policy = str(row.get("flake_policy") or "none").strip().lower()
+    return policy if policy in {"none", "rerun_once"} else "none"
+
+
+def infer_parallel_safe(row):
+    explicit = optional_boolish(row.get("parallel_safe"))
+    if explicit is not None:
+        return explicit
+
+    prompt = row.get("prompt") or row.get("input_scenario") or ""
+    expected = expected_skill_for_row(row)
+    fixture = row.get("fixture") or "none"
+
+    if row.get("id") == "gr-008b":
+        return False
+    if any(marker in prompt for marker in NO_EDIT_MARKERS):
+        return True
+    if expected in {"direct", "to-prd", "to-issues", "triage", "write-plan", "prototype", "verify", "handoff"}:
+        if not boolish(row.get("artifact_allowed")) and not boolish(row.get("risky_write_requested")):
+            return True
+    if fixture and fixture != "none" and expected != "implement":
+        return True
+    return False
+
+
+def case_metadata(row):
+    resource_keys = infer_resource_keys(row)
+    parallel_safe = infer_parallel_safe(row)
+    if any(key in {"browser", "codex_home", "flaky"} or key.startswith("repo:") for key in resource_keys):
+        parallel_safe = False
+    group = str(row.get("group") or "").strip()
+    if not group:
+        if "browser" in resource_keys:
+            group = "browser"
+        elif "flaky" in resource_keys:
+            group = "flaky"
+        elif any(key == "codex_home" or key.startswith("repo:") for key in resource_keys):
+            group = "shared"
+        else:
+            group = "isolated" if parallel_safe else "serial"
+    return {
+        "parallel_safe": parallel_safe,
+        "resource_keys": resource_keys,
+        "timeout_s": metadata_timeout(row),
+        "flake_policy": metadata_flake_policy(row),
+        "group": group,
+    }
+
+
+def row_matches_group(row, group):
+    if not group:
+        return True
+    metadata = case_metadata(row)
+    return group == metadata["group"] or group in metadata["resource_keys"]
+
+
+def partition_rows(rows, jobs, resource_policy="auto"):
+    if jobs <= 1 or resource_policy != "auto":
+        return [], list(rows)
+
+    parallel_rows = []
+    serial_rows = []
+    for row in rows:
+        metadata = case_metadata(row)
+        if metadata["parallel_safe"]:
+            parallel_rows.append(row)
+        else:
+            serial_rows.append(row)
+    return parallel_rows, serial_rows
+
+
+def load_failure_ids(path):
+    summary_path = path / "summary.json" if path.is_dir() else path
+    if not summary_path.exists():
+        raise FileNotFoundError(f"missing summary file: {summary_path}")
+    data = json.loads(summary_path.read_text(encoding="utf-8"))
+    failures = data.get("failures") or []
+    ids = []
+    for item in failures:
+        if isinstance(item, str):
+            ids.append(item)
+        elif isinstance(item, dict) and item.get("id"):
+            ids.append(str(item["id"]))
+    return ids
 
 
 def snapshot(path):
@@ -189,16 +341,26 @@ def apply_fixture_setup(cwd):
         setup_git_fixture(cwd, config["git"])
 
 
+def unique_workspace_path(base):
+    if not base.exists():
+        return base
+    for index in range(2, 1000):
+        candidate = base.with_name(f"{base.name}-{index}")
+        if not candidate.exists():
+            return candidate
+    raise RuntimeError(f"could not allocate unique workspace path for {base}")
+
+
 def copy_fixture(fixture, row_id):
     src = REPO / fixture
-    dst = WORKSPACES / f"{row_id}-{Path(fixture).name}"
+    dst = unique_workspace_path(WORKSPACES / f"{row_id}-{Path(fixture).name}")
     shutil.copytree(src, dst)
     apply_fixture_setup(dst)
     return dst
 
 
 def empty_workspace(row_id):
-    dst = WORKSPACES / f"{row_id}-empty"
+    dst = unique_workspace_path(WORKSPACES / f"{row_id}-empty")
     dst.mkdir(parents=True, exist_ok=False)
     (dst / "README.md").write_text(
         "# Runtime eval scratch workspace\n\nNo source truth is provided unless the prompt does so.\n",
@@ -338,7 +500,10 @@ def quick_verdict(row, actual, last, rc, changes, lifecycle_errors, stdout=""):
     notes = []
     verdict = "pass"
 
-    if rc != 0:
+    if rc == 124:
+        verdict = "timeout"
+        notes.append("codex exec timeout")
+    elif rc != 0:
         verdict = "blocked"
         notes.append(f"codex exec exit {rc}")
 
@@ -412,15 +577,24 @@ def quick_verdict(row, actual, last, rc, changes, lifecycle_errors, stdout=""):
     return verdict, "; ".join(notes)
 
 
-def run_row(row):
+def write_case_result(result):
+    case_path = CASES / f"{safe_id(result['id'])}.json"
+    case_path.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return case_path
+
+
+def run_row(row, timeout_s=None, attempt=1):
     row_id = row["id"]
     prompt = row.get("prompt") or row.get("input_scenario") or ""
     expected = expected_skill_for_row(row)
+    metadata = case_metadata(row)
+    timeout_s = timeout_s or metadata["timeout_s"]
     cwd, sandbox, workspace_note = choose_workspace(row)
     before = snapshot(cwd)
 
-    log_path = LOGS / f"{row_id}.jsonl"
-    last_path = LAST / f"{row_id}.txt"
+    attempt_suffix = "" if attempt == 1 else f"-attempt{attempt}"
+    log_path = LOGS / f"{row_id}{attempt_suffix}.jsonl"
+    last_path = LAST / f"{row_id}{attempt_suffix}.txt"
     cmd = [
         "codex",
         "-a",
@@ -446,7 +620,7 @@ def run_row(row):
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            timeout=CODEX_EXEC_TIMEOUT,
+            timeout=timeout_s,
         )
         stdout = proc.stdout
         rc = proc.returncode
@@ -476,6 +650,12 @@ def run_row(row):
         "warnings": warnings,
         "verdict": verdict,
         "notes": notes,
+        "parallel_safe": metadata["parallel_safe"],
+        "resource_keys": metadata["resource_keys"],
+        "resource_group": metadata["group"],
+        "timeout_s": timeout_s,
+        "flake_policy": metadata["flake_policy"],
+        "attempt": attempt,
         "cwd": str(cwd),
         "sandbox": sandbox,
         "workspace_note": workspace_note,
@@ -488,8 +668,7 @@ def run_row(row):
         "started": started,
         "finished": datetime.now(timezone.utc).isoformat(),
     }
-    with RESULTS.open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps(result, ensure_ascii=False) + "\n")
+    result["case_result"] = str(write_case_result(result))
     print(
         json.dumps(
             {
@@ -508,16 +687,211 @@ def run_row(row):
         ),
         flush=True,
     )
+    return result
 
 
-def main():
+def is_nonpass(result):
+    return result.get("verdict") not in {"pass", "flake"}
+
+
+def attempt_summary(result):
+    return {
+        "verdict": result.get("verdict"),
+        "notes": result.get("notes"),
+        "returncode": result.get("returncode"),
+        "log": result.get("log"),
+        "last": result.get("last"),
+    }
+
+
+def run_case_with_policy(row, retry_timeouts=0):
+    metadata = case_metadata(row)
+    attempts = []
+    attempt = 1
+    result = run_row(row, metadata["timeout_s"], attempt=attempt)
+    attempts.append(result)
+
+    while result.get("verdict") == "timeout" and attempt <= retry_timeouts:
+        attempt += 1
+        result = run_row(row, metadata["timeout_s"], attempt=attempt)
+        attempts.append(result)
+
+    if result.get("verdict") != "pass" and metadata["flake_policy"] == "rerun_once":
+        attempt += 1
+        flake_result = run_row(row, metadata["timeout_s"], attempt=attempt)
+        attempts.append(flake_result)
+        if flake_result.get("verdict") == "pass":
+            flake_result["verdict"] = "flake"
+            flake_result["notes"] = (
+                f"passed on rerun after {result.get('verdict')}: {result.get('notes') or ''}"
+            ).strip()
+        else:
+            flake_result["notes"] = "; ".join(
+                item
+                for item in [
+                    flake_result.get("notes"),
+                    f"rerun_once first verdict {result.get('verdict')}: {result.get('notes') or ''}",
+                ]
+                if item
+            )
+        result = flake_result
+
+    result["attempts"] = len(attempts)
+    if len(attempts) > 1:
+        result["previous_attempts"] = [attempt_summary(item) for item in attempts[:-1]]
+    if any(item.get("verdict") == "timeout" for item in attempts[:-1]):
+        result["retried_timeout"] = True
+    else:
+        result.pop("retried_timeout", None)
+    write_case_result(result)
+    return result
+
+
+def exception_result(row, exc):
+    row_id = row.get("id", "unknown")
+    metadata = case_metadata(row)
+    result = {
+        "id": row_id,
+        "suite": row.get("_suite"),
+        "expected": expected_skill_for_row(row),
+        "actual": "unknown",
+        "skill_hits": [],
+        "multi_skill_hit": False,
+        "warnings": ["runner_exception"],
+        "verdict": "blocked",
+        "notes": f"runner exception: {type(exc).__name__}: {exc}",
+        "parallel_safe": metadata["parallel_safe"],
+        "resource_keys": metadata["resource_keys"],
+        "resource_group": metadata["group"],
+        "timeout_s": metadata["timeout_s"],
+        "flake_policy": metadata["flake_policy"],
+        "returncode": None,
+        "changed_files": [],
+        "lifecycle_state_files": [],
+        "lifecycle_artifact_errors": [],
+        "started": datetime.now(timezone.utc).isoformat(),
+        "finished": datetime.now(timezone.utc).isoformat(),
+    }
+    result["case_result"] = str(write_case_result(result))
+    print(json.dumps({k: result.get(k) for k in ["id", "suite", "verdict", "notes"]}, ensure_ascii=False), flush=True)
+    return result
+
+
+def run_parallel_rows(rows, jobs, retry_timeouts=0):
+    results = []
+    with ThreadPoolExecutor(max_workers=jobs) as executor:
+        future_to_row = {executor.submit(run_case_with_policy, row, retry_timeouts): row for row in rows}
+        for future in as_completed(future_to_row):
+            row = future_to_row[future]
+            try:
+                result = future.result()
+            except Exception as exc:
+                result = exception_result(row, exc)
+            results.append(result)
+    return results
+
+
+def write_summary(results, jobs, suites, resource_policy, group=None):
+    ordered = sorted(results, key=lambda item: item.get("_input_index", 0))
+    with RESULTS.open("w", encoding="utf-8") as fh:
+        for result in ordered:
+            serializable = dict(result)
+            serializable.pop("_input_index", None)
+            fh.write(json.dumps(serializable, ensure_ascii=False) + "\n")
+
+    counts = {}
+    for result in ordered:
+        verdict = str(result.get("verdict", "unknown"))
+        counts[verdict] = counts.get(verdict, 0) + 1
+
+    failures = [
+        {
+            "id": result.get("id"),
+            "suite": result.get("suite"),
+            "verdict": result.get("verdict"),
+            "notes": result.get("notes"),
+            "case_result": result.get("case_result"),
+            "log": result.get("log"),
+            "last": result.get("last"),
+        }
+        for result in ordered
+        if is_nonpass(result)
+    ]
+    summary = {
+        "run_root": str(RUN),
+        "jobs": jobs,
+        "resource_policy": resource_policy,
+        "group": group,
+        "suites": suites,
+        "rows": len(ordered),
+        "counts": counts,
+        "failures": failures,
+        "result_layout": {
+            "cases": str(CASES),
+            "summary": str(SUMMARY),
+            "failures": str(FAILURES),
+            "results_jsonl": str(RESULTS),
+        },
+        "finished": datetime.now(timezone.utc).isoformat(),
+    }
+    SUMMARY.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    lines = ["# Runtime Failures", ""]
+    if not failures:
+        lines.append("No non-pass results.")
+    else:
+        for item in failures:
+            notes = item.get("notes") or ""
+            lines.append(f"- `{item['id']}` [{item['suite']}] {item['verdict']}: {notes}")
+    FAILURES.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return summary
+
+
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description="Run Groundwork runtime evals.")
+    parser.add_argument("ids", nargs="*", help="Optional case ids to run.")
+    parser.add_argument("--all-prompts", action="store_true", help="Run all prompt CSV suites.")
+    parser.add_argument("--suite", action="append", help="Prompt suite filename to include; may be repeated.")
+    parser.add_argument("--jobs", type=int, default=1, help="Maximum concurrent safe cases. Default: 1.")
+    parser.add_argument("--serial", action="store_true", help="Force serial execution, equivalent to --jobs 1.")
+    parser.add_argument(
+        "--resource-policy",
+        choices=["auto", "none"],
+        default="auto",
+        help="Resource scheduler policy. 'auto' limits shared/browser/flaky cases; 'none' preserves input-order serial scheduling.",
+    )
+    parser.add_argument("--rerun-failures", type=Path, help="Path to a previous summary.json or run directory.")
+    parser.add_argument("--group", help="Run only cases in this inferred or explicit resource group, e.g. browser.")
+    parser.add_argument("--case-timeout", type=int, default=CODEX_EXEC_TIMEOUT, help="Default timeout per case in seconds.")
+    parser.add_argument(
+        "--retry-timeouts",
+        type=int,
+        default=0,
+        help="Retry timeout results per case. Kept for run_runtime_parallel.py compatibility.",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv=None):
+    args = parse_args(argv)
+    global CODEX_EXEC_TIMEOUT
+    CODEX_EXEC_TIMEOUT = args.case_timeout
+
     LOGS.mkdir(parents=True, exist_ok=True)
     LAST.mkdir(parents=True, exist_ok=True)
     WORKSPACES.mkdir(parents=True, exist_ok=True)
-    args = sys.argv[1:]
-    all_prompts = "--all-prompts" in args
-    target_ids = set(arg for arg in args if arg != "--all-prompts")
-    suites = prompt_suites() if all_prompts or target_ids else DEFAULT_SUITES
+    CASES.mkdir(parents=True, exist_ok=True)
+
+    jobs = 1 if args.serial else max(1, args.jobs)
+    target_ids = set(args.ids)
+    if args.rerun_failures:
+        try:
+            target_ids.update(load_failure_ids(args.rerun_failures))
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            print(f"rerun_failures_error={exc}", flush=True)
+            return 2
+
+    suites = args.suite or (prompt_suites() if args.all_prompts or target_ids else DEFAULT_SUITES)
     rows = read_rows(suites)
     if target_ids:
         rows = [row for row in rows if row["id"] in target_ids]
@@ -525,10 +899,38 @@ def main():
         if missing:
             print("missing_ids=" + ",".join(missing), flush=True)
             return 2
+    if args.group:
+        rows = [row for row in rows if row_matches_group(row, args.group)]
+
+    for index, row in enumerate(rows):
+        row["_input_index"] = index
+
     print(f"run_root={RUN}", flush=True)
     print(f"rows={len(rows)}", flush=True)
-    for row in rows:
-        run_row(row)
+    print(f"jobs={jobs}", flush=True)
+    print(f"resource_policy={args.resource_policy}", flush=True)
+    if args.group:
+        print(f"group={args.group}", flush=True)
+
+    results = []
+    parallel_rows, serial_rows = partition_rows(rows, jobs, args.resource_policy)
+    if jobs == 1:
+        for row in rows:
+            results.append(run_case_with_policy(row, args.retry_timeouts))
+    else:
+        if parallel_rows:
+            results.extend(run_parallel_rows(parallel_rows, jobs, args.retry_timeouts))
+        for row in serial_rows:
+            results.append(run_case_with_policy(row, args.retry_timeouts))
+
+    for result in results:
+        result["_input_index"] = next(
+            (row.get("_input_index", 0) for row in rows if row.get("id") == result.get("id")),
+            0,
+        )
+    summary = write_summary(results, jobs, suites, args.resource_policy, args.group)
+    print(json.dumps({"summary": summary}, ensure_ascii=False), flush=True)
+    return 1 if summary["failures"] else 0
 
 
 if __name__ == "__main__":
