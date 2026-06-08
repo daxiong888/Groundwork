@@ -3,8 +3,20 @@
 ## Target Reader
 - [Role or person who must review/decide] **NEEDS CLARIFICATION**
 
+## Reader Action Needed
+- [Review, decide, approve, clarify, or use this PRD as source truth] **NEEDS CLARIFICATION**
+
 ## Decision Supported
 - [Decision or action this PRD enables] **NEEDS CLARIFICATION**
+
+## Scope
+- [Concise durable-artifact scope summary] **NEEDS CLARIFICATION**
+
+## Out of Scope
+- [Concise durable-artifact boundary summary] **NEEDS CLARIFICATION**
+
+## Evidence Level
+- [User-confirmed, source-backed, inferred, draft, or mixed] **NEEDS CLARIFICATION**
 
 ## Known Facts
 - [Verified fact from user input or evidence]
@@ -28,7 +40,7 @@
 ## Users / Actors
 - [Primary user/actor]
 
-## Scope
+## PRD Scope
 - In scope:
   - [Item]
 - Out of scope:

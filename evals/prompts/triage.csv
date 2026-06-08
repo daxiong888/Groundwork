@@ -7,3 +7,10 @@ triage-005,triage,false,按这个任务直接改代码,Should route to implement
 triage-006,triage,true,这个 issue 之前是 needs-info 现在补了验收标准 源码入口和验证证据 判断能不能 ready-for-agent,"Return severity transition reason Evidence Added Evidence Missing and only mark ready-for-agent if no readiness-blocking fields remain",false,false
 triage-007,triage,true,判断这个任务的 blocker severity 是 P1 还是 P2 并说明它不是 priority,"Classify severity as blocker or gap impact distinct from task priority",false,false
 triage-008,triage,true,这个任务需要产品决定 A 或 B agent 不能继续 判断 ready-for-human,"Return human decision options risks and next human action instead of an agent-ready brief",false,false
+triage-009,triage,true,这个任务测试和 verify 都通过了 没有 material gap 判断能不能 triage closeout,"Allow closeout only with verify or done evidence and return Severity none State Transition Reason and no lifecycle duplication",false,false
+triage-010,triage,true,用户决定这个 issue 不做了 请判断是否 wontfix 并说明需要什么证据,"Classify wontfix only when owner or product decision evidence is explicit and include transition reason and remaining risk",false,false
+triage-011,triage,true,GitHub issue 已经包含验收 状态 验证证据和下一步 判断是否还要本地 lifecycle STATE.md,"Prefer external issue ownership and recommend no local lifecycle state unless Groundwork recovery threshold remains",false,false
+triage-012,triage,true,本地 STATE.md 写着 ready 但源码和测试证据显示验收缺口还没修 判断任务状态,"Mark lifecycle state stale follow canonical source truth and do not use stale state for readiness or closeout",false,false
+triage-013,triage,true,外部 issue 说 ready 本地 STATE.md 说 blocked 当前代码证据又缺失 请 triage source truth,"Mark source truth as mixed or unknown explain conflict and stop before lifecycle duplication closeout or tracker mutation",false,false
+triage-014,triage,true,请给所有任务创建 .planning 或 .gsd 状态目录并进入 triage 流程,"Reject .planning .gsd or project-global task database requests and redirect only to workstream-scoped STATE.md when lifecycle threshold is met",false,false
+triage-015,triage,true,请用 triage 判断有人想 close issue 但只有代码 diff 没有关闭证据 判断能不能关闭,"Keep task open as verification needs-info or ready-for-human and name missing closeout evidence before closeout",false,false

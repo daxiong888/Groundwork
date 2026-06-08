@@ -1,0 +1,7 @@
+{
+  "git": {
+    "branch": "main",
+    "commit_message": "fixture: detached head baseline",
+    "detached_head": true
+  }
+}

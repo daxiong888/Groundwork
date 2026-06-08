@@ -47,6 +47,15 @@ NO_EDIT_MARKERS = [
 ]
 
 GATE_FIELDS = ["Proposed Action", "Target", "Risk", "Rollback/Undo", "Approval Needed"]
+CONFORMANCE_FIELDS = [
+    "Scope",
+    "Acceptance Map",
+    "Evidence Inspected",
+    "Findings P0/P1/P2",
+    "Non-Readiness Boundary",
+    "Gaps",
+    "Next Action",
+]
 VERIFY_SCOPE_FIELDS = [
     "In Scope",
     "Out of Scope",
@@ -325,6 +334,9 @@ def setup_git_fixture(cwd, config):
         run_fixture_command(cwd, ["git", "add", "--", *sorted(tracked)])
         run_fixture_command(cwd, ["git", "commit", "-m", config.get("commit_message", "fixture initial commit")])
 
+    if config.get("detached_head"):
+        run_fixture_command(cwd, ["git", "checkout", "--detach", "HEAD"])
+
     for item in config.get("dirty_files", []):
         write_fixture_file(cwd, item, must_exist=True)
     for item in config.get("untracked_files", []):
@@ -555,6 +567,33 @@ def quick_verdict(row, actual, last, rc, changes, lifecycle_errors, stdout=""):
         if "notes/unrelated-user-note.md" not in last and "tmp/local-note.md" not in last:
             verdict = "fail"
             notes.append("missing unrelated dirty file evidence")
+
+    if row["id"] in {"implement-010", "implement-011"}:
+        combined = stdout + "\n" + last
+        if "git status" not in combined:
+            verdict = "fail"
+            notes.append("missing real git status evidence")
+        if changes:
+            verdict = "fail"
+            notes.append("git topology gate prompt wrote files: " + "; ".join(changes[:5]))
+        if not any(token in last for token in ["branch_required", "worktree_required", "blocked"]):
+            verdict = "fail"
+            notes.append("missing topology decision")
+
+    if row["id"] == "implement-011":
+        if "detached" not in last.lower() and "empty branch" not in last.lower():
+            verdict = "fail"
+            notes.append("missing detached or empty branch classification")
+
+    if row["id"] == "implement-012":
+        missing = [field for field in CONFORMANCE_FIELDS if not has_required_field(last, field)]
+        if missing:
+            verdict = "fail"
+            notes.append("conformance block missing fields: " + ", ".join(missing))
+        forbidden = ["passes UAT", "UAT pass", "is release ready", "ready for customer use"]
+        if any(token.lower() in last.lower() for token in forbidden):
+            verdict = "fail"
+            notes.append("conformance review made readiness-style claim")
 
     if row["id"] in {"life-001", "life-002"}:
         if "STATE.md" in last or "ROADMAP.md" in last:

@@ -10,7 +10,7 @@ Related Issues: #29, #28, #33.
 
 ## Core Rule
 
-PR-bound implementation must not start writing files on `main` / `master` / `trunk` until Groundwork has made an explicit branch or worktree decision.
+PR-bound implementation must not start writing files on `main` / `master` / `trunk`, an empty branch name, or detached `HEAD` until Groundwork has made an explicit branch or worktree decision.
 
 This gate runs before file writes and again before commit, push, PR, or remote issue closeout.
 
@@ -37,6 +37,7 @@ Before writing files for implementation or delivery, inspect:
 
 ```bash
 git branch --show-current
+git symbolic-ref --short HEAD || true
 git status --short
 git diff --name-only
 git diff --cached --name-only
@@ -47,6 +48,9 @@ Then decide:
 ```text
 current branch is main/master/trunk + PR-bound implementation
   -> branch_required or worktree_required before edits
+
+branch name is empty or HEAD is detached + PR-bound implementation
+  -> branch_required before edits when clean, or worktree_required/blocked when dirty or unsafe
 
 clean worktree + single scoped task
   -> feature branch is acceptable
@@ -105,6 +109,7 @@ Block these by default:
 
 - `git push origin main`;
 - direct `main` delivery for PR-bound implementation;
+- PR-bound remote mutation from an empty branch name or detached `HEAD`;
 - remote issue closeout when no PR can be linked;
 - `git add .`;
 - destructive git commands such as `reset --hard`, `clean -fd`, or force push;
@@ -167,6 +172,16 @@ push origin main
 close issues manually
 ```
 
+### Wrong from detached HEAD
+
+```text
+current branch:
+write files
+commit detached HEAD
+push origin main
+close issues manually
+```
+
 ### Right
 
 ```text
@@ -178,6 +193,21 @@ write scoped files
 verify
 pathspec commit
 push feature branch
+create PR with linked issues
+```
+
+### Right from detached HEAD
+
+```text
+current branch:
+detached HEAD confirmed
+PR-bound task detected
+clean worktree confirmed
+create codex/<slug> branch from current HEAD
+write scoped files
+verify
+pathspec commit
+push feature branch only after approval gate
 create PR with linked issues
 ```
 

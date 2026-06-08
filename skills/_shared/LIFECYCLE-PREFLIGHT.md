@@ -282,7 +282,7 @@ If `Requirement State` is not `prd_accepted`, `issue_ready`, or owned by an exte
 
 ### `implement`
 
-Before writing files, run git topology gate. If current branch is `main` / `master` / `trunk` and the work is PR-bound, choose a branch or worktree first.
+Before writing files, run git topology gate. If current branch is `main` / `master` / `trunk`, the branch name is empty, or `HEAD` is detached and the work is PR-bound, choose a branch or worktree first.
 
 ### `verify`
 
@@ -298,5 +298,5 @@ Reference existing `STATE.md` when present. Recommend creating or updating state
 - Do not write preflight snapshots by default.
 - Do not use `STATE.md` as a full PRD, full issue body, full plan, full diff, full log, project board, or chat transcript.
 - Do not let English skill templates override a Chinese session.
-- Do not start PR-bound implementation on `main` without topology decision.
+- Do not start PR-bound implementation on `main` / `master` / `trunk`, an empty branch name, or detached `HEAD` without topology decision.
 - Do not push `main` or close remote issues as a substitute for a missed PR flow.

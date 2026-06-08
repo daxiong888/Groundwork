@@ -40,7 +40,7 @@ Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` before shaping new requirements, ver
 4. Ask at most 5 high-impact clarification questions; in interactive work, ask one question at a time.
 5. Include a recommended answer or default decision for each clarification question when evidence supports one.
 6. Mark every unknown backend field, business state, unsupported ability, or missing acceptance detail as **NEEDS CLARIFICATION**; never invent product truth or mutate it from prototype-only mock data.
-7. Use `scope` if acceptance or user intent is unclear.
+7. Use the internal scope-shaping branch owned by `to-prd` if acceptance or user intent is unclear. Do not present `scope` as a public skill or route.
 8. Keep the PRD compact and implementation-ready.
 9. Include stable acceptance criteria IDs such as `AC-1`, `AC-2`.
 10. Recommend `to-issues` only when the PRD/spec is accepted enough to slice.
@@ -49,6 +49,7 @@ Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` before shaping new requirements, ver
 
 - STOP before drafting PRD content if the target reader, decision supported, known facts, assumptions, or Open Questions bucket is missing. The Open Questions bucket may be `None` only when explicitly justified.
 - STOP before creating or updating a PRD file unless the user asked for a durable artifact, the output must become a source of truth, or artifact promotion is explicitly justified.
+- STOP before writing a durable PRD artifact unless the exact audience-first header fields are present: `Target Reader`, `Reader Action Needed`, `Decision Supported`, `Scope`, `Out of Scope`, and `Evidence Level`.
 - STOP before recommending `to-issues` when the PRD/spec is raw, draft-only, or still has blocking **NEEDS CLARIFICATION** items.
 
 ## Failure Branches
@@ -58,6 +59,7 @@ Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` before shaping new requirements, ver
 | Available evidence is missing | Mark source truth as `unknown` and ask the highest-impact clarification question. | Keep unknown fields as **NEEDS CLARIFICATION**. |
 | Evidence conflicts with user input | Name the conflict and separate verified facts from assumptions. | Do not choose product truth unless a canonical source is clear. |
 | User asks for a PRD file but facts are incomplete | Produce a draft with blocking gaps or stop for clarification. | Do not present the artifact as accepted or issue-ready. |
+| User asks for a PRD artifact from sensitive source material | Redact secret values, private URLs, credentials, PII, sensitive logs, screenshots, requests, and database rows before drafting or writing. | Preserve only stable non-secret identifiers, source types, and decisions needed for review. |
 | User asks to split issues from raw intent | Stop before `to-issues`. | State that PRD/spec acceptance is required first. |
 
 ## Do Not
@@ -76,7 +78,11 @@ Use `GRILL-BEFORE-WRITE.md` and `PRD-TEMPLATE.md` as the default structure.
 
 ```text
 Target Reader
+Reader Action Needed
 Decision Supported
+Scope
+Out of Scope
+Evidence Level
 Known Facts
 Assumptions
 Open Questions
@@ -84,8 +90,6 @@ PRD Summary
 Problem
 Goal
 Users / Actors
-Scope
-Out Of Scope
 Acceptance Criteria (AC IDs required)
 Evidence
 Next Action
@@ -102,5 +106,6 @@ Stop when the PRD/spec intent, acceptance criteria, open questions, and next act
 Follow `skills/_shared/AUDIENCE-FIRST-ARTIFACT.md`: every new or materially updated durable artifact must include the required audience-first header fields exactly.
 Follow `skills/_shared/ARTIFACT-DIRECTORY-POLICY.md`: local artifact placement must follow the directory policy, and `.groundwork/*` runtime directories are ignored by default and not committed unless explicitly approved.
 Default to conversation output. Write or update a PRD file only when the user asks, when the output needs review/reuse/handoff, or when it becomes a task source of truth.
+When a durable PRD is produced, place the audience-first header before the PRD body and keep its fields concise enough for a reviewer to decide what to do next. `Scope` and `Out of Scope` in the header may summarize the detailed PRD body sections, but the exact field names must remain present.
 
 Redact secrets, credentials, PII, sensitive logs, screenshots, requests, and database rows before writing or quoting artifacts.
