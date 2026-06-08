@@ -18,7 +18,7 @@ Interactions Covered
 Browser / Runtime Evidence
 Known Gaps
 Implementation Implications
-PRD / Issue / Contract Updates
+Proposed PRD / Issue / Contract Feedback
 Cleanup Decision
 ```
 
@@ -31,6 +31,7 @@ Rules:
 - Browser/runtime evidence must include tool, URL/context, action, observation, and limitation.
 - Distinguish Browser plugin, Chrome DevTools MCP, Chrome extension tooling, and Playwright/Puppeteer instead of using them interchangeably.
 - Apply `CONTRACT-BOUNDARY.md` before any PRD/issue/contract feedback: do not elevate UI mock fields, placeholder payloads, or frontend-only derived values into backend API contract.
+- Phrase PRD/issue/contract feedback as proposed feedback unless source-truth verification or explicit user confirmation has already happened.
 - Distinguish real backend fields from mock display fields; label mock display fields `mock / illustrative / not backend contract`.
 - Label client-side derivations `derived / illustrative / not backend contract`.
 - Do not present a UI prototype as frontend contract without source-backed verification or explicit user confirmation.

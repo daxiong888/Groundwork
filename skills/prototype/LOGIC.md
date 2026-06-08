@@ -20,6 +20,7 @@ Cases Covered
 Observed Result
 Known Gaps
 Implementation Implications
+Proposed PRD / Issue / Contract Feedback
 Cleanup Decision
 ```
 
@@ -29,6 +30,7 @@ Rules:
 - Prefer deterministic code or tables when behavior must be repeatable.
 - Do not treat prototype code as production code.
 - Apply `CONTRACT-BOUNDARY.md`: model assumptions, mocked schema fields, and client-derived calculations remain prototype-only unless independently verified by backend/source contract evidence.
+- Phrase PRD/issue/contract feedback as proposed feedback unless source-truth verification or explicit user confirmation has already happened.
 - Label mocked fields `mock / illustrative / not backend contract`.
 - Label client-derived calculations `derived / illustrative / not backend contract`.
 - Do not present a logic prototype as frontend or backend contract without source-backed verification or explicit user confirmation.

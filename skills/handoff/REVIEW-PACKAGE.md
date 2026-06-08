@@ -17,6 +17,11 @@ Review Package
 - Source Artifacts:
 - Evidence:
 - Open Risks:
+- Lifecycle State:
+- State Artifact:
+- State Freshness:
+- State Update Needed:
+- State Reference Mode:
 - Allowed Files:
 - Disallowed Files:
 - Next Skill:
@@ -32,3 +37,6 @@ Rules:
 - Do not hide unverified claims; put them in `Open Risks` or `Do-Not-Assume`.
 - Include file boundaries when a future session may stage, commit, or continue edits.
 - Redact secrets, tokens, credentials, PII, sensitive logs, and private request payloads.
+- Include or reference lifecycle-state fields when the lifecycle threshold applies. Use `State Artifact`, `State Freshness`, `State Update Needed`, and `State Reference Mode` from the handoff output shape, but do not paste the full `STATE.md`.
+- Use `State Freshness: unknown` and `State Update Needed: yes` unless freshness is evidenced by a readable `Last Updated`, readable `Canonical Sources`, and checked canonical sources with no unresolved conflict.
+- If lifecycle threshold does not apply, write `Lifecycle State: not applicable` and keep the rest of the review package focused on source artifacts, evidence, risks, and next action.

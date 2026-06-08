@@ -43,7 +43,7 @@ Prototype contract-boundary review stays in `prototype` when the source of truth
 4. Keep the artifact throwaway and narrow.
 5. Apply `CONTRACT-BOUNDARY.md` so prototype-only fields or client-derived logic are never treated as backend contract truth.
 6. Verify runtime/browser behavior when visual or interaction claims matter.
-7. Feed findings back into PRD, issue, contract, or implementation notes.
+7. Draft findings as proposed PRD, issue, contract, or implementation feedback unless source-truth verification or explicit user confirmation has already happened.
 8. State cleanup decision: delete, absorb, or keep temporarily with reason and review timing.
 
 ## CHECKPOINTS
@@ -60,6 +60,7 @@ Prototype contract-boundary review stays in `prototype` when the source of truth
 | A state, status, enum, transition, or rule has no source | Mark it as unverified assumption or client-derived logic. | Ask the smallest contract confirmation question instead of treating it as accepted behavior. |
 | Client-derived logic is being treated as backend contract | Reclassify it as `derived / illustrative / not backend contract`. | Set `Contract Impact` to `needs confirmation` unless backend evidence or user confirmation exists. |
 | Prototype behavior conflicts with API/schema/source evidence | Name the conflict and stop contract promotion. | Keep prototype observations separate from confirmed source truth and route source-truth verification to `verify` when needed. |
+| Browser or runtime evidence is unavailable for visual or interaction claims | Keep the prototype review in `prototype` but mark visual and interaction claims as `unverified`. | State the missing evidence, name the smallest browser/runtime check, and do not claim verified UI behavior. |
 
 ## Do Not
 
@@ -84,7 +85,7 @@ Interactions Covered
 Browser / Runtime Evidence
 Known Gaps
 Implementation Implications
-PRD / Issue / Contract Updates
+Proposed PRD / Issue / Contract Feedback
 Cleanup Decision
 Next Action
 Artifact Recommendation
@@ -100,6 +101,13 @@ Contract boundary outputs must explicitly separate:
 - Contract impact (`none`, `needs confirmation`, or `confirmed update`)
 
 Prototype output is not a frontend contract unless contract claims are source-backed or explicitly confirmed by the user.
+
+Feedback wording must preserve the source boundary:
+
+- Use `Proposed PRD / Issue / Contract Feedback` for prototype-only findings, hypotheses, mock-field cleanup, and client-derived behavior notes.
+- Use `Contract Impact: needs confirmation` when backend/API/schema/source truth has not been checked.
+- Use `Contract Impact: confirmed update` only when backend source, API/schema evidence, runtime evidence, or explicit user confirmation already supports the claim.
+- If the user asks whether prototype behavior matches backend/API truth, route to `verify` instead of answering as a prototype review.
 
 ## Stop Condition
 

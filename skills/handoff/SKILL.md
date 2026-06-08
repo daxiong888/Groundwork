@@ -39,13 +39,35 @@ Use `skills/_shared/LIFECYCLE-STATE.md` when the user asks to pause, resume, swi
 
 When an existing workstream `artifacts/<workstream-slug>/STATE.md` is present, handoff must reference it instead of copying it. Report the state artifact path, freshness (`fresh`, `stale`, or `unknown`), and whether an update is needed. Do not paste full lifecycle state, PRDs, issue bodies, plans, diffs, logs, or transcripts into the handoff.
 
+## State Freshness Algorithm
+
+Use this algorithm before reporting `State Freshness` for an existing `artifacts/<workstream-slug>/STATE.md`:
+
+1. Read the existing state file enough to inspect `Last Updated`, `Canonical Sources`, current risks/gaps, and next action. Do not copy the full state into the handoff.
+2. Verify `Last Updated` is present, readable, and exact enough to compare, preferably an ISO 8601 timestamp with timezone.
+3. Verify `Canonical Sources` is present, readable, and points to the artifacts, issue, PRD, code, tests, runtime evidence, or user-confirmed decision that currently own truth.
+4. Compare state claims against the canonical sources available in the current handoff scope.
+5. Report one of:
+   - `fresh` only when `Last Updated` is readable, canonical sources are present, no checked canonical source conflicts with the state, and the evidence is recent enough for the continuation claim.
+   - `stale` when a checked canonical source conflicts with `STATE.md`, a later source supersedes it, or a verified gap/risk changed after `Last Updated`.
+   - `unknown` when the file cannot be read, `Last Updated` is missing/unreadable, `Canonical Sources` is missing/unreadable, canonical sources conflict with each other, or freshness cannot be evidenced from available sources.
+
+Default to `State Freshness: unknown` and `State Update Needed: yes` unless freshness is evidenced. Do not infer freshness from path existence, confidence, or absence of known conflicts.
+
+When freshness is `stale` or `unknown`, keep the handoff actionable:
+
+- name the missing field, unreadable section, conflicting source, or unavailable check;
+- follow canonical source truth over lifecycle state;
+- put unverifiable claims in `Open Gaps`, `Risks`, or `Do-Not-Assume`;
+- recommend updating `STATE.md` only when the lifecycle-state threshold still applies.
+
 ## Workflow
 
 1. Identify the next reader and next action.
 2. Run lifecycle preflight for source truth, artifact promotion, lifecycle-state need, git topology, and stop condition.
 3. Reference existing canonical artifacts instead of duplicating them.
 4. Check whether a workstream `artifacts/<workstream-slug>/STATE.md` exists when lifecycle threshold is met.
-5. Reference existing `STATE.md` by path when present, with freshness and update-needed status, or recommend creating/updating it when the threshold is met.
+5. Apply the State Freshness Algorithm, then reference existing `STATE.md` by path when present, with freshness and update-needed status, or recommend creating/updating it when the threshold is met.
 6. Capture current state, decisions, evidence, gaps, and risks.
 7. Capture allowed/disallowed files when file boundary matters.
 8. Include audience, continuation goal, source artifacts, evidence, open risks, next skill, do-not-assume, and redaction note when producing a review package.
@@ -67,6 +89,11 @@ When an existing workstream `artifacts/<workstream-slug>/STATE.md` is present, h
 | Open risks are missing or unclassified | Stop and classify each material risk by impact on continuation, verification, git boundary, customer/UAT, or artifact scope. | Use `None` only when the checked evidence supports no remaining material risk. |
 | Git status or file boundary is unclear | Run or request the git-boundary evidence required for the handoff scope. | Include intended files, explicit denylist, staged/unstaged status, and unrelated dirty/untracked files; never rely on `git add .`. |
 | Next step is not executable | Rewrite the next action as a concrete next skill or direct action with target, input artifact, and first check. | If a human decision is required, state the decision and options instead of delegating vague follow-up. |
+| Existing `STATE.md` is missing or unreadable | Do not invent state contents. | Report `State Freshness: unknown`, `State Update Needed: yes` when lifecycle threshold applies, and name the missing/unreadable path. |
+| `Last Updated` is missing, unreadable, or not comparable | Do not mark state fresh. | Report `State Freshness: unknown`, `State Update Needed: yes`, and name the bad or missing field. |
+| `Canonical Sources` is missing or unreadable | Do not treat lifecycle state as source truth. | Report `State Freshness: unknown`, `State Update Needed: yes`, and ask the next action to inspect or restore canonical sources. |
+| Canonical sources conflict with each other or with `STATE.md` | Follow the strongest checked canonical source and mark the conflict. | Report `State Freshness: stale` when state conflicts with source truth, or `unknown` when source truth cannot be resolved; keep the conflict in `Risks` or `Do-Not-Assume`. |
+| Freshness is unverifiable from available evidence | Do not infer freshness from file presence. | Report `State Freshness: unknown`, `State Update Needed: yes`, and name the missing evidence/check. |
 
 ## Do Not
 

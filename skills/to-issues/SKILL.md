@@ -27,13 +27,13 @@ Should not trigger:
 
 ## Required Evidence
 
-Start from the accepted PRD/spec/plan. If it is missing acceptance criteria, blockers, source context, contract impact, or verification evidence, record the missing details in `Ready-for-Agent Missing Fields` instead of fabricating readiness.
+Start from the accepted PRD/spec/plan. If it is missing blockers, source context, contract impact, or verification evidence, record the missing details in `Ready-for-Agent Missing Fields` instead of fabricating readiness.
 
 Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` and `skills/_shared/ARTIFACT-PROMOTION.md` before issue splitting. If the source is raw, draft-only, unaccepted, or conversation-only without a named canonical owner, stop at the source-of-truth / promotion gate instead of producing fake-precise issues. An accepted PRD that will drive another session, remote issue creation, implementation, verification, or handoff must be promoted to a canonical artifact or explicitly tied to an external source of truth.
 
 Use `skills/_shared/LOCALE-GUARD.md` for issue titles, issue bodies, headings, summaries, and artifact prose. The user's current session language overrides the English wording of this skill template; keep code identifiers, paths, labels, and CLI flags literal.
 
-`to-issues` can mark a slice as a `ready-for-agent candidate`, but final readiness belongs to `triage`.
+`to-issues` can emit a triage recommendation candidate for a slice, such as `ready-for-agent candidate`, `needs-info recommendation`, or `ready-for-human recommendation`, but final readiness belongs to `triage`.
 
 ## Workflow
 
@@ -52,11 +52,21 @@ Use `skills/_shared/LOCALE-GUARD.md` for issue titles, issue bodies, headings, s
 - STOP before producing ready-for-agent candidates unless each slice is vertical, behavior-visible, and has an independent verification expectation.
 - STOP before downstream issue creation, implementation handoff, or multi-session use if the accepted source is conversation-only; apply the artifact-promotion or external source-of-truth gate first.
 
+`accepted enough` means all of the following are true:
+
+- source truth is a canonical artifact, an accepted PRD/spec/plan, an issue-ready local artifact, or a named external task source;
+- acceptance is explicit through `prd_accepted`, `issue_ready`, user confirmation, or the external source carrying acceptance state;
+- external sources include a named owner or equivalent confirmation authority, not only a link or title;
+- acceptance criteria are clear enough to preserve as slice criteria, even if they lack stable AC IDs;
+- no mixed or conflicting source truth remains unresolved;
+- conversation-only accepted material has been promoted or explicitly tied to an external source before it drives downstream issue creation, implementation, verification, or handoff.
+
 ## Failure Branches
 
 | Trigger | Action | Output Requirement |
 |---|---|---|
 | Source is raw, draft-only, or unaccepted PRD/spec | Stop at the acceptance/source-of-truth gate. | Request PRD/spec acceptance, `to-prd` shaping, or a named canonical owner before issue splitting. |
+| Conversation-only PRD/spec is accepted but will drive another session, remote issue creation, implementation, verification, or handoff | Stop at the artifact-promotion gate. | Ask to promote the accepted source to a canonical artifact or name an external source of truth before issue splitting. |
 | Accepted source has clear acceptance criteria text but no AC IDs or equivalent canonical acceptance labels | Continue issue drafting from the existing acceptance text. | Record missing stable AC IDs or canonical labels in `Ready-for-Agent Missing Fields`; do not invent labels or block splitting. |
 | Accepted source has no clear acceptance criteria | Stop before issue drafting. | Ask for acceptance criteria or return the missing criteria as a blocking `Ready-for-Agent Missing Fields` item without inventing them. |
 | Source of truth is unclear, mixed, or conflicting | Name the conflict and choose `source truth: unknown` or `mixed`. | Do not split until a canonical artifact, external issue, PR, or user-confirmed owner is named. |
@@ -70,7 +80,7 @@ Use `skills/_shared/LOCALE-GUARD.md` for issue titles, issue bodies, headings, s
 - Do not treat ordinary unnumbered bullets, section headings, narrative requirement order, or model-generated numbering as equivalent canonical acceptance labels; use them only as source acceptance text when they are clear.
 - Do not skip the source-of-truth or artifact-promotion gate because the user says to "just split issues".
 - Do not call GitHub, Linear, Jira, or other tracker APIs; keep output tracker-neutral unless another approved workflow explicitly takes over.
-- Do not mark final readiness; `to-issues` may only produce a `ready-for-agent candidate`.
+- Do not mark final readiness; `to-issues` may only produce a triage recommendation candidate.
 
 ## Output Shape
 
@@ -87,7 +97,7 @@ Issue Drafts
 - Contract Impact: API / DB / UI state / docs / verification contract / none
 - Verification Evidence Needed
 - Ready-for-Agent Missing Fields
-- Readiness Candidate: ready-for-agent candidate / needs-info / ready-for-human
+- Triage Recommendation Candidate: ready-for-agent candidate / needs-info recommendation / ready-for-human recommendation
 Ordering Notes
 Next Action
 Artifact Recommendation
@@ -95,7 +105,7 @@ Artifact Recommendation
 
 ## Stop Condition
 
-Stop when each issue draft has a clear vertical slice, acceptance criteria, blockers, execution type, contract impact, verification evidence needed, ready-for-agent missing fields, readiness candidate, and next action.
+Stop when each issue draft has a clear vertical slice, acceptance criteria, blockers, execution type, contract impact, verification evidence needed, ready-for-agent missing fields, triage recommendation candidate, and next action.
 
 ## Artifact Rule
 
