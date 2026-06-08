@@ -45,11 +45,25 @@ Inspect relevant files, direct callers/callees, tests, config, and diffs before 
 
 Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` to confirm the implementation source of truth and requirement state before editing. Raw or draft requirements are not implementation-ready unless the user explicitly requests a bypass.
 
-Use `skills/_shared/GIT-TOPOLOGY-GATE.md` before writing files for PR-bound implementation, and again before staging, committing, pushing, opening a PR, or closing remote issues. If the current branch is `main` / `master` / `trunk` and the work is PR-bound, output a gate decision and stop before edits until a branch or worktree decision is made.
+Use `skills/_shared/GIT-TOPOLOGY-GATE.md` before writing files for PR-bound implementation, and again before staging, committing, pushing, opening a PR, or closing remote issues. If the current branch is `main` / `master` / `trunk`, the branch name is empty, or `HEAD` is detached and the work is PR-bound, output a gate decision and stop before edits until a branch or worktree decision is made.
 
 Use `LIGHTWEIGHT-PLAN.md` before editing: What, Why, Files likely touched, Test/check, Risk. Map acceptance criteria to changes and checks.
 
 For read-only implementation conformance review, do not force a fix plan. Inspect the task/PRD, source, tests, and git boundary when available; report whether the implementation satisfies acceptance, what evidence was checked, what gaps remain, and explicitly avoid UAT/release/readiness verdicts unless the user asks for them.
+
+Use this output block for read-only conformance review. Keep the exact field labels:
+
+```text
+Scope:
+Acceptance Map:
+Evidence Inspected:
+Findings P0/P1/P2:
+Non-Readiness Boundary:
+Gaps:
+Next Action:
+```
+
+`Non-Readiness Boundary` must say that the review is limited to implementation conformance and does not decide UAT, release, customer readiness, deployment readiness, or final acceptance unless the user explicitly asks for that scope.
 
 Use `TDD-LITE.md` for behavior changes when feasible: RED failing test/reproduction, GREEN minimal change, REFACTOR only after green. If no failing test or reproduction is feasible, give a no-test justification and do not claim TDD.
 
@@ -79,7 +93,7 @@ If using a subagent for review, use `skills/_shared/SUBAGENT-DELEGATION.md`. The
 
 ## CHECKPOINTS
 
-- STOP before file edits unless the inline `Implementation Mini-Plan` has five bounded lines: What/scope, Why, Files likely touched, Test/check, and Risk.
+- STOP before file edits unless the change is truly trivial and already fully bounded, or the inline `Implementation Mini-Plan` has five bounded lines: What/scope, Why, Files likely touched, Test/check, and Risk.
 - STOP before fixing a suspected bug unless at least one evidence seam exists: a reproduction, a confirmed cause, a failing test/check, or a specific test seam to add. Without that seam, output only the diagnosis conclusion, confidence, and minimum modification direction.
 - STOP before staging, committing, or reporting commit readiness unless the git boundary is confirmed from `skills/_shared/GIT-BOUNDARY.md`; preserve explicit pathspec staging and never use `git add .`.
 - Keep the mini-plan lightweight. Do not route small scoped implementation work to `write-plan` only because these checkpoints exist.
@@ -129,7 +143,7 @@ If implementation would require or is paired with push, deploy, publish, migrati
 
 For any prompt that requests `git push`, PR creation, issue closeout, tracker mutation, deploy, publish, or other remote write, the final response must include the exact five gate field labels below even when another blocker is also present, such as missing source truth, a non-Git workspace, read-only sandbox, or missing remote permissions. Do not replace the gate with a generic "blocked" explanation.
 
-If PR-bound implementation is requested from `main` / `master` / `trunk`, or unrelated dirty files make the current worktree unsafe, stop before edits and output:
+If PR-bound implementation is requested from `main` / `master` / `trunk`, an empty branch name, detached `HEAD`, or unrelated dirty files make the current worktree unsafe, stop before edits and output:
 
 ```text
 Proposed Action:

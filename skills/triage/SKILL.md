@@ -40,9 +40,17 @@ Every verdict must include `Severity` and `State Transition Reason`. Severity de
 - `P3`: minor wording, hygiene, or follow-up gap.
 - `none`: no material blocker or gap remains.
 
+AFK/HITL is a local execution-routing decision, not a quality score:
+
+- `AFK`: the next action can be completed from available source truth, acceptance criteria, scope boundaries, first inspection step, and verification expectation without a new human product/access/design decision.
+- `HITL`: the next action needs a human decision, missing authority, private access not already available, manual validation, approval for risky mutation, or a choice between valid product/design options.
+
+Closeout is allowed only when `verify` evidence shows no material gap remains, the task is already `done` with sufficient linked evidence, or `wontfix` is explicitly justified by a product/owner decision. Attempted closeout without those facts must stay open as `verification`, `needs-info`, or `ready-for-human`, with the missing closeout evidence named.
+
 When moving from `needs-info` to `ready-for-agent`, explicitly list the `Evidence Added` or fields that were completed. Do not mark a task `ready-for-agent` while readiness-blocking fields remain missing.
 
 Use `skills/_shared/LIFECYCLE-STATE.md` only to decide whether workstream-scoped lifecycle state is justified. Do not create a task database, and do not recommend state just because a task is `ready-for-agent`.
+If an external issue or PR fully owns source truth and recovery state, recommend no local lifecycle state unless a Groundwork-specific recovery need remains. If local `STATE.md` conflicts with a canonical issue, PRD, source code, tests, runtime evidence, or user-confirmed decision, mark the local state stale and follow the canonical source.
 
 ## Workflow
 
@@ -69,12 +77,16 @@ Use `skills/_shared/LIFECYCLE-STATE.md` only to decide whether workstream-scoped
 | Evidence source is unknown or missing | Classify as `needs-info`. | Ask for the highest-impact missing source, field, or first inspection step. |
 | Blocker is unresolved or a human choice is required | Classify as `ready-for-human` or keep `needs-info`. | Name options, risks, and the exact human decision needed; do not produce an agent-ready brief. |
 | Source truth or ownership conflicts | Mark source truth as `mixed` or `unknown`. | Explain the conflict and stop before lifecycle duplication, closeout, or tracker mutation. |
+| Closeout is requested without verify/done/wontfix evidence | Keep open as `verification`, `needs-info`, or `ready-for-human`. | Name the missing closeout evidence and recommend `verify`, gap closure, or owner decision before closeout. |
+| Local lifecycle state conflicts with canonical source truth | Mark lifecycle state as stale. | Follow the canonical source and do not let stale `STATE.md` drive closeout, readiness, or ownership. |
+| External tracker already owns task state and recovery facts | Recommend no local lifecycle state unless a Groundwork recovery threshold remains. | Cite the external owner and keep local output conversation-only or paste-ready for that tracker. |
 
 ## Do Not
 
 - Do not treat severity as product priority; it is only the current blocker or gap impact.
 - Do not generate an agent-ready brief while any readiness-blocking field remains missing.
 - Do not create local lifecycle state, task databases, or closeout actions just because a task is `ready-for-agent`.
+- Do not let `.planning`, `.gsd`, project-global task directories, or stale `STATE.md` override Groundwork source-truth and lifecycle-state boundaries.
 
 ## Output Shape
 

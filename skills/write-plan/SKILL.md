@@ -30,7 +30,7 @@ Should not trigger:
 
 Use the accepted task, PRD/spec, issue, current source references, existing lifecycle state, roadmap, and known verification expectations. Do not invent exact file paths, APIs, schemas, or commands before inspection. If the workspace has no source or tests, say so and plan first inspection or validation steps instead of naming fictional files.
 
-Use `skills/_shared/LIFECYCLE-STATE.md` when planning a multi-stage or multi-session workstream. Do not create lifecycle files for ordinary implementation plans.
+Use `skills/_shared/LIFECYCLE-STATE.md` when planning a multi-stage or multi-session workstream. Do not create lifecycle files or recommend lifecycle artifacts for ordinary implementation plans.
 
 ## Workflow
 
@@ -38,7 +38,11 @@ Use `skills/_shared/LIFECYCLE-STATE.md` when planning a multi-stage or multi-ses
 2. Read existing `STATE.md` / `ROADMAP.md` when the workstream is multi-stage, cross-session, or release/UAT gated.
 3. Check canonical sources before trusting lifecycle state.
 4. Inspect source when exact paths, APIs, schemas, or commands matter.
-5. Use `contract` if API/DB/state/frontend/docs alignment matters.
+5. Add inline `Contract Notes` when API/DB/state/frontend/docs alignment matters.
+   - `contract` is an internal planning concern, not a public skill route.
+   - If contract facts are uninspected, mark them as unverified and plan the next source check instead of naming exact endpoints, fields, schemas, or state transitions.
+   - If the user asks to validate contract truth or readiness, route to `verify`.
+   - If the user asks to explore a throwaway interaction, UI state, or business-rule question before source truth exists, route to `prototype`.
 6. List focused implementation steps and dependencies.
 7. Include stop conditions and verification checkpoints.
 8. Recommend `implement` only when the plan is executable.
@@ -62,27 +66,29 @@ Use `skills/_shared/LIFECYCLE-STATE.md` when planning a multi-stage or multi-ses
 
 - Do not force a full `write-plan` workflow for small implementation tasks that only need the `implement` lightweight plan.
 - Do not invent source paths, commands, schemas, owners, dependencies, or verification evidence to make the plan look executable.
-- Do not create lifecycle artifacts for ordinary implementation plans or ordinary single-session work.
+- Do not create lifecycle artifacts, `STATE.md`, `ROADMAP.md`, or durable plan artifacts for ordinary implementation plans or ordinary single-session work.
 
 ## Output Shape
+
+Use this as the maximum field set for a full implementation plan. For ordinary lightweight plans, omit conditional lifecycle, contract, and artifact fields that do not affect execution.
 
 ```text
 Plan Summary
 Source
 Assumptions
-Lifecycle Inputs
+Lifecycle Inputs (only when multi-stage, multi-session, release/UAT gated, or existing lifecycle state is relevant)
 - STATE.md:
 - ROADMAP.md:
 - Stale State Risk:
 - Roadmap Needed:
 Files / Areas Inspected
 Implementation Steps
-Contract Notes
+Contract Notes (include inline when API/DB/state/frontend/docs alignment or uncertainty affects implementation)
 Risks / Gates
 Verification Checkpoints
 Stop Condition
 Next Action
-Artifact Recommendation
+Artifact Recommendation (only when artifact promotion is required or useful; otherwise omit; if a boundary decision is needed, say conversation-only)
 ```
 
 ## Stop Condition
