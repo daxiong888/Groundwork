@@ -148,6 +148,76 @@ Use `evals/prompts/lifecycle-state.csv` when testing the v0.3 lifecycle-state cu
 
 Do not treat this suite as a new runtime or evaluation method. It extends the existing prompt-fixture style and must not require new public skills, CLI, hooks, MCP servers, tracker API calls, task CRUD, `.planning`, `.gsd`, or committing runtime directories.
 
+## Routing Reliability Targeted Trial
+
+Use `evals/prompts/routing-reliability.csv` as a targeted suite before any default-suite promotion decision. It is intentionally outside `DEFAULT_SUITES` until a recorded promotion review proves the targeted gate is stable.
+
+This suite validates the internal Groundwork Entry Contract and route judgment behavior. It must not create a public `routing`, `router`, `groundwork-entry`, `preflight`, or `runtime-safety-gate` skill. Direct fallback remains a valid first route for small low-risk prompts and host/runtime safety preemption remains an eval-only actual-route classification.
+
+Before using a routing runtime result as gate evidence, record runtime truth alignment:
+
+- current branch or detached worktree state;
+- `git status --short`;
+- intended file allowlist;
+- installed plugin root;
+- source package root;
+- compared path list for touched docs, skills, evals, and runner files;
+- source/cache diff result or supported marketplace/package refresh step;
+- raw runtime result path;
+- whether the run was targeted-only or default/full;
+- whether runner execution mutated the source repository.
+
+If the installed plugin cache cannot be proven equivalent to the source package and was not refreshed through the supported install path, the run is diagnostic evidence only. It is not release-gate proof.
+
+Run targeted routing checks before default suites:
+
+```bash
+python3 evals/run_runtime.py --validate-schema --suite routing-reliability.csv
+python3 evals/run_runtime.py --suite routing-reliability.csv --jobs 1
+```
+
+For bounded remediation after a targeted failure has already identified the row and fix locus, prefer focused reruns over repeating the full targeted suite by default:
+
+```bash
+python3 evals/run_runtime.py --suite routing-reliability.csv --jobs 1 rr-005
+```
+
+Focused remediation evidence is enough when all of the following are true:
+
+- the installed plugin cache and source package are equivalent after the fix;
+- the change is a deterministic runner checker, fixture correction, or narrow route-surface adjustment for already-identified rows;
+- the affected row or rows pass with routing, output, evidence, behavior, and overall verdicts all green;
+- the change does not alter `DEFAULT_SUITES`, add a public skill, or broaden the runtime-visible skill surface;
+- the review explicitly states that full targeted release-gating evidence is not being claimed.
+
+Run a full targeted rerun before default-suite promotion, after broad public skill routing changes, after measurement-token semantics change across row groups, or when focused evidence exposes a new cross-boundary regression.
+
+Use serial execution as the default targeted gate shape. Parallel execution is acceptable only when the row set is known to be safe for concurrent Codex workspaces and the review records that the parallel wrapper consumed the serial verdict fields instead of re-implementing route judgment. Full/default runs stay serial or `--jobs 1` unless the selected rows carry enough metadata and fixture isolation to prove concurrent execution is safe.
+
+When reviewing `summary.json`, use `routing_summary` as the targeted gate source. Check:
+
+- Best-route Hit@1;
+- acceptable route coverage;
+- forbidden route hits;
+- invalid host preemption;
+- route-vs-execution separability through routing, host-preemption, output, evidence, behavior, and overall verdict counts;
+- route boundary counts;
+- expected and actual per-route counts;
+- route-pair confusion;
+- unclassified non-pass ids.
+
+Finite measurement-token policy applies to `output_contract` and `evidence_required`. Implemented tokens must have deterministic checks. Allowed future tokens are permitted in schema but must return `blocked` until implemented. Unknown tokens block the row. `blocked` is not a route-list token; it belongs in `expected_stop_condition`, verdict dimensions, or the normalized overall result.
+
+Strict host preemption means `actual_route=runtime-safety-gate` is valid only when no public Groundwork skill loaded, row metadata allows host preemption, risky/destructive/remote/data/write intent is present, changed files are empty, and the final response proves a no-execution approval gate. Skill-owned approval gates remain under the owning public route and are judged by output and behavior verdicts.
+
+Default-promotion decisions must be recorded before adding `routing-reliability.csv` to any default suite. A promotion record must state one of:
+
+- `targeted_only`: keep the suite targeted, with reason and next evidence needed;
+- `promote_later`: targeted gate is improving but lacks stable baseline/cache evidence;
+- `promote_to_default`: targeted gate is stable, cache/source evidence is valid, no blocking default-suite regression appears, and both runner entrypoints will be updated together.
+
+Do not create baseline notes, runtime-surface edits, or default promotion decisions as part of a docs-only checklist update. Those belong to the targeted baseline, evidence-justified surface adjustment, and promotion review slices.
+
 ## Checks To Record
 
 For each prompt:

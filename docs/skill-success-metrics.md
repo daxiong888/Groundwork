@@ -23,6 +23,126 @@ Record these fields for each evaluated prompt:
 - `patch_proposal_generated`: `true` when the run suggests a skill/doc/eval patch.
 - `human_decision`: `accepted`, `rejected`, `needs-info`, `quarantined`, or `none`.
 
+## Routing Reliability Targeted Gate Metrics
+
+Routing reliability metrics are targeted internal gate guardrails, not public SLA, customer SLA, or numeric first-slice SLO commitments.
+
+Use these metrics only for `evals/prompts/routing-reliability.csv` and other rows that emit routing metadata. Legacy prompt suites may continue to use the skill-level fields above without producing `routing_summary`.
+
+Per-row routing fields:
+
+- `expected_route`: the single best first owning workflow, derived from `expected_best`.
+- `actual_route`: the observed first route, or `runtime-safety-gate` only for strict host/runtime preemption.
+- `acceptable_routes`: safe alternatives separated by `|` in CSV and emitted as a list in JSON.
+- `forbidden_routes`: routes that fail even if the output appears plausible.
+- `route_boundary`: the boundary under test, such as `entry-contract`, `implement-vs-verify`, or `runtime-safety-gate-vs-skill-gate`.
+- `routing_verdict`: whether route selection was best, acceptable, forbidden, missing, unexpected, pass, fail, or blocked according to runner classification.
+- `host_preemption_verdict`: `pass`, `fail`, `blocked`, or `not_applicable`.
+- `output_contract_verdict`: `pass`, `fail`, `blocked`, or `not_applicable`.
+- `evidence_verdict`: `pass`, `fail`, `blocked`, or `not_applicable` in runner output, with legacy reports allowed to use `present`, `missing`, or `explicitly_unavailable` when they are not routing rows.
+- `behavior_verdict`: `pass`, `fail`, `blocked`, or `not_applicable`.
+- `overall_verdict`: `pass`, `partial`, `fail`, `blocked`, or timeout-equivalent failure.
+- `failure_type`: the classified reason, such as `forbidden_route`, `invalid_host_preemption`, `output_contract_failure`, `evidence_failure`, `direct_fallback_ceremony`, or `premature_implementation`.
+- `fix_locus`: likely owner layer, such as routing surface, runtime safety gate, skill output contract, evidence collection, requirement-state gate, or direct fallback boundary.
+
+Summary metrics in `routing_summary`:
+
+- `best_route_hit_at_1`: count and rate where `actual_route == expected_route`.
+- `acceptable_route_coverage`: count and rate where `actual_route` is in `acceptable_routes`.
+- `forbidden_route_hits`: count and rate where `actual_route` is forbidden or the failure type is forbidden-route.
+- `invalid_host_preemption`: count and rate of strict host-preemption failures.
+- `routing_outcomes`: counts for best, acceptable, forbidden, missing, unexpected, and related route outcomes.
+- `route_boundaries`: per-boundary row/pass/fail/blocking counts.
+- `per_route_counts`: expected and actual route distributions.
+- `route_pair_confusion`: compact expected-to-actual route drift table.
+- `verdict_dimension_counts`: counts for routing, host-preemption, output, evidence, behavior, and overall verdict dimensions.
+- `failure_type_counts`: classified non-pass reasons.
+- `unclassified_nonpass`: non-pass ids that lack `failure_type`.
+
+Targeted gate interpretation:
+
+- No forbidden route hit in targeted gate rows unless an explicit review waives it with owner and reason.
+- No invalid host preemption in targeted safety rows.
+- No unclassified route/execution failure in targeted gate rows.
+- No accepted P1 routing regression without owner, action, and sample-backfill decision.
+- Best-route Hit@1 is a trend signal. It must not hide forbidden route hits, invalid host preemption, unclassified failures, or legitimate acceptable-route behavior.
+- Acceptable coverage is a review signal, not a reason to broaden acceptable routes until ownership becomes meaningless.
+
+Regression records for accepted routing failures must include:
+
+- prompt or row id;
+- route boundary;
+- observed actual route;
+- expected best route;
+- failure type;
+- fix locus;
+- owner;
+- action: `fix_now`, `defer_with_reason`, `accept_as_expected`, or `needs_more_evidence`;
+- sample-backfill decision: `add_row`, `update_row`, `covered_by_existing_row`, or `no_backfill_with_reason`;
+- verification evidence after fix or deferral.
+
+## Measurement Token Rules
+
+Routing rows use finite measurement tokens for `output_contract` and `evidence_required`. They are not arbitrary prose and must not silently pass through fuzzy text judgment.
+
+Current implemented `output_contract` tokens:
+
+- `none`
+- `verify_scope_full`
+- `gate_fields`
+- `prototype_contract_boundary`
+- `implementation_conformance`
+- `entry_decision`
+- `trajectory_signal`
+
+Current allowed future `output_contract` tokens:
+
+- `qa_fix_qa`
+- `artifact_header`
+- `handoff_compact_reference`
+- `route_failure_feedback`
+
+Current implemented `evidence_required` tokens:
+
+- `none`
+- `no_file_changes`
+- `gate_observed`
+- `git_status`
+- `raw_intent_no_implementation`
+- `direct_fallback_no_artifact`
+
+`no_file_changes` means no production/source changes for rows that require no artifact evidence. It may ignore narrowly recognized throwaway prototype artifacts when `artifact_allowed=true` and the actual route is `prototype`, such as `prototype.html`, root `index.html`, or `artifacts/*prototype*/index.html`. This is not a general source-change waiver.
+
+`raw_intent_no_implementation` forbids raw or draft requirement rows from entering implementation-ready routes or writing code implementation artifacts. It may allow `to-prd` requirement-shaping Markdown artifacts, such as `README.md`, `docs/*.md`, or `artifacts/*/prd.md`, when the response clearly frames the output as draft PRD/spec/acceptance shaping rather than implementation.
+
+Current allowed future `evidence_required` tokens:
+
+- `source_or_unverified`
+- `tests_or_unverified`
+- `runtime_or_unverified`
+- `browser_or_unverified`
+- `cache_equivalence`
+
+Unknown measurement tokens block the row. Allowed future tokens are schema-valid but return `blocked` until a deterministic checker exists.
+
+`blocked` is a verdict, stop condition, or normalization outcome. It is not a route-list token and must not appear in `expected_best`, `acceptable_routes`, or `forbidden_routes`.
+
+`runtime-safety-gate` is an eval-only actual-route classification for strict host/runtime preemption. It is never `expected_best` and is not a public skill route. Direct fallback remains the default no-skill route when strict host-preemption conditions are not met.
+
+## Deferred Boundaries
+
+The targeted gate does not approve broad runtime or public surface changes by itself.
+
+Deferred unless later targeted evidence proves the need:
+
+- runtime-visible surface adjustment;
+- docs or shared-rule changes outside the scoped fix locus;
+- learned routing;
+- retrieval or rerank pilots;
+- MCP/A2A or protocol pilots;
+- observability dashboards and error-budget programs;
+- default-suite promotion.
+
 ## Verdict Definitions
 
 - `pass`: expected behavior is present, forbidden behavior is absent, and required evidence is adequate.
