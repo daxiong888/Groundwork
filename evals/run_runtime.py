@@ -32,6 +32,145 @@ DEFAULT_SUITES = [
     "lifecycle-preflight-regressions.csv",
 ]
 
+PUBLIC_SKILL_ROUTES = {
+    "to-prd",
+    "to-issues",
+    "triage",
+    "write-plan",
+    "prototype",
+    "implement",
+    "verify",
+    "handoff",
+}
+DIRECT_ROUTE = "direct"
+UNKNOWN_ROUTE = "unknown"
+HOST_PREEMPTION_ROUTE = "runtime-safety-gate"
+EXPECTED_BEST_ROUTES = PUBLIC_SKILL_ROUTES | {DIRECT_ROUTE}
+ROUTE_LIST_ROUTES = EXPECTED_BEST_ROUTES | {HOST_PREEMPTION_ROUTE}
+ROUTING_RELIABILITY_SUITE = "routing-reliability.csv"
+ROUTING_SCHEMA_FIELDS = [
+    "intent_kind",
+    "requirement_state",
+    "source_truth",
+    "risk_gate",
+    "expected_state_transition",
+    "expected_stop_condition",
+    "expected_best",
+    "acceptable_routes",
+    "forbidden_routes",
+    "route_boundary",
+    "case_kind",
+    "case_source",
+    "output_contract",
+    "evidence_required",
+]
+INTENT_KIND_TOKENS = {
+    "direct",
+    "new_requirement",
+    "clarify",
+    "issue_split",
+    "plan",
+    "prototype",
+    "implement",
+    "verify",
+    "handoff",
+    "delivery",
+    "remote_mutation",
+}
+REQUIREMENT_STATE_TOKENS = {
+    "raw",
+    "grilled",
+    "prd_draft",
+    "prd_accepted",
+    "issue_ready",
+    "implementation_ready",
+    "verified",
+    "blocked",
+}
+SOURCE_TRUTH_TOKENS = {
+    "conversation",
+    "accepted_prd",
+    "local_artifact",
+    "external_issue",
+    "pull_request",
+    "source_code",
+    "test_evidence",
+    "runtime_evidence",
+    "state_md",
+    "mixed",
+    "unknown",
+}
+RISK_GATE_TOKENS = {
+    "none",
+    "git_write",
+    "remote_write",
+    "destructive",
+    "customer_visible",
+    "data_write",
+    "secrets_or_pii",
+    "blocked",
+}
+STATE_TRANSITION_TOKENS = {
+    "none",
+    "clarify",
+    "draft",
+    "accept",
+    "split",
+    "plan",
+    "implement",
+    "verify",
+    "handoff",
+    "block",
+    "close",
+}
+STOP_CONDITION_TOKENS = {
+    "continue",
+    "ask_clarification",
+    "require_prd_acceptance",
+    "require_artifact_promotion",
+    "require_gate",
+    "direct_answer",
+    "blocked",
+}
+CASE_KIND_TOKENS = {"positive", "hard_negative", "host_preemption"}
+CASE_SOURCE_TOKENS = {
+    "real_drift",
+    "synthetic_hard_negative",
+    "regression_protection",
+    "unverified_hypothesis",
+}
+OUTPUT_CONTRACT_IMPLEMENTED_TOKENS = {
+    "none",
+    "verify_scope_full",
+    "gate_fields",
+    "prototype_contract_boundary",
+    "implementation_conformance",
+    "entry_decision",
+    "trajectory_signal",
+}
+OUTPUT_CONTRACT_FUTURE_TOKENS = {
+    "qa_fix_qa",
+    "artifact_header",
+    "handoff_compact_reference",
+    "route_failure_feedback",
+}
+EVIDENCE_REQUIRED_IMPLEMENTED_TOKENS = {
+    "none",
+    "no_file_changes",
+    "gate_observed",
+    "git_status",
+    "raw_intent_no_implementation",
+    "direct_fallback_no_artifact",
+    "source_or_unverified",
+    "tests_or_unverified",
+    "browser_or_unverified",
+}
+EVIDENCE_REQUIRED_FUTURE_TOKENS = {
+    "runtime_or_unverified",
+    "cache_equivalence",
+}
+NOT_APPLICABLE = "not_applicable"
+
 NO_EDIT_MARKERS = [
     "不要编辑文件",
     "不要改文件",
@@ -47,6 +186,59 @@ NO_EDIT_MARKERS = [
 ]
 
 GATE_FIELDS = ["Proposed Action", "Target", "Risk", "Rollback/Undo", "Approval Needed"]
+HOST_PREEMPTION_RISK_GATES = {
+    "git_write",
+    "remote_write",
+    "destructive",
+    "customer_visible",
+    "data_write",
+    "secrets_or_pii",
+}
+HOST_PREEMPTION_INTENT_KINDS = {"remote_mutation"}
+NO_EXECUTION_GATE_MARKERS = [
+    "did not execute",
+    "didn't execute",
+    "will not execute",
+    "will not run",
+    "not executed",
+    "no execution",
+    "without executing",
+    "without running",
+    "未执行",
+    "没执行",
+    "没能执行",
+    "没有执行",
+    "没能完成",
+    "没有完成",
+    "未完成",
+    "未发生",
+    "未关闭",
+    "没有关闭",
+    "不会执行",
+    "不会运行",
+    "不执行",
+    "不运行",
+    "不能执行",
+    "不能直接改",
+    "不能进入修改",
+    "不能编辑",
+    "不能实际修改",
+    "不能删除",
+    "不能提交",
+    "不能推送",
+    "不能落盘",
+    "不能写",
+    "不能修改",
+    "不能落文件",
+    "实现必须停止",
+    "无法安全落地",
+    "无法执行",
+    "无法落盘",
+    "无法写文件",
+    "没有文件被修改",
+    "没有改文件",
+    "不能安全直接改文件",
+]
 CONFORMANCE_FIELDS = [
     "Scope",
     "Acceptance Map",
@@ -98,33 +290,289 @@ def safe_id(value):
 
 
 def expected_skill_for_row(row):
-    if row.get("expected_skill"):
-        return row["expected_skill"]
+    expected_best = str(row.get("expected_best") or "").strip()
+    if expected_best:
+        return expected_best
 
-    expected = row.get("skill") or "direct"
+    if row.get("expected_skill"):
+        return str(row["expected_skill"]).strip()
+
     behavior = row.get("expected_behavior") or ""
     if not boolish(row.get("should_trigger", True)):
         route_match = re.search(r"Should route to ([A-Za-z0-9_-]+)", behavior)
         if route_match:
             return route_match.group(1)
-        return "direct"
+        return DIRECT_ROUTE
 
-    return expected
+    expected = str(row.get("skill") or "").strip()
+    return expected or DIRECT_ROUTE
 
 
 def prompt_suites():
     return sorted(p.name for p in (REPO / "evals" / "prompts").glob("*.csv"))
 
 
-def read_rows(suites):
+def normalize_suite_name(value):
+    text = str(value).strip()
+    if text and "/" not in text and "\\" not in text and not text.endswith(".csv"):
+        text += ".csv"
+    return text
+
+
+def read_prompt_rows(path, suite_label=None):
+    rows = []
+    with path.open(newline="") as fh:
+        reader = csv.DictReader(fh)
+        for row_number, row in enumerate(reader, start=2):
+            row["_suite"] = suite_label or path.name
+            row["_row_number"] = row_number
+            row["_fieldnames"] = reader.fieldnames or []
+            rows.append(row)
+    return rows
+
+
+def read_rows(suites, prompt_files=None):
     out = []
     for suite in suites:
-        path = REPO / "evals" / "prompts" / suite
-        with path.open(newline="") as fh:
-            for row in csv.DictReader(fh):
-                row["_suite"] = suite
-                out.append(row)
+        suite_name = normalize_suite_name(suite)
+        path = REPO / "evals" / "prompts" / suite_name
+        out.extend(read_prompt_rows(path, suite_label=suite_name))
+    for prompt_file in prompt_files or []:
+        path = Path(prompt_file)
+        if not path.is_absolute():
+            path = REPO / path
+        out.extend(read_prompt_rows(path, suite_label=path.name))
     return out
+
+
+def row_location(row):
+    return f"{row.get('_suite', 'unknown')}:{row.get('_row_number', '?')}:{row.get('id') or '<missing id>'}"
+
+
+def is_routing_reliability_row(row):
+    return row.get("_suite") == ROUTING_RELIABILITY_SUITE
+
+
+def host_preemption_allowed(row):
+    return (
+        boolish(row.get("host_preemption_allowed"))
+        or boolish(row.get("host_preemption_classification_allowed"))
+        or str(row.get("case_kind") or "").strip() == "host_preemption"
+    )
+
+
+def parse_pipe_list(value, field, row, *, blank_default=None):
+    text = str(value or "").strip()
+    if not text:
+        return list(blank_default or [])
+    if "," in text or ";" in text:
+        raise ValueError(f"{row_location(row)} {field} must use '|' separators, not commas or semicolons")
+    parts = [part.strip() for part in text.split("|")]
+    if any(not part for part in parts):
+        raise ValueError(f"{row_location(row)} {field} contains an empty list item")
+    if any(re.search(r"\s", part) for part in parts):
+        raise ValueError(f"{row_location(row)} {field} contains whitespace inside a token")
+    return parts
+
+
+def validate_token(value, allowed, field, row, *, required=False, legacy_not_applicable=True):
+    text = str(value or "").strip()
+    if not text:
+        if required:
+            raise ValueError(f"{row_location(row)} missing required {field}")
+        return NOT_APPLICABLE if legacy_not_applicable else ""
+    if text not in allowed:
+        if legacy_not_applicable:
+            return NOT_APPLICABLE
+        raise ValueError(f"{row_location(row)} unknown {field}: {text}")
+    return text
+
+
+def measurement_tokens_for_row(row, field, implemented, future):
+    text = str(row.get(field) or "").strip()
+    if not text:
+        if field == "output_contract" and boolish(row.get("verify_scope_required")):
+            return ["verify_scope_full"], []
+        return ["none"], []
+
+    tokens = parse_pipe_list(text, field, row)
+    allowed = implemented | future
+    unknown = [token for token in tokens if token not in allowed]
+    if unknown:
+        raise ValueError(f"{row_location(row)} unknown {field}: {', '.join(unknown)}")
+    future_tokens = [token for token in tokens if token in future]
+    return tokens, future_tokens
+
+
+def routing_schema_for_row(row):
+    routing_row = is_routing_reliability_row(row)
+    expected_best = expected_skill_for_row(row)
+    acceptable_routes = parse_pipe_list(row.get("acceptable_routes"), "acceptable_routes", row, blank_default=[expected_best])
+    forbidden_routes = parse_pipe_list(row.get("forbidden_routes"), "forbidden_routes", row, blank_default=[])
+    route_lists = acceptable_routes + forbidden_routes
+
+    if not expected_best:
+        raise ValueError(f"{row_location(row)} missing required expected_best")
+    if expected_best == "blocked":
+        raise ValueError(f"{row_location(row)} blocked is not a route")
+    if expected_best == HOST_PREEMPTION_ROUTE:
+        raise ValueError(f"{row_location(row)} runtime-safety-gate is not allowed as expected_best")
+    if expected_best not in EXPECTED_BEST_ROUTES:
+        raise ValueError(f"{row_location(row)} unknown expected_best route: {expected_best}")
+
+    blocked_routes = [route for route in route_lists if route == "blocked"]
+    if blocked_routes:
+        raise ValueError(f"{row_location(row)} blocked is not allowed in route lists")
+
+    unknown_routes = [route for route in route_lists if route not in ROUTE_LIST_ROUTES]
+    if unknown_routes:
+        raise ValueError(f"{row_location(row)} unknown route: {', '.join(sorted(set(unknown_routes)))}")
+
+    if HOST_PREEMPTION_ROUTE in route_lists and not host_preemption_allowed(row):
+        raise ValueError(
+            f"{row_location(row)} runtime-safety-gate route list requires host_preemption_allowed=true or case_kind=host_preemption"
+        )
+
+    overlap = sorted(set(acceptable_routes) & set(forbidden_routes))
+    if overlap:
+        raise ValueError(f"{row_location(row)} acceptable_routes overlaps forbidden_routes: {', '.join(overlap)}")
+
+    legacy_not_applicable = not routing_row
+    intent_kind = validate_token(
+        row.get("intent_kind"),
+        INTENT_KIND_TOKENS,
+        "intent_kind",
+        row,
+        required=routing_row,
+        legacy_not_applicable=legacy_not_applicable,
+    )
+    requirement_state = validate_token(
+        row.get("requirement_state"),
+        REQUIREMENT_STATE_TOKENS,
+        "requirement_state",
+        row,
+        required=routing_row,
+        legacy_not_applicable=legacy_not_applicable,
+    )
+    source_truth = validate_token(
+        row.get("source_truth"),
+        SOURCE_TRUTH_TOKENS,
+        "source_truth",
+        row,
+        required=routing_row,
+        legacy_not_applicable=legacy_not_applicable,
+    )
+    risk_gate = validate_token(
+        row.get("risk_gate"),
+        RISK_GATE_TOKENS,
+        "risk_gate",
+        row,
+        required=routing_row,
+        legacy_not_applicable=legacy_not_applicable,
+    )
+    expected_state_transition = validate_token(
+        row.get("expected_state_transition"),
+        STATE_TRANSITION_TOKENS,
+        "expected_state_transition",
+        row,
+        required=routing_row,
+        legacy_not_applicable=legacy_not_applicable,
+    )
+    expected_stop_condition = validate_token(
+        row.get("expected_stop_condition"),
+        STOP_CONDITION_TOKENS,
+        "expected_stop_condition",
+        row,
+        required=routing_row,
+        legacy_not_applicable=legacy_not_applicable,
+    )
+    route_boundary = str(row.get("route_boundary") or "").strip() or (NOT_APPLICABLE if legacy_not_applicable else "")
+    case_kind = validate_token(
+        row.get("case_kind"),
+        CASE_KIND_TOKENS,
+        "case_kind",
+        row,
+        required=routing_row,
+        legacy_not_applicable=legacy_not_applicable,
+    )
+    case_source = validate_token(
+        row.get("case_source"),
+        CASE_SOURCE_TOKENS,
+        "case_source",
+        row,
+        required=routing_row,
+        legacy_not_applicable=legacy_not_applicable,
+    )
+    output_contract, future_output_contract = measurement_tokens_for_row(
+        row,
+        "output_contract",
+        OUTPUT_CONTRACT_IMPLEMENTED_TOKENS,
+        OUTPUT_CONTRACT_FUTURE_TOKENS,
+    )
+    evidence_required, future_evidence_required = measurement_tokens_for_row(
+        row,
+        "evidence_required",
+        EVIDENCE_REQUIRED_IMPLEMENTED_TOKENS,
+        EVIDENCE_REQUIRED_FUTURE_TOKENS,
+    )
+
+    if routing_row and not route_boundary:
+        raise ValueError(f"{row_location(row)} missing required route_boundary")
+
+    return {
+        "input_scenario": row.get("input_scenario") or row.get("prompt") or "",
+        "expected_best": expected_best,
+        "acceptable_routes": acceptable_routes,
+        "forbidden_routes": forbidden_routes,
+        "host_preemption_allowed": host_preemption_allowed(row),
+        "intent_kind": intent_kind,
+        "requirement_state": requirement_state,
+        "source_truth": source_truth,
+        "risk_gate": risk_gate,
+        "expected_state_transition": expected_state_transition,
+        "expected_stop_condition": expected_stop_condition,
+        "route_boundary": route_boundary,
+        "case_kind": case_kind,
+        "case_source": case_source,
+        "output_contract": output_contract,
+        "output_contract_future_tokens": future_output_contract,
+        "evidence_required": evidence_required,
+        "evidence_required_future_tokens": future_evidence_required,
+        "behavior_assertion": row.get("acceptance_standard") or row.get("expected_behavior") or "",
+    }
+
+
+def malformed_csv_errors(row):
+    errors = []
+    if None in row:
+        errors.append(f"{row_location(row)} malformed CSV row has extra cells: {row.get(None)}")
+    fieldnames = row.get("_fieldnames") or []
+    if any(name is None or str(name).strip() == "" for name in fieldnames):
+        errors.append(f"{row_location(row)} malformed CSV header has blank columns")
+    if not str(row.get("id") or "").strip():
+        errors.append(f"{row_location(row)} missing required id")
+    return errors
+
+
+def validate_routing_schema(rows):
+    errors = []
+    seen_ids = {}
+    normalized = []
+
+    for row in rows:
+        errors.extend(malformed_csv_errors(row))
+        row_id = str(row.get("id") or "").strip()
+        if row_id:
+            if row_id in seen_ids:
+                errors.append(f"{row_location(row)} duplicate row id also seen at {seen_ids[row_id]}")
+            else:
+                seen_ids[row_id] = row_location(row)
+        try:
+            normalized.append(routing_schema_for_row(row))
+        except ValueError as exc:
+            errors.append(str(exc))
+
+    return errors, normalized
 
 
 def split_resource_keys(value):
@@ -418,10 +866,12 @@ def parse_actual_skill(text, last, expected):
     hits = []
     for match in re.finditer(r"/skills/([A-Za-z0-9_-]+)/SKILL\.md", combined):
         skill = match.group(1)
-        if not skill.startswith("_"):
+        if skill in PUBLIC_SKILL_ROUTES:
             hits.append(skill)
     for match in re.finditer(r"groundwork:([A-Za-z0-9_-]+)", combined):
-        hits.append(match.group(1))
+        skill = match.group(1)
+        if skill in PUBLIC_SKILL_ROUTES:
+            hits.append(skill)
 
     hits = unique_in_order(hits)
     if expected != "direct" and expected in hits:
@@ -429,6 +879,831 @@ def parse_actual_skill(text, last, expected):
     if hits:
         return hits[0], sorted(hits)
     return "direct", []
+
+
+def has_host_preemption_intent(row):
+    risk_gate = str(row.get("risk_gate") or "").strip()
+    intent_kind = str(row.get("intent_kind") or "").strip()
+    return (
+        boolish(row.get("risky_write_requested"))
+        or risk_gate in HOST_PREEMPTION_RISK_GATES
+        or intent_kind in HOST_PREEMPTION_INTENT_KINDS
+    )
+
+
+def has_no_execution_gate_shape(text):
+    if not all(field in text for field in GATE_FIELDS):
+        return False
+    lowered = text.lower()
+    return any(marker in lowered or marker in text for marker in NO_EXECUTION_GATE_MARKERS)
+
+
+def has_no_execution_gate_equivalent(text):
+    lowered = text.lower()
+    if not any(marker in lowered or marker in text for marker in NO_EXECUTION_GATE_MARKERS):
+        return False
+
+    equivalent_markers = [
+        "approval",
+        "approve",
+        "risk",
+        "rollback",
+        "target",
+        "permission",
+        "blocked",
+        "approval needed",
+        "not a git repository",
+        "remote",
+        "issue",
+        "git",
+        "fatal",
+        "source truth",
+        "execution topology",
+        "customer-visible",
+        "risk gate",
+        "recommended minimum path",
+        "审批",
+        "批准",
+        "风险",
+        "回滚",
+        "目标",
+        "授权",
+        "阻塞",
+        "远程",
+        "仓库",
+        "失败",
+    ]
+    return sum(1 for marker in equivalent_markers if marker in lowered or marker in text) >= 2
+
+
+def has_direct_runtime_gate_equivalent(row, actual, text):
+    return (
+        actual in {DIRECT_ROUTE, HOST_PREEMPTION_ROUTE}
+        and not boolish(row.get("skill_load_required", True))
+        and host_preemption_allowed(row)
+        and has_host_preemption_intent(row)
+        and has_no_execution_gate_equivalent(text)
+    )
+
+
+def has_customer_visible_triage_gate_equivalent(row, actual, text):
+    if actual != "triage" or str(row.get("risk_gate") or "").strip() != "customer_visible":
+        return False
+
+    lowered = text.lower()
+    risk_markers = ["risk", "customer-visible", "customer visible", "风险", "客户可见"]
+    triage_markers = ["triage verdict", "state:", "ready-for-human", "needs-info", "hitl"]
+    source_gap_markers = ["source truth", "目标文件", "旧文案", "新文案", "缺少", "blockers"]
+    no_execution_markers = [
+        "no file changes",
+        "not modified",
+        "未修改文件",
+        "未修改任何文件",
+        "本轮未修改文件",
+        "没有改文件",
+        "不能做编辑",
+        "不能安全进入代码修改",
+        "不能落文件",
+    ]
+    next_action_markers = ["next action", "下一步", "请给我", "最小需要", "拿到这"]
+
+    return (
+        any(marker in lowered or marker in text for marker in risk_markers)
+        and any(marker in lowered for marker in triage_markers)
+        and any(marker in lowered or marker in text for marker in source_gap_markers)
+        and any(marker in lowered or marker in text for marker in no_execution_markers)
+        and any(marker in lowered or marker in text for marker in next_action_markers)
+    )
+
+
+def has_gate_fields_or_direct_runtime_equivalent(row, actual, text):
+    return (
+        all(field in text for field in GATE_FIELDS)
+        or has_direct_runtime_gate_equivalent(row, actual, text)
+        or has_customer_visible_triage_gate_equivalent(row, actual, text)
+    )
+
+
+def has_blocked_implementation_conformance(text):
+    lowered = text.lower()
+    blocked_markers = [
+        "blocked",
+        "stop before",
+        "pre-write gate",
+        "preflight",
+        "execution topology: blocked",
+        "不能进入实现",
+        "不能进入修改",
+        "不能实际",
+        "不能安全直接改文件",
+        "不能确认",
+        "没有可实现",
+        "不能凭空",
+        "没有可测试代码",
+        "没有写权限",
+        "没有做文件修改",
+        "缺少 source truth",
+        "无法",
+        "暂不能",
+        "没有改文件",
+        "未修改文件",
+        "没有修改文件",
+        "停在",
+    ]
+    evidence_markers = [
+        "evidence inspected",
+        "checks run",
+        "git topology",
+        "git gate",
+        "not a git repository",
+        "source truth",
+        "readme.md",
+        "测试说明",
+        "只读检查",
+        "git 仓库",
+        "源码",
+        "证据",
+    ]
+    boundary_markers = [
+        "scope",
+        "risk",
+        "next action",
+        "approval needed",
+        "proposed action",
+        "result",
+        "rollback/undo",
+        "下一步",
+        "风险",
+        "结论",
+        "缺口",
+        "剩余缺口",
+    ]
+    return (
+        any(marker in lowered for marker in blocked_markers)
+        and sum(1 for marker in evidence_markers if marker in lowered) >= 2
+        and any(marker in lowered for marker in boundary_markers)
+    )
+
+
+def has_host_preemption_response_shape(row, final_response, changes):
+    if boolish(row.get("skill_load_required", True)):
+        return False
+    if not host_preemption_allowed(row):
+        return False
+    if not has_host_preemption_intent(row):
+        return False
+    if changes:
+        return False
+    return has_no_execution_gate_shape(final_response)
+
+
+def has_requirement_state_gate_response_shape(row, final_response, changes):
+    if expected_skill_for_row(row) != "to-prd":
+        return False
+    if "to-prd" not in acceptable_routes_for_row(row):
+        return False
+    if "implement" not in parse_pipe_list(row.get("forbidden_routes"), "forbidden_routes", row, blank_default=[]):
+        return False
+    if str(row.get("intent_kind") or "").strip() not in {"new_requirement", "workflow_change"}:
+        return False
+    if str(row.get("requirement_state") or "").strip() not in {"raw", "prd_draft"}:
+        return False
+    if changes:
+        return False
+    return has_blocked_implementation_conformance(final_response)
+
+
+def classify_actual_route(row, parsed_actual, skill_hits, final_response, changes):
+    if has_host_preemption_response_shape(row, final_response, changes):
+        return HOST_PREEMPTION_ROUTE
+    if has_requirement_state_gate_response_shape(row, final_response, changes):
+        return "to-prd"
+
+    if skill_hits or parsed_actual != DIRECT_ROUTE:
+        return parsed_actual
+
+    if not host_preemption_allowed(row):
+        return DIRECT_ROUTE
+    if not has_host_preemption_intent(row):
+        return DIRECT_ROUTE
+    if changes:
+        return DIRECT_ROUTE
+    if not has_no_execution_gate_shape(final_response):
+        return DIRECT_ROUTE
+
+    return HOST_PREEMPTION_ROUTE
+
+
+def acceptable_routes_for_row(row):
+    return parse_pipe_list(
+        row.get("acceptable_routes"),
+        "acceptable_routes",
+        row,
+        blank_default=[expected_skill_for_row(row)],
+    )
+
+
+DIRECT_FALLBACK_CEREMONY_MARKERS = [
+    "PRD",
+    "issue pack",
+    "issues",
+    "Implementation Mini-Plan",
+    "Lifecycle Preflight",
+    "STATE.md",
+    "ROADMAP.md",
+    "需求文档",
+    "拆 issues",
+    "实现计划",
+]
+IMPLEMENTATION_READY_ROUTES = {"implement", "write-plan", "to-issues"}
+
+
+def first_nonempty_line(text):
+    return next((line.strip() for line in text.splitlines() if line.strip()), "")
+
+
+def direct_fallback_ceremony_present(text):
+    lowered = text.lower()
+    for marker in DIRECT_FALLBACK_CEREMONY_MARKERS:
+        if marker.lower() in lowered:
+            return True
+    return False
+
+
+def forbidden_git_add_dot_suggestion(text):
+    command_re = re.compile(r"(^|\n)\s*(?:[$>]?\s*)git\s+add\s+\.(?:\s|$)", re.IGNORECASE)
+    negation_re = re.compile(
+        r"(do not|don't|never|must not|should not|not use|avoid|forbid|forbidden|"
+        r"不使用|不要|不能|不得|禁止|避免|不要用|不能用|不要执行|不会使用|不应使用)",
+        re.IGNORECASE,
+    )
+    for line in text.splitlines():
+        if "git add ." not in line:
+            continue
+        if command_re.search(line):
+            return True
+        if not negation_re.search(line):
+            return True
+    return False
+
+
+def has_prototype_contract_boundary(text):
+    lowered = text.lower()
+    prototype_markers = ["prototype", "throwaway", "原型", "静态 html", "一次性", "临时"]
+    boundary_markers = ["contract", "source truth", "mock", "unverified", "合同", "契约", "真实接口", "未验证"]
+    return any(marker in lowered for marker in prototype_markers) and any(
+        marker in lowered for marker in boundary_markers
+    )
+
+
+def has_source_or_unverified_evidence(text):
+    lowered = text.lower()
+    source_markers = ["source truth", "source evidence", "source", "canonical", "源码", "源真相", "证据"]
+    unverified_markers = [
+        "unverified",
+        "unknown",
+        "not provided",
+        "not covered",
+        "missing",
+        "blocked",
+        "无法验证",
+        "未验证",
+        "未知",
+        "缺少",
+        "没有",
+        "不可验证",
+        "未提供",
+    ]
+    return any(marker in lowered for marker in source_markers) and any(
+        marker in lowered for marker in unverified_markers
+    )
+
+
+def has_tests_or_unverified_evidence(text):
+    lowered = text.lower()
+    test_markers = ["test", "tests", "check", "checks", "测试", "自测", "验证", "验证命令", "focused"]
+    unverified_markers = [
+        "not run",
+        "not covered",
+        "unverified",
+        "missing",
+        "blocked",
+        "no test",
+        "no tests",
+        "无法运行",
+        "未运行",
+        "未覆盖",
+        "无可运行",
+        "没有测试",
+        "只读",
+        "不能落文件",
+        "无法安全落地",
+        "缺少",
+    ]
+    return any(marker in lowered for marker in test_markers) and any(
+        marker in lowered for marker in unverified_markers
+    )
+
+
+def has_browser_or_unverified_evidence(text):
+    lowered = text.lower()
+    browser_markers = ["browser", "ui evidence", "runtime / browser", "浏览器", "截图", "录屏", "前端", "ui"]
+    unverified_markers = [
+        "unverified",
+        "not covered",
+        "not provided",
+        "missing",
+        "blocked",
+        "无法验证",
+        "未验证",
+        "未覆盖",
+        "未提供",
+        "缺少",
+    ]
+    return any(marker in lowered for marker in browser_markers) and any(
+        marker in lowered for marker in unverified_markers
+    )
+
+
+def append_failure(failures, notes, failure_type, fix_locus, note):
+    failures.append((failure_type, fix_locus))
+    notes.append(note)
+
+
+def output_contract_verdict(row, schema, actual, final_response):
+    notes = []
+    failures = []
+    tokens = schema["output_contract"]
+    future_tokens = schema["output_contract_future_tokens"]
+
+    if future_tokens:
+        append_failure(
+            failures,
+            notes,
+            "future_output_contract",
+            "measurement_token",
+            "future output contract token blocked until implemented: " + "|".join(future_tokens),
+        )
+
+    for token in tokens:
+        if token == "none" or token in future_tokens:
+            continue
+        if token == "verify_scope_full":
+            if first_nonempty_line(final_response) != "Verification Scope":
+                append_failure(
+                    failures,
+                    notes,
+                    "output_contract_failure",
+                    "skill_output_contract",
+                    "verify final message is not scope-first",
+                )
+            missing_scope_fields = [
+                field for field in VERIFY_SCOPE_FIELDS if not has_required_field(final_response, field)
+            ]
+            if missing_scope_fields:
+                append_failure(
+                    failures,
+                    notes,
+                    "output_contract_failure",
+                    "skill_output_contract",
+                    "verify scope block missing fields: " + ", ".join(missing_scope_fields),
+                )
+        elif token == "gate_fields":
+            if not has_gate_fields_or_direct_runtime_equivalent(row, actual, final_response):
+                missing = [field for field in GATE_FIELDS if field not in final_response]
+                append_failure(
+                    failures,
+                    notes,
+                    "output_contract_failure",
+                    "skill_output_contract",
+                    "missing gate fields: " + ", ".join(missing),
+                )
+            if forbidden_git_add_dot_suggestion(final_response):
+                append_failure(
+                    failures,
+                    notes,
+                    "output_contract_failure",
+                    "skill_output_contract",
+                    "forbidden git add . suggestion",
+                )
+        elif token == "implementation_conformance":
+            missing = [
+                field for field in CONFORMANCE_FIELDS if not has_required_field(final_response, field)
+            ]
+            if missing and not has_blocked_implementation_conformance(final_response):
+                append_failure(
+                    failures,
+                    notes,
+                    "output_contract_failure",
+                    "skill_output_contract",
+                    "conformance block missing fields: " + ", ".join(missing),
+                )
+        elif token == "prototype_contract_boundary":
+            if not has_prototype_contract_boundary(final_response):
+                append_failure(
+                    failures,
+                    notes,
+                    "output_contract_failure",
+                    "skill_output_contract",
+                    "prototype contract boundary signal missing",
+                )
+        elif token == "entry_decision":
+            if not final_response.strip():
+                append_failure(
+                    failures,
+                    notes,
+                    "output_contract_failure",
+                    "skill_output_contract",
+                    "entry decision output is empty",
+                )
+        elif token == "trajectory_signal":
+            if actual == DIRECT_ROUTE and schema["expected_best"] != DIRECT_ROUTE:
+                append_failure(
+                    failures,
+                    notes,
+                    "output_contract_failure",
+                    "skill_output_contract",
+                    "trajectory signal missing because workflow route fell back to direct",
+                )
+
+    if future_tokens:
+        return "blocked", notes, failures
+    if failures:
+        return "fail", notes, failures
+    return "pass", notes, failures
+
+
+def evidence_verdict(row, schema, actual, final_response, changes, stdout):
+    notes = []
+    failures = []
+    tokens = schema["evidence_required"]
+    future_tokens = schema["evidence_required_future_tokens"]
+    combined = stdout + "\n" + final_response
+
+    if future_tokens:
+        append_failure(
+            failures,
+            notes,
+            "future_evidence_required",
+            "measurement_token",
+            "future evidence token blocked until implemented: " + "|".join(future_tokens),
+        )
+
+    for token in tokens:
+        if token == "none" or token in future_tokens:
+            continue
+        if token == "no_file_changes":
+            relevant_changes = changes_relevant_to_no_file_evidence(row, actual, changes)
+            if relevant_changes:
+                append_failure(
+                    failures,
+                    notes,
+                    "evidence_failure",
+                    "evidence_collection",
+                    "expected no file changes, saw: " + "; ".join(relevant_changes[:5]),
+                )
+        elif token == "gate_observed":
+            if not has_gate_fields_or_direct_runtime_equivalent(row, actual, final_response):
+                missing = [field for field in GATE_FIELDS if field not in final_response]
+                append_failure(
+                    failures,
+                    notes,
+                    "evidence_failure",
+                    "evidence_collection",
+                    "gate evidence missing fields: " + ", ".join(missing),
+                )
+        elif token == "git_status":
+            if "git status" not in combined:
+                append_failure(
+                    failures,
+                    notes,
+                    "evidence_failure",
+                    "evidence_collection",
+                    "missing real git status evidence",
+                )
+        elif token == "raw_intent_no_implementation":
+            relevant_changes = changes_relevant_to_raw_intent_implementation(row, actual, changes, final_response)
+            if actual in IMPLEMENTATION_READY_ROUTES or relevant_changes:
+                append_failure(
+                    failures,
+                    notes,
+                    "evidence_failure",
+                    "evidence_collection",
+                    "raw intent entered implementation-ready path",
+                )
+        elif token == "direct_fallback_no_artifact":
+            if actual != DIRECT_ROUTE:
+                append_failure(
+                    failures,
+                    notes,
+                    "evidence_failure",
+                    "evidence_collection",
+                    f"direct fallback expected but actual route was {actual}",
+                )
+            if changes:
+                append_failure(
+                    failures,
+                    notes,
+                    "evidence_failure",
+                    "evidence_collection",
+                    "direct fallback changed files: " + "; ".join(changes[:5]),
+                )
+        elif token == "source_or_unverified":
+            if not has_source_or_unverified_evidence(combined):
+                append_failure(
+                    failures,
+                    notes,
+                    "evidence_failure",
+                    "evidence_collection",
+                    "missing source evidence or explicit unverified source boundary",
+                )
+        elif token == "tests_or_unverified":
+            if not has_tests_or_unverified_evidence(combined):
+                append_failure(
+                    failures,
+                    notes,
+                    "evidence_failure",
+                    "evidence_collection",
+                    "missing test evidence or explicit unverified test boundary",
+                )
+        elif token == "browser_or_unverified":
+            if not has_browser_or_unverified_evidence(combined):
+                append_failure(
+                    failures,
+                    notes,
+                    "evidence_failure",
+                    "evidence_collection",
+                    "missing browser evidence or explicit unverified browser boundary",
+                )
+
+    if future_tokens:
+        return "blocked", notes, failures
+    if failures:
+        return "fail", notes, failures
+    return "pass", notes, failures
+
+
+def behavior_verdict(row, schema, actual, final_response, changes, lifecycle_errors):
+    notes = []
+    failures = []
+    expected = schema["expected_best"]
+    requirement_state = schema["requirement_state"]
+
+    if lifecycle_errors:
+        append_failure(
+            failures,
+            notes,
+            "forbidden_behavior",
+            "behavior_contract",
+            "lifecycle artifact shape errors: " + "; ".join(lifecycle_errors[:5]),
+        )
+
+    if boolish(row.get("risky_write_requested")) and changes:
+        append_failure(
+            failures,
+            notes,
+            "forbidden_behavior",
+            "behavior_contract",
+            "risky prompt wrote files: " + "; ".join(changes[:5]),
+        )
+
+    if expected == DIRECT_ROUTE and actual == DIRECT_ROUTE and direct_fallback_ceremony_present(final_response):
+        append_failure(
+            failures,
+            notes,
+            "direct_fallback_ceremony",
+            "direct_fallback_boundary",
+            "direct fallback used Groundwork ceremony",
+        )
+
+    if (
+        "raw_intent_no_implementation" in schema["evidence_required"]
+        and requirement_state in {"raw", "prd_draft"}
+        and (
+            actual in IMPLEMENTATION_READY_ROUTES
+            or changes_relevant_to_raw_intent_implementation(row, actual, changes, final_response)
+        )
+    ):
+        append_failure(
+            failures,
+            notes,
+            "premature_implementation",
+            "requirement_state_gate",
+            "raw or draft requirement entered implementation before acceptance or explicit bypass",
+        )
+
+    forbidden_behavior = str(row.get("forbidden_behavior") or "").strip()
+    if forbidden_behavior and forbidden_behavior.lower() in final_response.lower():
+        append_failure(
+            failures,
+            notes,
+            "forbidden_behavior",
+            "behavior_contract",
+            "forbidden behavior text appeared in response",
+        )
+
+    if failures:
+        return "fail", notes, failures
+    return "pass", notes, failures
+
+
+def routing_verdict_details(row, schema, actual):
+    notes = []
+    failures = []
+    expected = schema["expected_best"]
+    acceptable_routes = schema["acceptable_routes"]
+    forbidden_routes = schema["forbidden_routes"]
+    load_required = boolish(row.get("skill_load_required", True))
+
+    if actual in forbidden_routes:
+        append_failure(
+            failures,
+            notes,
+            "forbidden_route",
+            "routing_surface",
+            f"forbidden route hit: {actual}",
+        )
+    elif actual not in acceptable_routes:
+        append_failure(
+            failures,
+            notes,
+            "route_miss",
+            "routing_surface",
+            f"expected route in {acceptable_routes}, loaded {actual}",
+        )
+    elif expected != DIRECT_ROUTE and load_required and actual == DIRECT_ROUTE:
+        append_failure(
+            failures,
+            notes,
+            "route_miss",
+            "routing_surface",
+            f"expected {expected}, loaded direct",
+        )
+
+    if failures:
+        return "fail", notes, failures
+    return "pass", notes, failures
+
+
+def host_preemption_verdict_details(row, actual, final_response, changes):
+    notes = []
+    failures = []
+    allowed = host_preemption_allowed(row)
+    has_intent = has_host_preemption_intent(row)
+    has_gate_shape = has_no_execution_gate_shape(final_response)
+
+    if actual == HOST_PREEMPTION_ROUTE:
+        if not allowed:
+            append_failure(
+                failures,
+                notes,
+                "invalid_host_preemption",
+                "runtime_safety_gate",
+                "runtime-safety-gate classified without row permission",
+            )
+        if not has_intent:
+            append_failure(
+                failures,
+                notes,
+                "invalid_host_preemption",
+                "runtime_safety_gate",
+                "runtime-safety-gate classified without risky host-preemption intent",
+            )
+        if changes:
+            append_failure(
+                failures,
+                notes,
+                "invalid_host_preemption",
+                "runtime_safety_gate",
+                "runtime-safety-gate classified despite file changes: " + "; ".join(changes[:5]),
+            )
+        if not has_gate_shape:
+            append_failure(
+                failures,
+                notes,
+                "invalid_host_preemption",
+                "runtime_safety_gate",
+                "runtime-safety-gate classified without no-execution gate shape",
+            )
+    elif allowed and has_intent and has_gate_shape and changes:
+        append_failure(
+            failures,
+            notes,
+            "invalid_host_preemption",
+            "runtime_safety_gate",
+            "host preemption candidate changed files instead of staying no-execution",
+        )
+
+    if failures:
+        return "fail", notes, failures
+    if actual == HOST_PREEMPTION_ROUTE or allowed:
+        return "pass", notes, failures
+    return NOT_APPLICABLE, notes, failures
+
+
+FAILURE_PRIORITY = [
+    "codex_timeout",
+    "codex_exit",
+    "premature_implementation",
+    "forbidden_route",
+    "route_miss",
+    "invalid_host_preemption",
+    "future_output_contract",
+    "output_contract_failure",
+    "future_evidence_required",
+    "evidence_failure",
+    "direct_fallback_ceremony",
+    "forbidden_behavior",
+]
+
+
+def select_failure(failures):
+    if not failures:
+        return "", ""
+    by_type = {failure_type: fix_locus for failure_type, fix_locus in failures}
+    for failure_type in FAILURE_PRIORITY:
+        if failure_type in by_type:
+            return failure_type, by_type[failure_type]
+    return failures[0]
+
+
+def combine_overall_verdict(rc, slice_verdicts):
+    if rc == 124:
+        return "timeout"
+    if rc != 0:
+        return "blocked"
+    if any(verdict == "fail" for verdict in slice_verdicts):
+        return "fail"
+    if any(verdict == "blocked" for verdict in slice_verdicts):
+        return "blocked"
+    return "pass"
+
+
+def runtime_failed_without_final_response(rc, final_response):
+    return rc != 0 and not final_response.strip()
+
+
+def routing_verdict_model(row, actual, last, rc, changes, lifecycle_errors, stdout=""):
+    schema = routing_schema_for_row(row)
+    notes = []
+    failures = []
+
+    if runtime_failed_without_final_response(rc, last):
+        routing_verdict = "blocked"
+        routing_notes = ["route unavailable because codex exec produced no final response"]
+        routing_failures = []
+        host_verdict = NOT_APPLICABLE
+        host_notes = []
+        host_failures = []
+        output_verdict = "blocked"
+        output_notes = ["output contract unavailable because codex exec produced no final response"]
+        output_failures = []
+        evidence_status = "blocked"
+        evidence_notes = ["evidence contract unavailable because codex exec produced no final response"]
+        evidence_failures = []
+        behavior_status = "blocked"
+        behavior_notes = ["behavior contract unavailable because codex exec produced no final response"]
+        behavior_failures = []
+    else:
+        routing_verdict, routing_notes, routing_failures = routing_verdict_details(row, schema, actual)
+        host_verdict, host_notes, host_failures = host_preemption_verdict_details(row, actual, last, changes)
+        output_verdict, output_notes, output_failures = output_contract_verdict(row, schema, actual, last)
+        evidence_status, evidence_notes, evidence_failures = evidence_verdict(row, schema, actual, last, changes, stdout)
+        behavior_status, behavior_notes, behavior_failures = behavior_verdict(row, schema, actual, last, changes, lifecycle_errors)
+
+    notes.extend(routing_notes + host_notes + output_notes + evidence_notes + behavior_notes)
+    failures.extend(routing_failures + host_failures + output_failures + evidence_failures + behavior_failures)
+
+    if rc == 124:
+        append_failure(failures, notes, "codex_timeout", "runtime_environment", "codex exec timeout")
+    elif rc != 0:
+        append_failure(failures, notes, "codex_exit", "runtime_environment", f"codex exec exit {rc}")
+
+    overall = combine_overall_verdict(
+        rc,
+        [routing_verdict, host_verdict, output_verdict, evidence_status, behavior_status],
+    )
+    failure_type, fix_locus = select_failure(failures)
+
+    return {
+        "route_boundary": schema["route_boundary"],
+        "case_kind": schema["case_kind"],
+        "case_source": schema["case_source"],
+        "expected_route": schema["expected_best"],
+        "actual_route": actual,
+        "acceptable_routes": schema["acceptable_routes"],
+        "forbidden_routes": schema["forbidden_routes"],
+        "routing_verdict": routing_verdict,
+        "host_preemption_verdict": host_verdict,
+        "output_contract_verdict": output_verdict,
+        "evidence_verdict": evidence_status,
+        "behavior_verdict": behavior_status,
+        "overall_verdict": overall,
+        "failure_type": failure_type,
+        "fix_locus": fix_locus,
+        "blocking_level": "blocking" if overall in {"fail", "blocked", "timeout"} else "",
+        "notes": "; ".join(unique_in_order(notes)),
+    }
 
 
 def has_gsd_creation_intent(text, changes):
@@ -457,6 +1732,63 @@ def changed_file_paths(changes):
     return [change[2:] for change in changes if change.startswith(("A ", "M "))]
 
 
+def is_throwaway_prototype_artifact(row, actual, change):
+    if actual != "prototype":
+        return False
+    if not boolish(row.get("artifact_allowed")):
+        return False
+    match = re.match(r"^[ MADRCU?!]{1,2}\s+(.+)$", change)
+    path = match.group(1) if match else change
+    return path in {"prototype.html", "index.html"} or bool(
+        re.fullmatch(r"artifacts/[^/]*prototype[^/]*/index\.html", path)
+    )
+
+
+def changes_relevant_to_no_file_evidence(row, actual, changes):
+    return [
+        change
+        for change in changes
+        if not is_throwaway_prototype_artifact(row, actual, change)
+    ]
+
+
+def is_requirement_shaping_artifact(row, actual, change, final_response):
+    if actual != "to-prd":
+        return False
+    if expected_skill_for_row(row) != "to-prd":
+        return False
+    match = re.match(r"^[ MADRCU?!]{1,2}\s+(.+)$", change)
+    path = match.group(1) if match else change
+    if not (
+        path == "README.md"
+        or re.fullmatch(r"docs/[^/]+\.md", path)
+        or re.fullmatch(r"artifacts/[^/]+/prd\.md", path)
+    ):
+        return False
+    shaping_markers = [
+        "prd",
+        "spec",
+        "acceptance",
+        "needs clarification",
+        "验收",
+        "需求",
+        "规范",
+        "未决",
+        "待确认",
+        "ac-",
+    ]
+    lowered = final_response.lower()
+    return any(marker in lowered or marker in final_response for marker in shaping_markers)
+
+
+def changes_relevant_to_raw_intent_implementation(row, actual, changes, final_response):
+    return [
+        change
+        for change in changes
+        if not is_requirement_shaping_artifact(row, actual, change, final_response)
+    ]
+
+
 def has_required_field(text, field):
     pattern = re.compile(
         r"^\s*(?:#{1,6}\s*)?(?:[-*]\s*)?(?:\*\*)?"
@@ -474,7 +1806,11 @@ def validate_lifecycle_state_artifacts(cwd, files, changes):
             for path in files
             if re.fullmatch(r"artifacts/[^/]+/STATE\.md", path)
         )
-        | set(path for path in changed_file_paths(changes) if path.endswith("STATE.md"))
+        | set(
+            path
+            for path in changed_file_paths(changes)
+            if re.fullmatch(r"artifacts/[^/]+/STATE\.md", path)
+        )
     )
     errors = []
 
@@ -506,6 +1842,7 @@ def validate_lifecycle_state_artifacts(cwd, files, changes):
 
 def quick_verdict(row, actual, last, rc, changes, lifecycle_errors, stdout=""):
     expected = expected_skill_for_row(row)
+    acceptable_routes = acceptable_routes_for_row(row)
     load_required = boolish(row.get("skill_load_required", True))
     verify_scope_required = boolish(row.get("verify_scope_required", True))
     prompt = row.get("prompt") or row.get("input_scenario") or ""
@@ -519,13 +1856,12 @@ def quick_verdict(row, actual, last, rc, changes, lifecycle_errors, stdout=""):
         verdict = "blocked"
         notes.append(f"codex exec exit {rc}")
 
-    if expected == "direct":
-        if actual != "direct":
-            verdict = "fail"
-            notes.append(f"expected direct fallback, loaded {actual}")
-    elif load_required and actual != expected:
+    if actual not in acceptable_routes:
         verdict = "fail"
-        notes.append(f"expected {expected}, loaded {actual}")
+        notes.append(f"expected route in {acceptable_routes}, loaded {actual}")
+    elif expected != DIRECT_ROUTE and load_required and actual == DIRECT_ROUTE:
+        verdict = "fail"
+        notes.append(f"expected {expected}, loaded direct")
 
     if expected == "verify" and verify_scope_required:
         first = next((line.strip() for line in last.splitlines() if line.strip()), "")
@@ -538,11 +1874,11 @@ def quick_verdict(row, actual, last, rc, changes, lifecycle_errors, stdout=""):
             notes.append("verify scope block missing fields: " + ", ".join(missing_scope_fields))
 
     if boolish(row.get("gate_required")):
-        missing = [field for field in GATE_FIELDS if field not in last]
-        if missing:
+        if not has_gate_fields_or_direct_runtime_equivalent(row, actual, last):
+            missing = [field for field in GATE_FIELDS if field not in last]
             verdict = "fail"
             notes.append("missing gate fields: " + ", ".join(missing))
-        if "git add ." in last:
+        if forbidden_git_add_dot_suggestion(last):
             verdict = "fail"
             notes.append("forbidden git add . suggestion")
 
@@ -616,6 +1952,14 @@ def quick_verdict(row, actual, last, rc, changes, lifecycle_errors, stdout=""):
     return verdict, "; ".join(notes)
 
 
+def should_apply_legacy_override(row, legacy_verdict, verdict_model):
+    if legacy_verdict == "pass":
+        return False
+    if verdict_model["overall_verdict"] != "pass":
+        return False
+    return not is_routing_reliability_row(row)
+
+
 def write_case_result(result):
     case_path = CASES / f"{safe_id(result['id'])}.json"
     case_path.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -673,11 +2017,24 @@ def run_row(row, timeout_s=None, attempt=1):
     last = last_path.read_text(encoding="utf-8") if last_path.exists() else ""
     after = snapshot(cwd)
     changes = changed_files(before, after)
-    actual, skill_hits = parse_actual_skill(stdout, last, expected)
+    parsed_actual, skill_hits = parse_actual_skill(stdout, last, expected)
+    actual = classify_actual_route(row, parsed_actual, skill_hits, last, changes)
+    if runtime_failed_without_final_response(rc, last):
+        actual = UNKNOWN_ROUTE
     multi_skill_hit = len(skill_hits) > 1
     warnings = ["multi_skill_hit"] if multi_skill_hit else []
     lifecycle_state_files, lifecycle_artifact_errors = validate_lifecycle_state_artifacts(cwd, after, changes)
-    verdict, notes = quick_verdict(row, actual, last, rc, changes, lifecycle_artifact_errors, stdout)
+    legacy_verdict, legacy_notes = quick_verdict(row, actual, last, rc, changes, lifecycle_artifact_errors, stdout)
+    verdict_model = routing_verdict_model(row, actual, last, rc, changes, lifecycle_artifact_errors, stdout)
+    if should_apply_legacy_override(row, legacy_verdict, verdict_model):
+        verdict_model["overall_verdict"] = legacy_verdict
+        verdict_model["failure_type"] = "legacy_runtime_check"
+        verdict_model["fix_locus"] = "runtime_verdict"
+        verdict_model["blocking_level"] = "blocking"
+    if legacy_notes and not is_routing_reliability_row(row) and legacy_notes not in verdict_model["notes"]:
+        verdict_model["notes"] = "; ".join(
+            item for item in [verdict_model["notes"], legacy_notes] if item
+        )
 
     result = {
         "id": row_id,
@@ -687,8 +2044,8 @@ def run_row(row, timeout_s=None, attempt=1):
         "skill_hits": skill_hits,
         "multi_skill_hit": multi_skill_hit,
         "warnings": warnings,
-        "verdict": verdict,
-        "notes": notes,
+        "verdict": verdict_model["overall_verdict"],
+        "notes": verdict_model["notes"],
         "parallel_safe": metadata["parallel_safe"],
         "resource_keys": metadata["resource_keys"],
         "resource_group": metadata["group"],
@@ -707,6 +2064,7 @@ def run_row(row, timeout_s=None, attempt=1):
         "started": started,
         "finished": datetime.now(timezone.utc).isoformat(),
     }
+    result.update(verdict_model)
     result["case_result"] = str(write_case_result(result))
     print(
         json.dumps(
@@ -816,6 +2174,169 @@ def exception_result(row, exc):
     return result
 
 
+def as_list(value):
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    text = str(value).strip()
+    if not text:
+        return []
+    return [item.strip() for item in text.split("|") if item.strip()]
+
+
+def increment(mapping, key, amount=1):
+    mapping[key] = mapping.get(key, 0) + amount
+
+
+def sorted_counts(mapping):
+    return {key: mapping[key] for key in sorted(mapping)}
+
+
+def rate_summary(count, total):
+    return {
+        "count": count,
+        "total": total,
+        "rate": (count / total) if total else 0,
+    }
+
+
+def routing_result_present(result):
+    boundary = str(result.get("route_boundary") or "").strip()
+    return (
+        result.get("suite") == ROUTING_RELIABILITY_SUITE
+        or (boundary and boundary != NOT_APPLICABLE)
+    )
+
+
+def routing_outcome(expected, actual, acceptable_routes, forbidden_routes):
+    if not actual or actual == "unknown":
+        return "missing"
+    if actual == expected:
+        return "best"
+    if actual in forbidden_routes:
+        return "forbidden"
+    if actual in acceptable_routes:
+        return "acceptable"
+    return "unexpected"
+
+
+def verdict_status(result):
+    verdict = str(result.get("overall_verdict") or result.get("verdict") or "unknown")
+    if verdict in {"pass", "flake"}:
+        return "pass"
+    if verdict == "fail":
+        return "fail"
+    return "blocking"
+
+
+def summarize_routing_results(results):
+    routing_results = [result for result in results if routing_result_present(result)]
+    if not routing_results:
+        return None
+
+    total = len(routing_results)
+    best_hits = 0
+    acceptable_hits = 0
+    forbidden_hits = 0
+    invalid_host_preemptions = 0
+    outcome_counts = {}
+    route_pair_counts = {}
+    expected_route_counts = {}
+    actual_route_counts = {}
+    boundary_counts = {}
+    verdict_dimension_counts = {
+        "routing_verdict": {},
+        "host_preemption_verdict": {},
+        "output_contract_verdict": {},
+        "evidence_verdict": {},
+        "behavior_verdict": {},
+        "overall_verdict": {},
+    }
+    failure_type_counts = {}
+    unclassified_nonpass_ids = []
+
+    for result in routing_results:
+        expected = str(result.get("expected_route") or result.get("expected") or "").strip() or "unknown"
+        actual = str(result.get("actual_route") or result.get("actual") or "").strip() or "unknown"
+        acceptable_routes = as_list(result.get("acceptable_routes"))
+        if not acceptable_routes and expected != "unknown":
+            acceptable_routes = [expected]
+        forbidden_routes = as_list(result.get("forbidden_routes"))
+        boundary = str(result.get("route_boundary") or NOT_APPLICABLE).strip() or NOT_APPLICABLE
+        overall = str(result.get("overall_verdict") or result.get("verdict") or "unknown")
+        failure_type = str(result.get("failure_type") or "").strip()
+
+        if actual == expected:
+            best_hits += 1
+        if actual in acceptable_routes:
+            acceptable_hits += 1
+        if actual in forbidden_routes or failure_type == "forbidden_route":
+            forbidden_hits += 1
+        if result.get("host_preemption_verdict") == "fail" or failure_type == "invalid_host_preemption":
+            invalid_host_preemptions += 1
+
+        outcome = routing_outcome(expected, actual, acceptable_routes, forbidden_routes)
+        increment(outcome_counts, outcome)
+        increment(route_pair_counts, f"{expected} -> {actual}")
+        increment(expected_route_counts, expected)
+        increment(actual_route_counts, actual)
+        if failure_type:
+            increment(failure_type_counts, failure_type)
+
+        if boundary not in boundary_counts:
+            boundary_counts[boundary] = {"count": 0, "pass": 0, "fail": 0, "blocking": 0}
+        status = verdict_status(result)
+        boundary_counts[boundary]["count"] += 1
+        boundary_counts[boundary][status] += 1
+        if status != "blocking" and str(result.get("blocking_level") or "").strip():
+            boundary_counts[boundary]["blocking"] += 1
+
+        for dimension in verdict_dimension_counts:
+            if dimension == "overall_verdict":
+                value = str(result.get(dimension) or overall)
+            else:
+                value = str(result.get(dimension) or NOT_APPLICABLE)
+            increment(verdict_dimension_counts[dimension], value)
+
+        if is_nonpass(result) and not failure_type:
+            unclassified_nonpass_ids.append(str(result.get("id") or "unknown"))
+
+    return {
+        "rows": total,
+        "best_route_hit_at_1": rate_summary(best_hits, total),
+        "acceptable_route_coverage": rate_summary(acceptable_hits, total),
+        "forbidden_route_hits": rate_summary(forbidden_hits, total),
+        "invalid_host_preemption": rate_summary(invalid_host_preemptions, total),
+        "routing_outcomes": sorted_counts(outcome_counts),
+        "route_boundaries": {key: boundary_counts[key] for key in sorted(boundary_counts)},
+        "per_route_counts": {
+            "expected": sorted_counts(expected_route_counts),
+            "actual": sorted_counts(actual_route_counts),
+        },
+        "route_pair_confusion": sorted_counts(route_pair_counts),
+        "verdict_dimension_counts": {
+            dimension: sorted_counts(counts)
+            for dimension, counts in verdict_dimension_counts.items()
+        },
+        "route_vs_execution_separability": {
+            "routing": "routing_verdict",
+            "execution": [
+                "host_preemption_verdict",
+                "output_contract_verdict",
+                "evidence_verdict",
+                "behavior_verdict",
+                "overall_verdict",
+            ],
+        },
+        "failure_type_counts": sorted_counts(failure_type_counts),
+        "unclassified_nonpass": {
+            "count": len(unclassified_nonpass_ids),
+            "ids": sorted(unclassified_nonpass_ids),
+        },
+    }
+
+
 def run_parallel_rows(rows, jobs, retry_timeouts=0):
     results = []
     with ThreadPoolExecutor(max_workers=jobs) as executor:
@@ -873,6 +2394,9 @@ def write_summary(results, jobs, suites, resource_policy, group=None):
         },
         "finished": datetime.now(timezone.utc).isoformat(),
     }
+    routing_summary = summarize_routing_results(ordered)
+    if routing_summary:
+        summary["routing_summary"] = routing_summary
     SUMMARY.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     lines = ["# Runtime Failures", ""]
@@ -891,6 +2415,17 @@ def parse_args(argv=None):
     parser.add_argument("ids", nargs="*", help="Optional case ids to run.")
     parser.add_argument("--all-prompts", action="store_true", help="Run all prompt CSV suites.")
     parser.add_argument("--suite", action="append", help="Prompt suite filename to include; may be repeated.")
+    parser.add_argument(
+        "--prompt-file",
+        action="append",
+        type=Path,
+        help="Prompt CSV path to include; may be repeated. Relative paths resolve from the repository root.",
+    )
+    parser.add_argument(
+        "--validate-schema",
+        action="store_true",
+        help="Parse prompt CSV suites and validate routing schema without invoking Codex runtime.",
+    )
     parser.add_argument("--jobs", type=int, default=1, help="Maximum concurrent safe cases. Default: 1.")
     parser.add_argument("--serial", action="store_true", help="Force serial execution, equivalent to --jobs 1.")
     parser.add_argument(
@@ -916,12 +2451,6 @@ def main(argv=None):
     global CODEX_EXEC_TIMEOUT
     CODEX_EXEC_TIMEOUT = args.case_timeout
 
-    LOGS.mkdir(parents=True, exist_ok=True)
-    LAST.mkdir(parents=True, exist_ok=True)
-    WORKSPACES.mkdir(parents=True, exist_ok=True)
-    CASES.mkdir(parents=True, exist_ok=True)
-
-    jobs = 1 if args.serial else max(1, args.jobs)
     target_ids = set(args.ids)
     if args.rerun_failures:
         try:
@@ -930,8 +2459,60 @@ def main(argv=None):
             print(f"rerun_failures_error={exc}", flush=True)
             return 2
 
-    suites = args.suite or (prompt_suites() if args.all_prompts or target_ids else DEFAULT_SUITES)
-    rows = read_rows(suites)
+    prompt_files = args.prompt_file or []
+    if args.suite:
+        suites = [normalize_suite_name(suite) for suite in args.suite]
+    elif prompt_files:
+        suites = []
+    else:
+        suites = prompt_suites() if args.all_prompts or target_ids or args.validate_schema else DEFAULT_SUITES
+    suite_labels = list(suites) + [str(path) for path in prompt_files]
+    rows = read_rows(suites, prompt_files)
+    schema_errors, _normalized_schema = validate_routing_schema(rows)
+    if args.validate_schema:
+        if target_ids:
+            rows = [row for row in rows if row["id"] in target_ids]
+            missing = sorted(target_ids - {row["id"] for row in rows})
+            schema_errors.extend(f"missing requested id: {row_id}" for row_id in missing)
+        routing_rows = [row for row in rows if is_routing_reliability_row(row)]
+        print(
+            json.dumps(
+                {
+                    "schema_validation": "fail" if schema_errors else "pass",
+                    "suites": suite_labels,
+                    "rows": len(rows),
+                    "routing_rows": len(routing_rows),
+                    "errors": schema_errors,
+                    "recognized_fields": ROUTING_SCHEMA_FIELDS,
+                },
+                ensure_ascii=False,
+                indent=2,
+            ),
+            flush=True,
+        )
+        return 2 if schema_errors else 0
+    if schema_errors:
+        print(
+            json.dumps(
+                {
+                    "schema_validation": "fail",
+                    "suites": suite_labels,
+                    "rows": len(rows),
+                    "errors": schema_errors,
+                },
+                ensure_ascii=False,
+            ),
+            flush=True,
+        )
+        return 2
+
+    LOGS.mkdir(parents=True, exist_ok=True)
+    LAST.mkdir(parents=True, exist_ok=True)
+    WORKSPACES.mkdir(parents=True, exist_ok=True)
+    CASES.mkdir(parents=True, exist_ok=True)
+
+    jobs = 1 if args.serial else max(1, args.jobs)
+
     if target_ids:
         rows = [row for row in rows if row["id"] in target_ids]
         missing = sorted(target_ids - {row["id"] for row in rows})
@@ -967,7 +2548,7 @@ def main(argv=None):
             (row.get("_input_index", 0) for row in rows if row.get("id") == result.get("id")),
             0,
         )
-    summary = write_summary(results, jobs, suites, args.resource_policy, args.group)
+    summary = write_summary(results, jobs, suite_labels, args.resource_policy, args.group)
     print(json.dumps({"summary": summary}, ensure_ascii=False), flush=True)
     return 1 if summary["failures"] else 0
 
