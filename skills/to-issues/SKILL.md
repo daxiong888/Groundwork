@@ -1,6 +1,6 @@
 ---
 name: to-issues
-description: Split an accepted PRD spec or plan into vertical task slices with task-state fields, acceptance criteria, blockers, AFK/HITL classification, and verification evidence. Use when the user asks to 拆 issues, 拆任务, create implementation slices, or turn accepted intent into tracker-neutral work units.
+description: Split an accepted PRD spec or plan into vertical task slices with task-state fields, acceptance criteria, blockers, AFK/HITL classification, and verification evidence. Use only when the source is accepted enough; raw ideas, "刚说的想法", or conversation-only intent that asks to 拆 issues must route to to-prd first.
 ---
 
 # to-issues
@@ -19,6 +19,7 @@ Should trigger:
 
 Should not trigger:
 
+- The user asks to split a raw idea, "刚说的想法", draft requirement, or conversation-only intent before PRD/spec acceptance; use `to-prd`.
 - Requirement intent or acceptance is still unclear; use `to-prd` with `scope`.
 - The user asks whether an existing task is ready; use `triage`.
 - The user asks for implementation steps for one accepted task; use `write-plan`.

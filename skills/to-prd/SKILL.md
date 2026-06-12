@@ -1,6 +1,6 @@
 ---
 name: to-prd
-description: Use grill-before-write to shape raw or ambiguous product/engineering intent into a compact PRD/spec before task slicing or implementation, without inventing product truth. Use for 新需求, 需求收敛, 整理成 PRD, 写需求说明, clarify acceptance, UAT feedback, or version/workflow changes. Do not use for tiny title or wording rewrites.
+description: Use grill-before-write to shape raw, draft, new, or ambiguous product/engineering intent into a compact PRD/spec before task slicing or implementation, without inventing product truth. Use for 新需求, 需求收敛, 整理成 PRD, 写需求说明, clarify acceptance, UAT feedback, draft PRDs before acceptance, raw 方案/solution ideas, raw issue-split requests, vague urgency like 先做起来, or raw product, plugin install/upgrade, marketplace, runtime, version, workflow capability, and skill-selection changes. Do not use for tiny title or wording rewrites.
 ---
 
 # to-prd
@@ -17,11 +17,15 @@ Should trigger:
 - "这个功能目标还不清楚，帮我收敛一下"
 - "把原型评审结论沉淀成规格"
 - "先把验收标准写清楚"
+- Raw or draft solution ideas about product behavior, PRD artifacts before acceptance, plugin install/upgrade flows, marketplace behavior, runtime behavior, workflow changes, version enhancements, or skill-selection behavior before PRD/spec acceptance.
+- Raw requests to split issues or tasks from "刚说的想法" or conversation-only intent before PRD/spec acceptance.
+- Urgent raw ideas where the user has not clearly asked to bypass PRD/spec shaping.
 
 Should not trigger:
 
 - A small direct answer or rewrite is enough.
 - The PRD is already accepted and the user asks to split tasks; use `to-issues`.
+- The user clearly says to skip PRD/spec shaping and implement directly; use `implement`, which still owns lifecycle, source, git, test, and risk gates.
 - The user asks only whether a task is ready; use `triage`.
 - The user asks for code edits; use `implement`.
 - The user asks for verification evidence; use `verify`.
@@ -30,7 +34,7 @@ Should not trigger:
 
 Use user-provided context first. Inspect source, docs, prototype output, tickets, or data when they can answer a question or materially affect correctness. If evidence is missing, state the gap and tag unknowns as **NEEDS CLARIFICATION** instead of inventing product truth.
 
-Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` before shaping new requirements, version enhancements, workflow changes, or product decisions. Treat raw requirements as `Requirement State: raw` and route to grill-before-write / PRD shaping by default. Do not proceed directly to implementation or issue splitting until the requirement is accepted enough to move downstream, unless the user explicitly requests that bypass.
+Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` before shaping new requirements, version enhancements, workflow changes, runtime changes, plugin changes, skill-selection changes, or product decisions. Treat raw requirements and raw solution ideas as `Requirement State: raw` and route to grill-before-write / PRD shaping by default. Do not proceed directly to implementation or issue splitting until the requirement is accepted enough to move downstream, unless the user explicitly requests that bypass.
 
 ## Workflow
 
@@ -61,6 +65,7 @@ Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` before shaping new requirements, ver
 | User asks for a PRD file but facts are incomplete | Produce a draft with blocking gaps or stop for clarification. | Do not present the artifact as accepted or issue-ready. |
 | User asks for a PRD artifact from sensitive source material | Redact secret values, private URLs, credentials, PII, sensitive logs, screenshots, requests, and database rows before drafting or writing. | Preserve only stable non-secret identifiers, source types, and decisions needed for review. |
 | User asks to split issues from raw intent | Stop before `to-issues`. | State that PRD/spec acceptance is required first. |
+| User gives a raw solution idea or vague urgency as if it were implementation-ready | Keep ownership in `to-prd`. | State that urgency or a proposed solution is not an explicit PRD bypass, then shape the requirement or ask the highest-impact clarification question. |
 
 ## Do Not
 

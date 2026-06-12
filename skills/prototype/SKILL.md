@@ -46,6 +46,8 @@ Prototype contract-boundary review stays in `prototype` when the source of truth
 7. Draft findings as proposed PRD, issue, contract, or implementation feedback unless source-truth verification or explicit user confirmation has already happened.
 8. State cleanup decision: delete, absorb, or keep temporarily with reason and review timing.
 
+Do not stop with a browser opt-in question such as asking whether to open a local URL. If browser/runtime evidence is useful but unavailable or not yet approved, still produce the prototype contract-boundary output first, mark the visual or interaction evidence as `unverified`, and name the smallest follow-up browser check.
+
 ## CHECKPOINTS
 
 - STOP before handing prototype findings to frontend, PRD, issue, or contract notes unless confirmed backend fields, mock / illustrative fields, client-derived logic, and unverified assumptions are separated.

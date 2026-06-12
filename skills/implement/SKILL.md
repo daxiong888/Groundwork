@@ -1,6 +1,6 @@
 ---
 name: implement
-description: Execute code changes, scoped fixes, bug diagnosis, implementation delivery gates, PR-bound implementation, push/PR/issue-closeout requests paired with implementation, diagnose-before-edit prompts like "先确认 bug 再改" or "只报告诊断结论和最小修改方向", and read-only implementation conformance reviews against TASK/PRD/diff when the user says phrases like "review 这次实现是否符合 TASK.md", "检查这次实现是否满足 TASK.md", or asks for implementation review without readiness, UAT, release, or customer/front-end handoff verification.
+description: Execute implementation-ready code changes, scoped fixes, confirmed bug diagnosis, explicit PRD-bypass implementation, implementation delivery gates, PR-bound implementation, push/PR/issue-closeout requests paired with implementation, and read-only implementation conformance reviews against TASK/PRD/diff. Use only after source truth is accepted enough for execution or the user explicitly bypasses PRD/spec shaping; requirements shaping before acceptance belongs upstream.
 ---
 
 # implement
@@ -19,6 +19,8 @@ Should trigger:
 - "先确认 bug 再改"
 - "先确认是不是真 bug，再做最小修改"
 - "只报告诊断结论和最小修改方向"
+- "明确跳过 PRD 直接实现这个小改，但先做 git topology 和测试说明"
+- "我确认跳过 PRD 直接改这个客户可见文案，并先走风险确认"
 - "review 这次实现是否符合 PRD"
 - "review 这次实现是否符合 TASK.md 但不要判断 UAT"
 - "review 这次实现是否符合 TASK.md，不要判断能否给客户 UAT，不要编辑文件"
@@ -31,7 +33,7 @@ Should trigger:
 
 Should not trigger:
 
-- Requirements need shaping; use `to-prd`.
+- Requirements need shaping, or the user gives only a raw product/draft PRD/workflow/plugin/marketplace/runtime idea without explicit PRD bypass; use `to-prd`.
 - Work needs task slicing; use `to-issues`.
 - Task readiness is unknown; use `triage`.
 - The user only asks for a plan; use `write-plan`.
@@ -44,6 +46,7 @@ Should not trigger:
 Inspect relevant files, direct callers/callees, tests, config, and diffs before editing when they affect correctness. Check dirty worktree state before changes. Do not invent exact file paths, APIs, schemas, commands, or runtime behavior before inspection.
 
 Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` to confirm the implementation source of truth and requirement state before editing. Raw or draft requirements are not implementation-ready unless the user explicitly requests a bypass.
+Explicit PRD/spec bypass is valid only when the user clearly asks to skip PRD/spec shaping and implement directly. Vague urgency, a proposed solution, or "do it" alone is not a bypass. When bypass is valid, acknowledge it and still apply source inspection, git topology, mini-plan, test/no-test, and risk gates.
 
 Use `skills/_shared/GIT-TOPOLOGY-GATE.md` before writing files for PR-bound implementation, and again before staging, committing, pushing, opening a PR, or closing remote issues. If the current branch is `main` / `master` / `trunk`, the branch name is empty, or `HEAD` is detached and the work is PR-bound, output a gate decision and stop before edits until a branch or worktree decision is made.
 
@@ -51,7 +54,7 @@ Use `LIGHTWEIGHT-PLAN.md` before editing: What, Why, Files likely touched, Test/
 
 For read-only implementation conformance review, do not force a fix plan. Inspect the task/PRD, source, tests, and git boundary when available; report whether the implementation satisfies acceptance, what evidence was checked, what gaps remain, and explicitly avoid UAT/release/readiness verdicts unless the user asks for them.
 
-Use this output block for read-only conformance review. Keep the exact field labels:
+Use this output block for read-only conformance review, and include the same field labels in implementation final reports when the task asks for implementation conformance, gated implementation, or reviewable delivery evidence. Keep the exact field labels:
 
 ```text
 Scope:
@@ -64,6 +67,32 @@ Next Action:
 ```
 
 `Non-Readiness Boundary` must say that the review is limited to implementation conformance and does not decide UAT, release, customer readiness, deployment readiness, or final acceptance unless the user explicitly asks for that scope.
+
+### Runtime Output Contract
+
+For implementation, diagnose-before-edit, explicit PRD-bypass implementation, gated implementation, blocked implementation, or implementation conformance review, final reports must include the exact conformance field labels as line-prefixed fields:
+
+```text
+Scope:
+Acceptance Map:
+Evidence Inspected:
+Findings P0/P1/P2:
+Non-Readiness Boundary:
+Gaps:
+Next Action:
+```
+
+If the implementation is blocked before edits because source truth, git topology, permissions, or tests are unavailable, still include those labels and put the blocker under `Findings P0/P1/P2`, `Gaps`, and `Next Action`.
+
+When `Risk Gate` is not `none`, or when the prompt asks for git, customer-visible, data-write, destructive, push, PR, issue-closeout, deploy, publish, migration, remote, or shared-skill execution, include the exact gate field labels as line-prefixed fields before executing anything:
+
+```text
+Proposed Action:
+Target:
+Risk:
+Rollback/Undo:
+Approval Needed:
+```
 
 Use `TDD-LITE.md` for behavior changes when feasible: RED failing test/reproduction, GREEN minimal change, REFACTOR only after green. If no failing test or reproduction is feasible, give a no-test justification and do not claim TDD.
 
@@ -87,9 +116,10 @@ If using a subagent for review, use `skills/_shared/SUBAGENT-DELEGATION.md`. The
 8. Run the fastest relevant checks, including the original failing check when one exists.
 9. Add or update a focused regression test/check when feasible and proportional to risk.
 10. If fixing a verify failure, confirm the original failure was re-QA'd or explain why it remains unverified.
-11. Run self-review from `SELF-REVIEW.md`.
-12. Report local evidence and remaining gaps, but do not claim final readiness.
-13. Recommend `verify` for readiness.
+11. In the final report, include `Scope`, `Acceptance Map`, `Evidence Inspected`, `Findings P0/P1/P2`, `Non-Readiness Boundary`, `Gaps`, and `Next Action` when the task touches implementation conformance, gated implementation, or reviewable delivery evidence.
+12. Run self-review from `SELF-REVIEW.md`.
+13. Report local evidence and remaining gaps, but do not claim final readiness.
+14. Recommend `verify` for readiness.
 
 ## CHECKPOINTS
 
@@ -120,16 +150,20 @@ If using a subagent for review, use `skills/_shared/SUBAGENT-DELEGATION.md`. The
 
 ```text
 Implementation Summary
-Scope
+Scope:
+Acceptance Map:
+Evidence Inspected:
+Findings P0/P1/P2:
+Non-Readiness Boundary:
+Gaps:
+Next Action:
 Implementation Mini-Plan
 TDD-Lite / No-Test Justification
 Files Changed
-Evidence Inspected
 Checks Run
 Self-Review
 Result
 Remaining Gaps
-Next Action
 Artifact Recommendation
 ```
 
@@ -139,7 +173,7 @@ Stop when the requested scoped change is implemented or blocked with evidence. F
 
 ## Gate Rule
 
-If implementation would require or is paired with push, deploy, publish, migration, destructive command, data write, remote tracker mutation, or shared skill mutation, stop before execution and output Proposed Action, Target, Risk, Rollback/Undo, and Approval Needed. Do not execute until explicit user approval.
+If implementation would require or is paired with push, deploy, publish, migration, destructive command, data write, remote tracker mutation, customer-visible change, or shared skill mutation, stop before execution and output Proposed Action, Target, Risk, Rollback/Undo, and Approval Needed. Do not execute until explicit user approval.
 
 For any prompt that requests `git push`, PR creation, issue closeout, tracker mutation, deploy, publish, or other remote write, the final response must include the exact five gate field labels below even when another blocker is also present, such as missing source truth, a non-Git workspace, read-only sandbox, or missing remote permissions. Do not replace the gate with a generic "blocked" explanation.
 
