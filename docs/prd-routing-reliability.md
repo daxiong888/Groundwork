@@ -42,7 +42,8 @@ Whether to implement a routing reliability layer that makes skill selection meas
 
 ### Implementation Defaults
 
-- The first routing reliability suite is targeted-only. It does not enter `DEFAULT_SUITES` until a targeted baseline passes the promotion gate in this PRD.
+- The first routing reliability suite starts targeted-only and does not enter `DEFAULT_SUITES` until a targeted baseline passes the promotion gate in this PRD.
+- Post-acceptance status: starting in v0.3.1, `routing-reliability.csv` is promoted into `DEFAULT_SUITES` for personal and team-internal regression coverage after targeted remediation and source/cache evidence review. This promotion does not create a public SLA or broaden the public skill surface.
 - The first implementation slice is runner-first: parse and validate the routing schema without invoking Codex runtime, changing public skill text, or promoting any suite into defaults.
 - Groundwork Entry Contract is an internal pre-skill routing contract, not a ninth public skill.
 - `skills/_shared/LIFECYCLE-PREFLIGHT.md` remains the existing runtime form to align with; the entry contract must not invent a parallel preflight snapshot.
@@ -775,7 +776,7 @@ If equivalence is unknown, runtime routing results are evidence but not release-
 
 ### 8.11 Default-Suite Promotion Gate
 
-`routing-reliability.csv` remains targeted-only until all are true:
+Before default-suite promotion, `routing-reliability.csv` must remain targeted-only until all are true. The v0.3.1 internal promotion records this decision under `evals/baselines/` and keeps future public-SLA or broader release-gate claims outside this PRD:
 
 - targeted serial run completes with no P1 routing failures;
 - targeted metrics show no new forbidden route hit, invalid host preemption, or unclassified route/execution failure;
@@ -899,7 +900,7 @@ Forbidden:
 
 ### 10.4 Acceptance For Default Promotion
 
-- AC-DP-1: `routing-reliability.csv` remains targeted-only until the targeted release gate has stable baseline evidence.
+- AC-DP-1: `routing-reliability.csv` remains targeted-only until the targeted release gate has stable baseline evidence; v0.3.1 records the internal default-suite promotion decision after that evidence review.
 - AC-DP-2: Both `evals/run_runtime.py` and `evals/run_runtime_parallel.py` are updated together if the suite enters `DEFAULT_SUITES`.
 - AC-DP-3: Default promotion requires no new forbidden route hit, invalid host preemption, or unclassified route/execution failure in targeted gate evidence.
 - AC-DP-4: `evals/runtime-trial-checklist.md` records the routing suite, promotion decision, source/cache evidence, parallel execution policy, and any non-promotion reason.

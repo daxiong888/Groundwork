@@ -2,6 +2,22 @@
 
 All notable changes to Groundwork are documented in this file.
 
+## v0.3.1 - 2026-06-15
+
+### Added
+
+- Promoted `routing-reliability.csv` into the default runtime suite for personal and team-internal Groundwork regression coverage.
+- Added a promotion baseline record for the routing reliability default-suite decision.
+
+### Changed
+
+- Bumped plugin metadata to `0.3.1` for the routing reliability default-suite promotion.
+- Updated runtime trial guidance so routing reliability remains targeted for promotion review, but is part of default coverage starting in v0.3.1.
+
+### Notes
+
+- This is an internal default-regression coverage cut, not a public SLA, learned routing service, new public skill, hook, MCP server, tracker integration, or task CRUD expansion.
+
 ## v0.3.0 - 2026-05-26
 
 ### Added

@@ -30,6 +30,7 @@ DEFAULT_SUITES = [
     "guardrails-regression.csv",
     "lifecycle-state.csv",
     "lifecycle-preflight-regressions.csv",
+    "routing-reliability.csv",
 ]
 
 PUBLIC_SKILL_ROUTES = {

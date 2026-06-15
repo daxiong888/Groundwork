@@ -150,7 +150,7 @@ Do not treat this suite as a new runtime or evaluation method. It extends the ex
 
 ## Routing Reliability Targeted Trial
 
-Use `evals/prompts/routing-reliability.csv` as a targeted suite before any default-suite promotion decision. It is intentionally outside `DEFAULT_SUITES` until a recorded promotion review proves the targeted gate is stable.
+`evals/prompts/routing-reliability.csv` is part of `DEFAULT_SUITES` starting in v0.3.1 for personal and team-internal regression coverage. Continue using it as a targeted suite before future promotion, release-gate, or public-surface decisions that go beyond this internal default coverage.
 
 This suite validates the internal Groundwork Entry Contract and route judgment behavior. It must not create a public `routing`, `router`, `groundwork-entry`, `preflight`, or `runtime-safety-gate` skill. Direct fallback remains a valid first route for small low-risk prompts and host/runtime safety preemption remains an eval-only actual-route classification.
 
@@ -187,10 +187,10 @@ Focused remediation evidence is enough when all of the following are true:
 - the installed plugin cache and source package are equivalent after the fix;
 - the change is a deterministic runner checker, fixture correction, or narrow route-surface adjustment for already-identified rows;
 - the affected row or rows pass with routing, output, evidence, behavior, and overall verdicts all green;
-- the change does not alter `DEFAULT_SUITES`, add a public skill, or broaden the runtime-visible skill surface;
+- the change does not add a public skill, broaden the runtime-visible skill surface, or make another default-suite promotion decision;
 - the review explicitly states that full targeted release-gating evidence is not being claimed.
 
-Run a full targeted rerun before default-suite promotion, after broad public skill routing changes, after measurement-token semantics change across row groups, or when focused evidence exposes a new cross-boundary regression.
+Run a full targeted rerun before any future default-suite promotion decision, after broad public skill routing changes, after measurement-token semantics change across row groups, or when focused evidence exposes a new cross-boundary regression.
 
 Use serial execution as the default targeted gate shape. Parallel execution is acceptable only when the row set is known to be safe for concurrent Codex workspaces and the review records that the parallel wrapper consumed the serial verdict fields instead of re-implementing route judgment. Full/default runs stay serial or `--jobs 1` unless the selected rows carry enough metadata and fixture isolation to prove concurrent execution is safe.
 
@@ -210,7 +210,7 @@ Finite measurement-token policy applies to `output_contract` and `evidence_requi
 
 Strict host preemption means `actual_route=runtime-safety-gate` is valid only when no public Groundwork skill loaded, row metadata allows host preemption, risky/destructive/remote/data/write intent is present, changed files are empty, and the final response proves a no-execution approval gate. Skill-owned approval gates remain under the owning public route and are judged by output and behavior verdicts.
 
-Default-promotion decisions must be recorded before adding `routing-reliability.csv` to any default suite. A promotion record must state one of:
+Default-promotion decisions must be recorded before changing default-suite membership. The v0.3.1 promotion is recorded in `evals/baselines/2026-06-15-routing-reliability-default-promotion.md`. A promotion record must state one of:
 
 - `targeted_only`: keep the suite targeted, with reason and next evidence needed;
 - `promote_later`: targeted gate is improving but lacks stable baseline/cache evidence;
