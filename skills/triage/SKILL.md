@@ -52,6 +52,12 @@ When moving from `needs-info` to `ready-for-agent`, explicitly list the `Evidenc
 Use `skills/_shared/LIFECYCLE-STATE.md` only to decide whether workstream-scoped lifecycle state is justified. Do not create a task database, and do not recommend state just because a task is `ready-for-agent`.
 If an external issue or PR fully owns source truth and recovery state, recommend no local lifecycle state unless a Groundwork-specific recovery need remains. If local `STATE.md` conflicts with a canonical issue, PRD, source code, tests, runtime evidence, or user-confirmed decision, mark the local state stale and follow the canonical source.
 
+When the verdict is executable `ready-for-agent + AFK`, include a `Goal Contract` in the agent-ready brief using the canonical field names from `skills/_shared/GOAL-CONTRACT.md`. The contract must include a `/goal` command, verification, constraints, boundaries, iteration policy, stop condition, pause condition, non-goals, risk/gate, preferred runtime recommendation, and expected result package. `Pause If` must map to the AFK/HITL decision points so the implementation runtime knows when to pause for human input, source clarification, access, approval, or risk escalation.
+
+Do not generate an executable child goal for `needs-info`, `ready-for-human`, or HITL-only tasks. If the task is HITL, output a human-decision brief instead: name the decision needed, viable options, risks, and the next human action. If business rules, acceptance criteria, source truth, verification expectations, or boundaries are unclear, classify as `needs-info` or `ready-for-human` and do not invent product truth to fill a Goal Contract.
+
+`Preferred Runtime` and `Execution Profile Recommendation` are recommendations only. `triage` may recommend values such as `codex_app_managed_worktree_thread` for non-trivial executable write work with source truth and validation present, or lighter profiles for direct/read-only work, but later `dispatch` makes the final runtime route. `triage` must not claim model/reasoning selector enforcement; it may only state profile preferences and routing rationale.
+
 ## Workflow
 
 1. Gather the task source and current requested outcome.
@@ -59,10 +65,11 @@ If an external issue or PR fully owns source truth and recovery state, recommend
 3. Assign severity for the current blocker or gap.
 4. State the transition reason and separate `Evidence Added` from `Evidence Missing`.
 5. Apply the readiness contracts from `docs/prd.md`.
-6. If `ready-for-agent`, produce an agent-ready brief using `AGENT-BRIEF.md`.
+6. If executable `ready-for-agent + AFK`, produce an agent-ready brief using `AGENT-BRIEF.md`, including `Goal Contract` and `Execution Profile Recommendation`.
 7. If `ready-for-human`, state the human decision needed, options, risks, and specific next action.
-8. Decide whether lifecycle state is needed for cross-session recovery, gap closure, UAT/release reuse, or decision-pending continuation.
-9. Recommend `write-plan`, `implement`, `verify`, direct user decision, `triage closeout`, or gap closure as appropriate.
+8. If `needs-info`, `ready-for-human`, or HITL-only, do not emit a dispatchable `/goal`; use evidence missing or a human-decision brief instead.
+9. Decide whether lifecycle state is needed for cross-session recovery, gap closure, UAT/release reuse, or decision-pending continuation.
+10. Recommend `write-plan`, `implement`, `verify`, direct user decision, `triage closeout`, or gap closure as appropriate.
 
 ## CHECKPOINTS
 
@@ -85,6 +92,8 @@ If an external issue or PR fully owns source truth and recovery state, recommend
 
 - Do not treat severity as product priority; it is only the current blocker or gap impact.
 - Do not generate an agent-ready brief while any readiness-blocking field remains missing.
+- Do not generate an executable `/goal` for `needs-info`, `ready-for-human`, or HITL-only tasks.
+- Do not claim `triage` enforces runtime, model, or reasoning selectors; runtime and execution profile fields are recommendations for `dispatch`.
 - Do not create local lifecycle state, task databases, or closeout actions just because a task is `ready-for-agent`.
 - Do not let `.planning`, `.gsd`, project-global task directories, or stale `STATE.md` override Groundwork source-truth and lifecycle-state boundaries.
 
