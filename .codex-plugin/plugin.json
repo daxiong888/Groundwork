@@ -1,6 +1,6 @@
 {
   "name": "groundwork",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Codex-native personal R&D workflow base for PRD, task slicing, planning, prototypes, implementation, verification, and handoff.",
   "author": {
     "name": "Daxiong",
@@ -29,8 +29,8 @@
     ],
     "defaultPrompt": [
       "Use Groundwork only when context, risk, or reuse justifies a workflow.",
-      "Use Groundwork to verify whether this issue is real.",
-      "Use Groundwork to prepare a handoff for this work."
+      "Use Groundwork dispatch to route accepted ready tasks without executing them.",
+      "Use Groundwork to verify an issue or prepare a handoff."
     ],
     "brandColor": "#1F6FEB"
   }

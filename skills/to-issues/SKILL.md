@@ -27,7 +27,7 @@ Should not trigger:
 
 ## Required Evidence
 
-Start from the accepted PRD/spec/plan. If it is missing blockers, source context, contract impact, or verification evidence, record the missing details in `Ready-for-Agent Missing Fields` instead of fabricating readiness.
+Start from the accepted PRD/spec/plan. If it is missing blockers, source context, contract impact, runtime-routing inputs, Goal Contract inputs, or verification evidence, record the missing details in `Ready-for-Agent Missing Fields`, `Goal Contract Missing Fields`, or `Runtime Missing Fields` instead of fabricating readiness.
 
 Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` and `skills/_shared/ARTIFACT-PROMOTION.md` before issue splitting. If the source is raw, draft-only, unaccepted, or conversation-only without a named canonical owner, stop at the source-of-truth / promotion gate instead of producing fake-precise issues. An accepted PRD that will drive another session, remote issue creation, implementation, verification, or handoff must be promoted to a canonical artifact or explicitly tied to an external source of truth.
 
@@ -35,13 +35,56 @@ Use `skills/_shared/LOCALE-GUARD.md` for issue titles, issue bodies, headings, s
 
 `to-issues` can emit a triage recommendation candidate for a slice, such as `ready-for-agent candidate`, `needs-info recommendation`, or `ready-for-human recommendation`, but final readiness belongs to `triage`.
 
+`to-issues` may also emit runtime-routing candidates for later `triage` and `dispatch` use. These are recommendations only; `to-issues` must not create a Goal Contract, dispatch runtime work, or final-mark a slice `ready-for-agent`.
+
+Use these candidate fields when the accepted source supports them:
+
+```text
+Implementation Task Type Candidate:
+  write_implementation / read_only_review / planning_only / hybrid / diagnosis / verification / direct
+
+Implementation Runtime Candidate:
+  codex_app_managed_worktree_thread / codex_subagent / main_thread_direct / main_thread_readonly / clean_reviewer / triage_required
+
+Product Runtime Covered:
+  none / goal_contract / to_issues_runtime_candidates / triage_goal_contract / dispatch_core / codex_subagent / codex_app_managed_worktree_thread / other named runtime capability
+
+Isolation Needed:
+  context: none / subagent_prompt / thread / review_package
+  filesystem: none / current_workspace / codex_managed_worktree / unknown
+  diff surface: required / optional / not_required
+
+Parallelization Candidate:
+  eligible: yes / no / unknown
+  conflict group:
+  dependency group:
+  merge order hint:
+
+Goal Contract Status:
+  not_generated_by_to_issues / missing_fields / ready_for_triage_contract_generation
+
+Goal Contract Missing Fields:
+  - ...
+
+Runtime Missing Fields:
+  - ...
+```
+
+Runtime candidate rules:
+
+- `read_only_review` must not suggest `codex_app_managed_worktree_thread`; prefer `codex_subagent`, `main_thread_readonly`, or `clean_reviewer` based on whether the slice needs parallel review, coordinator-level review, or clean review package inspection.
+- `planning_only` must not suggest `codex_app_managed_worktree_thread`; prefer `main_thread_readonly`, `main_thread_direct`, `codex_subagent`, or `triage_required` when planning scope or source truth is unclear.
+- `hybrid` must suggest split first or `triage_required`; do not route the whole hybrid slice to a write worktree. A read-only investigation sub-slice may use `codex_subagent` or `main_thread_readonly`, and a managed worktree candidate can appear only after a concrete write implementation subtask exists.
+- `write_implementation` may suggest `codex_app_managed_worktree_thread` only when source context, write boundary, acceptance criteria, and verification expectations are clear enough for later Goal Contract generation.
+- `diagnosis` may suggest `codex_subagent` when the investigation is independent and read-only.
+
 ## Workflow
 
 1. Confirm the source of truth and whether it is accepted enough to slice.
 2. If the PRD/spec/plan is not accepted enough, stop and request acceptance, canonical artifact promotion, or a named external source of truth.
 3. Apply the locale guard before drafting user-visible headings or issue text.
 4. Split into vertical user-visible or behavior-visible slices, not horizontal layer buckets.
-5. Include acceptance criteria, blockers, risk, AFK/HITL classification, contract impact, verification evidence needed, and ready-for-agent missing fields for each slice.
+5. Include acceptance criteria, blockers, risk, AFK/HITL classification, contract impact, verification evidence needed, candidate runtime-routing fields, Goal Contract/runtime missing fields, and ready-for-agent missing fields for each slice.
 6. Prefer tracker-neutral markdown. Include paste-ready GitHub/Linear wording only when useful, but do not call tracker APIs.
 7. Recommend `triage` for final readiness classification or `write-plan` for an accepted slice.
 
@@ -81,6 +124,8 @@ Use `skills/_shared/LOCALE-GUARD.md` for issue titles, issue bodies, headings, s
 - Do not skip the source-of-truth or artifact-promotion gate because the user says to "just split issues".
 - Do not call GitHub, Linear, Jira, or other tracker APIs; keep output tracker-neutral unless another approved workflow explicitly takes over.
 - Do not mark final readiness; `to-issues` may only produce a triage recommendation candidate.
+- Do not suggest `codex_app_managed_worktree_thread` for `read_only_review`, `planning_only`, or unsplit `hybrid` slices.
+- Do not use runtime candidate fields as proof that the task is executable; missing Goal Contract, source package, validation, or runtime details remain candidate gaps for `triage` / future `dispatch`.
 
 ## Output Shape
 
@@ -96,6 +141,14 @@ Issue Drafts
 - Execution: AFK / HITL
 - Contract Impact: API / DB / UI state / docs / verification contract / none
 - Verification Evidence Needed
+- Implementation Task Type Candidate
+- Implementation Runtime Candidate
+- Product Runtime Covered
+- Isolation Needed
+- Parallelization Candidate
+- Goal Contract Status
+- Goal Contract Missing Fields
+- Runtime Missing Fields
 - Ready-for-Agent Missing Fields
 - Triage Recommendation Candidate: ready-for-agent candidate / needs-info recommendation / ready-for-human recommendation
 Ordering Notes
@@ -105,7 +158,7 @@ Artifact Recommendation
 
 ## Stop Condition
 
-Stop when each issue draft has a clear vertical slice, acceptance criteria, blockers, execution type, contract impact, verification evidence needed, ready-for-agent missing fields, triage recommendation candidate, and next action.
+Stop when each issue draft has a clear vertical slice, acceptance criteria, blockers, execution type, contract impact, verification evidence needed, runtime-routing candidate fields, Goal Contract/runtime missing fields, ready-for-agent missing fields, triage recommendation candidate, and next action.
 
 ## Artifact Rule
 

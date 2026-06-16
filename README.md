@@ -38,7 +38,7 @@ See [`docs/maintainer-workflows.md`](docs/maintainer-workflows.md) and [`example
 
 ## Current Stage
 
-Current `main` contains v0.2.0 Skill Reliability Hardening. `docs/prd.md` remains the product source of truth; v0.2.0 hardens the existing eight public skills instead of expanding the public surface.
+Current `main` contains the hardened public skill surface defined by `docs/prd.md`. The dispatch runtime router work adds `dispatch` as the ninth public skill, scoped by `docs/prd-dispatch-runtime-router.md`, so Groundwork can package accepted work for the lightest appropriate runtime without executing that runtime itself.
 
 This repository currently contains:
 
@@ -48,7 +48,7 @@ This repository currently contains:
 - maintainer workflow documentation
 - real maintenance case studies
 - Codex plugin manifest
-- eight first-cut public skills
+- nine public skills, including `dispatch`
 - skill trigger fixtures
 - structured smoke and safety fixtures
 - skill reliability fixtures
@@ -93,7 +93,7 @@ codex plugin marketplace add ~/.codex/plugins/groundwork
 codex plugin add groundwork@groundwork
 ```
 
-You can also install interactively by running `codex`, opening `/plugins`, choosing the `Groundwork` marketplace, and selecting `Install plugin`. Codex should discover the plugin from `.codex-plugin/plugin.json` and load the eight public skills from `skills/`.
+You can also install interactively by running `codex`, opening `/plugins`, choosing the `Groundwork` marketplace, and selecting `Install plugin`. Codex should discover the plugin from `.codex-plugin/plugin.json` and load the public skills from `skills/`.
 
 ## Update
 
@@ -155,5 +155,5 @@ PRD/spec -> task -> plan -> prototype/contract/design as needed -> implementatio
 - `docs/plugin-architecture.md` - staged Codex plugin architecture
 - `examples/` - real Groundwork maintenance case studies and draft previews
 - `.codex-plugin/plugin.json` - Codex plugin manifest
-- `skills/` - eight shallow public skills
+- `skills/` - public skills, including `dispatch`
 - `evals/` - prompt fixtures, scenario fixtures, fixture repo, baselines, and runtime trial checklist
