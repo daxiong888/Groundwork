@@ -189,6 +189,8 @@ tasks:
       pause_if: ""
       non_goals: ""
       risk_gate: ""
+      preferred_runtime: ""
+      result_package_expected: ""
     execution_profile:
       model_profile: ""
       reasoning_effort: "" # low | medium | high
@@ -269,6 +271,8 @@ tasks:
       pause_if: "<present>"
       non_goals: "<present>"
       risk_gate: "<present>"
+      preferred_runtime: "<present>"
+      result_package_expected: review_package
     validation:
       fastest_signal: "<present>"
       required_evidence: "<present>"

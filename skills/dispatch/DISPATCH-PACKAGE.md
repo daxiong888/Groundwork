@@ -83,6 +83,8 @@ tasks:
       pause_if: ""
       non_goals: ""
       risk_gate: ""
+      preferred_runtime: ""
+      result_package_expected: ""
 
     execution_profile:
       model_profile: ""
@@ -139,7 +141,7 @@ tasks:
 - `planning_only` must not route to `codex_app_managed_worktree_thread`.
 - `hybrid` must route to `needs_split` or split first. Investigation may route to `codex_subagent` or `main_thread_readonly`; write worktree routing waits until a concrete write implementation subtask exists.
 - `write_implementation` with `readiness = ready_for_agent`, complete Goal Contract, source package, and validation package defaults to `codex_app_managed_worktree_thread` unless the task is trivial or the user overrides.
-- `codex_app_managed_worktree_thread` requires `task_type = write_implementation`, `readiness = ready_for_agent`, `isolation.filesystem = codex_managed_worktree`, a present Goal Contract, present source package, present validation package, and `expected_output = review_package`.
+- `codex_app_managed_worktree_thread` requires `task_type = write_implementation`, `readiness = ready_for_agent`, `isolation.filesystem = codex_managed_worktree`, a complete Goal Contract, present source package, present validation package, and `expected_output = review_package`.
 - `codex_subagent` defaults to `can_write_files = false`.
 - A subagent may write only when the user explicitly requests write-capable subagent execution and the runtime confirms safe support.
 - Phase 1 `codex_subagent` dispatch is package-only: it may produce `subagent_package`, but it must not spawn a subagent or claim execution unless runtime capability detection and an explicit execution request or approval are both present.
@@ -165,12 +167,19 @@ source_package:
   known_source_or_first_inspection_step: present
 goal_contract:
   goal_command: present
+  outcome: present
+  source_truth: present
+  acceptance_criteria_mapping: present
   verification: present
   constraints: present
   boundaries: present
   iteration_policy: present
   stop_when: present
   pause_if: present
+  non_goals: present
+  risk_gate: present
+  preferred_runtime: present
+  result_package_expected: review_package
 validation:
   fastest_signal: present
   required_evidence: present
@@ -188,6 +197,7 @@ runtime_package:
 - `runtime_id != codex_app_managed_worktree_thread`
 - `readiness != ready_for_agent`
 - Goal Contract is missing or incomplete
+- `goal_contract.result_package_expected != review_package`
 - source package is missing or incomplete
 - validation package is missing or incomplete
 - `runtime_package.expected_output != review_package`
