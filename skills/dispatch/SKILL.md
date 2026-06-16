@@ -143,7 +143,7 @@ source:
   prd: ""
   issue_set: ""
   readiness_source: ""
-  source_truth_status: accepted
+  source_truth_status: "" # accepted | external_accepted | issue_ready | mixed | unknown
   redactions_applied: ""
 
 runtime_policy:
@@ -158,14 +158,14 @@ model_policy:
 tasks:
   - task_id: ""
     title: ""
-    task_type: write_implementation
-    readiness: ready_for_agent
-    runtime_id: codex_app_managed_worktree_thread
+    task_type: "" # write_implementation | read_only_review | planning_only | hybrid | diagnosis | verification | direct
+    readiness: ""
+    runtime_id: ""
     runtime_reason: ""
     isolation:
-      context: thread
-      filesystem: codex_managed_worktree
-      diff_surface: required
+      context: ""
+      filesystem: ""
+      diff_surface: ""
     parallelization:
       eligible: false
       conflict_group: ""
@@ -191,20 +191,91 @@ tasks:
       risk_gate: ""
     execution_profile:
       model_profile: ""
-      reasoning_effort: medium
-      cost_latency_bias: balanced
+      reasoning_effort: "" # low | medium | high
+      cost_latency_bias: "" # low_cost | balanced | low_latency | high_confidence
       routing_reason: ""
-      selector_enforcement: tool_if_available_else_prompt_preference
+      selector_enforcement: "" # tool_enforced | prompt_preference | unavailable | unknown
     validation:
       fastest_signal: ""
       required_evidence: ""
     runtime_package:
-      adapter: codex_app_managed_worktree_thread
-      expected_output: review_package
-      can_write_files: true
+      adapter: ""
+      expected_output: ""
+      can_write_files: false
     approval:
       required: false
       reason: ""
+```
+
+## Runtime Package Examples
+
+Read-only review packages must not default to a managed worktree:
+
+```yaml
+tasks:
+  - task_id: "review-api-contract"
+    task_type: read_only_review
+    readiness: ready_for_agent
+    runtime_id: codex_subagent
+    runtime_reason: "Independent read-only review with no file edits required."
+    isolation:
+      context: subagent
+      filesystem: none
+      diff_surface: none
+    runtime_package:
+      adapter: codex_subagent
+      expected_output: findings_package
+      can_write_files: false
+```
+
+Hybrid tasks must split diagnosis from write work before a write package is generated:
+
+```yaml
+tasks:
+  - task_id: "diagnose-router-regression"
+    task_type: hybrid
+    readiness: needs_split
+    runtime_id: main_thread_readonly
+    runtime_reason: "First inspect evidence and produce a concrete write slice or a no-change finding."
+    runtime_package:
+      adapter: main_thread_readonly
+      expected_output: diagnosis_package
+      can_write_files: false
+```
+
+Managed worktree packages are valid only when the task is a ready write implementation and Goal Contract, source package, and validation package are all present:
+
+```yaml
+tasks:
+  - task_id: "issue-4a"
+    task_type: write_implementation
+    readiness: ready_for_agent
+    runtime_id: codex_app_managed_worktree_thread
+    runtime_reason: "Accepted write implementation with complete Goal Contract, source package, and validation package."
+    isolation:
+      context: thread
+      filesystem: codex_managed_worktree
+      diff_surface: required
+    goal_contract:
+      goal_command: "/goal <one executable task>"
+      outcome: "<present>"
+      source_truth: "<present>"
+      acceptance_criteria_mapping: "<present>"
+      verification: "<present>"
+      constraints: "<present>"
+      boundaries: "<present>"
+      iteration_policy: "<present>"
+      stop_when: "<present>"
+      pause_if: "<present>"
+      non_goals: "<present>"
+      risk_gate: "<present>"
+    validation:
+      fastest_signal: "<present>"
+      required_evidence: "<present>"
+    runtime_package:
+      adapter: codex_app_managed_worktree_thread
+      expected_output: review_package
+      can_write_files: true
 ```
 
 ## Package References

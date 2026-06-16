@@ -89,7 +89,9 @@ Use the local linter for a fast structural check:
 python3 scripts/lint_goal_contract.py <goal-contract-file>
 ```
 
-The linter scans the full Markdown file, including fenced code blocks. It intentionally does not parse block boundaries or perform future structured validation.
+The linter scans the full Markdown file, including fenced code blocks. It accepts either same-line field values or indented/block values immediately after a required label, and it requires the extracted `Goal Command` value itself to start with `/goal`. It intentionally does not perform full Markdown AST validation.
+
+`evals/prompts/goal-contract.csv` is a fixture-only manifest for Goal Contract lint coverage. It is not part of the runtime default suite because `goal-contract` is a shared contract and linter, not a public skill runtime route.
 
 Passing output:
 

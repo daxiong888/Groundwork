@@ -1674,8 +1674,8 @@ Dispatch chooses the right isolation/runtime per task.
 Results return through a unified Result Package.
 ```
 
-[1]: https://openai.com/index/introducing-the-codex-app/?utm_source=chatgpt.com "Introducing the Codex app | OpenAI"
-[2]: https://openai.com/products/release-notes/?utm_source=chatgpt.com "Release Notes | OpenAI | OpenAI"
+[1]: https://openai.com/index/introducing-the-codex-app/ "Introducing the Codex app | OpenAI"
+[2]: https://openai.com/products/release-notes/ "Release Notes | OpenAI | OpenAI"
 [3]: https://playbooks.com/skills/obra/superpowers/dispatching-parallel-agents "dispatching-parallel-agents skill by obra/superpowers"
 [4]: https://github.com/joeseesun/qiaomu-goal-meta-skill/blob/main/SKILL.md "qiaomu-goal-meta-skill/SKILL.md at main · joeseesun/qiaomu-goal-meta-skill · GitHub"
-[5]: https://github.com/openai/codex/issues/23496?utm_source=chatgpt.com "Skill instructions to use subagents are ignored unless repeated in the prompt · Issue #23496 · openai/codex"
+[5]: https://github.com/openai/codex/issues/23496 "Skill instructions to use subagents are ignored unless repeated in the prompt · Issue #23496 · openai/codex"

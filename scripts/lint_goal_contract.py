@@ -2,7 +2,8 @@
 """Lightweight Goal Contract linter.
 
 This intentionally scans the full Markdown text, including fenced code blocks.
-Future structured parsing is out of scope for the v0 Goal Contract check.
+It supports lightweight block values after a field label, but does not perform
+full Markdown AST validation.
 """
 
 from __future__ import annotations
@@ -115,15 +116,40 @@ def find_label(text: str, aliases: tuple[str, ...]) -> re.Match[str] | None:
     return None
 
 
-def extract_field_value(text: str, aliases: tuple[str, ...]) -> str:
+def find_field_line_value(line: str, aliases: tuple[str, ...]) -> str | None:
     for alias in aliases:
         pattern = re.compile(
-            rf"(?im)^\s*(?:[-*]\s+|\d+\.\s+|#+\s+|\|\s*)?"
-            rf"{label_pattern(alias)}[ \t]*[:：][ \t]*(?P<value>.*)$"
+            rf"^\s*(?:[-*]\s+|\d+\.\s+|#+\s+|\|\s*)?"
+            rf"{label_pattern(alias)}[ \t]*[:：][ \t]*(?P<value>.*)$",
+            re.IGNORECASE,
         )
-        match = pattern.search(text)
+        match = pattern.match(line)
         if match:
             return match.group("value").strip()
+    return None
+
+
+def is_known_field_label(line: str) -> bool:
+    return any(find_field_line_value(line, aliases) is not None for aliases in FIELD_ALIASES.values())
+
+
+def extract_field_value(text: str, aliases: tuple[str, ...]) -> str:
+    lines = text.splitlines()
+    for index, line in enumerate(lines):
+        first_value = find_field_line_value(line, aliases)
+        if first_value is None:
+            continue
+
+        values = [first_value] if first_value else []
+        for follow in lines[index + 1 :]:
+            if is_known_field_label(follow):
+                break
+            if re.match(r"^\s*#{1,6}\s+\S", follow):
+                break
+            stripped = follow.strip()
+            if stripped:
+                values.append(stripped)
+        return "\n".join(values).strip()
     return ""
 
 
@@ -138,14 +164,15 @@ def contains_any(patterns: tuple[str, ...], value: str) -> bool:
 def lint(text: str) -> list[tuple[str, str]]:
     findings: list[tuple[str, str]] = []
 
-    if "/goal" not in text:
-        findings.append(("Goal Command", "missing /goal command prefix"))
-
     for field, aliases in FIELD_ALIASES.items():
         if not find_label(text, aliases):
             findings.append((field, "missing required label"))
         elif not has_non_empty_field_value(text, aliases):
-            findings.append((field, "required field must have non-empty content on the label line"))
+            findings.append((field, "required field must have non-empty content"))
+
+    goal_command = extract_field_value(text, FIELD_ALIASES["Goal Command"])
+    if goal_command and not goal_command.lstrip().startswith("/goal"):
+        findings.append(("Goal Command", "Goal Command must start with /goal"))
 
     for placeholder in PLACEHOLDERS:
         if placeholder in text:
