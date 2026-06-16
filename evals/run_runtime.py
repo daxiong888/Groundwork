@@ -34,6 +34,7 @@ DEFAULT_SUITES = [
 ]
 
 PUBLIC_SKILL_ROUTES = {
+    "dispatch",
     "to-prd",
     "to-issues",
     "triage",
@@ -574,6 +575,21 @@ def validate_routing_schema(rows):
             errors.append(str(exc))
 
     return errors, normalized
+
+
+def is_auto_skipped_row(row):
+    return boolish(row.get("targeted_only")) or boolish(row.get("fixture_only"))
+
+
+def filter_auto_discovery_rows(rows):
+    kept = []
+    skipped = []
+    for row in rows:
+        if is_auto_skipped_row(row):
+            skipped.append(row)
+        else:
+            kept.append(row)
+    return kept, skipped
 
 
 def split_resource_keys(value):
@@ -2461,6 +2477,8 @@ def main(argv=None):
             return 2
 
     prompt_files = args.prompt_file or []
+    explicit_suites = bool(args.suite)
+    explicit_ids = bool(target_ids)
     if args.suite:
         suites = [normalize_suite_name(suite) for suite in args.suite]
     elif prompt_files:
@@ -2469,6 +2487,11 @@ def main(argv=None):
         suites = prompt_suites() if args.all_prompts or target_ids or args.validate_schema else DEFAULT_SUITES
     suite_labels = list(suites) + [str(path) for path in prompt_files]
     rows = read_rows(suites, prompt_files)
+    if (args.all_prompts or args.validate_schema) and not explicit_suites and not explicit_ids and not prompt_files:
+        rows, skipped_rows = filter_auto_discovery_rows(rows)
+        if skipped_rows:
+            skipped_ids = ",".join(row["id"] for row in skipped_rows)
+            print(f"skipped_auto_discovery_rows={len(skipped_rows)}:{skipped_ids}", flush=True)
     schema_errors, _normalized_schema = validate_routing_schema(rows)
     if args.validate_schema:
         if target_ids:
