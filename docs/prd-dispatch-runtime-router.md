@@ -78,6 +78,8 @@ Groundwork 当前 Agent Brief 已包含 Task、Source/Evidence、Known Source、
 
 Groundwork plugin architecture 强调 supporting behaviors 应先嵌入现有 skills，只有反复使用证明必要后再成为 public skill，并要求 skills 保持窄触发、证据先行、避免过宽 public surface。
 
+本 workstream 将 `dispatch` 升级为 public skill 是有意例外：运行时路由不是单一现有 skill 的内部 supporting behavior，而是 `to-issues` 候选字段、`triage` ready-for-agent gate、Goal Contract、runtime adapter package、Result Package、冲突预检和后续验证之间的交接边界。若继续嵌入 `triage` 或 `implement`，会扩大现有 skill 触发面并模糊“package-only routing”和“execution”的责任边界。因此 `dispatch` 必须保持窄触发、只输出 package、不执行 runtime。
+
 Codex App 官方介绍强调它是面向多个 agents 的 command center，支持 multiple agents 并行工作、separate threads、thread 内 diff review、以及内置 worktrees，让多个 agents 在同一 repo 的 isolated copies 上工作。([OpenAI][1])
 
 OpenAI release notes 在 2026-06-09 的 Codex iOS 更新中提到新增 branch/worktree、Codex profiles、`/goal`、inline review comments 等能力，说明 goals/worktrees/review surface 正在成为 Codex 运行时的重要能力面。([OpenAI][2])

@@ -146,6 +146,8 @@ def extract_field_value(text: str, aliases: tuple[str, ...]) -> str:
                 break
             if re.match(r"^\s*#{1,6}\s+\S", follow):
                 break
+            if not re.match(r"^\s+\S", follow):
+                break
             stripped = follow.strip()
             if stripped:
                 values.append(stripped)

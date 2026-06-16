@@ -127,6 +127,21 @@ def read_rows(suites):
     return out
 
 
+def is_auto_skipped_row(row):
+    return boolish(row.get("targeted_only")) or boolish(row.get("fixture_only"))
+
+
+def filter_auto_discovery_rows(rows):
+    kept = []
+    skipped = []
+    for row in rows:
+        if is_auto_skipped_row(row):
+            skipped.append(row)
+        else:
+            kept.append(row)
+    return kept, skipped
+
+
 def split_resource_keys(value):
     if not value:
         return []
@@ -930,6 +945,8 @@ def main(argv=None):
             print(f"rerun_failures_error={exc}", flush=True)
             return 2
 
+    explicit_suites = bool(args.suite)
+    explicit_ids = bool(target_ids)
     suites = args.suite or (prompt_suites() if args.all_prompts or target_ids else DEFAULT_SUITES)
     rows = read_rows(suites)
     if target_ids:
@@ -938,6 +955,11 @@ def main(argv=None):
         if missing:
             print("missing_ids=" + ",".join(missing), flush=True)
             return 2
+    elif args.all_prompts and not explicit_suites and not explicit_ids:
+        rows, skipped_rows = filter_auto_discovery_rows(rows)
+        if skipped_rows:
+            skipped_ids = ",".join(row["id"] for row in skipped_rows)
+            print(f"skipped_auto_discovery_rows={len(skipped_rows)}:{skipped_ids}", flush=True)
     if args.group:
         rows = [row for row in rows if row_matches_group(row, args.group)]
 

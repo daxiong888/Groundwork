@@ -2,6 +2,28 @@
 
 All notable changes to Groundwork are documented in this file.
 
+## v0.3.1 - 2026-06-16
+
+### Added
+
+- Added `dispatch` as the ninth public skill for package-only runtime routing across managed worktree threads, subagent packages, direct main-thread work, read-only main-thread work, and clean reviewer routes.
+- Added Dispatch Package v2, Result Package, runtime adapter, routing profile, and conflict preflight contracts under `skills/dispatch/`.
+- Added the shared Goal Contract spec, lightweight Goal Contract linter, and focused pass/fail fixtures.
+- Added dispatch and Goal Contract prompt/scenario fixtures for targeted evaluation and linter coverage.
+
+### Changed
+
+- Bumped plugin metadata to `0.3.1` for the dispatch public skill release and cache-visible skill surface change.
+- Extended `to-issues` and `triage` outputs with runtime-routing candidates, Goal Contract fields, Preferred Runtime, and Result Package expectations.
+- Documented the dispatch runtime workflow from PRD/task slicing through triage, dispatch, runtime adapter output, and verification.
+- Marked dispatch runtime prompts as targeted-only and Goal Contract prompts as fixture-only so default runtime eval discovery can skip them unless explicitly requested.
+
+### Notes
+
+- `dispatch` is package-only in this release: it routes accepted work and prepares runtime packages, but it does not call runtime tools, spawn subagents, create worktrees, push, open PRs, close issues, or mutate remotes.
+- Full runtime eval against `dispatch` requires reinstalling or refreshing the plugin cache so Codex loads `groundwork@0.3.1` with the new public skill surface.
+- `codex-managed-worktree-threads` adapter changes remain external to this repository and must be implemented and verified in that project.
+
 ## v0.3.0 - 2026-05-26
 
 ### Added

@@ -1,6 +1,6 @@
 {
   "name": "groundwork",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Codex-native personal R&D workflow base for PRD, task slicing, planning, prototypes, implementation, verification, and handoff.",
   "author": {
     "name": "Daxiong",

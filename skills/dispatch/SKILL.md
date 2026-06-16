@@ -192,7 +192,7 @@ tasks:
     execution_profile:
       model_profile: ""
       reasoning_effort: "" # low | medium | high
-      cost_latency_bias: "" # low_cost | balanced | low_latency | high_confidence
+      cost_latency_bias: "" # fast | balanced | quality
       routing_reason: ""
       selector_enforcement: "" # tool_enforced | prompt_preference | unavailable | unknown
     validation:
@@ -219,9 +219,9 @@ tasks:
     runtime_id: codex_subagent
     runtime_reason: "Independent read-only review with no file edits required."
     isolation:
-      context: subagent
+      context: subagent_prompt
       filesystem: none
-      diff_surface: none
+      diff_surface: not_required
     runtime_package:
       adapter: codex_subagent
       expected_output: findings_package
