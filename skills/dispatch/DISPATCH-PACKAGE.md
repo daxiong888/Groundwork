@@ -179,7 +179,7 @@ goal_contract:
   non_goals: present
   risk_gate: present
   preferred_runtime: present
-  result_package_expected: present
+  result_package_expected: review_package
 validation:
   fastest_signal: present
   required_evidence: present
@@ -197,6 +197,7 @@ runtime_package:
 - `runtime_id != codex_app_managed_worktree_thread`
 - `readiness != ready_for_agent`
 - Goal Contract is missing or incomplete
+- `goal_contract.result_package_expected != review_package`
 - source package is missing or incomplete
 - validation package is missing or incomplete
 - `runtime_package.expected_output != review_package`

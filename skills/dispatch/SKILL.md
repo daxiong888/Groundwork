@@ -272,7 +272,7 @@ tasks:
       non_goals: "<present>"
       risk_gate: "<present>"
       preferred_runtime: "<present>"
-      result_package_expected: "<present>"
+      result_package_expected: review_package
     validation:
       fastest_signal: "<present>"
       required_evidence: "<present>"
