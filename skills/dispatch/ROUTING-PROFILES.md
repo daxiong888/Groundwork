@@ -79,7 +79,7 @@ Default a write task to `codex_app_managed_worktree_thread` only when all of the
 - The task is an accepted independent write issue or high-risk write issue.
 - Readiness evidence is present.
 - Source package is present.
-- Goal Contract is complete or the package clearly marks missing fields.
+- Goal Contract is complete.
 - Validation package is present.
 - Conflict preflight does not require serialization or approval first.
 
