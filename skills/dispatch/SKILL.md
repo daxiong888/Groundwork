@@ -162,6 +162,15 @@ tasks:
     readiness: ""
     runtime_id: ""
     runtime_reason: ""
+    runtime_identity:
+      runtime_correlation_id: ""
+      dispatch_id: ""
+      task_id: ""
+      parent_thread_identifier: ""
+      child_thread_identifier: ""
+      initial_thread_title: ""
+      current_thread_title: ""
+      title_mutation_detected: true | false | unknown
     isolation:
       context: ""
       filesystem: ""
@@ -245,21 +254,41 @@ tasks:
       can_write_files: false
 ```
 
-Managed worktree packages are valid only when the task is a ready write implementation and Goal Contract, source package, and validation package are all present:
+Managed worktree packages are valid only when the task is a ready write implementation and runtime identity, Goal Contract, source package, and validation package are all present:
 
 ```yaml
 tasks:
   - task_id: "issue-4a"
+    title: "Update managed worktree runtime identity contract"
     task_type: write_implementation
     readiness: ready_for_agent
     runtime_id: codex_app_managed_worktree_thread
-    runtime_reason: "Accepted write implementation with complete Goal Contract, source package, and validation package."
+    runtime_reason: "Accepted write implementation with runtime identity, complete Goal Contract, source package, and validation package."
+    runtime_identity:
+      runtime_correlation_id: "gw:<workstream>:issue-4a:001:<short_hash>"
+      dispatch_id: "<present>"
+      task_id: "issue-4a"
+      parent_thread_identifier: "<present_or_empty>"
+      child_thread_identifier: "<present_or_empty>"
+      initial_thread_title: "<display_only_or_empty>"
+      current_thread_title: "<display_only_or_empty>"
+      title_mutation_detected: unknown
     isolation:
       context: thread
       filesystem: codex_managed_worktree
       diff_surface: required
+    parallelization:
+      eligible: false
+      conflict_group: "managed-worktree-runtime-identity"
+      dependency_group: ""
+      merge_order_hint: "before dependent managed worktree lifecycle templates"
+    source_package:
+      prd_excerpt: "PRD v0.3.3 FR-5 requires stable runtime identity for managed worktree packages."
+      issue_body: "Add runtime identity fields and stop using thread title as source-of-truth identity."
+      known_source_or_first_inspection_step: "Read DISPATCH-PACKAGE.md, RESULT-PACKAGE.md, and managed worktree adapter templates before editing."
+      redactions_applied: "none"
     goal_contract:
-      goal_command: "/goal <one executable task>"
+      goal_command: "/goal Add stable runtime identity fields to the managed worktree dispatch package templates"
       outcome: "<present>"
       source_truth: "<present>"
       acceptance_criteria_mapping: "<present>"
@@ -276,10 +305,20 @@ tasks:
     validation:
       fastest_signal: "<present>"
       required_evidence: "<present>"
+    execution_profile:
+      model_profile: "<present_or_empty>"
+      reasoning_effort: medium
+      cost_latency_bias: balanced
+      routing_reason: "<present>"
+      selector_enforcement: tool_if_available_else_prompt_preference
     runtime_package:
       adapter: codex_app_managed_worktree_thread
+      thread_title: "Add stable runtime identity fields"
       expected_output: review_package
       can_write_files: true
+    approval:
+      required: false_or_package_gate_satisfied
+      reason: "<present_or_empty>"
 ```
 
 ## Package References
@@ -287,4 +326,5 @@ tasks:
 - Runtime capabilities: `RUNTIME-ADAPTERS.md`
 - Dispatch schema and routing rules: `DISPATCH-PACKAGE.md`
 - Unified result envelope: `RESULT-PACKAGE.md`
+- Clean review fan-out: `CLEAN-REVIEW-FANOUT.md`
 - Managed worktree internal adapter contract: `adapters/codex_app_managed_worktree_thread/ADAPTER.md`

@@ -33,6 +33,55 @@ result_package:
   status: ready_for_review | needs_remediation | blocked | no_execution_needed | no_worktree_needed
   output_type: review_package | findings_package | diagnosis_package | direct_result | review_findings
 
+  runtime_identity:
+    runtime_correlation_id: ""
+    dispatch_id: ""
+    task_id: ""
+    parent_thread_identifier: ""
+    child_thread_identifier: ""
+    initial_thread_title: ""
+    current_thread_title: ""
+    title_mutation_detected: true | false | unknown
+
+  goal_mode:
+    required: true | false
+    goal_command_first_line: true | false | unknown
+    lint_passed_before_delivery: true | false | unknown
+    runtime_goal_mode_evidence: present | absent | unavailable | unknown
+    evidence: ""
+    failure_action: none | corrective_resend | blocked | needs_remediation
+
+  lifecycle:
+    current_state: ""
+    archive_ready: true | false | unknown
+    archive_blockers: []
+    next_lifecycle_route: clean_reviewer | merge_back | branch_cleanup | triage | verify | human_decision | done
+
+  merge_back:
+    source_available: worktree_path | patch_bundle | branch_or_head | unavailable | not_applicable
+    source_evidence: ""
+    reliable_source: true | false | unknown
+    applied_to_main_worktree: true | false | not_attempted | unknown
+    changed_pathspecs: []
+    validation_after_merge: pass | fail | skipped | unverified | not_applicable
+    evidence: ""
+
+  branch_cleanup:
+    branch_detected: true | false | unknown
+    branch_name: ""
+    cleanup_recommendation: delete_local | delete_remote | retain | human_decision | no_branch_detected | not_applicable
+    approval_required: true | false
+    approval_evidence: ""
+    cleanup_completed: true | false | not_attempted | unknown
+    evidence: ""
+
+  clean_review:
+    required: true | false
+    reviewer_context: fresh | coordinator_intake | not_required | unknown
+    status: pending | passed | failed | blocked | not_required
+    findings: []
+    evidence: ""
+
   task:
     title: ""
     task_type: ""
@@ -88,14 +137,21 @@ Required output type: `review_package`.
 Groundwork-side admissibility echoed in results:
 
 - Valid managed worktree outputs must correspond to a package with `task_type = write_implementation`, `readiness = ready_for_agent`, `isolation.filesystem = codex_managed_worktree`, present Goal Contract, present source package, present validation package, and `expected_output = review_package`.
+- Valid managed worktree outputs must echo `runtime_identity.runtime_correlation_id` from the dispatch package.
+- Valid managed worktree outputs must include `goal_mode` evidence when Goal Mode was required and `lifecycle.current_state` when lifecycle closeout or archive routing may follow.
 - Inputs that are read-only, planning-only, hybrid before split, addressed to a different runtime, missing Goal Contract, missing source package, missing validation, or expecting anything other than `review_package` should not appear as executable managed worktree results.
 - If such an input reaches result reporting, use `status = no_worktree_needed`, `needs_remediation`, or `blocked` with evidence, rather than implying a managed worktree executed.
 
 Must include:
 
-- thread identifier and thread title when available
+- runtime correlation ID and runtime identity fields when available
+- thread identifier and thread title display label when available
 - worktree type and path when available
 - Goal Mode evidence when the package required Goal Mode
+- lifecycle status and archive blockers when lifecycle closeout may follow
+- merge-back source, reliability, application status, and evidence when merge-back may follow
+- branch detection, cleanup recommendation, approval requirement, and cleanup evidence when cleanup may follow
+- clean-review requirement, reviewer context, status, findings, and evidence when clean review may follow
 - changed files
 - diff summary
 - validation commands and results
@@ -115,6 +171,13 @@ Adapter mechanics boundary:
 - Groundwork consumes or reviews the result package; it does not create Codex App managed worktrees, run child threads, archive threads, or enforce selectors.
 - Managed worktree adapter contract details live under `skills/dispatch/adapters/codex_app_managed_worktree_thread/`; that directory is an internal contract package, not a public skill.
 - `selector_enforcement = tool_enforced` is valid only when the executing adapter confirms model/reasoning selector application. Otherwise use `prompt_preference`, `unavailable`, or `unknown`.
+- Thread titles are display-only labels. If the visible title changes, keep correlating by `runtime_identity.runtime_correlation_id`, report the observed `current_thread_title` when available, and set `title_mutation_detected = true`.
+- Older v0.3.2 result packages without `runtime_identity`, `goal_mode`, `lifecycle`, `merge_back`, `branch_cleanup`, or `clean_review` remain readable. If managed worktree lifecycle closeout requires any missing v0.3.3 field, route to `needs_remediation`, `blocked`, or `human_decision` instead of inferring evidence.
+- If Goal Mode is required and `goal_mode.runtime_goal_mode_evidence` is `absent`, `unavailable`, or `unknown`, route to `blocked` or `needs_remediation`; do not report `ready_for_review`.
+- `review_package_returned` is not archive-ready evidence. Archive readiness requires clean review plus merge/discard evidence or a blocked-with-human-decision closeout path, and `archived` does not imply branch cleanup.
+- Do not claim `merged_to_main_worktree`, completed merge-back, or post-merge validation unless `merge_back.reliable_source = true`, `merge_back.applied_to_main_worktree = true`, and supporting evidence are present.
+- Do not claim `branch_cleaned` or completed cleanup unless required approval is satisfied and `branch_cleanup.cleanup_completed = true` with evidence. If approval is missing or branch identity is uncertain, route to `human_decision` or `blocked`.
+- Do not claim clean review passed from the child implementation package alone. `clean_review.status = passed` requires fresh clean-review evidence or a documented `coordinator_intake` decision that satisfies the low-risk exception in `skills/dispatch/CLEAN-REVIEW-FANOUT.md`.
 
 ### codex_subagent
 

@@ -30,7 +30,9 @@ This document defines default routing and execution profile recommendations for 
 |---|---|---|
 | Small direct answer or tiny low-risk edit | `main_thread_direct` | Runtime overhead is not justified. |
 | Accepted independent write issue | `codex_app_managed_worktree_thread` | Needs filesystem isolation, durable diff review, validation evidence, and review package output. |
-| High-risk schema/API/migration/security/data correctness write | `codex_app_managed_worktree_thread` | Needs isolated write execution and high-quality review evidence. |
+| Accepted dependent write issue | serialize until dependency barrier release | Requires prerequisite merge-back, base refresh, and refreshed Goal Contract before write dispatch. |
+| High-risk schema/API/migration/security/data correctness write | `codex_app_managed_worktree_thread` plus fresh clean review | Needs isolated write execution and independent review before verification or closeout. |
+| Complex work that triggers separation policy | role-separated route | Use planner, implementer, clean reviewer, verifier, and coordinator boundaries from `COMPLEX-WORK-SEPARATION.md`. |
 | Read-only multi-perspective review | `codex_subagent` or `clean_reviewer` | Needs role or context isolation without write execution. |
 | PRD / architecture / security / QA critique | `codex_subagent` or `main_thread_readonly` | Usually read-only decision support. |
 | Independent codebase exploration | `codex_subagent` | Benefits from context isolation without worktree overhead. |
@@ -76,14 +78,30 @@ Selector enforcement is an evidence field, not an assumption.
 
 Default a write task to `codex_app_managed_worktree_thread` only when all of these are true:
 
-- The task is an accepted independent write issue or high-risk write issue.
+- The task is an accepted independent write issue, high-risk write issue with its required review gates, or a dependent write issue whose barrier has been released.
 - Readiness evidence is present.
 - Source package is present.
 - Goal Contract is complete.
 - Validation package is present.
-- Conflict preflight does not require serialization or approval first.
+- Conflict preflight does not require serialization, base refresh, Goal Contract refresh, or approval first.
 
 If any of those fields are missing, dispatch should return `needs_info`, `needs_split`, `main_thread_readonly`, or a human decision instead of generating an executable worktree package.
+
+## Complex Work Separation
+
+Use `COMPLEX-WORK-SEPARATION.md` before routing nontrivial managed worktree work.
+
+Fresh role separation is required for P0/P1, public API, migration, schema, security, privacy, auth, permissions, data correctness, shared contract, adapter contract, package schema, state machine, cross-cutting, dependent-chain, weak-validation, multi-package, or stale-context work.
+
+Required ownership boundary:
+
+```text
+planner -> implementer -> clean reviewer -> verifier -> coordinator closeout
+```
+
+The implementer may self-check and report validation evidence, but self-check is not clean review. A child implementer must not claim `review_passed` for its own work.
+
+Small, low-risk, single-scope tasks should remain lightweight when no separation trigger applies. Do not route tiny direct work through managed worktree or clean review ceremony only because the separation policy exists.
 
 ## Read-only Routing Defaults
 
@@ -108,4 +126,16 @@ Default sequence:
 
 ## Conflict-sensitive Routing
 
-When `CONFLICT-PREFLIGHT.md` assigns the same conflict group to multiple write tasks, dispatch must serialize them or ask for explicit approval before parallelizing. Read-only subagent reviews may run in parallel even when they inspect the same files or contracts.
+Use `adapters/codex_app_managed_worktree_thread/CONFLICT-PREFLIGHT.md` before creating managed worktree child threads for write tasks that may overlap, depend on a prior merge, or share a conflict group.
+
+Independent write work remains parallelizable when all of these are true:
+
+- no dependency barrier is present;
+- no write surface overlaps;
+- no shared conflict group or merge-order hint applies;
+- source truth, Goal Contract, and base are current;
+- validation expectations are independent.
+
+Dependent write work must serialize when any prerequisite result, clean review, merge-back, verification gate, base refresh, or Goal Contract refresh is unmet or unknown. Dispatch may route read-only preparation in parallel only when the read-only package cannot write files and does not treat unmerged child work as source truth.
+
+When conflict preflight assigns the same conflict group to multiple write tasks, dispatch must serialize them or ask for explicit approval before parallelizing. Read-only subagent reviews may run in parallel even when they inspect the same files or contracts.

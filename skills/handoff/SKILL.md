@@ -34,6 +34,13 @@ Reference existing PRDs, issues, plans, commits, diffs, verification notes, life
 Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` to decide whether lifecycle state is needed, stale, or only referenced. Use `skills/_shared/ARTIFACT-PROMOTION.md` to separate canonical artifacts from recoverable lifecycle state: handoff should cite PRDs, issue maps, verification reports, and external issues instead of copying them.
 
 Use `REVIEW-PACKAGE.md` when the next reader needs a review package rather than a basic continuation summary. Use `skills/_shared/SUBAGENT-DELEGATION.md` when the handoff prepares a fresh-context subagent review.
+Use `skills/dispatch/COMPLEX-WORK-SEPARATION.md` when handoff preserves continuation state for managed worktree work whose risk or scope may require separate planning, implementation, clean review, verification, and coordinator closeout roles.
+
+For complex work separation, `handoff` preserves continuation state and ownership boundaries only. It must not become a runtime executor, clean reviewer, verifier, coordinator closeout, merge-back owner, archive owner, branch cleanup owner, commit path, push path, PR path, or tracker mutation path. It may name the next owning role and cite the evidence needed for that role.
+
+When a P1, public API, migration, schema, security, privacy, auth, permissions, data correctness, shared contract, package schema, adapter contract, state machine, weak-validation, or multi-package change is handed off without fresh clean review evidence, record that as an open gap or do-not-assume item. Do not let handoff wording imply that child implementer self-check is clean review.
+
+Small, low-risk continuation notes should remain compact. Do not force a full separation package when no separation threshold applies and a concise handoff can safely identify source truth, current state, gaps, and next action.
 
 Use `skills/_shared/LIFECYCLE-STATE.md` when the user asks to pause, resume, switch sessions, save state, continue later, or otherwise preserve workstream recovery state.
 

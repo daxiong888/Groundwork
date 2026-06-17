@@ -44,6 +44,27 @@ Do not create a managed worktree child thread for:
 - remote write requested without explicit approval
 - destructive action requested without explicit approval
 - unresolved conflict on shared files, schema, route, generated artifact, fixture, public contract, state machine, migration, or shared config
+- branch cleanup requested as the only task for a managed worktree child thread
+- branch cleanup request treats thread archive as branch deletion evidence
+- local branch deletion requested for an unknown, unmerged, checked-out, protected, default, base, shared, or non-task-scoped branch
+- local or remote branch deletion requested while staged changes, unstaged dirty changes, untracked files, or stash entries are unknown or may belong to the branch
+- remote branch deletion requested without explicit approval
+- force branch deletion requested without explicit human decision
+
+## Branch Cleanup No-op And Block Rules
+
+Branch cleanup is a closeout protocol, not a reason to create a managed worktree child implementation thread.
+
+Use `BRANCH-CLEANUP-CHECKLIST.md` for branch cleanup decisions. If a package asks the adapter to create a child thread only to inspect or delete branches, do not create the child thread.
+
+Return:
+
+- `no_execution_needed` when evidence proves no associated branch exists or the branch is intentionally retained.
+- `blocked` when branch evidence is missing and the package cannot make a safe cleanup recommendation.
+- `needs_remediation` when the package conflates archive with branch cleanup or omits required branch cleanup fields.
+- `human_decision` when cleanup would delete a remote branch, require force deletion, touch an unknown or high-risk branch, or delete a branch without fully evidenced local/task-scoped/merged status.
+
+Never silently coerce a branch cleanup package into managed worktree execution or destructive git cleanup.
 
 ## Status Mapping
 
@@ -51,5 +72,6 @@ Do not create a managed worktree child thread for:
 - Use `blocked` when source truth, approval, required tools, conflict resolution, or required package fields are missing.
 - Use `needs_remediation` when the package is close but must be corrected before execution.
 - Use `no_execution_needed` when the package intentionally required no runtime execution.
+- Use `human_decision` when branch cleanup risk requires explicit approval or human retention/deletion choice.
 
 Never silently coerce a rejected package into managed worktree execution.
