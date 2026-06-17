@@ -4,7 +4,7 @@ Target Reader: Groundwork coordinators, dispatch reviewers, and runtime adapter 
 Reader Action Needed: Use this workflow to move accepted work from PRD slicing through runtime routing and back into verification or lifecycle triage.
 Decision Supported: Whether a task should route through `dispatch`, which runtime package shape is valid, and how runtime results return to Groundwork.
 Scope: End-to-end `to-prd -> to-issues -> triage -> dispatch -> runtime adapter -> verify/triage` workflow for Phase 1 dispatch.
-Out of Scope: Automatic subagent spawning, Codex App thread tool execution by Groundwork dispatch, remote writes, external adapter implementation, tracker APIs, and README exposure.
+Out of Scope: Automatic subagent spawning, Codex App thread tool execution by Groundwork dispatch, remote writes, runtime execution implementation, tracker APIs, and README exposure.
 Evidence Level: Derived from `docs/prd-dispatch-runtime-router.md`, `artifacts/dispatch-runtime-router/issue-map.md`, and the dispatch contract files under `skills/dispatch/`.
 
 ## Workflow
@@ -29,10 +29,10 @@ flowchart LR
 > Phase 1 dispatch is package-only. Groundwork `dispatch` must not automatically spawn subagents, must not call Codex App thread tools, and must not perform remote writes.
 
 - No automatic subagent spawn: `codex_subagent` packages remain package-only unless an execution-capable runtime is explicitly requested, approved, and evidenced.
-- No thread tool execution by Groundwork dispatch: creating managed worktree child threads, inserting child prompts, lifecycle monitoring, and selector enforcement belong to the external runtime adapter.
+- No thread tool execution by Groundwork dispatch: creating managed worktree child threads, inserting child prompts, lifecycle monitoring, and selector enforcement belong to an execution-capable runtime adapter. Groundwork includes the internal adapter contract and templates under `skills/dispatch/adapters/codex_app_managed_worktree_thread/`.
 - No remote writes: commits, pushes, PR creation, tracker mutation, deployment, or data writes require a separate explicit approval gate and runtime evidence.
 - No execution claims from package generation: `dispatch` may state routing intent, package completeness, and expected output only.
-- External adapter boundary: Groundwork may reference the expected `codex-managed-worktree-threads` adapter contract, but this workflow does not require External A to be complete.
+- Internal adapter contract boundary: Groundwork co-locates the managed worktree adapter contract with dispatch, but `dispatch` remains package-only unless an execution-capable runtime is explicitly requested, approved, and evidenced.
 
 ## Inputs And Gates
 

@@ -16,6 +16,14 @@ Whether a task is ready for a specific runtime, what constraints the runtime mus
 
 This schema covers dispatch package generation for the initial runtime set. It does not define advanced routing profiles or conflict-preflight mechanics beyond the core fields required to record them.
 
+## Out of Scope
+
+Runtime execution, Codex App thread creation, subagent spawning, remote writes, tracker mutation, and final readiness decisions.
+
+## Evidence Level
+
+Derived from Groundwork dispatch runtime router contracts, Goal Contract requirements, and routing reliability fixtures.
+
 ## Schema
 
 ```yaml
@@ -204,7 +212,7 @@ runtime_package:
 
 For these cases, route to a non-worktree runtime, `needs_info`, `needs_split`, or human decision, and report `no_worktree_needed`, `unsupported_runtime`, or the specific missing package field. Do not silently coerce the task into a managed worktree package.
 
-Groundwork defines this admissibility contract only. Adapter execution mechanics, including Codex App worktree creation, thread creation, child prompt delivery, lifecycle monitoring, review package collection, and selector application, belong to `codex-managed-worktree-threads`.
+Groundwork defines this admissibility contract only. Adapter contract details live under `skills/dispatch/adapters/codex_app_managed_worktree_thread/`. Execution mechanics, including Codex App worktree creation, thread creation, child prompt delivery, lifecycle monitoring, review package collection, and selector application, require an execution-capable runtime adapter and explicit execution approval.
 
 ## Selector Enforcement Rules
 

@@ -287,3 +287,4 @@ tasks:
 - Runtime capabilities: `RUNTIME-ADAPTERS.md`
 - Dispatch schema and routing rules: `DISPATCH-PACKAGE.md`
 - Unified result envelope: `RESULT-PACKAGE.md`
+- Managed worktree internal adapter contract: `adapters/codex_app_managed_worktree_thread/ADAPTER.md`
