@@ -4,10 +4,13 @@ All notable changes to Groundwork are documented in this file.
 
 ## Unreleased
 
+## v0.3.2 - 2026-06-17
+
 ### Changed
 
 - Co-located the `codex_app_managed_worktree_thread` adapter contract under `skills/dispatch/adapters/codex_app_managed_worktree_thread/` as an internal dispatch adapter contract while keeping `dispatch` package-only and no-execution by default.
 - Marked the earlier External A managed worktree adapter task package as superseded so maintainers do not treat the separate-repository plan as the current source of truth.
+- Added managed worktree adapter scenario coverage and runtime harness support for single-file fixtures used by dispatch scenario rows.
 
 ## v0.3.1 - 2026-06-16
 
