@@ -62,8 +62,8 @@ Execution profile:
 - Routing reason: {execution_profile.routing_reason}
 
 Scope controls:
-- Allowed files or behavior: {allowed_files_or_behavior}
-- Disallowed files or behavior: {disallowed_files_or_behavior}
+- Constraints: {goal_contract.constraints}
+- Boundaries: {goal_contract.boundaries}
 - Non-goals: {goal_contract.non_goals}
 - Approval gates: remote writes and destructive actions are disallowed unless separately approved.
 

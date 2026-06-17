@@ -49,6 +49,7 @@ A managed worktree package is admissible only when it includes all strict fields
 - Fail if adapter docs omit `goal_contract.preferred_runtime`.
 - Fail if adapter docs require `parallelization.eligible = true` for all managed worktree packages and thereby reject serialized conflicting write tasks.
 - Fail if child prompt templates can produce `/goal /goal ...` when filled with `goal_contract.goal_command`.
+- Fail if child prompt templates use scope placeholders that are not backed by Dispatch Package v2 or Goal Contract fields.
 - Fail if adapter docs treat package-level `approval.required = false` as sufficient approval to create a child thread.
 - Fail if incomplete managed-runtime packages are classified as `no_worktree_needed` instead of `blocked` or `needs_remediation`.
 - Fail if accepted managed worktree execution result templates default `goal_contract_used` to `false`.
