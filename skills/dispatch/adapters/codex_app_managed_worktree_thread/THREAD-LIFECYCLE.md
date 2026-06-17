@@ -90,8 +90,8 @@ Status mapping:
 | `review-ready` | `review_package_returned`, `clean_review_pending`, `clean_review_passed` |
 | `blocked` | `needs_remediation`, `blocked`, `discard_pending` |
 | `merge-ready` | `merge_pending` |
-| `merged` | `merged_to_main_worktree`, `discarded`, `archive_ready` |
-| `archived` | `archived`, `branch_cleanup_pending`, `branch_cleaned`, `branch_retained_with_reason`, `closed` |
+| `merged` | `merged_to_main_worktree` |
+| `archived` | `archive_ready`, `archived`, `branch_cleanup_pending`, `branch_cleaned`, `branch_retained_with_reason`, `closed` |
 | `abandoned` | `discarded`, `blocked` with human decision, or retained evidence that the child work is intentionally not continued |
 
 ## Registry Event Rule
