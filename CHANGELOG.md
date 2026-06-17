@@ -2,6 +2,13 @@
 
 All notable changes to Groundwork are documented in this file.
 
+## Unreleased
+
+### Changed
+
+- Co-located the `codex_app_managed_worktree_thread` adapter contract under `skills/dispatch/adapters/codex_app_managed_worktree_thread/` as an internal dispatch adapter contract while keeping `dispatch` package-only and no-execution by default.
+- Marked the earlier External A managed worktree adapter task package as superseded so maintainers do not treat the separate-repository plan as the current source of truth.
+
 ## v0.3.1 - 2026-06-16
 
 ### Added
@@ -25,7 +32,7 @@ All notable changes to Groundwork are documented in this file.
 
 - `dispatch` is package-only in this release: it routes accepted work and prepares runtime packages, but it does not call runtime tools, spawn subagents, create worktrees, push, open PRs, close issues, or mutate remotes.
 - Full runtime eval against `dispatch` requires reinstalling or refreshing the plugin cache so Codex loads `groundwork@0.3.1` with the new public skill surface.
-- `codex-managed-worktree-threads` adapter changes remain external to this repository and must be implemented and verified in that project.
+- At v0.3.1 release time, `codex-managed-worktree-threads` adapter implementation changes remained external to this repository. Later unreleased work co-locates the Groundwork adapter contract under `skills/dispatch/adapters/` while still keeping runtime execution gated and non-default.
 - This is not a public SLA, learned routing service, hook, MCP server, tracker integration, or task CRUD expansion.
 
 ## v0.3.0 - 2026-05-26
