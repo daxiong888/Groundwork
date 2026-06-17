@@ -41,6 +41,7 @@ A managed worktree package is admissible only when it includes all strict fields
 - `runtime_package.adapter = codex_app_managed_worktree_thread`
 - `runtime_package.can_write_files = true`
 - `runtime_package.expected_output = review_package`
+- explicit execution approval before child thread creation; package-level `approval.required = false` is not execution approval
 
 ## Failure Cases
 
@@ -48,6 +49,8 @@ A managed worktree package is admissible only when it includes all strict fields
 - Fail if adapter docs omit `goal_contract.preferred_runtime`.
 - Fail if adapter docs require `parallelization.eligible = true` for all managed worktree packages and thereby reject serialized conflicting write tasks.
 - Fail if child prompt templates can produce `/goal /goal ...` when filled with `goal_contract.goal_command`.
+- Fail if adapter docs treat package-level `approval.required = false` as sufficient approval to create a child thread.
+- Fail if incomplete managed-runtime packages are classified as `no_worktree_needed` instead of `blocked` or `needs_remediation`.
 - Fail if adapter docs imply `tool_enforced` selector status without runtime adapter evidence.
 - Fail if dispatch claims package generation created a thread, worktree, validation run, commit, push, PR, or issue close.
 - Fail if read-only, planning-only, or hybrid pre-split work can be routed to managed worktree execution.

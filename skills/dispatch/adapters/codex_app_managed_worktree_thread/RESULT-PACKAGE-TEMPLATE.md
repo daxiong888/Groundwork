@@ -79,8 +79,10 @@ result_package:
 
 - `ready_for_review`: an accepted managed worktree child thread completed and returned a complete review package with validation evidence, or validation is not applicable and the reason is reviewable.
 - `needs_remediation`: execution or review package evidence is incomplete, validation failed, or acceptance criteria are unmet but a scoped remediation path exists.
-- `blocked`: missing input, missing tools, unsafe state, unresolved conflict, missing approval, or unresolved product truth prevents progress.
+- `blocked`: missing input, missing required package fields, missing tools, unsafe state, unresolved conflict, missing approval, or unresolved product truth prevents progress.
 - `no_execution_needed`: the package intentionally required no runtime execution.
-- `no_worktree_needed`: the package is non-managed-runtime, read-only, planning-only, hybrid before split, incomplete, or otherwise should not create a managed worktree.
+- `no_worktree_needed`: the package is non-managed-runtime, read-only, planning-only, hybrid before split, or otherwise intentionally should not create a managed worktree.
+
+Incomplete managed-runtime packages must use `blocked` or `needs_remediation`, not `no_worktree_needed`.
 
 Do not claim thread creation, worktree creation, validation execution, selector tool enforcement, stage, commit, push, PR creation, issue close, archive, or remote mutation unless the adapter has evidence for that action.

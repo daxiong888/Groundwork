@@ -94,8 +94,17 @@ tasks:
       can_write_files: true
       expected_output: review_package
     approval:
-      required: false_or_satisfied
+      required: false_or_package_gate_satisfied
       reason: present_or_empty
+```
+
+`approval.required = false` is sufficient only for package generation. It is not execution approval and must not be treated as permission to create a child thread.
+
+Thread creation also requires a separate execution gate outside the Dispatch Package fields:
+
+```text
+explicit_execution_approval = satisfied_before_thread_creation
+required_thread_capability = present
 ```
 
 ## Admissibility Checklist
@@ -115,6 +124,8 @@ All checks must pass before creating a child thread:
 - Validation package includes `fastest_signal` and `required_evidence`.
 - `runtime_package.expected_output = review_package`
 - `runtime_package.can_write_files = true`
+- explicit execution approval is present; package-level `approval.required = false` is not enough to create a child thread
+- required Codex App thread capabilities are available
 - remote writes are `false` or separately approved
 - destructive actions are `false` or separately approved
 - conflicts are absent, already serialized by dependency group and merge-order hint, or explicitly approved
