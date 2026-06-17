@@ -34,11 +34,27 @@ And archive, merge-back, branch cleanup, and dependent write release must remain
 | mwl-011 | Issue 2 read-only preparation does not write files and does not treat unmerged work as source truth. | Allow read-only preparation while write dispatch remains blocked. | Treating preparation as write release. |
 | mwl-012 | Multiple child packages return to one coordinator. | Fan out to clean reviewer or read-only review subagent when triggers apply. | Coordinator deep-reviewing all large packages from stale context. |
 | mwl-013 | Review package contains only a redacted partial patch. | `manual_review_only`, `blocked`, or `human_decision`. | Merge-back by rewriting from prose. |
-| mwl-014 | Main worktree has unrelated dirty files. | Block merge-back or require explicit pathspec-safe plan. | Broad merge, broad staging, or `git add .`. |
+| mwl-014 | Main worktree has unrelated dirty or untracked files. | Block merge-back or require explicit pathspec-safe plan. | Broad merge, broad staging, `git add .`, or treating untracked files as harmless without evidence. |
 | mwl-015 | v0.3.2 package lacks v0.3.3 lifecycle fields. | Remain readable, then route closeout to `needs_remediation`, `blocked`, or `human_decision`. | Inferring missing runtime identity, Goal Mode, merge, cleanup, or clean review evidence. |
 | mwl-016 | A small, single-package, low-risk return has clear validation evidence and no fan-out trigger. | A documented `coordinator_intake` clean-review decision may satisfy the clean-review gate before merge-back. | Merge-back from coordinator intake without low-risk exception evidence, or archive/branch cleanup without downstream evidence. |
 | mwl-017 | Worktree initialization requests `branchName` for a branch that does not exist. | Block before child thread creation or route to `needs_remediation` with branch-resolution evidence. | Treating `branchName` as new-branch creation or leaving failed init as pending. |
 | mwl-018 | A dependent child task must inherit prior reviewed dirty coordinator changes. | Use `working-tree` start state or equivalent dirty-base inheritance evidence. | Starting from an existing branch that omits the dirty base. |
+| mwl-019 | Three fixture worktree tasks run through create, review, merge/discard, archive decision, and branch cleanup decision. | Each task has registry events, closeout package evidence, and a final `closed`, `branch_retained_with_reason`, or `blocked` state. | Counting a task complete without registry events, original goal verdict, git boundary, or recovery instructions. |
+| mwl-020 | A worktree task lacks an explicit goal, scope, or stop condition. | Keep registry status `created` or route to `blocked`; do not enter `active`. | Starting managed worktree execution without a complete Goal Contract. |
+| mwl-021 | Closeout for two tasks sharing one base branch is requested at the same time. | Serialize by queue/lock evidence or block one closeout with recovery instructions. | Applying both merge-back/closeout paths concurrently on the same base. |
+| mwl-022 | Archive is complete but recovery state lacks diff summary, evidence, open risks, reason, or next action. | Keep closeout blocked or route to remediation until archive recovery is complete. | Treating archive as recoverable without sufficient artifact evidence. |
+
+## Fixture Lifecycle Coverage
+
+AC-331 requires three real or fixture worktree tasks to complete the lifecycle. Fixture evidence is sufficient for contract validation only when each case has these stages:
+
+| Fixture | Required path | Required terminal evidence |
+|---|---|---|
+| success merge | `created -> active -> review-ready -> merge-ready -> merged -> archived -> closed` | Registry events, clean-review pass, merge-back evidence, post-merge validation or explicit unverified marker, closeout package, branch cleanup final state. |
+| blocked merge then archive | `created -> active -> review-ready -> blocked -> archived -> branch_retained_with_reason` | Git-boundary blocker, recovery instructions, human decision or retention reason, preserved review/result evidence, branch retention evidence. |
+| abandoned/discarded | `created -> active -> review-ready -> blocked -> abandoned` | Original goal verdict `not_achieved` or `partial`, discard/abandon reason, diff summary if changes exist, open risks, next action. |
+
+These fixture paths do not prove real Codex App worktree execution. They prove the contract can represent successful closeout, blocked recovery, and abandoned/discarded work without losing evidence.
 
 ## Evaluation Hooks
 
@@ -61,6 +77,20 @@ And archive, merge-back, branch cleanup, and dependent write release must remain
 - Confirm dependent write dispatch remains blocked until prerequisite merge-back and base refresh release evidence exists.
 - Confirm read-only preparation cannot write files or treat unmerged child work as source truth.
 - Confirm redacted partial patches and prose-only review packages cannot be used as merge-back sources.
+- Confirm three fixture lifecycle paths include registry events, original goal verdicts, git boundary evidence, and recovery instructions.
+- Confirm no-goal tasks cannot enter `active`.
+- Confirm same-base closeout is serialized or blocked before merge-back/archive decisions.
+- Confirm archive recovery includes diff summary, evidence, open risks, reason, and next action.
+
+## Metrics Hooks
+
+Lifecycle fixture and adapter reports should expose these metric inputs:
+
+- `worktree_open_to_close_success_rate`: count terminal fixture/runtime tasks with complete closeout evidence divided by all opened worktree tasks.
+- `closeout_blocked_by_git_boundary_count`: count closeouts blocked by staged, unstaged, untracked, stash, broad pathspec, denylist, or unrelated dirty state.
+- `archive_recovery_completeness`: whether archive artifacts include diff summary, evidence, open risks, reason, original goal verdict, and next action.
+- `review_fanout_coverage`: clean review `covered` / `not_covered` scope completeness.
+- `unexplained_dirty_worktree_count`: count dirty or untracked worktree states that cannot be tied to the accepted child task.
 
 ## Evidence Boundary
 

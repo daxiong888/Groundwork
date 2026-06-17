@@ -35,6 +35,15 @@ closeout_package:
   runtime_correlation_id: ""
   task_id: ""
   runtime_id: "codex_app_managed_worktree_thread"
+  owner_skill: "dispatch"
+
+  original_goal:
+    goal_command: ""
+    source_truth: ""
+    scope: ""
+    stop_condition: ""
+    verdict: "achieved | not_achieved | partial | blocked"
+    verdict_reason: ""
 
   lifecycle:
     current_state: ""
@@ -47,6 +56,27 @@ closeout_package:
       result_package: "present | absent | incomplete"
       clean_review: "passed | failed | not_run | not_applicable"
       merge_back: "completed | not_attempted | failed | not_applicable"
+
+  report:
+    scope: ""
+    evidence: []
+    git_boundary: ""
+    open_risks: []
+    diff_summary: ""
+    next_action: ""
+
+  registry:
+    registry_status: "created | active | review-ready | blocked | merge-ready | merged | archived | abandoned"
+    artifact_path: ""
+    state_event_ref: ""
+    last_checked_at: ""
+
+  serial_closeout:
+    base_branch: ""
+    closeout_lock_or_queue: "held | queued | not_available | not_required"
+    same_base_closeout_in_progress: "true | false | unknown"
+    dependency_barrier_release: "released | blocked | not_applicable"
+    recovery_instructions: ""
 
   runtime:
     thread_identifier: ""
@@ -63,11 +93,19 @@ closeout_package:
   next:
     branch_cleanup_required: "true | false | unknown"
     recommended_next_route: "branch_cleanup | triage | verify | done | human_decision"
+
+  metrics:
+    worktree_open_to_close_success: "true | false | not_closed"
+    closeout_blocked_by_git_boundary: "true | false"
+    archive_recovery_complete: "true | false | not_applicable"
+    review_fanout_coverage: "complete | partial | not_run | not_applicable"
+    unexplained_dirty_worktree: "true | false | unknown"
 ```
 
 ## Field Rules
 
 - `runtime_correlation_id` is the stable runtime identity. Thread title is display-only and must not be used as the source-of-truth identifier.
+- `original_goal` must quote or reference the original `/goal`, scope, and stop condition used to create the child worktree task. Closeout must include an `achieved`, `not_achieved`, `partial`, or `blocked` verdict.
 - `current_state` must be one lifecycle state from `THREAD-LIFECYCLE.md`.
 - `closeout_decision = archive` requires `archive_ready: true`.
 - `closeout_decision = retain` keeps the child thread or worktree available for review, remediation, merge-back, or human inspection.
@@ -76,6 +114,10 @@ closeout_package:
 - `closeout_decision = human_decision` means the next step depends on an explicit human choice.
 - `archive_approval_required` is `true` when archive execution is not already explicitly approved by the user or adapter policy.
 - `branch_cleanup_required` is separate from archive readiness and remains `unknown` when branch state is not proven.
+- `report` must contain scope, evidence, git boundary, open risks, diff summary, and next action before archive can be recommended.
+- `registry.state_event_ref` must point to the artifact/log event that recorded this status change.
+- `serial_closeout` must block or queue closeout on the same base branch when another closeout is in progress or when dependency-barrier release evidence is missing.
+- `metrics` are package-level evidence fields. They do not prove release readiness or runtime success beyond the cited package evidence.
 
 ## Archive Readiness Rules
 
@@ -102,7 +144,20 @@ Before archive recommendation, the package must state:
 - whether the result package is present, absent, or incomplete;
 - whether clean review passed, failed, was not run, or is not applicable;
 - whether merge-back completed, failed, was not attempted, or is not applicable;
+- the original goal verdict and stop-condition outcome;
+- the git boundary used for merge-back or the reason merge-back was not attempted;
+- open risks and next action;
 - why any missing evidence does not block closeout, or the blocker that prevents closeout.
+
+## Serial Closeout Rules
+
+Closeout for write tasks sharing the same base branch must be serialized. A closeout package may proceed only when one of these is true:
+
+- no other closeout is in progress for the same base branch;
+- the task is read-only or no-worktree and `closeout_lock_or_queue: not_required`;
+- a queue/lock artifact proves this task is the current closeout owner.
+
+If the queue/lock state is unknown, if dependency-barrier release evidence is missing, or if another closeout is already applying changes on the same base branch, set `closeout_decision: blocked` or `human_decision`, preserve recovery instructions, and do not recommend archive or branch cleanup.
 
 ## Archive And Branch Cleanup Boundary
 

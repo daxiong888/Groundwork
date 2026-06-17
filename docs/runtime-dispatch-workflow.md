@@ -104,6 +104,18 @@ Managed worktree child threads return packages; they do not close their own life
 
 When evidence is missing, use `needs_remediation`, `blocked`, or `human_decision`. Do not infer runtime identity, Goal Mode, merge source, branch state, clean review status, archive readiness, or branch cleanup from narrative summaries.
 
+## Closeout Registry And Metrics
+
+Managed worktree closeout must preserve a registry record for each child task:
+
+- task id, runtime correlation id, branch, base ref, worktree path, artifact path, owner skill, current status, created timestamp, and last checked timestamp;
+- a registry event for each status change, stored in the artifact path or an adapter-visible trace log;
+- original goal, scope, stop condition, achieved/not-achieved verdict, evidence, git boundary, open risks, diff summary, and next action in the closeout package.
+
+Same-base write closeout is serialized. When another closeout is in progress for the same base branch, when queue/lock evidence is missing, or when dependency-barrier release evidence is absent, the later closeout remains `blocked` or `human_decision`; it must not merge back, archive, or clean a branch concurrently.
+
+The v0.3.3 closeout contract exposes metric inputs only. These fields help maintainers count `worktree_open_to_close_success_rate`, `closeout_blocked_by_git_boundary_count`, `archive_recovery_completeness`, `review_fanout_coverage`, and `unexplained_dirty_worktree_count`, but they do not prove real runtime execution without adapter/runtime evidence.
+
 ## Runtime Examples
 
 ### Write Implementation

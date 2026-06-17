@@ -69,6 +69,15 @@ tasks:
       current_thread_title: ""
       title_mutation_detected: true | false | unknown
 
+    worktree_registry:
+      base_ref: ""
+      branch: ""
+      artifact_path: ""
+      owner_skill: "dispatch"
+      current_status: created | active | review-ready | blocked | merge-ready | merged | archived | abandoned
+      created_at: ""
+      last_checked_at: ""
+
     isolation:
       context: thread | subagent_prompt | none | review_package
       filesystem: codex_managed_worktree | current_workspace | none | tool_dependent
@@ -237,6 +246,10 @@ runtime_package:
   expected_output: review_package
 runtime_identity:
   runtime_correlation_id: present
+worktree_registry:
+  base_ref: present
+  artifact_path: present
+  current_status: created
 ```
 
 `dispatch` must not generate or send a managed worktree package when any of these conditions apply:
@@ -259,9 +272,11 @@ For these cases, route to a non-worktree runtime, `needs_info`, `needs_split`, o
 Managed worktree runtime identity rules:
 
 - `runtime_identity.runtime_correlation_id` is the source-of-truth identity for correlating dispatch, child runtime, review, result wrapping, merge-back, closeout, and branch cleanup packages.
+- `worktree_registry` is the recoverable lifecycle record for one child task. It must name the base ref, artifact path, owner skill, and current registry status before execution can advance past child-thread creation.
 - Thread titles are display-only labels. Do not use `runtime_package.thread_title`, `runtime_identity.initial_thread_title`, or `runtime_identity.current_thread_title` as package identity.
 - If a visible thread title changes after dispatch, keep the same `runtime_correlation_id`, update `current_thread_title` when available, and set `title_mutation_detected = true`.
 - For backward compatibility, older v0.3.2 packages without `runtime_identity` remain readable. If lifecycle closeout or managed worktree correlation is requested and the field is absent, route to `needs_remediation`, `blocked`, or `human_decision` instead of inferring identity from title.
+If registry fields are missing for v0.3.3 managed worktree closeout, route to `needs_remediation`, `blocked`, or `human_decision` rather than fabricating branch, base, artifact, or status evidence.
 
 Groundwork defines this admissibility contract only. Adapter contract details live under `skills/dispatch/adapters/codex_app_managed_worktree_thread/`. Execution mechanics, including Codex App worktree creation, thread creation, child prompt delivery, lifecycle monitoring, review package collection, and selector application, require an execution-capable runtime adapter and explicit execution approval.
 

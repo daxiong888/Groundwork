@@ -171,6 +171,14 @@ tasks:
       initial_thread_title: ""
       current_thread_title: ""
       title_mutation_detected: true | false | unknown
+    worktree_registry:
+      base_ref: ""
+      branch: ""
+      artifact_path: ""
+      owner_skill: "dispatch"
+      current_status: created | active | review-ready | blocked | merge-ready | merged | archived | abandoned
+      created_at: ""
+      last_checked_at: ""
     isolation:
       context: ""
       filesystem: ""
@@ -306,6 +314,14 @@ tasks:
       initial_thread_title: "<display_only_or_empty>"
       current_thread_title: "<display_only_or_empty>"
       title_mutation_detected: unknown
+    worktree_registry:
+      base_ref: "<base_branch_or_commit>"
+      branch: "<child_branch_or_empty>"
+      artifact_path: "artifacts/<workstream>/issue-4a/"
+      owner_skill: dispatch
+      current_status: created
+      created_at: "<timestamp>"
+      last_checked_at: "<timestamp>"
     isolation:
       context: thread
       filesystem: codex_managed_worktree
