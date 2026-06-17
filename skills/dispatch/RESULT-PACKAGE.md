@@ -16,6 +16,14 @@ Whether runtime output is a review package, findings package, diagnosis package,
 
 This document defines the unified result envelope and runtime-specific output requirements. It does not define runtime execution mechanics.
 
+## Out of Scope
+
+Runtime execution, clean-review approval, UAT/release readiness, remote writes, tracker mutation, and claiming selector enforcement without adapter evidence.
+
+## Evidence Level
+
+Derived from Groundwork dispatch contracts, managed worktree package rules, and runtime result envelope requirements.
+
 ## Unified Result Envelope
 
 ```yaml
@@ -105,6 +113,7 @@ Must not include:
 Adapter mechanics boundary:
 
 - Groundwork consumes or reviews the result package; it does not create Codex App managed worktrees, run child threads, archive threads, or enforce selectors.
+- Managed worktree adapter contract details live under `skills/dispatch/adapters/codex_app_managed_worktree_thread/`; that directory is an internal contract package, not a public skill.
 - `selector_enforcement = tool_enforced` is valid only when the executing adapter confirms model/reasoning selector application. Otherwise use `prompt_preference`, `unavailable`, or `unknown`.
 
 ### codex_subagent

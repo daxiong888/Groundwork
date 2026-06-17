@@ -4,7 +4,7 @@ Target Reader: Groundwork eval reviewers and maintainers validating the Phase 1 
 Reader Action Needed: Use this scenario to check that docs and runtime-routing behavior cover the full accepted flow without claiming execution.
 Decision Supported: Whether GW-7 covers PRD AC-15 and Suggested Implementation Issue 7.
 Scope: Scenario-level coverage for `to-prd -> to-issues -> triage -> dispatch -> runtime adapter -> verify/triage` and four representative task types.
-Out of Scope: Executing subagents, creating Codex App child threads, modifying external adapter repositories, remote writes, README exposure, or changing dispatch contracts.
+Out of Scope: Executing subagents, creating Codex App child threads, implementing runtime adapters, remote writes, README exposure, or changing dispatch contracts.
 Evidence Level: Scenario derived from `docs/runtime-dispatch-workflow.md`, the dispatch package/result contracts, and the accepted dispatch runtime router PRD.
 
 ## Scenario
@@ -19,7 +19,7 @@ And each executable package states validation expectations and expected Result P
 And Phase 1 policy keeps `remote_writes_allowed = false`
 And dispatch does not automatically spawn subagents
 And dispatch does not call Codex App thread tools
-And dispatch does not require External A to be complete before referencing the managed worktree adapter contract.
+And dispatch may reference the internal managed worktree adapter contract without executing runtime tools.
 
 ## Expected Runtime Matrix
 
@@ -38,7 +38,7 @@ And dispatch does not require External A to be complete before referencing the m
 - The high-risk migration example keeps remote writes disabled, requests high reasoning, includes conflict preflight, and serializes conflicting work.
 - Result packages return to `verify` for acceptance evidence review and to `triage` for lifecycle state decisions.
 - The Phase 1 boundary is explicit: no automatic subagent spawn, no Codex App thread tool execution by Groundwork dispatch, and no remote writes.
-- The managed worktree adapter contract may be referenced as an external expectation, but the scenario does not depend on External A completion.
+- The managed worktree adapter contract may be referenced as an internal dispatch adapter contract, but the scenario does not imply runtime execution.
 
 ## Failure Cases
 

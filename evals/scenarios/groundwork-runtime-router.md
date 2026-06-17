@@ -119,4 +119,4 @@ Expected behavior:
 
 Risk / gate:
 
-Dispatch produces package expectations only. Codex App worktree creation, child thread execution, selector application, lifecycle monitoring, and review package collection belong to the external `codex-managed-worktree-threads` adapter, not Groundwork.
+Dispatch produces package expectations only. Codex App worktree creation, child thread execution, selector application, lifecycle monitoring, and review package collection belong to an execution-capable runtime adapter described by the internal `codex_app_managed_worktree_thread` contract, not Groundwork dispatch.

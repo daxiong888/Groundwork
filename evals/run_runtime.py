@@ -831,7 +831,13 @@ def unique_workspace_path(base):
 def copy_fixture(fixture, row_id):
     src = REPO / fixture
     dst = unique_workspace_path(WORKSPACES / f"{row_id}-{Path(fixture).name}")
-    shutil.copytree(src, dst)
+    if src.is_dir():
+        shutil.copytree(src, dst)
+    elif src.is_file():
+        dst.mkdir(parents=True, exist_ok=False)
+        shutil.copy2(src, dst / src.name)
+    else:
+        raise FileNotFoundError(f"fixture does not exist: {fixture}")
     apply_fixture_setup(dst)
     return dst
 

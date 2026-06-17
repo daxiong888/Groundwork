@@ -16,6 +16,14 @@ Whether a task should become a managed worktree package, subagent package, main-
 
 This document defines the initial dispatch runtime capability profiles. It does not execute tools or prove that a runtime is available in the current Codex surface.
 
+## Out of Scope
+
+Runtime execution, Codex App thread creation, subagent spawning, manual worktree creation, remote writes, tracker mutation, and final readiness decisions.
+
+## Evidence Level
+
+Derived from Groundwork dispatch runtime router contracts, routing profiles, conflict preflight, and Dispatch Package v2 rules.
+
 ## Runtime Capability Profiles
 
 ### Runtime: Codex App managed worktree thread
@@ -72,10 +80,15 @@ Groundwork-side rejection / no-package conditions:
 - Do not send packages with missing Goal Contract, missing source package, missing validation package, or `expected_output != review_package`.
 - Do not send worktree packages when product truth, readiness, or validation expectations are missing; route to `needs_info`, `needs_split`, `main_thread_readonly`, or human decision instead.
 
+Internal adapter contract:
+
+- Managed worktree adapter mechanics are documented under `skills/dispatch/adapters/codex_app_managed_worktree_thread/`.
+- The adapter directory is an internal contract package, not a public skill. It must not contain skill frontmatter or a nested `SKILL.md`.
+
 Execution boundary:
 
 - Groundwork defines routing requirements and package contracts only.
-- Creating Codex App managed worktrees, creating child threads, placing `/goal` in the child prompt, monitoring thread lifecycle, collecting review packages, and applying model/reasoning selectors belong to the external `codex-managed-worktree-threads` runtime adapter.
+- Creating Codex App managed worktrees, creating child threads, placing `/goal` in the child prompt, monitoring thread lifecycle, collecting review packages, and applying model/reasoning selectors belong to the execution-capable managed worktree runtime adapter described by the internal adapter contract.
 - Groundwork must not claim that a worktree, thread, validation run, selector enforcement, stage, commit, push, or PR happened unless an executing adapter returns evidence.
 
 ### Runtime: Codex subagent
