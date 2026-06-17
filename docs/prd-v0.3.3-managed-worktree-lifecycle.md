@@ -5,8 +5,8 @@ Reader Action Needed: Use this PRD to implement the v0.3.3 hardening layer for m
 Decision Supported: Whether Groundwork should add lifecycle and closeout protocols behind the existing `dispatch` runtime router without expanding the public skill surface.
 Scope: Internal contracts, templates, schemas, checks, docs, and evals that make post-dispatch runtime execution safer and more reviewable.
 Out of Scope: New public skills, automatic Codex App tool execution from `dispatch`, default automatic subagent spawning, remote writes, commits, pushes, PR creation, tracker mutation, destructive cleanup without approval, task CRUD, hooks, MCP servers, and marketplace publishing flow.
-Evidence Level: Grounded in current v0.3.2 dispatch contracts, `GOAL-CONTRACT.md`, managed worktree adapter templates, runtime dispatch workflow docs, Groundwork lifecycle/git-boundary rules, and user-reported runtime pain points from real Codex App child-thread usage.
-Status: Draft for implementation.
+Evidence Level: Grounded in the dispatch contracts, `GOAL-CONTRACT.md`, managed worktree adapter templates, runtime dispatch workflow docs, Groundwork lifecycle/git-boundary rules, and user-reported runtime pain points from real Codex App child-thread usage.
+Status: Closeout contract hardening in progress; real runtime execution evidence remains out of scope for this PRD.
 Version Target: 0.3.3.
 Last Updated: 2026-06-17.
 
@@ -59,9 +59,9 @@ The key product decision: **do not add a new public skill.** Add internal adapte
 
 ## 2. Current Source Basis
 
-Current v0.3.2 sources already establish the correct boundaries:
+Current sources already establish the correct boundaries:
 
-- `.codex-plugin/plugin.json` declares Groundwork version `0.3.2` and describes the plugin as a Codex-native personal R&D workflow base for PRD, task slicing, planning, prototypes, implementation, verification, and handoff.
+- `.codex-plugin/plugin.json` declares Groundwork version `0.3.3` and describes the plugin as a Codex-native personal R&D workflow base for PRD, task slicing, planning, prototypes, implementation, verification, and handoff.
 - `README.md` says current main contains the hardened public skill surface and that `dispatch` is the ninth public skill. It also states that Groundwork currently does not contain task tools, hooks, MCP servers, marketplace publishing flow, or local task CRUD.
 - `docs/prd-dispatch-runtime-router.md` defines `dispatch` as a runtime router / execution planner / adapter package generator and keeps runtime execution outside Groundwork dispatch.
 - `skills/dispatch/SKILL.md` says dispatch must classify tasks, select runtime routes, generate Dispatch Package v2, define Result Package expectations, and stop before execution unless explicit execution approval and tools are available.
@@ -1080,6 +1080,36 @@ v0.3.3 is accepted when all of the following are true:
 - GAC-11: Complex work separation policy prevents child implementer from being the final reviewer.
 - GAC-12: New eval scenarios cover lifecycle, archive, branch cleanup, merge-back, title mutation, Goal Mode, review fan-out, and serial barriers.
 - GAC-13: Existing v0.3.2 package-only dispatch behavior still passes.
+
+## 10.1 Closeout Acceptance Overlay
+
+The v0.3.3 closeout pass is not a feature expansion. It narrows the managed worktree lifecycle to evidence-backed creation, review, merge/discard, archive, and cleanup decisions while leaving v0.4.0 Codex-native worktree alignment as a later boundary.
+
+### Closeout Functional Requirements
+
+- FR-331 Worktree Thread Registry: every managed worktree child task records task id, runtime correlation id, branch, base ref, worktree path, artifact path, owner skill, current status, created timestamp, and last checked timestamp. Status values are `created`, `active`, `review-ready`, `blocked`, `merge-ready`, `merged`, `archived`, and `abandoned`. Each status change must preserve a registry event in artifacts or adapter-visible trace logs.
+- FR-332 Review Fan-out MVP: review fan-out is allowed only for review-ready packages. Review output must order findings by `P0`, `P1`, `P2`, and `P3`, and must declare `covered` and `not_covered` scope.
+- FR-333 Merge-back And Serial Closeout: before merge-back, the package must include explainable git status, intended file allowlist, verify/validation evidence or explicit unverified marker, and handoff/closeout package evidence. Same-base closeouts are serialized. Failure preserves recovery instructions.
+- FR-334 Archive And Branch Cleanup: archive evidence includes diff summary, evidence, open risks, and reason. Branch cleanup can proceed only after merged, archived, or retained/abandoned evidence, and unconfirmed worktrees are never silently deleted.
+- FR-335 Goal Mode Enforcement: a worktree task without explicit goal, scope, and stop condition cannot enter `active`. Closeout must cite the original goal and an `achieved`, `not_achieved`, `partial`, or `blocked` verdict.
+
+### Closeout Acceptance Criteria
+
+- AC-331: Three real or fixture worktree tasks can complete success-merge, blocked-recovery, and abandoned/discarded lifecycle paths with registry events and terminal recovery state.
+- AC-332: Closeout reports contain scope, evidence, git boundary, open risks, diff summary, next action, and original goal verdict.
+- AC-333: Merge-back is blocked when untracked or unexpected files appear without a pathspec-safe plan.
+- AC-334: Archive artifacts are sufficient to recover task state and the next recommended action.
+- AC-335: A task without a complete goal cannot enter active managed worktree execution.
+
+### Closeout Metrics
+
+- `worktree_open_to_close_success_rate`
+- `closeout_blocked_by_git_boundary_count`
+- `archive_recovery_completeness`
+- `review_fanout_coverage`
+- `unexplained_dirty_worktree_count`
+
+These metrics are contract/reporting inputs. They must not be described as runtime evidence unless a real execution-capable adapter produced the supporting events.
 
 ---
 

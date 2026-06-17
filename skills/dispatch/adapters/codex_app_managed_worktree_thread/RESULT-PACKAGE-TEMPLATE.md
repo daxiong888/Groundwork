@@ -42,6 +42,17 @@ result_package:
     title_mutation_detected: "true | false | unknown"
     title_identity_rule: "thread title is display-only; runtime_correlation_id is source-of-truth identity"
 
+  registry:
+    base_ref: ""
+    branch: ""
+    worktree_path: ""
+    artifact_path: ""
+    owner_skill: "dispatch"
+    current_status: "created | active | review-ready | blocked | merge-ready | merged | archived | abandoned"
+    state_event_ref: ""
+    created_at: ""
+    last_checked_at: ""
+
   goal_mode:
     required: "true | false"
     goal_command_first_line: "true | false | unknown"
@@ -141,6 +152,8 @@ Incomplete managed-runtime packages must use `blocked` or `needs_remediation`, n
 When Goal Mode is required, `goal_mode.goal_command_first_line` and `goal_mode.lint_passed_before_delivery` must be `true` before delivery. If `goal_mode.runtime_goal_mode_evidence` is `absent`, `unavailable`, or `unknown`, the result status must be `blocked` or `needs_remediation`, never `ready_for_review`. Normal prompt execution is not acceptable replacement evidence for Goal Mode.
 
 `runtime_identity.runtime_correlation_id` must be echoed from the dispatch package for managed worktree results. Thread title fields are display-only labels and must not be used as source-of-truth identity. If the visible title changed, preserve the same `runtime_correlation_id`, report the observed current title when available, and set `title_mutation_detected` to `true`.
+
+`registry.current_status` must map to `THREAD-LIFECYCLE.md` and `registry.state_event_ref` must point to the artifact/log event for the latest status transition. If the adapter cannot name base ref, artifact path, or event evidence, use `blocked` or `needs_remediation` for lifecycle closeout decisions.
 
 `lifecycle.current_state` must reflect the adapter-visible lifecycle evidence for the result package. `review_package_returned` is not enough for `archive_ready`; archive readiness requires clean review plus merge/discard evidence or a blocked-with-human-decision closeout path, and `archived` does not imply branch cleanup.
 

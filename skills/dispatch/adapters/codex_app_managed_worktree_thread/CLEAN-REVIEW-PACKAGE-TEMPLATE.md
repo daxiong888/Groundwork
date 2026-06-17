@@ -57,6 +57,10 @@ clean_review_package:
     output_type: review_findings
     severity_order: P0_P1_P2_P3
     verdict: "pass | needs_remediation | blocked | unverified"
+    coverage:
+      covered: []
+      not_covered: []
+      coverage_notes: ""
     required_sections:
       - scope_reviewed
       - findings
@@ -74,6 +78,7 @@ clean_review_package:
 - Do not spawn more agents unless a separate explicit delegation approves it.
 - Mark absent validation, redacted-but-needed diff detail, missing source truth, or unclear acceptance mapping as `unverified` or `blocked`.
 - Cite package sections, file paths, commands, or supplied observations for each finding.
+- Report coverage explicitly. `covered` must name the package areas actually reviewed; `not_covered` must name missing, redacted, unavailable, or intentionally skipped areas.
 - Do not treat the child implementation self-review as clean review evidence.
 - Do not claim final readiness, UAT, release, merge-back, archive, branch cleanup, commit, push, PR, or remote mutation unless the supplied package includes direct evidence.
 

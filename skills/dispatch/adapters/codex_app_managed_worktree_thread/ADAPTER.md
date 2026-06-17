@@ -102,6 +102,8 @@ Before any Codex App worktree or child thread creation call, apply the worktree 
 
 Use `THREAD-LIFECYCLE.md` to report the current managed worktree state and legal next transition. A child implementation thread must not archive itself and must not delete local or remote branches.
 
+Before a child thread enters active work, preserve the worktree registry record and state event described in `THREAD-LIFECYCLE.md`. The registry must map task id, runtime correlation id, branch, base ref, worktree path, artifact path, owner skill, current status, created timestamp, and last checked timestamp. Missing registry evidence blocks active execution or closeout recovery.
+
 Use `CLOSEOUT-PACKAGE-TEMPLATE.md` after review/result package intake. Archive readiness is blocked until one of these has evidence:
 
 - merge-back completed into the main worktree;

@@ -59,6 +59,59 @@ branch_retained_with_reason
 closed
 ```
 
+## Worktree Thread Registry Record
+
+Each managed worktree child thread must have a recoverable registry record before it can enter `running` or any later active work state. This is not a project-global task database; it is adapter/coordinator lifecycle evidence for one dispatched runtime task.
+
+Required fields:
+
+```yaml
+worktree_thread_registry:
+  runtime_correlation_id: ""
+  task_id: ""
+  branch: ""
+  base_ref: ""
+  worktree_path: ""
+  artifact_path: ""
+  owner_skill: "dispatch"
+  current_status: created | active | review-ready | blocked | merge-ready | merged | archived | abandoned
+  created_at: ""
+  last_checked_at: ""
+```
+
+The registry identity is `runtime_correlation_id`. `task_id`, branch, and thread title are supporting evidence only and must not replace the correlation ID.
+
+Status mapping:
+
+| Registry status | Lifecycle states |
+|---|---|
+| `created` | `package_admitted`, `child_thread_created`, `prompt_delivered` |
+| `active` | `running` |
+| `review-ready` | `review_package_returned`, `clean_review_pending`, `clean_review_passed` |
+| `blocked` | `needs_remediation`, `blocked`, `discard_pending` |
+| `merge-ready` | `merge_pending` |
+| `merged` | `merged_to_main_worktree`, `discarded`, `archive_ready` |
+| `archived` | `archived`, `branch_cleanup_pending`, `branch_cleaned`, `branch_retained_with_reason`, `closed` |
+| `abandoned` | `discarded`, `blocked` with human decision, or retained evidence that the child work is intentionally not continued |
+
+## Registry Event Rule
+
+Every status change must preserve an event in the task artifact path or another adapter-visible trace log before the previous state can be forgotten:
+
+```yaml
+registry_event:
+  runtime_correlation_id: ""
+  task_id: ""
+  from_status: ""
+  to_status: ""
+  reason: ""
+  evidence_refs: []
+  artifact_path: ""
+  recorded_at: ""
+```
+
+If no artifact path or trace log is available, route to `blocked` or `human_decision` instead of advancing lifecycle state. A natural-language summary without event identity, timestamp, and evidence references is not enough for closeout recovery.
+
 ## State Definitions
 
 | State | Meaning | Required Evidence |

@@ -4,6 +4,12 @@ All notable changes to Groundwork are documented in this file.
 
 ## Unreleased
 
+### Changed
+
+- Tightened the v0.3.3 managed worktree closeout contract with registry records, state-change events, original-goal verdicts, same-base serial closeout fields, archive recovery evidence, review coverage reporting, and metric inputs.
+- Extended managed worktree lifecycle fixtures to cover three closeout paths, no-goal active blocking, same-base closeout serialization, and archive recovery completeness.
+- Recorded a v0.3.3 managed worktree closeout lifecycle trial baseline covering supported cache refresh, source/cache equivalence, child worktree review package return, archive execution, worktree removal observation, no-branch cleanup decision, controlled local merge-back, and branch/worktree deletion cleanup.
+
 ## v0.3.2 - 2026-06-17
 
 ### Changed

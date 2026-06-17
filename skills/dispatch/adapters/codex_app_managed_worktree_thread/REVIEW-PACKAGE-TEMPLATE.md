@@ -51,6 +51,16 @@ Runtime:
 - Thread title display label:
 - Worktree path if available, or unavailable:
 
+Registry:
+- Base ref:
+- Branch:
+- Artifact path:
+- Owner skill: dispatch
+- Current status: created | active | review-ready | blocked | merge-ready | merged | archived | abandoned
+- State event ref:
+- Created at:
+- Last checked at:
+
 Lifecycle:
 - Current state: package_admitted | child_thread_created | prompt_delivered | running | review_package_returned | needs_remediation | blocked
 - Archive ready: false
@@ -155,6 +165,8 @@ Clean review should use this package as the task source and must not require dir
 When Goal Mode is required, missing runtime Goal Mode evidence means the review package status must be `blocked` or `needs_remediation`, not `ready_for_review`.
 
 `review_package_returned` or an equivalent child status is not archive-ready evidence. Archive readiness is a coordinator closeout decision after clean review and merge/discard/block evidence.
+
+Registry fields must match the lifecycle state and must point to the artifact/log event that recorded the latest status transition. If the child cannot name the base ref, artifact path, or event evidence, closeout must route to `blocked`, `needs_remediation`, or `human_decision`.
 
 Do not claim merge-back completed, main-worktree application, or post-merge validation unless the merge source is reliable and the package includes evidence for the applied change.
 

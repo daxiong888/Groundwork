@@ -100,12 +100,17 @@ Clean review output should be routed as:
 review_findings
 - verdict: pass | needs_remediation | blocked | unverified
 - findings: P0/P1/P2/P3 ordered
+- coverage:
+  - covered:
+  - not_covered:
 - evidence: cited package sections, paths, commands, or observations
 - missing_evidence:
 - recommended_next_route: verify | triage | dispatch_write_task | human_decision | done
 ```
 
 `pass` means the reviewer found no blocking package-level conformance issue within the supplied evidence. It is not UAT, release, customer-readiness, archive, merge-back, or final acceptance approval.
+
+`coverage.covered` and `coverage.not_covered` are mandatory. A clean review that does not declare what was and was not covered must route to `unverified` or `blocked`, not `pass`, because closeout cannot infer review scope from findings alone.
 
 ## Expected Eval Hooks
 
@@ -118,4 +123,5 @@ Later eval coverage should include:
 - clean reviewer output that edits files is rejected;
 - clean reviewer output that relies on hidden parent context is rejected;
 - missing validation evidence is reported as `unverified` or `blocked`;
+- clean review output declares `covered` and `not_covered` review scope;
 - clean review pass does not claim final readiness, archive, merge-back, branch cleanup, commit, push, PR, or remote mutation.
