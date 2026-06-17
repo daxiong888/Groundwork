@@ -98,6 +98,13 @@ Use specialized references when they apply:
 - `skills/_shared/LIFECYCLE-PREFLIGHT.md` for source-truth precedence, lifecycle-state staleness, artifact promotion, and git-topology gates before readiness or closeout.
 - `skills/_shared/LIFECYCLE-STATE.md` when a verification gap, re-verify chain, UAT/SIT/release state, or cross-session decision must survive the current response.
 - `skills/_shared/SUBAGENT-DELEGATION.md` for fresh-context subagent review prompts.
+- `skills/dispatch/COMPLEX-WORK-SEPARATION.md` when verification follows managed worktree work whose risk or scope may require separate planning, implementation, clean review, verification, and coordinator closeout roles.
+
+For complex work separation, `verify` owns evidence sufficiency only. It may confirm whether clean review evidence is present, absent, stale, or insufficient for the claimed readiness question. It must not replace fresh clean review, perform runtime implementation, edit files, approve merge-back, archive threads, clean up branches, commit, push, open PRs, mutate trackers, or close the task directly.
+
+When a P1, public API, migration, schema, security, privacy, auth, permissions, data correctness, shared contract, package schema, adapter contract, state machine, weak-validation, or multi-package change reaches `verify` without fresh clean review evidence, mark the clean review claim `unverified` or `blocked` instead of issuing a readiness `pass`.
+
+Small, low-risk tasks with clear current evidence may still receive lightweight verification. Do not require clean review ceremony when the separation thresholds are not met.
 
 If a check cannot be run, mark it `unverified`. A code diff or implementation summary alone is not readiness evidence.
 

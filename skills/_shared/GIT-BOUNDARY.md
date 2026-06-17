@@ -38,6 +38,17 @@ Report:
 - Do not stage `.groundwork/*`, `.trellis/*`, temporary tests, logs, generated runtime files, ignored files, production data dumps, secrets, or unrelated docs.
 - Do not alter `.gitignore` unless the current task explicitly requires it and the reason is reported.
 
+## Merge-back Boundary
+
+When applying accepted managed worktree changes back into a main worktree, follow the same allowlist, denylist, and explicit pathspec rules before any apply, checkout, merge, or later staging step.
+
+- Do not use redacted partial patches, review-package prose, summaries, or manual rewrites as merge-back sources.
+- Do not recommend or approve `git add .` after merge-back; any staging must use explicit pathspecs.
+- Confirm the source base commit matches the main worktree target before automatic merge-back.
+- If the base mismatches, stop automatic merge-back and route to human decision or a documented rebase/merge plan.
+- After merge-back, run the fastest relevant validation or mark the merged result as unverified with the reason.
+- If clean review, base, conflict, dirty-worktree, or validation gates fail, preserve the original child thread/worktree evidence until remediation, blocked handling, or human decision is complete.
+
 ## Denylist Defaults
 
 Use this as the default denylist unless the user explicitly narrows or expands it:

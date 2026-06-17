@@ -50,6 +50,15 @@ tasks:
     readiness: ready_for_agent
     runtime_id: codex_app_managed_worktree_thread
     runtime_reason: present
+    runtime_identity:
+      runtime_correlation_id: present
+      dispatch_id: present_or_empty
+      task_id: present_or_empty
+      parent_thread_identifier: present_or_empty
+      child_thread_identifier: present_or_empty
+      initial_thread_title: present_or_empty
+      current_thread_title: present_or_empty
+      title_mutation_detected: true | false | unknown
     isolation:
       context: thread
       filesystem: codex_managed_worktree
@@ -79,6 +88,11 @@ tasks:
       risk_gate: present
       preferred_runtime: present
       result_package_expected: review_package
+    goal_mode:
+      required: true
+      goal_contract_lint: passed_before_delivery
+      child_prompt_lint: passed_before_delivery
+      rendered_prompt_first_non_empty_line: starts_with_goal
     execution_profile:
       model_profile: present_or_empty
       reasoning_effort: low | medium | high
@@ -100,12 +114,45 @@ tasks:
 
 `approval.required = false` is sufficient only for package generation. It is not execution approval and must not be treated as permission to create a child thread.
 
+`runtime_identity.runtime_correlation_id` is the source-of-truth identity for correlating dispatch, child runtime, review, result wrapping, merge-back, closeout, and branch cleanup packages. `runtime_package.thread_title` is a display-only, derivable label and must never be used as source-of-truth identity.
+
+Older v0.3.2 packages without `runtime_identity` remain readable. If managed worktree lifecycle closeout or runtime correlation is requested and `runtime_identity.runtime_correlation_id` is absent, route to remediation, block, or human decision rather than inferring identity from `thread_title`.
+
 Thread creation also requires a separate execution gate outside the Dispatch Package fields:
 
 ```text
 explicit_execution_approval = satisfied_before_thread_creation
 required_thread_capability = present
+worktree_init_preflight = passed
 ```
+
+## Worktree Initialization Preflight
+
+Before calling Codex App worktree or child-thread tools, the execution-capable adapter must record the intended start state and evidence:
+
+```yaml
+worktree_init:
+  starting_state: working-tree | existing-branch
+  dirty_base_required: true | false
+  branch_name: ""
+  branch_resolved: true | false | not_applicable
+  branch_evidence: ""
+  pending_worktree_id: ""
+  child_thread_identifier: ""
+  worktree_path: ""
+  init_status: not_started | pending | child_thread_created | failed | blocked
+  failure_action: retry_with_corrected_state | needs_remediation | blocked | human_decision | none
+  evidence: ""
+```
+
+Rules:
+
+- Use `starting_state = working-tree` when the child task must inherit the current reviewed dirty base, such as prior clean-reviewed waves that were merged into the coordinator worktree but not committed.
+- Use `starting_state = existing-branch` only when no dirty base inheritance is required and `branch_name` already resolves before the tool call.
+- Do not treat `startingState.branchName` as a request to create a new branch. If the named branch does not resolve, block before child thread creation or route to `needs_remediation`.
+- Detached HEAD in a Codex-managed worktree is acceptable. Child implementation threads must not create a branch only to continue work.
+- A `pendingWorktreeId` is not child-thread evidence. The lifecycle may enter `child_thread_created` only after the pending worktree resolves to a child thread identifier and a worktree path.
+- If initialization fails, report `init_status = failed`, preserve the failure evidence, and route to `blocked`, `needs_remediation`, or a corrected preflight retry. Do not keep treating a failed worktree as pending.
 
 ## Admissibility Checklist
 
@@ -114,6 +161,7 @@ All checks must pass before creating a child thread:
 - `runtime_id = codex_app_managed_worktree_thread`
 - `task_type = write_implementation`
 - `readiness = ready_for_agent`
+- `runtime_identity.runtime_correlation_id` is present.
 - `isolation.context = thread`
 - `isolation.filesystem = codex_managed_worktree`
 - `isolation.diff_surface = required`
@@ -121,11 +169,14 @@ All checks must pass before creating a child thread:
 - `source_package.issue_body` is present.
 - `source_package.known_source_or_first_inspection_step` is present.
 - Goal Contract is present and complete enough to execute, including `preferred_runtime` and `result_package_expected = review_package`.
+- `goal_contract.goal_command` starts with `/goal`, is not a placeholder such as `/goal <one executable task>`, and passes `python3 scripts/lint_goal_contract.py <goal-contract-file>` before delivery.
+- The rendered child prompt passes `python3 scripts/lint_child_goal_prompt.py <rendered-child-prompt-file>` before delivery: its first non-empty line starts with `/goal`, `/goal` is not wrapped in a fenced code block, and no prose precedes `/goal`.
 - Validation package includes `fastest_signal` and `required_evidence`.
 - `runtime_package.expected_output = review_package`
 - `runtime_package.can_write_files = true`
 - explicit execution approval is present; package-level `approval.required = false` is not enough to create a child thread
 - required Codex App thread capabilities are available
+- worktree initialization preflight passed
 - remote writes are `false` or separately approved
 - destructive actions are `false` or separately approved
 - conflicts are absent, already serialized by dependency group and merge-order hint, or explicitly approved
@@ -143,3 +194,5 @@ Executed packages must produce:
 - an adapter Result Package using `RESULT-PACKAGE-TEMPLATE.md`
 
 Rejected or no-op packages must still produce a Result Package with task identity, the rejected field or policy reason, empty changed files, validation-not-run reason, selector enforcement status, remaining risks or blockers, and a recommended next route.
+
+If Goal Mode is required and either Goal Contract lint or rendered child prompt lint fails, do not create the child thread. Return `blocked` or `needs_remediation` with the failing field and remediation path.

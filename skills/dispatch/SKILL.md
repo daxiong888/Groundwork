@@ -162,6 +162,15 @@ tasks:
     readiness: ""
     runtime_id: ""
     runtime_reason: ""
+    runtime_identity:
+      runtime_correlation_id: ""
+      dispatch_id: ""
+      task_id: ""
+      parent_thread_identifier: ""
+      child_thread_identifier: ""
+      initial_thread_title: ""
+      current_thread_title: ""
+      title_mutation_detected: true | false | unknown
     isolation:
       context: ""
       filesystem: ""
@@ -171,6 +180,22 @@ tasks:
       conflict_group: ""
       dependency_group: ""
       merge_order_hint: ""
+    dependency_barrier:
+      depends_on_task_ids: []
+      blocked_until:
+        result_package_status: ready_for_review | not_required
+        clean_review: passed | not_required
+        merge_back: completed | not_required
+        verification: pass | partial_allowed | not_required
+        base_refresh: completed | not_required
+      required_base:
+        branch: ""
+        commit_after_merge: ""
+      re_triage_required_after_merge: true | false
+      goal_contract_refresh_required: true | false
+      dispatch_allowed_now: true | false
+      block_reason: ""
+      release_evidence: ""
     source_package:
       prd_excerpt: ""
       issue_body: ""
@@ -191,6 +216,12 @@ tasks:
       risk_gate: ""
       preferred_runtime: ""
       result_package_expected: ""
+    goal_mode:
+      required: true | false
+      goal_contract_lint: pass | fail | not_run
+      child_prompt_lint: pass | fail | not_run
+      rendered_prompt_first_non_empty_line: starts_with_goal | missing | invalid
+      runtime_goal_mode_evidence_expected: present
     execution_profile:
       model_profile: ""
       reasoning_effort: "" # low | medium | high
@@ -204,6 +235,17 @@ tasks:
       adapter: ""
       expected_output: ""
       can_write_files: false
+      worktree_init_preflight:
+        starting_state: working-tree | existing-branch | unknown
+        branch_name: ""
+        dirty_base_inheritance_required: true | false
+        branch_exists_verified: true | false | not_required
+        init_status: not_started | passed | failed | blocked
+      lifecycle_expectation:
+        returned_state: review_package_returned
+        next_state: clean_review_pending | needs_remediation | blocked
+        child_may_self_archive: false
+        branch_cleanup_separate: true
     approval:
       required: false
       reason: ""
@@ -245,21 +287,57 @@ tasks:
       can_write_files: false
 ```
 
-Managed worktree packages are valid only when the task is a ready write implementation and Goal Contract, source package, and validation package are all present:
+Managed worktree packages are valid only when the task is a ready write implementation and runtime identity, Goal Contract, source package, and validation package are all present:
 
 ```yaml
 tasks:
   - task_id: "issue-4a"
+    title: "Update managed worktree runtime identity contract"
     task_type: write_implementation
     readiness: ready_for_agent
     runtime_id: codex_app_managed_worktree_thread
-    runtime_reason: "Accepted write implementation with complete Goal Contract, source package, and validation package."
+    runtime_reason: "Accepted write implementation with runtime identity, complete Goal Contract, source package, and validation package."
+    runtime_identity:
+      runtime_correlation_id: "gw:<workstream>:issue-4a:001:<short_hash>"
+      dispatch_id: "<present>"
+      task_id: "issue-4a"
+      parent_thread_identifier: "<present_or_empty>"
+      child_thread_identifier: "<present_or_empty>"
+      initial_thread_title: "<display_only_or_empty>"
+      current_thread_title: "<display_only_or_empty>"
+      title_mutation_detected: unknown
     isolation:
       context: thread
       filesystem: codex_managed_worktree
       diff_surface: required
+    parallelization:
+      eligible: false
+      conflict_group: "managed-worktree-runtime-identity"
+      dependency_group: ""
+      merge_order_hint: "before dependent managed worktree lifecycle templates"
+    dependency_barrier:
+      depends_on_task_ids: []
+      blocked_until:
+        result_package_status: not_required
+        clean_review: not_required
+        merge_back: not_required
+        verification: not_required
+        base_refresh: not_required
+      required_base:
+        branch: "<current_base_or_empty>"
+        commit_after_merge: "<not_required_or_present>"
+      re_triage_required_after_merge: false
+      goal_contract_refresh_required: false
+      dispatch_allowed_now: true
+      block_reason: ""
+      release_evidence: "No prerequisite managed worktree task is required for this example package."
+    source_package:
+      prd_excerpt: "PRD v0.3.3 FR-5 requires stable runtime identity for managed worktree packages."
+      issue_body: "Add runtime identity fields and stop using thread title as source-of-truth identity."
+      known_source_or_first_inspection_step: "Read DISPATCH-PACKAGE.md, RESULT-PACKAGE.md, and managed worktree adapter templates before editing."
+      redactions_applied: "none"
     goal_contract:
-      goal_command: "/goal <one executable task>"
+      goal_command: "/goal Add stable runtime identity fields to the managed worktree dispatch package templates"
       outcome: "<present>"
       source_truth: "<present>"
       acceptance_criteria_mapping: "<present>"
@@ -273,13 +351,40 @@ tasks:
       risk_gate: "<present>"
       preferred_runtime: "<present>"
       result_package_expected: review_package
+    goal_mode:
+      required: true
+      goal_contract_lint: pass
+      child_prompt_lint: pass
+      rendered_prompt_first_non_empty_line: starts_with_goal
+      runtime_goal_mode_evidence_expected: present
     validation:
       fastest_signal: "<present>"
       required_evidence: "<present>"
+    execution_profile:
+      model_profile: "<present_or_empty>"
+      reasoning_effort: medium
+      cost_latency_bias: balanced
+      routing_reason: "<present>"
+      selector_enforcement: tool_if_available_else_prompt_preference
     runtime_package:
       adapter: codex_app_managed_worktree_thread
+      thread_title: "Add stable runtime identity fields"
       expected_output: review_package
       can_write_files: true
+      worktree_init_preflight:
+        starting_state: working-tree
+        branch_name: ""
+        dirty_base_inheritance_required: false
+        branch_exists_verified: not_required
+        init_status: passed
+      lifecycle_expectation:
+        returned_state: review_package_returned
+        next_state: clean_review_pending
+        child_may_self_archive: false
+        branch_cleanup_separate: true
+    approval:
+      required: false_or_package_gate_satisfied
+      reason: "<present_or_empty>"
 ```
 
 ## Package References
@@ -287,4 +392,5 @@ tasks:
 - Runtime capabilities: `RUNTIME-ADAPTERS.md`
 - Dispatch schema and routing rules: `DISPATCH-PACKAGE.md`
 - Unified result envelope: `RESULT-PACKAGE.md`
+- Clean review fan-out: `CLEAN-REVIEW-FANOUT.md`
 - Managed worktree internal adapter contract: `adapters/codex_app_managed_worktree_thread/ADAPTER.md`

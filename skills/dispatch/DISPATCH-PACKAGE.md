@@ -14,7 +14,7 @@ Whether a task is ready for a specific runtime, what constraints the runtime mus
 
 ## Scope
 
-This schema covers dispatch package generation for the initial runtime set. It does not define advanced routing profiles or conflict-preflight mechanics beyond the core fields required to record them.
+This schema covers dispatch package generation for the initial runtime set. It records parallelization, conflict preflight, and dependency barrier fields needed to decide whether write dispatch may proceed now.
 
 ## Out of Scope
 
@@ -59,6 +59,16 @@ tasks:
     runtime_id: codex_app_managed_worktree_thread | codex_subagent | main_thread_direct | main_thread_readonly | clean_reviewer
     runtime_reason: ""
 
+    runtime_identity:
+      runtime_correlation_id: ""
+      dispatch_id: ""
+      task_id: ""
+      parent_thread_identifier: ""
+      child_thread_identifier: ""
+      initial_thread_title: ""
+      current_thread_title: ""
+      title_mutation_detected: true | false | unknown
+
     isolation:
       context: thread | subagent_prompt | none | review_package
       filesystem: codex_managed_worktree | current_workspace | none | tool_dependent
@@ -70,6 +80,23 @@ tasks:
       dependency_group: ""
       max_parallel_group_size: 1
       merge_order_hint: ""
+
+    dependency_barrier:
+      depends_on_task_ids: []
+      blocked_until:
+        result_package_status: ready_for_review | not_required
+        clean_review: passed | not_required
+        merge_back: completed | not_required
+        verification: pass | partial_allowed | not_required
+        base_refresh: completed | not_required
+      required_base:
+        branch: ""
+        commit_after_merge: ""
+      re_triage_required_after_merge: true | false
+      goal_contract_refresh_required: true | false
+      dispatch_allowed_now: true | false
+      block_reason: ""
+      release_evidence: ""
 
     source_package:
       prd_excerpt: ""
@@ -93,6 +120,13 @@ tasks:
       risk_gate: ""
       preferred_runtime: ""
       result_package_expected: ""
+
+    goal_mode:
+      required: true | false
+      goal_contract_lint: pass | fail | not_run
+      child_prompt_lint: pass | fail | not_run
+      rendered_prompt_first_non_empty_line: starts_with_goal | missing | invalid
+      runtime_goal_mode_evidence_expected: present | not_required
 
     execution_profile:
       model_profile: ""
@@ -188,6 +222,12 @@ goal_contract:
   risk_gate: present
   preferred_runtime: present
   result_package_expected: review_package
+goal_mode:
+  required: true
+  goal_contract_lint: pass
+  child_prompt_lint: pass
+  rendered_prompt_first_non_empty_line: starts_with_goal
+  runtime_goal_mode_evidence_expected: present
 validation:
   fastest_signal: present
   required_evidence: present
@@ -195,6 +235,8 @@ runtime_package:
   adapter: codex_app_managed_worktree_thread
   can_write_files: true
   expected_output: review_package
+runtime_identity:
+  runtime_correlation_id: present
 ```
 
 `dispatch` must not generate or send a managed worktree package when any of these conditions apply:
@@ -205,14 +247,52 @@ runtime_package:
 - `runtime_id != codex_app_managed_worktree_thread`
 - `readiness != ready_for_agent`
 - Goal Contract is missing or incomplete
+- `goal_mode` is missing, nested under `runtime_package`, or does not record Goal Contract and rendered prompt lint evidence
 - `goal_contract.result_package_expected != review_package`
 - source package is missing or incomplete
 - validation package is missing or incomplete
 - `runtime_package.expected_output != review_package`
+- `runtime_identity.runtime_correlation_id` is missing for a managed worktree package
 
 For these cases, route to a non-worktree runtime, `needs_info`, `needs_split`, or human decision, and report `no_worktree_needed`, `unsupported_runtime`, or the specific missing package field. Do not silently coerce the task into a managed worktree package.
 
+Managed worktree runtime identity rules:
+
+- `runtime_identity.runtime_correlation_id` is the source-of-truth identity for correlating dispatch, child runtime, review, result wrapping, merge-back, closeout, and branch cleanup packages.
+- Thread titles are display-only labels. Do not use `runtime_package.thread_title`, `runtime_identity.initial_thread_title`, or `runtime_identity.current_thread_title` as package identity.
+- If a visible thread title changes after dispatch, keep the same `runtime_correlation_id`, update `current_thread_title` when available, and set `title_mutation_detected = true`.
+- For backward compatibility, older v0.3.2 packages without `runtime_identity` remain readable. If lifecycle closeout or managed worktree correlation is requested and the field is absent, route to `needs_remediation`, `blocked`, or `human_decision` instead of inferring identity from title.
+
 Groundwork defines this admissibility contract only. Adapter contract details live under `skills/dispatch/adapters/codex_app_managed_worktree_thread/`. Execution mechanics, including Codex App worktree creation, thread creation, child prompt delivery, lifecycle monitoring, review package collection, and selector application, require an execution-capable runtime adapter and explicit execution approval.
+
+Managed worktree initialization preflight:
+
+- Use `working-tree` start state when the child task must inherit a reviewed dirty coordinator base.
+- Use `existing-branch` start state only when the branch already exists and dirty-base inheritance is not required.
+- Do not use `branchName` as a new-branch creation request.
+- A `pendingWorktreeId` is not enough to claim `child_thread_created`; a child thread identifier and worktree path are required.
+- Failed worktree initialization routes to `blocked`, `needs_remediation`, or corrected preflight retry. Do not keep a failed worktree in pending state.
+
+## Dependency Barrier Rules
+
+Dispatch must serialize dependent write tasks until prerequisite merge-back and base refresh are complete.
+
+Use `dependency_barrier` when any task depends on a prior child worktree result, changed source, shared contract, generated artifact, fixture, schema, or merge-order hint.
+
+Dependent write dispatch is allowed only when:
+
+- every prerequisite task in `depends_on_task_ids` has the required `blocked_until` evidence;
+- prerequisite merge-back is `completed` or `not_required`;
+- base refresh is `completed` or `not_required`;
+- `required_base.commit_after_merge` names the base the dependent task will use, when the prerequisite changed files or contracts;
+- the dependent task source package and Goal Contract were generated or refreshed against that post-merge base when `goal_contract_refresh_required: true`;
+- `dispatch_allowed_now: true` includes `release_evidence`.
+
+If dependency state is unknown, stale, or only present in an unmerged child worktree, set `dispatch_allowed_now: false`, record `block_reason`, and route to serialization, re-triage, or human decision instead of parallelizing write work.
+
+Read-only preparation may run before prerequisite merge-back only when it does not treat unmerged child work as source truth and cannot write files. In that case, keep the write task blocked and use a read-only runtime.
+
+Same-conflict-group write tasks must not run in parallel unless an explicit approval or merge-order plan serializes their write boundaries. Low-risk independent tasks with no dependency barrier, no shared conflict group, and no shared write surface remain parallelizable.
 
 ## Selector Enforcement Rules
 

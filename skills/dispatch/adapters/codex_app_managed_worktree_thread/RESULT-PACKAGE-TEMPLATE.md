@@ -31,6 +31,57 @@ result_package:
   status: "ready_for_review | needs_remediation | blocked | no_execution_needed | no_worktree_needed"
   output_type: "review_package"
 
+  runtime_identity:
+    runtime_correlation_id: ""
+    dispatch_id: ""
+    task_id: ""
+    parent_thread_identifier: ""
+    child_thread_identifier: ""
+    initial_thread_title: ""
+    current_thread_title: ""
+    title_mutation_detected: "true | false | unknown"
+    title_identity_rule: "thread title is display-only; runtime_correlation_id is source-of-truth identity"
+
+  goal_mode:
+    required: "true | false"
+    goal_command_first_line: "true | false | unknown"
+    lint_passed_before_delivery: "true | false | unknown"
+    runtime_goal_mode_evidence: "present | absent | unavailable | unknown"
+    evidence: ""
+    failure_action: "none | corrective_resend | blocked | needs_remediation"
+
+  lifecycle:
+    current_state: "package_admitted | child_thread_created | prompt_delivered | running | review_package_returned | clean_review_pending | clean_review_passed | needs_remediation | blocked | merge_pending | discard_pending | merged_to_main_worktree | discarded | archive_ready | archived | branch_cleanup_pending | branch_cleaned | branch_retained_with_reason | closed"
+    archive_ready: "true | false | unknown"
+    archive_blockers: []
+    closeout_decision: "archive | retain | discard | blocked | human_decision | not_applicable"
+    next_lifecycle_route: "clean_reviewer | merge_back | branch_cleanup | triage | verify | human_decision | done"
+
+  merge_back:
+    source_available: "worktree_path | patch_bundle | branch_or_head | unavailable | not_applicable"
+    source_evidence: ""
+    reliable_source: "true | false | unknown"
+    applied_to_main_worktree: "true | false | not_attempted | unknown"
+    changed_pathspecs: []
+    validation_after_merge: "pass | fail | skipped | unverified | not_applicable"
+    evidence: ""
+
+  branch_cleanup:
+    branch_detected: "true | false | unknown"
+    branch_name: ""
+    cleanup_recommendation: "delete_local | delete_remote | retain | human_decision | no_branch_detected | not_applicable"
+    approval_required: "true | false"
+    approval_evidence: ""
+    cleanup_completed: "true | false | not_attempted | unknown"
+    evidence: ""
+
+  clean_review:
+    required: "true | false"
+    reviewer_context: "fresh | coordinator_intake | not_required | unknown"
+    status: "pending | passed | failed | blocked | not_required"
+    findings: []
+    evidence: ""
+
   task:
     title: ""
     task_type: ""
@@ -42,7 +93,7 @@ result_package:
   runtime:
     adapter: "codex_app_managed_worktree_thread"
     thread_identifier: ""
-    thread_title: ""
+    thread_title_display_label: ""
     worktree_type: "Codex-managed | none"
     worktree_path: ""
     execution_profile_requested: ""
@@ -77,7 +128,7 @@ result_package:
 
 ## Status Rules
 
-- `ready_for_review`: an accepted managed worktree child thread completed and returned a complete review package with validation evidence, or validation is not applicable and the reason is reviewable.
+- `ready_for_review`: an accepted managed worktree child thread completed and returned a complete review package with validation evidence, or validation is not applicable and the reason is reviewable. If Goal Mode is required, `goal_mode.runtime_goal_mode_evidence` must be `present`.
 - `needs_remediation`: execution or review package evidence is incomplete, validation failed, or acceptance criteria are unmet but a scoped remediation path exists.
 - `blocked`: missing input, missing required package fields, missing tools, unsafe state, unresolved conflict, missing approval, or unresolved product truth prevents progress.
 - `no_execution_needed`: the package intentionally required no runtime execution.
@@ -86,5 +137,19 @@ result_package:
 Incomplete managed-runtime packages must use `blocked` or `needs_remediation`, not `no_worktree_needed`.
 
 `goal_contract_used` must be `true` for accepted managed worktree execution results, including `ready_for_review` and post-execution `needs_remediation`. Use `false` only for rejection, no-op, or blocked-before-execution results, and explain the reason in `rejection_or_noop_reason` or `risk.blockers`.
+
+When Goal Mode is required, `goal_mode.goal_command_first_line` and `goal_mode.lint_passed_before_delivery` must be `true` before delivery. If `goal_mode.runtime_goal_mode_evidence` is `absent`, `unavailable`, or `unknown`, the result status must be `blocked` or `needs_remediation`, never `ready_for_review`. Normal prompt execution is not acceptable replacement evidence for Goal Mode.
+
+`runtime_identity.runtime_correlation_id` must be echoed from the dispatch package for managed worktree results. Thread title fields are display-only labels and must not be used as source-of-truth identity. If the visible title changed, preserve the same `runtime_correlation_id`, report the observed current title when available, and set `title_mutation_detected` to `true`.
+
+`lifecycle.current_state` must reflect the adapter-visible lifecycle evidence for the result package. `review_package_returned` is not enough for `archive_ready`; archive readiness requires clean review plus merge/discard evidence or a blocked-with-human-decision closeout path, and `archived` does not imply branch cleanup.
+
+`merge_back.applied_to_main_worktree = true`, `lifecycle.current_state = merged_to_main_worktree`, or any equivalent merge-back claim requires `merge_back.reliable_source = true`, a source path/patch/branch or head that the coordinator can inspect, and merge evidence. Missing or unreliable source evidence must route to `needs_remediation`, `blocked`, or `human_decision`.
+
+`branch_cleanup.cleanup_completed = true`, `lifecycle.current_state = branch_cleaned`, or any equivalent cleanup claim requires branch identity, required approval, and cleanup evidence. Missing approval or uncertain branch identity must route to `human_decision` or `blocked`, not `done`.
+
+`clean_review.status = passed` requires fresh clean-review evidence or a documented `coordinator_intake` decision that satisfies the low-risk exception in `skills/dispatch/CLEAN-REVIEW-FANOUT.md`. A child result package, `review_package_returned`, or self-review cannot make the package archive-ready.
+
+Older v0.3.2 packages without `runtime_identity`, `goal_mode`, `lifecycle`, `merge_back`, `branch_cleanup`, or `clean_review` remain readable. If lifecycle closeout requires any missing v0.3.3 field, use `needs_remediation`, `blocked`, or `human_decision` rather than inferring identity, Goal Mode, merge-back, cleanup, or clean-review evidence.
 
 Do not claim thread creation, worktree creation, validation execution, selector tool enforcement, stage, commit, push, PR creation, issue close, archive, or remote mutation unless the adapter has evidence for that action.

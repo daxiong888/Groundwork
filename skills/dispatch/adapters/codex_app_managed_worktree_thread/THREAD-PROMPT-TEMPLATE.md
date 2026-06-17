@@ -24,10 +24,34 @@ Package routing, package admissibility, tool discovery, thread creation approval
 
 Derived from Groundwork Dispatch Package v2, Goal Contract fields, and managed worktree review package requirements.
 
-`goal_contract.goal_command` must already start with `/goal`; do not prepend another `/goal` when filling this template.
+`goal_contract.goal_command` must already start with `/goal`; do not prepend another `/goal` when filling this template. The rendered child prompt must use the Goal Command as the first non-empty line. Do not prepend prose, headers, markdown fences, or any other text before it.
+
+Before delivery, lint the rendered prompt with:
+
+```bash
+python3 scripts/lint_child_goal_prompt.py <rendered-child-prompt-file>
+```
+
+For this Markdown template, validate the prompt body with:
+
+```bash
+python3 scripts/lint_child_goal_prompt.py --template skills/dispatch/adapters/codex_app_managed_worktree_thread/THREAD-PROMPT-TEMPLATE.md
+```
 
 ```text
 {goal_contract.goal_command}
+
+Runtime identity:
+- Runtime Correlation ID: {runtime_identity.runtime_correlation_id}
+- Dispatch ID: {runtime_identity.dispatch_id}
+- Task ID: {task_id}
+- Parent Thread Identifier: {runtime_identity.parent_thread_identifier}
+- Child Thread Identifier: {runtime_identity.child_thread_identifier}
+- Initial Thread Title: {runtime_package.thread_title_or_task_id_title}
+- Current Thread Title: {runtime_identity.current_thread_title}
+- Title Mutation Detected: {runtime_identity.title_mutation_detected}
+- Thread title is display-only and is never source-of-truth identity.
+- Do not rename this thread. If the visible title changes anyway, keep using Runtime Correlation ID in every review or result package.
 
 You are working in a Codex App background thread with a Codex-managed worktree.
 
@@ -43,7 +67,7 @@ Task identity:
 - Title: {title}
 - Task type: write_implementation
 - Readiness: ready_for_agent
-- Thread title: {runtime_package.thread_title_or_task_id_title}
+- Thread title display label: {runtime_package.thread_title_or_task_id_title}
 
 Source package:
 {source_package}
@@ -68,10 +92,12 @@ Scope controls:
 - Approval gates: remote writes and destructive actions are disallowed unless separately approved.
 
 Rules:
+- Treat Goal Mode as required for managed worktree implementation packages; if this thread did not enter Goal Mode, report the missing evidence instead of continuing as normal prompt execution.
 - Before editing, verify this task against the source package, Goal Contract, and validation package above.
 - Do not use subagents for implementation.
 - Do not manually create git worktrees.
 - Do not stage, commit, push, open PRs, close issues, archive threads, mutate trackers, or change remote state unless separately approved.
+- Do not use thread title as identity. If the visible title changes, report the mutation and continue correlation by Runtime Correlation ID.
 - Do one focused implementation pass, then run the fastest relevant validation.
 - If the requested behavior already exists or no code change is needed, do not edit; return a review package with evidence, validation status, and changed files = none.
 - If validation exposes an issue introduced by your changes, make only the narrow fix needed for that failure and rerun the relevant validation.

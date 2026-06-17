@@ -38,6 +38,14 @@ PLACEHOLDERS = (
     "待定",
 )
 
+GOAL_COMMAND_PLACEHOLDER_PATTERNS = (
+    r"^/goal\s*$",
+    r"^/goal\b.*<[^>]+>",
+    r"^/goal\b.*\[[^\]]+\]",
+    r"^/goal\b.*\{[^}]+\}",
+    r"^/goal\s+(?:one executable task|todo|tbd|待定)\s*$",
+)
+
 VAGUE_PHRASES = (
     ("Verification", "make sure it works", "verification must name concrete evidence"),
     ("Constraints", "随便改", "constraints cannot allow arbitrary edits"),
@@ -163,6 +171,14 @@ def contains_any(patterns: tuple[str, ...], value: str) -> bool:
     return any(re.search(pattern, value, re.IGNORECASE) for pattern in patterns)
 
 
+def first_non_empty_line(value: str) -> str:
+    for line in value.splitlines():
+        stripped = line.strip()
+        if stripped:
+            return stripped
+    return ""
+
+
 def lint(text: str) -> list[tuple[str, str]]:
     findings: list[tuple[str, str]] = []
 
@@ -173,8 +189,11 @@ def lint(text: str) -> list[tuple[str, str]]:
             findings.append((field, "required field must have non-empty content"))
 
     goal_command = extract_field_value(text, FIELD_ALIASES["Goal Command"])
-    if goal_command and not goal_command.lstrip().startswith("/goal"):
+    goal_command_first_line = first_non_empty_line(goal_command)
+    if goal_command and not goal_command_first_line.startswith("/goal"):
         findings.append(("Goal Command", "Goal Command must start with /goal"))
+    elif goal_command_first_line and contains_any(GOAL_COMMAND_PLACEHOLDER_PATTERNS, goal_command_first_line):
+        findings.append(("Goal Command", "Goal Command must be executable, not a placeholder"))
 
     for placeholder in PLACEHOLDERS:
         if placeholder in text:
