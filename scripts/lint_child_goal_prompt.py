@@ -17,9 +17,9 @@ from pathlib import Path
 
 PLACEHOLDER_GOAL_PATTERNS = (
     r"^/goal\s*$",
-    r"^/goal\s*<[^>]+>\s*$",
-    r"^/goal\s*\[[^\]]+\]\s*$",
-    r"^/goal\s*\{[^}]+\}\s*$",
+    r"^/goal\b.*<[^>]+>",
+    r"^/goal\b.*\[[^\]]+\]",
+    r"^/goal\b.*\{[^}]+\}",
     r"^/goal\s+(?:one executable task|todo|tbd|待定)\s*$",
 )
 

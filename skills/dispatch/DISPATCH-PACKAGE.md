@@ -121,6 +121,13 @@ tasks:
       preferred_runtime: ""
       result_package_expected: ""
 
+    goal_mode:
+      required: true | false
+      goal_contract_lint: pass | fail | not_run
+      child_prompt_lint: pass | fail | not_run
+      rendered_prompt_first_non_empty_line: starts_with_goal | missing | invalid
+      runtime_goal_mode_evidence_expected: present | not_required
+
     execution_profile:
       model_profile: ""
       reasoning_effort: low | medium | high
@@ -215,6 +222,12 @@ goal_contract:
   risk_gate: present
   preferred_runtime: present
   result_package_expected: review_package
+goal_mode:
+  required: true
+  goal_contract_lint: pass
+  child_prompt_lint: pass
+  rendered_prompt_first_non_empty_line: starts_with_goal
+  runtime_goal_mode_evidence_expected: present
 validation:
   fastest_signal: present
   required_evidence: present
@@ -234,6 +247,7 @@ runtime_identity:
 - `runtime_id != codex_app_managed_worktree_thread`
 - `readiness != ready_for_agent`
 - Goal Contract is missing or incomplete
+- `goal_mode` is missing, nested under `runtime_package`, or does not record Goal Contract and rendered prompt lint evidence
 - `goal_contract.result_package_expected != review_package`
 - source package is missing or incomplete
 - validation package is missing or incomplete

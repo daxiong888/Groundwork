@@ -216,6 +216,12 @@ tasks:
       risk_gate: ""
       preferred_runtime: ""
       result_package_expected: ""
+    goal_mode:
+      required: true | false
+      goal_contract_lint: pass | fail | not_run
+      child_prompt_lint: pass | fail | not_run
+      rendered_prompt_first_non_empty_line: starts_with_goal | missing | invalid
+      runtime_goal_mode_evidence_expected: present
     execution_profile:
       model_profile: ""
       reasoning_effort: "" # low | medium | high
@@ -235,12 +241,6 @@ tasks:
         dirty_base_inheritance_required: true | false
         branch_exists_verified: true | false | not_required
         init_status: not_started | passed | failed | blocked
-      goal_mode:
-        required: true | false
-        goal_command_first_line: true | false | unknown
-        goal_contract_lint: pass | fail | not_run
-        rendered_prompt_lint: pass | fail | not_run
-        runtime_goal_mode_evidence_expected: present
       lifecycle_expectation:
         returned_state: review_package_returned
         next_state: clean_review_pending | needs_remediation | blocked
@@ -351,6 +351,12 @@ tasks:
       risk_gate: "<present>"
       preferred_runtime: "<present>"
       result_package_expected: review_package
+    goal_mode:
+      required: true
+      goal_contract_lint: pass
+      child_prompt_lint: pass
+      rendered_prompt_first_non_empty_line: starts_with_goal
+      runtime_goal_mode_evidence_expected: present
     validation:
       fastest_signal: "<present>"
       required_evidence: "<present>"
@@ -371,12 +377,6 @@ tasks:
         dirty_base_inheritance_required: false
         branch_exists_verified: not_required
         init_status: passed
-      goal_mode:
-        required: true
-        goal_command_first_line: true
-        goal_contract_lint: pass
-        rendered_prompt_lint: pass
-        runtime_goal_mode_evidence_expected: present
       lifecycle_expectation:
         returned_state: review_package_returned
         next_state: clean_review_pending

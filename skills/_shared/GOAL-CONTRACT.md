@@ -33,7 +33,7 @@ Chinese user-facing content is supported. Chinese labels may be used where the s
 
 ## Field Rules
 
-- Goal Command: must start with `/goal` and describe one executable task. It must not be a placeholder such as `/goal <one executable task>`, a bare `/goal`, or bracketed template text.
+- Goal Command: must start with `/goal` and describe one executable task. It must not be a placeholder such as `/goal <one executable task>`, a bare `/goal`, bracketed template text, or an otherwise executable-looking command that still embeds placeholders such as `/goal Implement <task> [acceptance]`.
 - Outcome: must name one concrete result, not a vague improvement.
 - Source Truth: must cite the canonical PRD, issue, source file, artifact, or explicit user-provided package used to constrain the goal.
 - Acceptance Criteria Mapping: must map acceptance criteria to expected evidence or checks. Do not invent acceptance criteria when source truth is unclear.
@@ -73,7 +73,7 @@ A strong Goal Contract:
 Reject or revise the contract if it:
 
 - says only `make it better`, `finish this`, `fix bugs`, or an equivalent vague outcome;
-- uses a placeholder Goal Command such as `/goal <one executable task>`, `/goal [task]`, `/goal {task}`, or a bare `/goal`;
+- uses a placeholder Goal Command such as `/goal <one executable task>`, `/goal [task]`, `/goal {task}`, `/goal Implement <task> [acceptance]`, or a bare `/goal`;
 - lacks verification or uses only `make sure it works`;
 - allows broad edits without reason, such as `edit anything` or `随便改`;
 - asks for repeated retries without new evidence, such as `keep trying`;
@@ -90,7 +90,7 @@ Use the local linter for a fast structural check:
 python3 scripts/lint_goal_contract.py <goal-contract-file>
 ```
 
-The linter scans the full Markdown file, including fenced code blocks. It accepts either same-line field values or indented/block values immediately after a required label, and it requires the extracted `Goal Command` value itself to start with `/goal`. It also rejects structurally detectable placeholder commands, including `/goal <one executable task>`. It intentionally does not perform full Markdown AST validation.
+The linter scans the full Markdown file, including fenced code blocks. It accepts either same-line field values or indented/block values immediately after a required label, and it requires the extracted `Goal Command` value itself to start with `/goal`. It also rejects structurally detectable placeholder commands, including bare placeholders and embedded placeholder tokens such as `/goal Implement <task> [acceptance]`. It intentionally does not perform full Markdown AST validation.
 
 `evals/prompts/goal-contract.csv` is a fixture-only manifest for Goal Contract lint coverage. It is not part of the runtime default suite because `goal-contract` is a shared contract and linter, not a public skill runtime route.
 

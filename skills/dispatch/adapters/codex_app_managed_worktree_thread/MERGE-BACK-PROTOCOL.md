@@ -76,8 +76,9 @@ Use the first strategy whose source is complete, whose preconditions are proven,
 
 1. `codex_checkout`: Codex App checkout or apply-changes operation into the local main worktree, when the runtime supports it and evidence names the applied source, target worktree, and changed pathspecs.
 2. `git_apply_patch`: complete patch bundle from the child worktree, applied with explicit pathspec review and three-way support when safe.
-3. `git_merge_branch` or `git_checkout_pathspec`: visible child branch or head commit, merged or checked out by explicit pathspec only after base and conflict preconditions are checked.
-4. `manual_review_only`: review-only fallback when no reliable merge source exists. This is not a merge strategy and must not produce main-worktree file changes.
+3. `git_checkout_pathspec`: visible child branch or head commit, checked out by explicit pathspec only after base and conflict preconditions are checked.
+4. `git_merge_branch`: visible child branch merged only when the entire child branch is already scope-contained, clean review confirms no unrelated changes exist, and full-branch merge risk is explicitly accepted. Git merge does not accept pathspec operands, so this strategy must not be described or executed as a pathspec-limited merge.
+5. `manual_review_only`: review-only fallback when no reliable merge source exists. This is not a merge strategy and must not produce main-worktree file changes.
 
 Do not skip to a lower-priority strategy unless the package records why each higher-priority strategy is unavailable or unsafe.
 
