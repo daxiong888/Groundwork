@@ -1154,6 +1154,28 @@ class RuntimeSchedulerTests(unittest.TestCase):
         self.assertEqual(actual, "direct")
         self.assertEqual(hits, [])
 
+    def test_copy_fixture_accepts_single_file_fixture(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo = Path(tmpdir) / "repo"
+            fixture_dir = repo / "evals" / "scenarios"
+            fixture_dir.mkdir(parents=True)
+            fixture = fixture_dir / "scenario.md"
+            fixture.write_text("# Scenario\n", encoding="utf-8")
+
+            old_repo = run_runtime.REPO
+            old_workspaces = run_runtime.WORKSPACES
+            try:
+                run_runtime.REPO = repo
+                run_runtime.WORKSPACES = repo / "runtime" / "workspaces"
+
+                workspace = run_runtime.copy_fixture("evals/scenarios/scenario.md", "dispatch-015")
+            finally:
+                run_runtime.REPO = old_repo
+                run_runtime.WORKSPACES = old_workspaces
+
+            self.assertTrue(workspace.is_dir())
+            self.assertEqual((workspace / "scenario.md").read_text(encoding="utf-8"), "# Scenario\n")
+
     def test_multidimensional_verdict_all_passes(self):
         verdict = run_runtime.routing_verdict_model(
             routing_row(
