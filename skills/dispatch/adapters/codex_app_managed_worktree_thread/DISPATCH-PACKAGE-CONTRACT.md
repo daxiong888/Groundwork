@@ -55,7 +55,7 @@ tasks:
       filesystem: codex_managed_worktree
       diff_surface: required
     parallelization:
-      eligible: true
+      eligible: true | false
       conflict_group: present_or_empty
       dependency_group: present_or_empty
       merge_order_hint: present_or_empty
@@ -117,7 +117,8 @@ All checks must pass before creating a child thread:
 - `runtime_package.can_write_files = true`
 - remote writes are `false` or separately approved
 - destructive actions are `false` or separately approved
-- conflicts are absent, serialized, or explicitly approved
+- conflicts are absent, already serialized by dependency group and merge-order hint, or explicitly approved
+- unresolved unknown or shared conflicts without serialization or approval are blocked
 
 ## Rejection And No-op
 

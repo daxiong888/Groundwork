@@ -24,8 +24,10 @@ Package routing, package admissibility, tool discovery, thread creation approval
 
 Derived from Groundwork Dispatch Package v2, Goal Contract fields, and managed worktree review package requirements.
 
+`goal_contract.goal_command` must already start with `/goal`; do not prepend another `/goal` when filling this template.
+
 ```text
-/goal {goal_contract.goal_command_or_concrete_child_objective}
+{goal_contract.goal_command}
 
 You are working in a Codex App background thread with a Codex-managed worktree.
 

@@ -37,6 +37,7 @@ A managed worktree package is admissible only when it includes all strict fields
 - complete Goal Contract including `preferred_runtime = present`
 - `goal_contract.result_package_expected = review_package`
 - validation package with `fastest_signal` and `required_evidence`
+- `parallelization.eligible = true` for independent write tasks, or `false` for serialized conflicting write tasks with explicit dependency/merge order
 - `runtime_package.adapter = codex_app_managed_worktree_thread`
 - `runtime_package.can_write_files = true`
 - `runtime_package.expected_output = review_package`
@@ -45,6 +46,8 @@ A managed worktree package is admissible only when it includes all strict fields
 
 - Fail if adapter docs allow `prd_excerpt` or `issue_body` to be absent or only not-applicable for an executable managed worktree package.
 - Fail if adapter docs omit `goal_contract.preferred_runtime`.
+- Fail if adapter docs require `parallelization.eligible = true` for all managed worktree packages and thereby reject serialized conflicting write tasks.
+- Fail if child prompt templates can produce `/goal /goal ...` when filled with `goal_contract.goal_command`.
 - Fail if adapter docs imply `tool_enforced` selector status without runtime adapter evidence.
 - Fail if dispatch claims package generation created a thread, worktree, validation run, commit, push, PR, or issue close.
 - Fail if read-only, planning-only, or hybrid pre-split work can be routed to managed worktree execution.
