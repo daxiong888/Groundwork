@@ -51,6 +51,7 @@ A managed worktree package is admissible only when it includes all strict fields
 - Fail if child prompt templates can produce `/goal /goal ...` when filled with `goal_contract.goal_command`.
 - Fail if adapter docs treat package-level `approval.required = false` as sufficient approval to create a child thread.
 - Fail if incomplete managed-runtime packages are classified as `no_worktree_needed` instead of `blocked` or `needs_remediation`.
+- Fail if accepted managed worktree execution result templates default `goal_contract_used` to `false`.
 - Fail if adapter docs imply `tool_enforced` selector status without runtime adapter evidence.
 - Fail if dispatch claims package generation created a thread, worktree, validation run, commit, push, PR, or issue close.
 - Fail if read-only, planning-only, or hybrid pre-split work can be routed to managed worktree execution.

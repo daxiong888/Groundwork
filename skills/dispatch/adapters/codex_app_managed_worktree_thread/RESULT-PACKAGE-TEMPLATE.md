@@ -35,7 +35,7 @@ result_package:
     title: ""
     task_type: ""
     readiness: ""
-    goal_contract_used: false
+    goal_contract_used: "true | false"
     source_truth: ""
     rejection_or_noop_reason: ""
 
@@ -84,5 +84,7 @@ result_package:
 - `no_worktree_needed`: the package is non-managed-runtime, read-only, planning-only, hybrid before split, or otherwise intentionally should not create a managed worktree.
 
 Incomplete managed-runtime packages must use `blocked` or `needs_remediation`, not `no_worktree_needed`.
+
+`goal_contract_used` must be `true` for accepted managed worktree execution results, including `ready_for_review` and post-execution `needs_remediation`. Use `false` only for rejection, no-op, or blocked-before-execution results, and explain the reason in `rejection_or_noop_reason` or `risk.blockers`.
 
 Do not claim thread creation, worktree creation, validation execution, selector tool enforcement, stage, commit, push, PR creation, issue close, archive, or remote mutation unless the adapter has evidence for that action.
