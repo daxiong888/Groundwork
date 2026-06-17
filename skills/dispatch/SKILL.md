@@ -180,6 +180,22 @@ tasks:
       conflict_group: ""
       dependency_group: ""
       merge_order_hint: ""
+    dependency_barrier:
+      depends_on_task_ids: []
+      blocked_until:
+        result_package_status: ready_for_review | not_required
+        clean_review: passed | not_required
+        merge_back: completed | not_required
+        verification: pass | partial_allowed | not_required
+        base_refresh: completed | not_required
+      required_base:
+        branch: ""
+        commit_after_merge: ""
+      re_triage_required_after_merge: true | false
+      goal_contract_refresh_required: true | false
+      dispatch_allowed_now: true | false
+      block_reason: ""
+      release_evidence: ""
     source_package:
       prd_excerpt: ""
       issue_body: ""
@@ -213,6 +229,23 @@ tasks:
       adapter: ""
       expected_output: ""
       can_write_files: false
+      worktree_init_preflight:
+        starting_state: working-tree | existing-branch | unknown
+        branch_name: ""
+        dirty_base_inheritance_required: true | false
+        branch_exists_verified: true | false | not_required
+        init_status: not_started | passed | failed | blocked
+      goal_mode:
+        required: true | false
+        goal_command_first_line: true | false | unknown
+        goal_contract_lint: pass | fail | not_run
+        rendered_prompt_lint: pass | fail | not_run
+        runtime_goal_mode_evidence_expected: present
+      lifecycle_expectation:
+        returned_state: review_package_returned
+        next_state: clean_review_pending | needs_remediation | blocked
+        child_may_self_archive: false
+        branch_cleanup_separate: true
     approval:
       required: false
       reason: ""
@@ -282,6 +315,22 @@ tasks:
       conflict_group: "managed-worktree-runtime-identity"
       dependency_group: ""
       merge_order_hint: "before dependent managed worktree lifecycle templates"
+    dependency_barrier:
+      depends_on_task_ids: []
+      blocked_until:
+        result_package_status: not_required
+        clean_review: not_required
+        merge_back: not_required
+        verification: not_required
+        base_refresh: not_required
+      required_base:
+        branch: "<current_base_or_empty>"
+        commit_after_merge: "<not_required_or_present>"
+      re_triage_required_after_merge: false
+      goal_contract_refresh_required: false
+      dispatch_allowed_now: true
+      block_reason: ""
+      release_evidence: "No prerequisite managed worktree task is required for this example package."
     source_package:
       prd_excerpt: "PRD v0.3.3 FR-5 requires stable runtime identity for managed worktree packages."
       issue_body: "Add runtime identity fields and stop using thread title as source-of-truth identity."
@@ -316,6 +365,23 @@ tasks:
       thread_title: "Add stable runtime identity fields"
       expected_output: review_package
       can_write_files: true
+      worktree_init_preflight:
+        starting_state: working-tree
+        branch_name: ""
+        dirty_base_inheritance_required: false
+        branch_exists_verified: not_required
+        init_status: passed
+      goal_mode:
+        required: true
+        goal_command_first_line: true
+        goal_contract_lint: pass
+        rendered_prompt_lint: pass
+        runtime_goal_mode_evidence_expected: present
+      lifecycle_expectation:
+        returned_state: review_package_returned
+        next_state: clean_review_pending
+        child_may_self_archive: false
+        branch_cleanup_separate: true
     approval:
       required: false_or_package_gate_satisfied
       reason: "<present_or_empty>"

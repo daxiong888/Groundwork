@@ -40,6 +40,8 @@ See [`docs/maintainer-workflows.md`](docs/maintainer-workflows.md) and [`example
 
 Current `main` contains the hardened public skill surface defined by `docs/prd.md`. The dispatch runtime router work adds `dispatch` as the ninth public skill, scoped by `docs/prd-dispatch-runtime-router.md`, so Groundwork can package accepted work for the lightest appropriate runtime without executing that runtime itself.
 
+The v0.3.3 contract layer hardens managed worktree lifecycle handling behind `dispatch` without adding public skills. It adds package-only contracts for runtime identity, Goal Mode evidence, clean review fan-out, merge-back, archive readiness, branch cleanup, and serial dispatch barriers. Runtime adapters still own execution evidence; Groundwork dispatch remains a package generator, not an executor.
+
 This repository currently contains:
 
 - project vision and boundaries
@@ -55,6 +57,7 @@ This repository currently contains:
 - R&D workflow scenario fixtures
 - spec-level, local discovery, runtime, fixture, and App runtime-safety baselines
 - runtime trial checklist
+- managed worktree lifecycle, clean review, merge-back, and serial barrier contracts for v0.3.3
 
 It intentionally does not yet contain task tools, hooks, MCP servers, marketplace publishing flow, or local task CRUD. Those should be added only after repeated real usage exposes a need.
 
