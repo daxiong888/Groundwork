@@ -1,0 +1,10 @@
+# Safe placeholder examples only.
+# Copy selected entries into a private .worktreeinclude only after review.
+# Do not stage or commit a private .worktreeinclude that names sensitive local paths
+# unless the project owner explicitly approves that git boundary.
+#
+# See docs/worktreeinclude-safety.md before adding project-specific entries.
+
+examples/local-config.placeholder.json
+fixtures/redacted-smoke-fixture.placeholder.json
+tools/local-settings.placeholder.toml

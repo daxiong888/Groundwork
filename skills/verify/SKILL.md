@@ -122,6 +122,40 @@ When a P1, public API, migration, schema, security, privacy, auth, permissions, 
 
 Small, low-risk tasks with clear current evidence may still receive lightweight verification. Do not require clean review ceremony when the separation thresholds are not met.
 
+When verifying a `native_closeout_package`, treat merge readiness and cleanup decisions as separate claims:
+
+- reject or mark blocked any `merge_decision.recommendation: merge` when `evidence_summary` is empty or missing;
+- reject or mark blocked any `merge_decision.recommendation: merge` when `git_boundary_status.status_checked` is not true or `git_boundary_status.safe_to_stage_or_merge` is not true;
+- reject or mark blocked any `merge_decision.recommendation: merge` when intended files, unrelated dirty files, staged files, or explicit denylist evidence is missing from `git_boundary_status`;
+- reject or mark blocked any `merge_decision.recommendation: merge` when `review_findings_status` is not `passed`;
+- reject or mark blocked any `merge_decision.recommendation: merge` when `merge_decision.merge_source` is `none`, `unknown`, empty, missing, or lacks source evidence;
+- verify that `merge_decision.merge_source` uses only `patch_bundle`, `visible_branch`, `codex_handoff`, `pathspec_checkout`, `none`, or `unknown`;
+- verify that `cleanup_decision.thread_action`, `cleanup_decision.worktree_action`, and `cleanup_decision.branch_action` are separate fields and are not represented as merge recommendations;
+- do not treat archive, worktree retention, Codex-managed cleanup, or branch cleanup as merge readiness evidence;
+- do not claim thread archive, worktree cleanup, branch deletion, runtime execution, cache refresh, release readiness, or UAT readiness unless the package includes direct evidence for that specific claim.
+
+When verifying runtime, cache, release, UAT, marketplace, or cache-refresh claims, require a `release_evidence_claim` object for each material claim:
+
+```yaml
+release_evidence_claim:
+  claim_type: runtime | cache | release | uat | marketplace | cache_refresh | not_applicable
+  claim: ""
+  evidence_status: verified | unverified | not_applicable
+  installed_plugin_root: ""
+  source_root: ""
+  cache_or_source_refresh:
+    method: refresh_step | source_equivalence | not_run | not_applicable
+    evidence: ""
+  run_scope: targeted | full | not_run | not_applicable
+  commands_or_trials: []
+  limitations: []
+```
+
+- Documentation, schema, fixture, PRD, or issue-pack edits alone must set runtime, cache, release, UAT, marketplace, and cache-refresh evidence to `unverified` or `not_applicable`.
+- A `verified` runtime or cache claim must name the installed plugin root, source root, cache/source refresh or equivalence method, run scope, commands or trials, and limitations.
+- Release readiness is not inferred from PRD acceptance, issue-pack completion, fixture pass, package completeness, or clean review alone; it requires separate release-gate evidence.
+- Codex App Handoff execution evidence is separate from Groundwork package/schema evidence and must be represented as commands or trials before it can support a release or handoff-readiness claim.
+
 If a check cannot be run, mark it `unverified`. A code diff or implementation summary alone is not readiness evidence.
 
 When the user forbids running commands, browser checks, or file inspection, still emit the full `Verification Scope` block first. Treat the requested readiness claim as an evidence sufficiency check, put the forbidden checks under `Not Covered`, and mark missing runtime/browser/test evidence as `unverified` instead of answering with a direct no-scope summary.
