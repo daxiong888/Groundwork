@@ -14,7 +14,7 @@ It should also not become a blind Superpowers + mattpocock bundle. The borrowed 
 
 ## Current Stage
 
-Current `main` contains v0.2.0 Skill Reliability Hardening.
+Current `main` contains v0.4.0 native worktree handoff alignment. Groundwork remains a small Codex-native R&D base: it governs route, policy, evidence, handoff, and closeout contracts while Codex App/runtime adapters own actual worktree creation, Handoff execution, runtime execution, and cleanup operations.
 
 Current contents:
 
@@ -22,10 +22,10 @@ Current contents:
 - `docs/` product and architecture docs
 - `evals/` prompt fixtures, structured smoke, safety, and reliability fixtures, scenario fixtures, fixture repos, baselines, and runtime trial checklist
 - `research/` source research and scenario analysis
-- `skills/` eight shallow public skills plus required first-cut references
+- `skills/` nine public skills, including `dispatch`, plus required shared guardrails and adapter contracts
 - `scripts/` optional future scripts directory, currently empty except `.gitkeep`
 
-The repository includes v0.1 runtime and eval evidence, including plugin discovery, representative workflow trial, fixture runtime trial, and Codex App runtime-safety follow-up. The v0.2.0 line improves reliability of the existing eight public skills in real prompts without adding public skill surface, task tools, hooks, MCP servers, marketplace publishing flow, or task CRUD.
+The repository includes runtime and eval evidence accumulated across v0.1 through v0.4.0, including plugin discovery, representative workflow trials, fixture validation, Codex App runtime-safety follow-up, dispatch routing coverage, managed-worktree lifecycle contract coverage, governance baseline hardening, and native worktree handoff alignment evidence. The v0.4.0 line does not add task tools, hooks, MCP servers, marketplace publishing flow, or task CRUD.
 
 ## MVP Surface
 

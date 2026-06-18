@@ -44,6 +44,8 @@ The v0.3.3 contract layer hardens managed worktree lifecycle handling behind `di
 
 The v0.3.4 governance baseline hardens the current nine public skills without adding another skill or runtime. It moves repository-level rules into `AGENTS.md`, expands audience-first artifact headers, strengthens to-prd/prototype/implement/verify/handoff guardrails, and keeps `dispatch` package-only while inheriting the shared done definition and smoke coverage.
 
+The v0.4.0 native worktree handoff alignment shrinks Groundwork back toward route, policy, evidence, handoff, and closeout governance around Codex-native worktrees. It adds native handoff and closeout package contracts, `.worktreeinclude` safety guidance, release-evidence claim boundaries, and eval coverage while keeping Codex App/runtime adapters responsible for actual worktree creation, Handoff execution, runtime execution, and cleanup operations.
+
 This repository currently contains:
 
 - project vision and boundaries
@@ -53,6 +55,7 @@ This repository currently contains:
 - real maintenance case studies
 - Codex plugin manifest
 - nine public skills, including `dispatch`
+- native Codex worktree/handoff governance contracts for v0.4.0
 - skill trigger fixtures
 - structured smoke and safety fixtures
 - skill reliability fixtures
