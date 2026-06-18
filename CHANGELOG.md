@@ -4,6 +4,34 @@ All notable changes to Groundwork are documented in this file.
 
 ## Unreleased
 
+## v0.3.4 - 2026-06-18
+
+### Added
+
+- Added governance baseline coverage for the current nine-skill public surface, including `dispatch` smoke coverage as a package-only runtime router.
+- Added full audience-first artifact header requirements across shared artifact rules, PRD templates, and verify document review lenses.
+- Added `Needs Confirmation` and recommended-answer impact guidance to `to-prd` grill-before-write flow.
+- Added `Contract Sources` and stricter confirmed-backend versus mock-field separation to prototype contract-boundary guidance.
+- Added QA failure `Gap Closure Plan` and re-QA requirements for the verify -> implement -> verify loop.
+
+### Changed
+
+- Bumped plugin metadata to `0.3.4` for the governance baseline and skill guardrail release.
+- Extended repo-local `AGENTS.md` with layout, build/test/lint, review, done definition, git boundary, artifact, and forbidden-behavior rules.
+- Required all nine public skills, including `dispatch`, to apply the repo-local `AGENTS.md` Done Definition when maintaining this repository.
+- Tightened `implement` mini-plan wording to `What / Why / Files / Test / Risk` and added unverified-claims reporting.
+- Tightened `verify` runtime smoke output so final verification reports start with the literal six-field `Verification Scope` block.
+- Extended handoff review packages with goal, current decision, and git boundary fields.
+- Updated smoke and guardrail regression prompts for v0.3.4 governance coverage.
+
+### Notes
+
+- No new public skill, runtime executor, task database, automation, hook, MCP server, or plugin split is added in this release.
+- `dispatch` remains a public package generator and router; it does not execute runtime tools, spawn subagents, create worktrees, push, open PRs, close issues, or mutate remotes.
+- Runtime release evidence requires refreshing the installed plugin cache and checking cache/source equivalence before using `evals/run_runtime.py` results as release-gating evidence.
+
+## v0.3.3 - 2026-06-17
+
 ### Changed
 
 - Tightened the v0.3.3 managed worktree closeout contract with registry records, state-change events, original-goal verdicts, same-base serial closeout fields, archive recovery evidence, review coverage reporting, and metric inputs.

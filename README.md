@@ -42,6 +42,8 @@ Current `main` contains the hardened public skill surface defined by `docs/prd.m
 
 The v0.3.3 contract layer hardens managed worktree lifecycle handling behind `dispatch` without adding public skills. It adds package-only contracts for runtime identity, Goal Mode evidence, clean review fan-out, merge-back, archive readiness, branch cleanup, and serial dispatch barriers. Runtime adapters still own execution evidence; Groundwork dispatch remains a package generator, not an executor.
 
+The v0.3.4 governance baseline hardens the current nine public skills without adding another skill or runtime. It moves repository-level rules into `AGENTS.md`, expands audience-first artifact headers, strengthens to-prd/prototype/implement/verify/handoff guardrails, and keeps `dispatch` package-only while inheriting the shared done definition and smoke coverage.
+
 This repository currently contains:
 
 - project vision and boundaries

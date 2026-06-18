@@ -110,7 +110,7 @@ Every durable artifact should carry the audience-first header fields defined in 
 
 ## v0.3.4 Governance Baseline Boundary
 
-v0.3.4 is a main-chain governance baseline for existing public skills. It strengthens layered `AGENTS.md`, artifact headers, grill-before-write, prototype contract boundaries, implement planning/TDD-lite, verify scope/lenses, QA-fix-QA, git boundary, and handoff review packages.
+v0.3.4 is a main-chain governance baseline for the current nine public skills, including package-only `dispatch`. It strengthens layered `AGENTS.md`, artifact headers, grill-before-write, prototype contract boundaries, implement planning/TDD-lite, verify scope/lenses, QA-fix-QA, git boundary, handoff review packages, and the shared done definition inherited by `dispatch`.
 
 It is not a new runtime, plugin split, automation layer, task database, or subagent spawning system. Runtime evidence still requires installed plugin cache/source equivalence or a supported marketplace refresh before it can be treated as release-gating evidence.
 

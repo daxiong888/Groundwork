@@ -47,6 +47,8 @@ Do not use this skill when:
 
 ## Required Behavior
 
+When maintaining the Groundwork repository itself, apply the repo-local `AGENTS.md` Done Definition before reporting the work complete.
+
 `dispatch` must:
 
 - confirm source truth, issue set, readiness source, and evidence level before routing
