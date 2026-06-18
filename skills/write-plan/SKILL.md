@@ -30,6 +30,8 @@ Should not trigger:
 
 Use the accepted task, PRD/spec, issue, current source references, existing lifecycle state, roadmap, and known verification expectations. Do not invent exact file paths, APIs, schemas, or commands before inspection. If the workspace has no source or tests, say so and plan first inspection or validation steps instead of naming fictional files.
 
+When maintaining the Groundwork repository itself, apply the repo-local `AGENTS.md` Done Definition before reporting the work complete.
+
 Use `skills/_shared/LIFECYCLE-STATE.md` when planning a multi-stage or multi-session workstream. Do not create lifecycle files or recommend lifecycle artifacts for ordinary implementation plans.
 
 ## Workflow
@@ -95,7 +97,7 @@ Artifact Recommendation (only when artifact promotion is required or useful; oth
 
 Stop when steps, dependencies, risks, verification checkpoints, and stop condition are clear enough for implementation.
 
-If implementation can safely proceed with only What, Why, Files likely touched, Test/check, and Risk, keep the plan inside `implement` instead of forcing this full-plan workflow.
+If implementation can safely proceed with only What, Why, Files, Test, and Risk, keep the plan inside `implement` instead of forcing this full-plan workflow.
 
 ## Artifact Rule
 

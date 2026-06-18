@@ -32,7 +32,7 @@ Rules:
 - Apply `CONTRACT-BOUNDARY.md`: model assumptions, mocked schema fields, and client-derived calculations remain prototype-only unless independently verified by backend/source contract evidence.
 - Phrase PRD/issue/contract feedback as proposed feedback unless source-truth verification or explicit user confirmation has already happened.
 - Label mocked fields `mock / illustrative / not backend contract`.
-- Label client-derived calculations `derived / illustrative / not backend contract`.
+- Label client-derived calculations `Derived / illustrative / not backend contract`.
 - Do not present a logic prototype as frontend or backend contract without source-backed verification or explicit user confirmation.
 - If results contradict PRD/task assumptions, feed that back before implementation.
 - Keep the prototype question-first; unresolved contract ambiguity should become explicit contract questions, not invented server behavior.

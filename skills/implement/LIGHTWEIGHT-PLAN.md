@@ -13,16 +13,16 @@ Use this plan before file edits unless the change is truly trivial and already f
 Implementation Mini-Plan
 - What:
 - Why:
-- Files likely touched:
-- Test/check:
+- Files:
+- Test:
 - Risk:
 ```
 
 Rules:
 
 - Inspect the task, PRD/spec, source, tests, config, and relevant diffs before naming exact files when correctness depends on them.
-- Map acceptance criteria to intended changes and checks.
-- Keep `Files likely touched` to inspected files or clearly label uninspected areas as likely areas, not facts.
+- Map acceptance criteria to planned change, test/check, and expected evidence.
+- Keep `Files` to inspected files or clearly label uninspected areas as likely areas, not facts.
 - Do not require `write-plan` for small tasks where the user asked to implement now, but still use this five-line mini-plan unless the change is truly trivial and already fully bounded.
 - Recommend `write-plan` only when sequencing, dependencies, stop conditions, or scope are too large to safely hold inline.
 

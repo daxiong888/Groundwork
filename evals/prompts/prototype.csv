@@ -8,5 +8,5 @@ prototype-006,prototype,true,evals/fixtures/static-filter-prototype,评审 evals
 prototype-007,prototype,true,none,做一个最小静态 HTML 原型验证多活动筛选器只在多活动展示,Default to one minimum prototype with cleanup decision,true,false
 prototype-008,prototype,false,none,这个原型结论能不能给客户 UAT,Should route to verify,false,false
 prototype-009,prototype,false,none,直接按这个原型改生产代码,Should route to implement,false,false
-prototype-010,prototype,true,evals/fixtures/static-filter-prototype,评审 evals/fixtures/static-filter-prototype/index.html 并区分 confirmed backend fields、proposed backend hypotheses、mock fields、client-derived logic；只根据静态原型判断，不要验证后端 source truth，不要改文件,Classify static prototype contract boundary and keep PRD issue contract feedback proposed unless source truth is verified,false,false
+prototype-010,prototype,true,evals/fixtures/static-filter-prototype,评审 evals/fixtures/static-filter-prototype/index.html 并区分 confirmed backend fields、proposed backend hypotheses、mock fields、client-derived logic；只根据静态原型判断，不要验证后端 source truth，不要改文件,Classify static prototype contract sources and boundary and keep PRD issue contract feedback proposed unless source truth is verified,false,false
 prototype-011,prototype,false,evals/fixtures/static-filter-prototype,验证 evals/fixtures/static-filter-prototype/index.html 的筛选器行为是否符合真实后端 API 字段和 source truth；不要改文件,Should route to verify,false,false

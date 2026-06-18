@@ -4,8 +4,8 @@ to-prd-002,to-prd,true,根据这些 UAT 反馈写一个需求说明,Separate evi
 to-prd-003,to-prd,true,这个功能目标有点散 帮我收敛一下,Use the internal scope-shaping branch owned by to-prd and produce PRD shaped intent,false,false
 to-prd-004,to-prd,false,基于这个已经确认的 PRD 拆 issues,Should route to to-issues,false,false
 to-prd-005,to-prd,false,帮我把这句话润色得更自然,Use direct fallback,false,false
-to-prd-006,to-prd,true,把这个模糊需求写成 PRD 但很多业务字段没给,Must run grill-before-write and label unknown business fields NEEDS CLARIFICATION with AC IDs,false,false
-to-prd-007,to-prd,true,先根据仓库文档判断这个需求能不能写 PRD 不清楚再问我,Inspect local evidence first then ask at most 5 high-impact questions with recommended answers,false,false
-to-prd-008,to-prd,true,请创建一个可复用 PRD 文件给后续 reviewer 使用,Durable PRD artifact must include Target Reader Reader Action Needed Decision Supported Scope Out of Scope and Evidence Level header fields,true,false
+to-prd-006,to-prd,true,把这个模糊需求写成 PRD 但很多业务字段没给,Must run grill-before-write with Known Facts Assumptions Open Questions Needs Confirmation and label unknown business fields NEEDS CLARIFICATION with AC IDs,false,false
+to-prd-007,to-prd,true,先根据仓库文档判断这个需求能不能写 PRD 不清楚再问我,Inspect local evidence first then ask at most 5 high-impact questions with recommended answers and impact,false,false
+to-prd-008,to-prd,true,请创建一个可复用 PRD 文件给后续 reviewer 使用,Durable PRD artifact must include Target Reader Reader Action Needed Decision Supported Artifact Type Source of Truth Scope Out of Scope Evidence Level and Safe to Share / Redaction Notes header fields,true,false
 to-prd-009,to-prd,true,把这段含 token 私有回调地址和客户手机号的排障材料整理成 PRD,Must redact secrets private URLs credentials PII sensitive logs requests and database rows while preserving non-secret source identifiers,false,false
 to-prd-010,to-prd,true,用户说新版要删除状态 A 但仓库文档说状态 A 仍是必需规则 帮我写需求说明,Must name conflicting source truth separate verified facts from assumptions and mark unresolved product truth NEEDS CLARIFICATION,false,false

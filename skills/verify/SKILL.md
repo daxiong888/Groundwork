@@ -1,15 +1,29 @@
 ---
 name: verify
-description: Skeptically verify scope-first readiness, frontend integration readiness, implementation acceptance evidence with tests/checks, source-truth, UAT/release evidence, UI evidence, git boundary, or frontend contract confidence. Use for no-command readiness or evidence-sufficiency prompts such as "不要运行命令", "只有 code diff 没有 runtime 或 browser evidence 这次可以算 ready 吗", and other questions about whether code diff alone without runtime or browser evidence can count as ready; these are verify reports and must start with Verification Scope, not a direct short answer. Not for plain implementation conformance review without readiness or acceptance verification, and not for prototype contract-boundary classification.
+description: Skeptically verify scope-first readiness, frontend integration readiness, implementation acceptance evidence with tests/checks, source-truth, UAT/release evidence, UI evidence, git boundary, or frontend contract confidence. Use for no-command readiness or evidence-sufficiency prompts such as "不要运行命令", "只有 code diff 没有 runtime 或 browser evidence 这次可以算 ready 吗", and other questions about whether code diff alone without runtime or browser evidence can count as ready. Final verification reports must start with the literal line "Verification Scope" followed by the six dash-prefixed fields In Scope, Out of Scope, Covered, Not Covered, Evidence Sources, and User-visible Claim Being Verified. Do not bold, translate, rename, or replace this block. Not for plain implementation conformance review without readiness or acceptance verification, and not for prototype contract-boundary classification.
 ---
 
 # verify
 
 ## Final Report Opening Rule
 
+Runtime smoke rule: copy the required opening block literally. Do not write a prose paragraph, Chinese heading, markdown-bold heading, or bare heading before these six fields.
+
 The final verification report must begin with the complete six-field `Verification Scope` block from `SCOPE-EVIDENCE-TEMPLATE.md`. Once the response enters the verification report body, the first report line must be `Verification Scope`, followed by all required scope fields, not a conclusion, findings heading, contract payload, QA payload, tool recommendation, or subagent prompt.
 
 A bare `Verification Scope` heading is not compliant. If details are missing, keep the field and write `not provided` or `unverified`.
+
+Mandatory skeleton for every final verification report:
+
+```text
+Verification Scope
+- In Scope:
+- Out of Scope:
+- Covered:
+- Not Covered:
+- Evidence Sources:
+- User-visible Claim Being Verified:
+```
 
 Questions that ask whether missing evidence is enough for readiness, including code-diff-only, no-runtime-evidence, no-browser-evidence, no-command, or "can this count as ready" prompts, are verification reports. Do not answer them as a direct short judgment; start with `Verification Scope`.
 
@@ -79,6 +93,8 @@ Should not trigger:
 ## Required Evidence
 
 Use the complete block from `SCOPE-EVIDENCE-TEMPLATE.md` as the required opening for the final verification report. The final-report opening rule above is mandatory for every verify branch.
+
+When maintaining the Groundwork repository itself, apply the repo-local `AGENTS.md` Done Definition before reporting the work complete.
 
 Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` before judging readiness when lifecycle state, task state, source truth, or downstream closeout is involved. Source truth beats `STATE.md`: if lifecycle state conflicts with source code, tests, runtime evidence, accepted PRD/issue, or user-confirmed decisions, mark the state stale or insufficient and follow the canonical source.
 
@@ -154,7 +170,7 @@ Never place task-state recommendations before the required `Verification Scope` 
 8. Use `CONTRACT-DOC-REVIEW.md` when frontend-facing docs or API contract claims matter.
 9. Separate data, environment, and customer/UAT readiness.
 10. Map `Claim / AC -> Evidence -> Result -> Gap -> Severity`.
-11. If verification fails or the user asks how to handle a QA failure, include the `QA Failure` shape from `QA-FIX-QA.md`. If concrete failure details are missing, still emit the shape and mark missing fields as `not provided` or `unverified`; do not substitute a generic process.
+11. If verification fails or the user asks how to handle a QA failure, include the `QA Failure` shape from `QA-FIX-QA.md`. If concrete failure details are missing, still emit the shape and mark missing fields as `not provided` or `unverified`; do not substitute a generic process. Do not update a failure verdict to `pass` until the original reproduction/check has been re-QA'd.
 12. Mark missing checks as `unverified`.
 13. Keep any customer-facing summary optional and secondary to engineering readiness.
 14. Give a verdict: `pass`, `partial`, `fail`, or `blocked`.
@@ -179,6 +195,7 @@ QA Failure
 - Severity: P0 / P1 / P2 / P3
 - Minimal Diagnosis:
 - Fix Plan:
+- Gap Closure Plan:
 - Re-QA Required:
 - Regression Note:
 - Scoped Next Action:

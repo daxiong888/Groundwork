@@ -30,6 +30,8 @@ Should not trigger:
 
 Start from the accepted PRD/spec/plan. If it is missing blockers, source context, contract impact, runtime-routing inputs, Goal Contract inputs, or verification evidence, record the missing details in `Ready-for-Agent Missing Fields`, `Goal Contract Missing Fields`, or `Runtime Missing Fields` instead of fabricating readiness.
 
+When maintaining the Groundwork repository itself, apply the repo-local `AGENTS.md` Done Definition before reporting the work complete.
+
 Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` and `skills/_shared/ARTIFACT-PROMOTION.md` before issue splitting. If the source is raw, draft-only, unaccepted, or conversation-only without a named canonical owner, stop at the source-of-truth / promotion gate instead of producing fake-precise issues. An accepted PRD that will drive another session, remote issue creation, implementation, verification, or handoff must be promoted to a canonical artifact or explicitly tied to an external source of truth.
 
 Use `skills/_shared/LOCALE-GUARD.md` for issue titles, issue bodies, headings, summaries, and artifact prose. The user's current session language overrides the English wording of this skill template; keep code identifiers, paths, labels, and CLI flags literal.

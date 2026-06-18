@@ -9,6 +9,12 @@
 ## Decision Supported
 - [Decision or action this PRD enables] **NEEDS CLARIFICATION**
 
+## Artifact Type
+- PRD
+
+## Source of Truth
+- [User-confirmed decision, source code path, external issue, or mixed source owner] **NEEDS CLARIFICATION**
+
 ## Scope
 - [Concise durable-artifact scope summary] **NEEDS CLARIFICATION**
 
@@ -17,6 +23,9 @@
 
 ## Evidence Level
 - [User-confirmed, source-backed, inferred, draft, or mixed] **NEEDS CLARIFICATION**
+
+## Safe to Share / Redaction Notes
+- [Shareability and redaction boundary, especially secrets, private URLs, PII, sensitive logs, or payloads] **NEEDS CLARIFICATION**
 
 ## Known Facts
 - [Verified fact from user input or evidence]
@@ -27,6 +36,10 @@
 ## Open Questions
 - Q1: [Highest-impact question that blocks scope or acceptance] **NEEDS CLARIFICATION**
   - Recommended Answer: [Recommended default or decision, or `NEEDS CLARIFICATION` if no evidence supports one]
+  - Impact: [How this answer changes scope, acceptance, implementation, verification, risk, or next action]
+
+## Needs Confirmation
+- [Unknown business fact, field, state, permission, user behavior, or acceptance detail that must not be invented] **NEEDS CLARIFICATION**
 
 ## PRD Summary
 - [One-paragraph summary of the requested change]

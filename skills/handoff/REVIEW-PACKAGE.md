@@ -12,7 +12,8 @@ Use this shape for review handoff:
 ```text
 Review Package
 - Audience:
-- Continuation Goal:
+- Goal:
+- Current Decision:
 - Current Status:
 - Source Artifacts:
 - Evidence:
@@ -22,6 +23,7 @@ Review Package
 - State Freshness:
 - State Update Needed:
 - State Reference Mode:
+- Git Boundary:
 - Allowed Files:
 - Disallowed Files:
 - Next Skill:
@@ -35,7 +37,7 @@ Rules:
 - Do not paste long diffs.
 - Do not rewrite full PRDs or implementation plans.
 - Do not hide unverified claims; put them in `Open Risks` or `Do-Not-Assume`.
-- Include file boundaries when a future session may stage, commit, or continue edits.
+- Include `Git Boundary`, allowed files, and disallowed files when a future session may stage, commit, or continue edits.
 - Redact secrets, tokens, credentials, PII, sensitive logs, and private request payloads.
 - Include or reference lifecycle-state fields when the lifecycle threshold applies. Use `State Artifact`, `State Freshness`, `State Update Needed`, and `State Reference Mode` from the handoff output shape, but do not paste the full `STATE.md`.
 - Use `State Freshness: unknown` and `State Update Needed: yes` unless freshness is evidenced by a readable `Last Updated`, readable `Canonical Sources`, and checked canonical sources with no unresolved conflict.
