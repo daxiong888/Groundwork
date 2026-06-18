@@ -5,7 +5,7 @@ Reader Action Needed: Pick the narrowest verification lens that matches the user
 Decision Supported: Which evidence is required before `verify` can issue a pass, partial, fail, or blocked verdict.
 Scope: Named review lenses for PRD, document, contract, implementation readiness evidence, UAT, UI, and git boundary review.
 Out of Scope: A standalone public review skill, broad architecture review, or implementation work.
-Evidence Level: Groundwork issue #5 acceptance criteria and existing PRD review requirements.
+Evidence Level: Derived from v0.4.0 PRD FR-402 / FR-404 / FR-408 plus existing verify scope-first requirements.
 
 Use a named lens when the user asks for a specific kind of verification. If several lenses apply, state the primary lens and secondary lenses in `Verification Scope`.
 

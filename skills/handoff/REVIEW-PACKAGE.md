@@ -5,7 +5,7 @@ Reader Action Needed: Resume review without rereading full PRDs, plans, diffs, o
 Decision Supported: What is done, what is evidenced, what remains risky, and what skill should run next.
 Scope: Compact continuation packages for implementation review, verification review, or cross-session handoff.
 Out of Scope: Full PRD rewrites, full diff copies, raw logs, sensitive data, or hidden unverified claims.
-Evidence Level: Groundwork issue #11 acceptance criteria and existing handoff compactness rules.
+Evidence Level: Derived from v0.4.0 PRD FR-403 / FR-408, existing handoff compactness rules, and current native handoff evidence-boundary requirements.
 
 Use this shape for review handoff:
 

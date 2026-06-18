@@ -47,12 +47,20 @@ runtime_policy:
     - worktree_isolated
     - worktree_review_only
     - automation_candidate
-  default_runtime_preference_order:
-    - codex_app_managed_worktree_thread
-    - codex_subagent
-    - main_thread_direct
-    - main_thread_readonly
-    - clean_reviewer
+  runtime_candidates_by_route:
+    local_direct:
+      - main_thread_direct
+    local_with_artifact:
+      - main_thread_readonly
+      - main_thread_direct
+      - codex_subagent
+    worktree_isolated:
+      - codex_app_managed_worktree_thread
+    worktree_review_only:
+      - clean_reviewer
+      - main_thread_readonly
+      - codex_subagent
+    automation_candidate: []
 
 model_policy:
   selector_enforcement: tool_if_available_else_prompt_preference
