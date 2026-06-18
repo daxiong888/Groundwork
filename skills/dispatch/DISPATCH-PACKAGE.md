@@ -60,7 +60,8 @@ runtime_policy:
       - clean_reviewer
       - main_thread_readonly
       - codex_subagent
-    automation_candidate: []
+    automation_candidate:
+      - not_applicable
 
 model_policy:
   selector_enforcement: tool_if_available_else_prompt_preference
@@ -70,7 +71,7 @@ tasks:
     title: ""
     task_type: write_implementation | read_only_review | planning_only | hybrid | diagnosis | verification | direct
     readiness: ready_for_agent | ready_for_human | needs_info | blocked | needs_split | accepted_direct
-    runtime_id: codex_app_managed_worktree_thread | codex_subagent | main_thread_direct | main_thread_readonly | clean_reviewer
+    runtime_id: codex_app_managed_worktree_thread | codex_subagent | main_thread_direct | main_thread_readonly | clean_reviewer | not_applicable
     runtime_reason: ""
     dispatch_native_alignment:
       route_decision:
@@ -132,6 +133,18 @@ tasks:
         fastest_signal: ""
         required_evidence: ""
         release_readiness_claimed: false
+        release_evidence_claim:
+          claim_type: runtime | cache | release | uat | marketplace | cache_refresh | not_applicable
+          claim: ""
+          evidence_status: verified | unverified | not_applicable
+          installed_plugin_root: ""
+          source_root: ""
+          cache_or_source_refresh:
+            method: refresh_step | source_equivalence | not_run | not_applicable
+            evidence: ""
+          run_scope: targeted | full | not_run | not_applicable
+          commands_or_trials: []
+          limitations: []
       approval_requirements:
         required: true | false
         reason: ""
@@ -294,7 +307,9 @@ Policy rules:
 - `worktree_isolated` is valid only for concrete write work with known scope, expected touched files, acceptance criteria, and verification expectations.
 - Dirty workspace, unrelated staged files, stale base, shared-file conflicts, or serial dependencies can justify `worktree_isolated` only when `dispatch_native_alignment.route_decision.workspace_state`, `base_state`, or `conflict` names the concrete input that changed the route.
 - `automation_candidate` is recommendation-only. Dispatch may record the recommendation, but must not create, update, schedule, or archive automations.
+- `automation_candidate` uses `runtime_id: not_applicable` unless a later user-approved automation execution step selects a real automation tool. It must not borrow `main_thread_readonly`, `codex_subagent`, or a worktree runtime just to satisfy schema shape.
 - A route decision that lacks status/base/conflict evidence must say `unknown`, `needs_info`, `blocked`, or `human_decision` rather than inventing state.
+- Any runtime, cache, release, UAT, marketplace, or cache-refresh claim must include `dispatch_native_alignment.verification_expectation.release_evidence_claim`. If evidence is missing or out of scope, set `evidence_status: unverified` or `not_applicable`; do not rely on `release_readiness_claimed` alone.
 
 ## Legacy Compatibility Rules
 
@@ -351,7 +366,21 @@ dispatch_native_alignment:
     required: true
     package_ref: native_closeout_package
     merge_gate: evidence_git_boundary_review_and_merge_source_required
-  verification_expectation: present
+  verification_expectation:
+    fastest_signal: present
+    required_evidence: present
+    release_readiness_claimed: false
+    release_evidence_claim:
+      claim_type: not_applicable | runtime | cache | release | uat | marketplace | cache_refresh
+      evidence_status: not_applicable | unverified | verified
+      installed_plugin_root: present_or_empty
+      source_root: present_or_empty
+      cache_or_source_refresh:
+        method: not_applicable | not_run | source_equivalence | refresh_step
+        evidence: present_or_empty
+      run_scope: not_applicable | not_run | targeted | full
+      commands_or_trials: []
+      limitations: present
   approval_requirements:
     remote_writes_allowed: false
     destructive_actions_allowed: false

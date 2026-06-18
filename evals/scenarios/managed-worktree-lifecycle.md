@@ -61,6 +61,9 @@ And local fixture checks must remain contract/eval evidence only, not real Codex
 | mwl-033 | A Worktree to Local handoff package returns with visible native context. | Record visible `native_context.thread_ref`, `native_context.worktree_path`, and `native_context.worktree_association`; include changed files, evidence, open risks, and stop condition before closeout. | Closeout intake without visible context fields, changed files, evidence, open risks, or stop condition. |
 | mwl-034 | A dispatch artifact includes `dispatch_native_alignment` for a worktree-isolated package. | Treat Groundwork as route/policy/evidence owner only; mark runtime evidence owner as Codex runtime, adapter, or user-supplied; keep legacy lifecycle/registry/thread/runtime fields as compatibility, not Groundwork-owned execution state. | Groundwork-owned worktree creation, Handoff execution, archive, cleanup, runtime success, cache refresh, or release readiness fields. |
 | mwl-035 | A task needs local environment setup before isolated work. | Represent setup under `route_decision.setup_requirements`, Codex local-environment expectation, or manual setup evidence; do not claim Groundwork executed worktree setup. | Groundwork-executed worktree setup or hidden local environment mutation. |
+| mwl-036 | A dispatch package carries a runtime, cache, release, UAT, marketplace, or cache-refresh claim. | Include a full `verification_expectation.release_evidence_claim` object with claim type, evidence status, plugin root, source root, refresh/equivalence method, run scope, commands/trials, and limitations. | Only setting `release_readiness_claimed: true` or using narrative release evidence. |
+| mwl-037 | Dispatch recommends an `automation_candidate` route for monitoring, reminder, wakeup, or scheduled check. | Use `runtime_id: not_applicable` and keep the route recommendation-only until a separate approved automation execution step exists. | Inventing `main_thread_readonly`, `codex_subagent`, or worktree runtime just to satisfy schema shape, or claiming automation creation. |
+| mwl-038 | A native closeout package recommends merge while another closeout on the same base may be in progress. | Require `same_base_serialization` base ref/commit, in-progress state, and queue/lock evidence; otherwise use `hold`, `do_not_merge`, or `human_decision`. | Merge readiness without same-base queue/lock evidence. |
 
 ## Coverage Classification
 
@@ -70,7 +73,7 @@ And local fixture checks must remain contract/eval evidence only, not real Codex
 |---|---|---|---|
 | `dispatch-mwl-000` through `dispatch-mwl-012` | `compatibility` | v0.3.3 managed-worktree lifecycle intent | Preserve reject/no-op, lifecycle, merge-back, dirty-worktree, init-preflight, serial-closeout, and archive-recovery safety coverage while native alignment lands. |
 | `dispatch-mwl-013` through `dispatch-mwl-017` | `native_alignment` | PRD FR-404/FR-406, AC-404/AC-406 | Reject native closeout merge recommendations when evidence, git boundary, merge source, cleanup separation, or review status is missing. |
-| `dispatch-mwl-018` through `dispatch-mwl-025` | `native_alignment` | PRD FR-406 and AC-401 through AC-406 plus AC-409 | Cover native route, `.worktreeinclude`, handoff, dispatch runtime-ownership, and local environment setup fixture classes. |
+| `dispatch-mwl-018` through `dispatch-mwl-028` | `native_alignment` | PRD FR-406 and AC-401 through AC-406 plus AC-408 and AC-409 | Cover native route, `.worktreeinclude`, handoff, dispatch runtime-ownership, local environment setup, release evidence claim, automation recommendation, and same-base closeout serialization fixture classes. |
 
 Cross-suite native-alignment rows that remain valid coverage:
 
@@ -98,6 +101,9 @@ Cross-suite native-alignment rows that remain valid coverage:
 | Closeout cannot recommend merge with missing or failed review status. | AC-404, AC-406 | `dispatch-mwl-017` | Review status must be `passed` with review evidence. |
 | Dispatch artifact does not contain Groundwork-owned execution runtime fields conflicting with Codex-native ownership. | AC-405, AC-406 | `dispatch-mwl-024`, `dispatch-018` | `dispatch_native_alignment` records route/policy/evidence expectations; runtime execution fields remain external evidence or legacy compatibility. |
 | Local environment setup requirements are route setup requirements or manual/Codex setup evidence. | AC-409 | `dispatch-mwl-025` | Covered in V040-007; not delegated to V040-008. Local setup is not Groundwork-executed worktree setup. |
+| Runtime/cache/release/UAT/marketplace/cache-refresh claims require structured release evidence. | AC-408 | `dispatch-mwl-026` | `release_evidence_claim` is required; boolean or narrative release evidence is insufficient. |
+| Automation recommendations have a non-executing runtime placeholder. | AC-405 | `dispatch-mwl-027` | `automation_candidate` uses `runtime_id: not_applicable` until a separate approved automation action exists. |
+| Native closeout preserves same-base queue/lock safety. | AC-404 | `dispatch-mwl-028` | Merge readiness requires same-base serialization evidence or must hold/block. |
 
 ## Fixture Lifecycle Coverage
 
@@ -147,6 +153,9 @@ These fixture paths do not prove real Codex App worktree execution. They prove t
 - Confirm native handoff fixtures include `availability: unavailable_before_handoff` for Local to Worktree and visible native context for Worktree to Local.
 - Confirm dispatch-native-alignment fixtures keep Groundwork out of execution runtime ownership.
 - Confirm local environment setup appears as `route_decision.setup_requirements`, Codex local-environment expectation, or manual setup evidence, not Groundwork-executed worktree setup.
+- Confirm runtime/cache/release/UAT/marketplace/cache-refresh claims carry full `release_evidence_claim` evidence, not only a boolean or narrative.
+- Confirm `automation_candidate` uses `runtime_id: not_applicable` and remains recommendation-only unless a separate approved automation action exists.
+- Confirm native closeout rejects same-base merge readiness when queue/lock evidence is missing or another same-base closeout is in progress.
 
 ## Metrics Hooks
 

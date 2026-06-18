@@ -38,6 +38,14 @@ native_closeout_package:
 
   review_findings_status: passed | findings_open | not_run | not_required
 
+  same_base_serialization:
+    base_ref: ""
+    base_commit: ""
+    same_base_closeout_in_progress: true | false | unknown
+    queue_or_lock_required: true | false
+    queue_or_lock_evidence: []
+    serialized_or_blocked: true | false
+
   merge_decision:
     recommendation: merge | do_not_merge | hold | not_applicable | human_decision
     reason: ""
@@ -63,6 +71,8 @@ native_closeout_package:
 - `merge_decision.recommendation: merge` requires `git_boundary_status.safe_to_stage_or_merge: true`.
 - `merge_decision.recommendation: merge` requires `review_findings_status: passed`.
 - `merge_decision.recommendation: merge` requires a known merge source: `patch_bundle`, `visible_branch`, `codex_handoff`, or `pathspec_checkout`.
+- `merge_decision.recommendation: merge` requires `same_base_serialization.base_ref`, `base_commit`, `same_base_closeout_in_progress`, and `serialized_or_blocked` evidence.
+- `merge_decision.recommendation: merge` is blocked when another closeout is in progress for the same base branch and `same_base_serialization.queue_or_lock_evidence` is empty or missing.
 - `merge_decision.recommendation: merge` is blocked when `merge_decision.merge_source` is `none`, `unknown`, empty, missing, or not backed by `source_evidence`.
 - `merge_decision.recommendation: merge` is blocked when intended files, unrelated dirty files, staged files, or explicit denylist evidence is missing from `git_boundary_status`.
 - If any merge gate is missing or unsafe, use `do_not_merge`, `hold`, or `human_decision`, name the blocker, and set `next_route` to `verify`, `triage`, or `human_decision`.
@@ -92,6 +102,7 @@ The fields below are legacy v0.3.3 compatibility fields. Do not populate them in
 | `branch_cleanup_required` | `cleanup_decision.branch_action` | Legacy route hint. Map only after branch evidence is inspected. |
 | `merge_recommendation` | `merge_decision.recommendation` | Legacy/deprecated. Native packages must not use it. |
 | `cleanup_action` | `cleanup_decision.thread_action`, `cleanup_decision.worktree_action`, `cleanup_decision.branch_action` | Legacy/deprecated. Native packages must split cleanup by action type. |
+| `serial_closeout` | `same_base_serialization` | Legacy/deprecated. Native packages must preserve same-base queue/lock evidence before merge readiness. |
 
 ## Preservation Requirements
 
@@ -101,6 +112,7 @@ Before recommending merge or cleanup, the package must state:
 - evidence summary and source references;
 - git boundary status, including intended files, unrelated dirty files, staged files, explicit denylist, and safe-to-stage-or-merge result;
 - review findings status and review evidence;
+- same-base serialization evidence, including base ref/commit, whether another same-base closeout is in progress, and queue/lock evidence or the blocker that prevents merge;
 - merge source and source evidence, or the blocker that prevents merge;
 - cleanup evidence for thread, worktree, and branch actions separately;
 - blockers, open risks, and next route;
@@ -114,6 +126,7 @@ Native closeout evals should reject:
 - `merge_decision.recommendation: merge` when `git_boundary_status.status_checked` is false or missing;
 - `merge_decision.recommendation: merge` when `git_boundary_status.safe_to_stage_or_merge` is not true;
 - `merge_decision.recommendation: merge` when `review_findings_status` is not `passed`;
+- `merge_decision.recommendation: merge` when `same_base_serialization` is missing, base ref/commit is missing, same-base progress is unknown, or a concurrent same-base closeout lacks queue/lock evidence;
 - `merge_decision.recommendation: merge` when `merge_decision.merge_source` is `none`, `unknown`, empty, or missing;
 - packages that put archive, worktree retention, Codex-managed cleanup, or branch cleanup under merge decision fields;
 - packages that claim archive, worktree cleanup, branch deletion, runtime execution, cache refresh, release readiness, or UAT readiness without separate evidence;
