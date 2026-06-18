@@ -31,6 +31,7 @@ DEFAULT_SUITES = [
     "lifecycle-state.csv",
     "lifecycle-preflight-regressions.csv",
     "routing-reliability.csv",
+    "trace-first-verify-review.csv",
 ]
 
 PUBLIC_SKILL_ROUTES = {
@@ -50,6 +51,8 @@ HOST_PREEMPTION_ROUTE = "runtime-safety-gate"
 EXPECTED_BEST_ROUTES = PUBLIC_SKILL_ROUTES | {DIRECT_ROUTE}
 ROUTE_LIST_ROUTES = EXPECTED_BEST_ROUTES | {HOST_PREEMPTION_ROUTE}
 ROUTING_RELIABILITY_SUITE = "routing-reliability.csv"
+TRACE_FIRST_VERIFY_REVIEW_SUITE = "trace-first-verify-review.csv"
+TRACE_READY_SUITES = {ROUTING_RELIABILITY_SUITE, TRACE_FIRST_VERIFY_REVIEW_SUITE}
 ROUTING_SCHEMA_FIELDS = [
     "intent_kind",
     "requirement_state",
@@ -372,7 +375,7 @@ def row_location(row):
 
 
 def is_routing_reliability_row(row):
-    return row.get("_suite") == ROUTING_RELIABILITY_SUITE
+    return row.get("_suite") in TRACE_READY_SUITES
 
 
 def host_preemption_allowed(row):
@@ -2279,7 +2282,7 @@ def rate_summary(count, total):
 def routing_result_present(result):
     boundary = str(result.get("route_boundary") or "").strip()
     return (
-        result.get("suite") == ROUTING_RELIABILITY_SUITE
+        result.get("suite") in TRACE_READY_SUITES
         or (boundary and boundary != NOT_APPLICABLE)
     )
 

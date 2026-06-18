@@ -17,6 +17,7 @@ The nightly harness is a future local or Codex Cloud evaluation loop for Groundw
 - `evals/prompts/safety.csv` for gate and risky-write posture.
 - `evals/prompts/reliability.csv` for v0.2 skill reliability scenarios.
 - `evals/prompts/guardrails-regression.csv` for #5-#12 guardrail regression prompts.
+- `evals/prompts/trace-first-verify-review.csv` for v0.4.1 trace-ready verify scope-first and clean-review fan-out regressions.
 - `evals/prompts/lifecycle-state.csv` for v0.3 lifecycle-state boundaries.
 - `evals/fixtures/*` for local source, no-test, and static prototype behavior.
 
@@ -34,6 +35,8 @@ Each run should record:
 - artifact write behavior
 - risky write gate behavior
 - patch or learning proposal status
+
+Local CSV parsing, Python syntax, and source checks are not runtime, cache-refresh, release, UAT, or customer-readiness evidence unless a run also names the installed plugin root and cache/source equivalence or supported refresh step.
 
 The harness may create a report artifact only when the target reader and review action are explicit. Runtime scratch output belongs under ignored `.groundwork/harness/` unless the user approves committing a policy or report file.
 
