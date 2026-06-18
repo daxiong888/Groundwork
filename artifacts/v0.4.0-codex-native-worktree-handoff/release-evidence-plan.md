@@ -39,7 +39,7 @@ release_evidence_claim:
   claim: "v0.4.0 native worktree handoff alignment is release-ready"
   evidence_status: unverified
   installed_plugin_root: ""
-  source_root: "/Users/daxiong/.codex/worktrees/e318/Groundwork"
+  source_root: "$SOURCE_ROOT"
   cache_or_source_refresh:
     method: not_run
     evidence: "V040-009 defines docs/schema boundaries only; no plugin cache refresh or source/cache equivalence check is in scope."
