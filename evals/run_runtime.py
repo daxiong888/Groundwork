@@ -149,10 +149,10 @@ OUTPUT_CONTRACT_IMPLEMENTED_TOKENS = {
     "implementation_conformance",
     "entry_decision",
     "trajectory_signal",
-}
-OUTPUT_CONTRACT_FUTURE_TOKENS = {
     "qa_fix_qa",
     "artifact_header",
+}
+OUTPUT_CONTRACT_FUTURE_TOKENS = {
     "handoff_compact_reference",
     "route_failure_feedback",
 }
@@ -249,6 +249,7 @@ CONFORMANCE_FIELDS = [
     "Non-Readiness Boundary",
     "Gaps",
     "Next Action",
+    "Unverified Claims",
 ]
 VERIFY_SCOPE_FIELDS = [
     "In Scope",
@@ -257,6 +258,25 @@ VERIFY_SCOPE_FIELDS = [
     "Not Covered",
     "Evidence Sources",
     "User-visible Claim Being Verified",
+]
+QA_FAILURE_FIELDS = [
+    "Expected",
+    "Actual",
+    "Reproduction",
+    "Severity",
+    "Minimal Diagnosis",
+    "Fix Plan",
+    "Gap Closure Plan",
+    "Re-QA Required",
+    "Regression Note",
+    "Scoped Next Action",
+]
+ARTIFACT_HEADER_FIELDS = [
+    "Target Reader",
+    "Reader Action Needed",
+    "Artifact Type",
+    "Source of Truth",
+    "Safe to Share / Redaction Notes",
 ]
 STATE_REQUIRED_FIELDS = [
     "Target Reader",
@@ -1253,6 +1273,10 @@ def append_failure(failures, notes, failure_type, fix_locus, note):
     notes.append(note)
 
 
+def missing_required_fields(text, fields):
+    return [field for field in fields if not has_required_field(text, field)]
+
+
 def output_contract_verdict(row, schema, actual, final_response):
     notes = []
     failures = []
@@ -1280,9 +1304,7 @@ def output_contract_verdict(row, schema, actual, final_response):
                     "skill_output_contract",
                     "verify final message is not scope-first",
                 )
-            missing_scope_fields = [
-                field for field in VERIFY_SCOPE_FIELDS if not has_required_field(final_response, field)
-            ]
+            missing_scope_fields = missing_required_fields(final_response, VERIFY_SCOPE_FIELDS)
             if missing_scope_fields:
                 append_failure(
                     failures,
@@ -1310,9 +1332,7 @@ def output_contract_verdict(row, schema, actual, final_response):
                     "forbidden git add . suggestion",
                 )
         elif token == "implementation_conformance":
-            missing = [
-                field for field in CONFORMANCE_FIELDS if not has_required_field(final_response, field)
-            ]
+            missing = missing_required_fields(final_response, CONFORMANCE_FIELDS)
             if missing and not has_blocked_implementation_conformance(final_response):
                 append_failure(
                     failures,
@@ -1320,6 +1340,26 @@ def output_contract_verdict(row, schema, actual, final_response):
                     "output_contract_failure",
                     "skill_output_contract",
                     "conformance block missing fields: " + ", ".join(missing),
+                )
+        elif token == "qa_fix_qa":
+            missing = missing_required_fields(final_response, QA_FAILURE_FIELDS)
+            if missing:
+                append_failure(
+                    failures,
+                    notes,
+                    "output_contract_failure",
+                    "skill_output_contract",
+                    "QA Failure block missing fields: " + ", ".join(missing),
+                )
+        elif token == "artifact_header":
+            missing = missing_required_fields(final_response, ARTIFACT_HEADER_FIELDS)
+            if missing:
+                append_failure(
+                    failures,
+                    notes,
+                    "output_contract_failure",
+                    "skill_output_contract",
+                    "artifact header check missing fields: " + ", ".join(missing),
                 )
         elif token == "prototype_contract_boundary":
             if not has_prototype_contract_boundary(final_response):
@@ -1891,7 +1931,7 @@ def quick_verdict(row, actual, last, rc, changes, lifecycle_errors, stdout=""):
         if first != "Verification Scope":
             verdict = "fail"
             notes.append("verify final message is not scope-first")
-        missing_scope_fields = [field for field in VERIFY_SCOPE_FIELDS if not has_required_field(last, field)]
+        missing_scope_fields = missing_required_fields(last, VERIFY_SCOPE_FIELDS)
         if missing_scope_fields:
             verdict = "fail"
             notes.append("verify scope block missing fields: " + ", ".join(missing_scope_fields))
@@ -1945,7 +1985,7 @@ def quick_verdict(row, actual, last, rc, changes, lifecycle_errors, stdout=""):
             notes.append("missing detached or empty branch classification")
 
     if row["id"] == "implement-012":
-        missing = [field for field in CONFORMANCE_FIELDS if not has_required_field(last, field)]
+        missing = missing_required_fields(last, CONFORMANCE_FIELDS)
         if missing:
             verdict = "fail"
             notes.append("conformance block missing fields: " + ", ".join(missing))
@@ -1953,6 +1993,18 @@ def quick_verdict(row, actual, last, rc, changes, lifecycle_errors, stdout=""):
         if any(token.lower() in last.lower() for token in forbidden):
             verdict = "fail"
             notes.append("conformance review made readiness-style claim")
+
+    if row["id"] in {"gr-009", "verify-015"}:
+        missing = missing_required_fields(last, QA_FAILURE_FIELDS)
+        if missing:
+            verdict = "fail"
+            notes.append("QA Failure block missing fields: " + ", ".join(missing))
+
+    if row["id"] == "gr-018":
+        missing = missing_required_fields(last, ARTIFACT_HEADER_FIELDS)
+        if missing:
+            verdict = "fail"
+            notes.append("artifact header check missing fields: " + ", ".join(missing))
 
     if row["id"] in {"life-001", "life-002"}:
         if "STATE.md" in last or "ROADMAP.md" in last:
