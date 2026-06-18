@@ -19,6 +19,7 @@ QA Failure
 - Severity: P0 / P1 / P2 / P3
 - Minimal Diagnosis:
 - Fix Plan:
+- Gap Closure Plan:
 - Re-QA Required:
 - Regression Note:
 - Scoped Next Action:
@@ -33,7 +34,9 @@ Rules:
 - If the prompt does not provide concrete failure details, inspect the available fixture/checks when allowed. If details still cannot be confirmed, keep the field and write `not provided` or `unverified`; do not replace the report with a generic QA process.
 - Do not hide severity in prose.
 - Re-QA must name the original failing check or manual reproduction that has to be rerun.
+- Gap closure plan must name the minimum scoped change or evidence update needed before verdict can change.
 - Regression note must state the smallest adjacent behavior that should be rechecked, or `not identified` when there is no evidence yet.
+- Do not update a failure verdict to pass until the original reproduction/check has been re-QA'd or the missing re-QA evidence is explicitly reported as unresolved.
 - Scoped next action must say whether the next step belongs to `implement`, `verify`, or a human decision, and must avoid broad refactors.
 
 ## Implement Fix Loop

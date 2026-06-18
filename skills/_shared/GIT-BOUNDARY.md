@@ -66,6 +66,7 @@ PRODUCT.md unless the current issue explicitly scopes it
 historical SQL / archived migrations / scratch SQL
 temporary tests outside the scoped fixture or task
 production data dumps
+cache directories or plugin cache unless the current task explicitly scopes packaging/cache refresh
 unrelated docs
 dependency or lock files unrelated to the task
 shared global skills outside this repository

@@ -16,7 +16,7 @@ Classify every field/rule you reference into one class:
 
 1. **Backend Contract Candidate**
    - Server-owned field/rule when such ownership exists.
-   - Backed by explicit API/schema/spec/source evidence when listed as confirmed.
+   - Backed by explicit PRD, source code, API response, API schema, spec, or user-confirmed evidence when listed as confirmed.
    - If backend is not implemented yet or source truth has not been inspected, record this as a **proposed contract hypothesis** (not accepted fact).
 
 2. **Prototype Placeholder / Mock**
@@ -28,7 +28,7 @@ Classify every field/rule you reference into one class:
 3. **Client-Derived / View Logic**
    - Computed, aggregated, formatted, or inferred in client/prototype.
    - May affect UX behavior but is not server contract by default.
-   - Must be labeled `derived / illustrative / not backend contract`.
+   - Must be labeled `Derived / illustrative / not backend contract`.
    - Must not be promoted to backend field/rule without separate confirmation.
 
 ## Required Output Guardrails
@@ -41,7 +41,7 @@ When producing prototype findings:
 - If backend implementation might exist but has not been inspected in this turn, keep fields/rules as `proposed` until source-truth verification happens.
 - Convert ambiguity into concrete questions (for backend/PRD/issue), not invented fields.
 - If a field/rule appears only in mock data or client derivation, mark it `prototype-only`.
-- Include `Contract Status`, `Confirmed Backend Fields`, `Mock / Illustrative Fields`, `Client-derived Logic`, and `Contract Impact: none / needs confirmation / confirmed update`.
+- Include `Contract Sources`, `Contract Status`, `Confirmed Backend Fields`, `Mock / Illustrative Fields`, `Client-derived Logic`, and `Contract Impact: none / needs confirmation / confirmed update`.
 - Do not present a prototype as frontend contract unless each contract claim is source-backed or the user explicitly confirms it.
 - When feeding findings into PRD, issue, contract, or implementation notes, phrase them as proposed feedback unless source-truth verification or explicit confirmation has already happened.
 
@@ -60,7 +60,7 @@ If boundary is unclear:
 
 1. Stop contract claims.
 2. Record exact unknowns.
-3. Propose minimal validation step (API spec check, backend owner confirmation, source inspection).
+3. Propose minimal validation step (PRD check, source inspection, API response/schema check, or backend owner confirmation).
 4. Proceed with throwaway prototype assumptions clearly tagged as non-contract.
 
 ## Feedback Promotion Rule
@@ -71,6 +71,6 @@ Use this promotion ladder:
 
 1. `proposed feedback`: the finding comes from static HTML, mock data, screenshot, prototype code, or client-side derivation only.
 2. `needs confirmation`: the finding likely affects backend/API/schema/PRD contract, but source truth has not been checked.
-3. `confirmed update`: backend source, API/schema evidence, runtime evidence, or explicit user confirmation supports the contract claim.
+3. `confirmed update`: PRD, backend source, API response/schema evidence, runtime evidence, or explicit user confirmation supports the contract claim.
 
 If the user asks to verify prototype behavior against backend/API/source truth, stop prototype contract promotion and route the source-truth review to `verify`.

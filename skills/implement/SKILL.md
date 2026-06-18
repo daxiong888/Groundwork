@@ -45,12 +45,14 @@ Should not trigger:
 
 Inspect relevant files, direct callers/callees, tests, config, and diffs before editing when they affect correctness. Check dirty worktree state before changes. Do not invent exact file paths, APIs, schemas, commands, or runtime behavior before inspection.
 
+When maintaining the Groundwork repository itself, apply the repo-local `AGENTS.md` Done Definition before reporting the work complete.
+
 Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` to confirm the implementation source of truth and requirement state before editing. Raw or draft requirements are not implementation-ready unless the user explicitly requests a bypass.
 Explicit PRD/spec bypass is valid only when the user clearly asks to skip PRD/spec shaping and implement directly. Vague urgency, a proposed solution, or "do it" alone is not a bypass. When bypass is valid, acknowledge it and still apply source inspection, git topology, mini-plan, test/no-test, and risk gates.
 
 Use `skills/_shared/GIT-TOPOLOGY-GATE.md` before writing files for PR-bound implementation, and again before staging, committing, pushing, opening a PR, or closing remote issues. If the current branch is `main` / `master` / `trunk`, the branch name is empty, or `HEAD` is detached and the work is PR-bound, output a gate decision and stop before edits until a branch or worktree decision is made.
 
-Use `LIGHTWEIGHT-PLAN.md` before editing: What, Why, Files likely touched, Test/check, Risk. Map acceptance criteria to changes and checks.
+Use `LIGHTWEIGHT-PLAN.md` before editing: What, Why, Files, Test, Risk. Map acceptance criteria to planned change, test/check, and expected evidence.
 
 For read-only implementation conformance review, do not force a fix plan. Inspect the task/PRD, source, tests, and git boundary when available; report whether the implementation satisfies acceptance, what evidence was checked, what gaps remain, and explicitly avoid UAT/release/readiness verdicts unless the user asks for them.
 
@@ -123,7 +125,7 @@ If using a subagent for review, use `skills/_shared/SUBAGENT-DELEGATION.md`. The
 
 ## CHECKPOINTS
 
-- STOP before file edits unless the change is truly trivial and already fully bounded, or the inline `Implementation Mini-Plan` has five bounded lines: What/scope, Why, Files likely touched, Test/check, and Risk.
+- STOP before file edits unless the change is truly trivial and already fully bounded, or the inline `Implementation Mini-Plan` has five bounded lines: What/scope, Why, Files, Test, and Risk.
 - STOP before fixing a suspected bug unless at least one evidence seam exists: a reproduction, a confirmed cause, a failing test/check, or a specific test seam to add. Without that seam, output only the diagnosis conclusion, confidence, and minimum modification direction.
 - STOP before staging, committing, or reporting commit readiness unless the git boundary is confirmed from `skills/_shared/GIT-BOUNDARY.md`; preserve explicit pathspec staging and never use `git add .`.
 - Keep the mini-plan lightweight. Do not route small scoped implementation work to `write-plan` only because these checkpoints exist.
@@ -161,6 +163,7 @@ Implementation Mini-Plan
 TDD-Lite / No-Test Justification
 Files Changed
 Checks Run
+Unverified Claims
 Self-Review
 Result
 Remaining Gaps

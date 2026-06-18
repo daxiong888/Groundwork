@@ -32,6 +32,8 @@ Should not trigger:
 
 Inspect the task source, PRD/spec, current conversation, previous state when known, known blockers, source references, lifecycle state, and verification expectations. If the evidence source is unknown, classify as `needs-info`.
 
+When maintaining the Groundwork repository itself, apply the repo-local `AGENTS.md` Done Definition before reporting the work complete.
+
 Every verdict must include `Severity` and `State Transition Reason`. Severity describes the current blocker or gap impact, **not overall product priority**:
 
 - `P0`: production-critical, destructive, security/privacy, or release-stopping gap.

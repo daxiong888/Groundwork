@@ -34,15 +34,17 @@ Should not trigger:
 
 Use user-provided context first. Inspect source, docs, prototype output, tickets, or data when they can answer a question or materially affect correctness. If evidence is missing, state the gap and tag unknowns as **NEEDS CLARIFICATION** instead of inventing product truth.
 
+When maintaining the Groundwork repository itself, apply the repo-local `AGENTS.md` Done Definition before reporting the work complete.
+
 Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` before shaping new requirements, version enhancements, workflow changes, runtime changes, plugin changes, skill-selection changes, or product decisions. Treat raw requirements and raw solution ideas as `Requirement State: raw` and route to grill-before-write / PRD shaping by default. Do not proceed directly to implementation or issue splitting until the requirement is accepted enough to move downstream, unless the user explicitly requests that bypass.
 
 ## Workflow
 
 1. Identify the target reader and decision the PRD must support.
-2. Run lifecycle preflight and the grill-before-write gate: explicitly list target reader, decision supported, known facts, assumptions, and open questions before drafting.
+2. Run lifecycle preflight and the grill-before-write gate: explicitly list target reader, decision supported, known facts, assumptions, open questions, and needs confirmation before drafting.
 3. Inspect local code/docs/tickets/data first when they can answer a clarification question.
 4. Ask at most 5 high-impact clarification questions; in interactive work, ask one question at a time.
-5. Include a recommended answer or default decision for each clarification question when evidence supports one.
+5. Include a recommended answer or default decision and impact for each clarification question when evidence supports one.
 6. Mark every unknown backend field, business state, unsupported ability, or missing acceptance detail as **NEEDS CLARIFICATION**; never invent product truth or mutate it from prototype-only mock data.
 7. Use the internal scope-shaping branch owned by `to-prd` if acceptance or user intent is unclear. Do not present `scope` as a public skill or route.
 8. Keep the PRD compact and implementation-ready.
@@ -51,9 +53,9 @@ Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` before shaping new requirements, ver
 
 ## CHECKPOINTS
 
-- STOP before drafting PRD content if the target reader, decision supported, known facts, assumptions, or Open Questions bucket is missing. The Open Questions bucket may be `None` only when explicitly justified.
+- STOP before drafting PRD content if the target reader, decision supported, known facts, assumptions, Open Questions bucket, or Needs Confirmation bucket is missing. The Open Questions and Needs Confirmation buckets may be `None` only when explicitly justified.
 - STOP before creating or updating a PRD file unless the user asked for a durable artifact, the output must become a source of truth, or artifact promotion is explicitly justified.
-- STOP before writing a durable PRD artifact unless the exact audience-first header fields are present: `Target Reader`, `Reader Action Needed`, `Decision Supported`, `Scope`, `Out of Scope`, and `Evidence Level`.
+- STOP before writing a durable PRD artifact unless the exact audience-first header fields are present: `Target Reader`, `Reader Action Needed`, `Decision Supported`, `Artifact Type`, `Source of Truth`, `Scope`, `Out of Scope`, `Evidence Level`, and `Safe to Share / Redaction Notes`.
 - STOP before recommending `to-issues` when the PRD/spec is raw, draft-only, or still has blocking **NEEDS CLARIFICATION** items.
 
 ## Failure Branches
@@ -85,12 +87,16 @@ Use `GRILL-BEFORE-WRITE.md` and `PRD-TEMPLATE.md` as the default structure.
 Target Reader
 Reader Action Needed
 Decision Supported
+Artifact Type
+Source of Truth
 Scope
 Out of Scope
 Evidence Level
+Safe to Share / Redaction Notes
 Known Facts
 Assumptions
 Open Questions
+Needs Confirmation
 PRD Summary
 Problem
 Goal

@@ -33,11 +33,13 @@ Should not trigger:
 
 Identify the prototype question first. Use source, PRD, task, data shape, existing prototype files, or UI notes only as needed to answer that question. For static HTML review, do not claim visual state, layout, responsiveness, or interaction correctness without browser/runtime evidence; mark unavailable evidence as `unverified`.
 
-Prototype contract-boundary review stays in `prototype` when the source of truth is a prototype, mock, screenshot, or static HTML. Classify backend contract candidates, mock/illustrative fields, and client-derived logic, but do not verify source truth or mark backend contract as confirmed unless backend source, API schema, or explicit user confirmation is actually present.
+When maintaining the Groundwork repository itself, apply the repo-local `AGENTS.md` Done Definition before reporting the work complete.
+
+Prototype contract-boundary review stays in `prototype` when the source of truth is a prototype, mock, screenshot, or static HTML. Classify backend contract candidates, mock/illustrative fields, and client-derived logic, but do not verify source truth or mark backend contract as confirmed unless PRD, backend source, API response, API schema, or explicit user confirmation is actually present.
 
 ## Workflow
 
-1. State the prototype question and decision needed.
+1. State the prototype question, decision needed, and contract sources inspected or unavailable.
 2. Choose `LOGIC.md` for state, data, reducer, or business-rule prototypes.
 3. Choose `UI.md` for UI/static HTML prototypes, visual states, and interaction review.
 4. Keep the artifact throwaway and narrow.
@@ -50,8 +52,8 @@ Do not stop with a browser opt-in question such as asking whether to open a loca
 
 ## CHECKPOINTS
 
-- STOP before handing prototype findings to frontend, PRD, issue, or contract notes unless confirmed backend fields, mock / illustrative fields, client-derived logic, and unverified assumptions are separated.
-- STOP before calling any field, state, enum, payload, or rule a confirmed backend contract unless it is source-backed by backend source, API/schema evidence, or explicit user confirmation.
+- STOP before handing prototype findings to frontend, PRD, issue, or contract notes unless contract sources, confirmed backend fields, mock / illustrative fields, client-derived logic, and unverified assumptions are separated.
+- STOP before calling any field, state, enum, payload, or rule a confirmed backend contract unless it is source-backed by PRD, backend source, API response, API/schema evidence, or explicit user confirmation.
 - STOP before promoting a prototype artifact into a durable source of truth unless `Contract Impact` is `confirmed update`; otherwise record `needs confirmation` and concrete confirmation questions.
 
 ## Failure Branches
@@ -60,7 +62,7 @@ Do not stop with a browser opt-in question such as asking whether to open a loca
 |---|---|---|
 | A field has no backend source | Classify it as mock / illustrative or proposed hypothesis. | Do not list it under confirmed backend fields. |
 | A state, status, enum, transition, or rule has no source | Mark it as unverified assumption or client-derived logic. | Ask the smallest contract confirmation question instead of treating it as accepted behavior. |
-| Client-derived logic is being treated as backend contract | Reclassify it as `derived / illustrative / not backend contract`. | Set `Contract Impact` to `needs confirmation` unless backend evidence or user confirmation exists. |
+| Client-derived logic is being treated as backend contract | Reclassify it as `Derived / illustrative / not backend contract`. | Set `Contract Impact` to `needs confirmation` unless backend evidence or user confirmation exists. |
 | Prototype behavior conflicts with API/schema/source evidence | Name the conflict and stop contract promotion. | Keep prototype observations separate from confirmed source truth and route source-truth verification to `verify` when needed. |
 | Browser or runtime evidence is unavailable for visual or interaction claims | Keep the prototype review in `prototype` but mark visual and interaction claims as `unverified`. | State the missing evidence, name the smallest browser/runtime check, and do not claim verified UI behavior. |
 
@@ -76,6 +78,7 @@ Do not stop with a browser opt-in question such as asking whether to open a loca
 ```text
 Prototype Question
 Decision Needed
+Contract Sources
 Contract Status
 Confirmed Backend Fields
 Mock / Illustrative Fields
@@ -96,9 +99,10 @@ Artifact Recommendation
 Contract boundary outputs must explicitly separate:
 
 - Backend contract candidates (source-backed when available; otherwise clearly marked proposed hypotheses)
-- Confirmed backend fields (source-backed or explicitly user-confirmed)
+- Contract sources (PRD, source code, API response, schema, user confirmation, or `not inspected / unavailable`)
+- Confirmed backend fields (source-backed by PRD, source code, API response, schema, or explicitly user-confirmed)
 - Mock / illustrative fields (`mock / illustrative / not backend contract`)
-- Client-derived logic (`derived / illustrative / not backend contract`)
+- Client-derived logic (`Derived / illustrative / not backend contract`)
 - Unverified assumptions (unknown source, missing schema/API evidence, or needs user/backend confirmation)
 - Contract impact (`none`, `needs confirmation`, or `confirmed update`)
 

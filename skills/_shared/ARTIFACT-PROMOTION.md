@@ -88,13 +88,16 @@ Durable artifacts should start with an audience-first header:
 Target Reader:
 Reader Action Needed:
 Decision Supported:
+Artifact Type:
+Source of Truth:
 Scope:
 Out of Scope:
 Evidence Level:
-Canonical Sources:
+Safe to Share / Redaction Notes:
 ```
 
 Add task-specific fields as needed, such as `Last Updated`, `Related Issue`, `Verification Evidence`, or `Stop Condition`.
+Use `Canonical Sources` as an optional task-specific field when the artifact needs multiple source pointers; it does not replace `Source of Truth`.
 
 ## Source-of-Truth Gate
 

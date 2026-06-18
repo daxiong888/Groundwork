@@ -31,6 +31,8 @@ Should not trigger:
 
 Reference existing PRDs, issues, plans, commits, diffs, verification notes, lifecycle state, and artifacts. Do not copy secrets, sensitive logs, full diffs, or long documents. If the handoff includes git state, staging, commit boundary, or files that must remain out of scope, use `skills/_shared/GIT-BOUNDARY.md`.
 
+When maintaining the Groundwork repository itself, apply the repo-local `AGENTS.md` Done Definition before reporting the work complete.
+
 Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` to decide whether lifecycle state is needed, stale, or only referenced. Use `skills/_shared/ARTIFACT-PROMOTION.md` to separate canonical artifacts from recoverable lifecycle state: handoff should cite PRDs, issue maps, verification reports, and external issues instead of copying them.
 
 Use `REVIEW-PACKAGE.md` when the next reader needs a review package rather than a basic continuation summary. Use `skills/_shared/SUBAGENT-DELEGATION.md` when the handoff prepares a fresh-context subagent review.
@@ -77,7 +79,7 @@ When freshness is `stale` or `unknown`, keep the handoff actionable:
 5. Apply the State Freshness Algorithm, then reference existing `STATE.md` by path when present, with freshness and update-needed status, or recommend creating/updating it when the threshold is met.
 6. Capture current state, decisions, evidence, gaps, and risks.
 7. Capture allowed/disallowed files when file boundary matters.
-8. Include audience, continuation goal, source artifacts, evidence, open risks, next skill, do-not-assume, and redaction note when producing a review package.
+8. Include audience, goal, current decision, source artifacts, evidence, open risks, next skill, do-not-assume, git boundary, and redaction note when producing a review package.
 9. Include only enough detail to resume safely; default to a one-screen continuation summary when no durable handoff file is needed.
 10. Recommend the next skill or direct action.
 
@@ -114,6 +116,8 @@ When freshness is `stale` or `unknown`, keep the handoff actionable:
 
 ```text
 Current State
+Goal
+Current Decision
 Source Artifacts
 Decisions Made
 Evidence
@@ -125,6 +129,7 @@ Lifecycle State
 - State Update Needed: yes / no
 - State Reference Mode: existing-state-reference / recommend-state / no-state-needed
 Allowed / Disallowed Files
+Git Boundary
 Do-Not-Assume
 Redaction Note
 Next Action

@@ -106,7 +106,13 @@ See [`../examples/`](../examples/) for real Groundwork maintenance examples:
 
 Groundwork is conversation-first by default. Write durable artifacts only when they support review, reuse, execution, verification, UAT, release, or handoff.
 
-Every durable artifact should have a target reader, reader action, decision supported, scope, out-of-scope boundary, and evidence level. Sensitive data, credentials, private request payloads, long logs, and unredacted personal data must not be copied into artifacts.
+Every durable artifact should carry the audience-first header fields defined in `skills/_shared/AUDIENCE-FIRST-ARTIFACT.md`: target reader, reader action, decision supported, artifact type, source of truth, scope, out-of-scope boundary, evidence level, and safe-to-share or redaction notes. Sensitive data, credentials, private request payloads, long logs, and unredacted personal data must not be copied into artifacts.
+
+## v0.3.4 Governance Baseline Boundary
+
+v0.3.4 is a main-chain governance baseline for existing public skills. It strengthens layered `AGENTS.md`, artifact headers, grill-before-write, prototype contract boundaries, implement planning/TDD-lite, verify scope/lenses, QA-fix-QA, git boundary, and handoff review packages.
+
+It is not a new runtime, plugin split, automation layer, task database, or subagent spawning system. Runtime evidence still requires installed plugin cache/source equivalence or a supported marketplace refresh before it can be treated as release-gating evidence.
 
 ## Maintainer Boundary
 
