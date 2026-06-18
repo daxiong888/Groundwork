@@ -1,179 +1,120 @@
-# Managed Worktree Closeout Package Template
+# Native Managed Worktree Closeout Package Template
 
-## Target Reader
-
-Groundwork coordinators, runtime adapter authors, clean reviewers, and maintainers deciding whether a managed worktree child thread can be archived or must remain available.
-
-## Reader Action Needed
-
-Fill this package after review/result package intake and before any thread archive recommendation or closeout decision.
-
-## Decision Supported
-
-Whether the managed worktree child thread should be archived, retained, discarded, blocked for human decision, or routed to branch cleanup, triage, verify, done, or human decision.
-
-## Scope
-
-Closeout evidence for one `codex_app_managed_worktree_thread` task after runtime result intake.
-
-## Out of Scope
-
-Branch deletion, automatic archive execution, remote writes, commits, pushes, PR creation, tracker mutation, release readiness, UAT readiness, and final acceptance.
-
-## Evidence Level
-
-Derived from PRD v0.3.3 FR-2, the managed worktree lifecycle protocol, and Groundwork result/review package boundaries.
+Target Reader: Groundwork coordinators, runtime adapter authors, clean reviewers, and maintainers deciding merge readiness and cleanup actions for one returned Codex-native worktree or handoff result.
+Reader Action Needed: Fill this package after review/result package intake and before recommending merge, thread archive, worktree retention, or branch cleanup.
+Decision Supported: Whether the task result may merge, must hold, should route to human decision, and which cleanup decisions are separately supported by evidence.
+Artifact Type: closeout package template
+Source of Truth: `docs/prd-v0.4.0-codex-native-worktree-handoff-alignment.md` FR-404/AC-404, V040-005 in `artifacts/v0.4.0-codex-native-worktree-handoff/issue-map.md`, and the V040-001 compatibility map.
+Scope: Native closeout schema, merge gates, git-boundary evidence, review status evidence, merge-source evidence, cleanup decision separation, and legacy v0.3.3 field mapping.
+Out of Scope: Automatic archive execution, worktree deletion, branch deletion execution, remote writes, commits, pushes, PR creation, tracker mutation, runtime execution, cache refresh, release readiness, UAT readiness, and final acceptance.
+Evidence Level: Local schema and contract evidence only. A completed archive, deleted branch, cleaned worktree, runtime execution, cache refresh, release readiness, or UAT readiness requires separate cited evidence.
+Safe to Share / Redaction Notes: Safe to share as a schema template. Do not copy secrets, credentials, private URLs, browser cookies, PII, raw logs, private request payloads, or long diffs into package instances.
 
 ## Creation Rule
 
-Create the closeout package after review/result package intake, not before. A closeout package may recommend archive, but it must not claim archive occurred unless adapter/runtime evidence proves it.
+Create the native closeout package after review/result package intake, not before. A closeout package may recommend merge or cleanup actions only when the required evidence is present. It must not claim that archive, worktree cleanup, branch deletion, runtime execution, cache refresh, release, or UAT readiness occurred unless separate evidence proves that action.
 
 ## Required Shape
 
 ```yaml
-closeout_package:
+native_closeout_package:
   runtime_correlation_id: ""
   task_id: ""
   runtime_id: "codex_app_managed_worktree_thread"
   owner_skill: "dispatch"
 
-  original_goal:
-    goal_command: ""
-    source_truth: ""
-    scope: ""
-    stop_condition: ""
-    verdict: "achieved | not_achieved | partial | blocked"
-    verdict_reason: ""
+  task_verdict: done | partial | blocked | abandoned
+  verdict_reason: ""
 
-  lifecycle:
-    current_state: ""
-    closeout_decision: "archive | retain | discard | blocked | human_decision"
-    closeout_reason: ""
-    archive_ready: "true | false"
-    archive_blockers: []
-    preserved_evidence:
-      review_package: "present | absent | incomplete"
-      result_package: "present | absent | incomplete"
-      clean_review: "passed | failed | not_run | not_applicable"
-      merge_back: "completed | not_attempted | failed | not_applicable"
+  evidence_summary: []
 
-  report:
-    scope: ""
-    evidence: []
-    git_boundary: ""
-    open_risks: []
-    diff_summary: ""
-    next_action: ""
+  git_boundary_status:
+    status_checked: true | false
+    intended_files: []
+    unrelated_dirty_files: []
+    staged_files: []
+    explicit_denylist: []
+    safe_to_stage_or_merge: true | false
 
-  registry:
-    registry_status: "created | active | review-ready | blocked | merge-ready | merged | archived | abandoned"
-    artifact_path: ""
-    state_event_ref: ""
-    last_checked_at: ""
+  review_findings_status: passed | findings_open | not_run | not_required
 
-  serial_closeout:
-    base_branch: ""
-    closeout_lock_or_queue: "held | queued | not_available | not_required"
-    same_base_closeout_in_progress: "true | false | unknown"
-    dependency_barrier_release: "released | blocked | not_applicable"
-    recovery_instructions: ""
-
-  runtime:
-    thread_identifier: ""
-    initial_thread_title: ""
-    current_thread_title: ""
-    worktree_type: "Codex-managed | none | unknown"
-    worktree_path: ""
-
-  approval:
-    archive_approval_required: "true | false"
-    archive_approval_status: "approved | not_requested | rejected | not_required"
+  merge_decision:
+    recommendation: merge | do_not_merge | hold | not_applicable | human_decision
     reason: ""
+    merge_source: patch_bundle | visible_branch | codex_handoff | pathspec_checkout | none | unknown
+    source_evidence: []
 
-  next:
-    branch_cleanup_required: "true | false | unknown"
-    recommended_next_route: "branch_cleanup | triage | verify | done | human_decision"
+  cleanup_decision:
+    thread_action: archive_thread | retain_thread | human_decision | not_applicable
+    thread_evidence: []
+    worktree_action: retain_worktree | allow_codex_managed_cleanup | human_decision | not_applicable
+    worktree_evidence: []
+    branch_action: delete_local_branch | retain_branch | human_decision | not_applicable
+    branch_evidence: []
 
-  metrics:
-    worktree_open_to_close_success: "true | false | not_closed"
-    closeout_blocked_by_git_boundary: "true | false"
-    archive_recovery_complete: "true | false | not_applicable"
-    review_fanout_coverage: "complete | partial | not_run | not_applicable"
-    unexplained_dirty_worktree: "true | false | unknown"
+  blockers: []
+  next_route: verify | triage | handoff | done | human_decision
 ```
 
-## Field Rules
+## Merge Decision Rules
 
-- `runtime_correlation_id` is the stable runtime identity. Thread title is display-only and must not be used as the source-of-truth identifier.
-- `original_goal` must quote or reference the original `/goal`, scope, and stop condition used to create the child worktree task. Closeout must include an `achieved`, `not_achieved`, `partial`, or `blocked` verdict.
-- `current_state` must be one lifecycle state from `THREAD-LIFECYCLE.md`.
-- `closeout_decision = archive` requires `archive_ready: true`.
-- `closeout_decision = retain` keeps the child thread or worktree available for review, remediation, merge-back, or human inspection.
-- `closeout_decision = discard` means child work is intentionally not merged and the discard reason is recorded.
-- `closeout_decision = blocked` means closeout cannot proceed because required evidence, approval, or source truth is missing.
-- `closeout_decision = human_decision` means the next step depends on an explicit human choice.
-- `archive_approval_required` is `true` when archive execution is not already explicitly approved by the user or adapter policy.
-- `branch_cleanup_required` is separate from archive readiness and remains `unknown` when branch state is not proven.
-- `report` must contain scope, evidence, git boundary, open risks, diff summary, and next action before archive can be recommended.
-- `registry.state_event_ref` must point to the artifact/log event that recorded this status change.
-- `serial_closeout` must block or queue closeout on the same base branch when another closeout is in progress or when dependency-barrier release evidence is missing.
-- `metrics` are package-level evidence fields. They do not prove release readiness or runtime success beyond the cited package evidence.
+- `merge_decision.recommendation: merge` requires non-empty `evidence_summary`.
+- `merge_decision.recommendation: merge` requires `git_boundary_status.status_checked: true`.
+- `merge_decision.recommendation: merge` requires `git_boundary_status.safe_to_stage_or_merge: true`.
+- `merge_decision.recommendation: merge` requires `review_findings_status: passed`.
+- `merge_decision.recommendation: merge` requires a known merge source: `patch_bundle`, `visible_branch`, `codex_handoff`, or `pathspec_checkout`.
+- `merge_decision.recommendation: merge` is blocked when `merge_decision.merge_source` is `none`, `unknown`, empty, missing, or not backed by `source_evidence`.
+- `merge_decision.recommendation: merge` is blocked when intended files, unrelated dirty files, staged files, or explicit denylist evidence is missing from `git_boundary_status`.
+- If any merge gate is missing or unsafe, use `do_not_merge`, `hold`, or `human_decision`, name the blocker, and set `next_route` to `verify`, `triage`, or `human_decision`.
+- `review_findings_status: not_required` does not satisfy merge readiness for a write result. Use `not_applicable` when there is no result to merge.
 
-## Archive Readiness Rules
+## Cleanup Decision Rules
 
-`archive_ready: true` is allowed only after one of:
+- Cleanup decisions are separate from merge decisions. Thread archive, worktree retention, Codex-managed cleanup, and branch cleanup must never appear as merge recommendations.
+- `cleanup_decision.thread_action: archive_thread` is a recommended next action, not evidence that the thread was archived. A completed archive claim requires separate Codex runtime or user-supplied evidence.
+- `cleanup_decision.worktree_action: allow_codex_managed_cleanup` is permission to let native Codex retention/cleanup semantics apply, not evidence that a worktree was deleted.
+- `cleanup_decision.worktree_action: retain_worktree` means the worktree should remain available for review, remediation, merge-back, audit, or human inspection.
+- `cleanup_decision.branch_action: delete_local_branch` requires branch identity, merge/discard status, protected/default/base branch checks, worktree status evidence, and approval evidence from `BRANCH-CLEANUP-CHECKLIST.md`.
+- Unknown branch state must use `cleanup_decision.branch_action: human_decision` or `retain_branch`, not `delete_local_branch`.
+- Remote branch deletion, force deletion, protected/default branch handling, and unknown ownership remain outside native closeout automation and require explicit human approval.
+- Cleanup actions must not claim release readiness, UAT readiness, runtime execution, or cache/source equivalence.
 
-- merge-back completed and evidence is preserved;
-- discard decision completed with reason and preserved review/result evidence;
-- blocked state has preserved review/result evidence and a human decision that worktree retention is not needed.
+## Legacy Compatibility Mapping
 
-These states must keep `archive_ready: false`:
+The fields below are legacy v0.3.3 compatibility fields. Do not populate them inside `native_closeout_package` except when reading or mapping an older package.
 
-- `review_package_returned` without clean review and merge/discard/blocked-with-human-decision evidence;
-- `clean_review_pending`;
-- `needs_remediation` unless remediation is moved to a new task and this child worktree is intentionally discarded;
-- `merge_pending`;
-- `discard_pending`;
-- `blocked` without preserved evidence or human decision.
+| Legacy or deprecated field | Native target | Rule |
+| --- | --- | --- |
+| `closeout_package` | `native_closeout_package` | Deprecated package root for v0.4.0 native closeout. |
+| `lifecycle.current_state` | `task_verdict`, `blockers`, `next_route` | Deprecated Groundwork-owned progression. Keep only as compatibility evidence when reading old packages. |
+| `lifecycle.closeout_decision` | `merge_decision` plus `cleanup_decision` | Deprecated broad decision. Split merge readiness from cleanup actions. |
+| `archive_ready` | `cleanup_decision.thread_action` plus evidence | Legacy readiness flag. It does not prove archive execution. |
+| `branch_cleanup_required` | `cleanup_decision.branch_action` | Legacy route hint. Map only after branch evidence is inspected. |
+| `merge_recommendation` | `merge_decision.recommendation` | Legacy/deprecated. Native packages must not use it. |
+| `cleanup_action` | `cleanup_decision.thread_action`, `cleanup_decision.worktree_action`, `cleanup_decision.branch_action` | Legacy/deprecated. Native packages must split cleanup by action type. |
 
 ## Preservation Requirements
 
-Before archive recommendation, the package must state:
+Before recommending merge or cleanup, the package must state:
 
-- whether the review package is present, absent, or incomplete;
-- whether the result package is present, absent, or incomplete;
-- whether clean review passed, failed, was not run, or is not applicable;
-- whether merge-back completed, failed, was not attempted, or is not applicable;
-- the original goal verdict and stop-condition outcome;
-- the git boundary used for merge-back or the reason merge-back was not attempted;
-- open risks and next action;
-- why any missing evidence does not block closeout, or the blocker that prevents closeout.
+- task verdict and verdict reason;
+- evidence summary and source references;
+- git boundary status, including intended files, unrelated dirty files, staged files, explicit denylist, and safe-to-stage-or-merge result;
+- review findings status and review evidence;
+- merge source and source evidence, or the blocker that prevents merge;
+- cleanup evidence for thread, worktree, and branch actions separately;
+- blockers, open risks, and next route;
+- why any missing evidence does not block the selected non-merge cleanup action, or the blocker that prevents cleanup.
 
-## Serial Closeout Rules
+## Eval Hooks
 
-Closeout for write tasks sharing the same base branch must be serialized. A closeout package may proceed only when one of these is true:
+Native closeout evals should reject:
 
-- no other closeout is in progress for the same base branch;
-- the task is read-only or no-worktree and `closeout_lock_or_queue: not_required`;
-- a queue/lock artifact proves this task is the current closeout owner.
-
-If the queue/lock state is unknown, if dependency-barrier release evidence is missing, or if another closeout is already applying changes on the same base branch, set `closeout_decision: blocked` or `human_decision`, preserve recovery instructions, and do not recommend archive or branch cleanup.
-
-## Archive And Branch Cleanup Boundary
-
-Archive and branch cleanup are separate decisions:
-
-- `archive_ready: true` does not mean a branch can be deleted.
-- `archived` does not imply `branch_cleaned`.
-- unknown branch state must route to `branch_cleanup` or `human_decision`, not `done`.
-- remote branch deletion, force deletion, protected/default branch handling, and unknown branch state require the later branch cleanup checklist and approval rules.
-
-## Later Eval Hooks
-
-Future closeout evals should reject:
-
-- archive recommendations without preserved review/result evidence;
-- archive recommendations before merge-back, discard, or blocked-with-human-decision evidence;
-- packages that treat thread archive as branch cleanup;
-- packages that claim archive occurred without adapter/runtime evidence;
-- `recommended_next_route: done` when branch cleanup is required or unknown.
+- `merge_decision.recommendation: merge` with empty or missing `evidence_summary`;
+- `merge_decision.recommendation: merge` when `git_boundary_status.status_checked` is false or missing;
+- `merge_decision.recommendation: merge` when `git_boundary_status.safe_to_stage_or_merge` is not true;
+- `merge_decision.recommendation: merge` when `review_findings_status` is not `passed`;
+- `merge_decision.recommendation: merge` when `merge_decision.merge_source` is `none`, `unknown`, empty, or missing;
+- packages that put archive, worktree retention, Codex-managed cleanup, or branch cleanup under merge decision fields;
+- packages that claim archive, worktree cleanup, branch deletion, runtime execution, cache refresh, release readiness, or UAT readiness without separate evidence;
+- native packages that retain `merge_recommendation` or `cleanup_action` without marking those fields legacy/deprecated.

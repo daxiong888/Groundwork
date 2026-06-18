@@ -1,28 +1,25 @@
 # Managed Worktree Branch Cleanup Checklist
 
-## Target Reader
+Target Reader: Groundwork coordinators, runtime adapter authors, and reviewers deciding whether branch cleanup evidence can support `native_closeout_package.cleanup_decision.branch_action`.
+Reader Action Needed: Fill this checklist after closeout, archive, merge-back, discard, or blocked-with-human-decision evidence has been preserved, and before any branch cleanup recommendation is made.
+Decision Supported: Whether `cleanup_decision.branch_action` should be `not_applicable`, `retain_branch`, `delete_local_branch`, or `human_decision`.
+Artifact Type: branch cleanup checklist
+Source of Truth: `docs/prd-v0.4.0-codex-native-worktree-handoff-alignment.md` FR-404/AC-404, `CLOSEOUT-PACKAGE-TEMPLATE.md`, V040-005 in `artifacts/v0.4.0-codex-native-worktree-handoff/issue-map.md`, and v0.3.3 branch-cleanup compatibility rules.
+Scope: Branch identity, branch scope, merge/discard status, protected/default/base branch checks, worktree status evidence, approval gates, and mapping to native closeout branch cleanup decisions.
+Out of Scope: Thread archive, managed worktree deletion, merge-back, force deletion execution, remote branch deletion execution, commits, pushes, pull requests, tracker mutation, runtime execution, release readiness, UAT readiness, and final acceptance.
+Evidence Level: Local checklist evidence only. It does not execute git commands and does not prove branch deletion or runtime cleanup occurred.
+Safe to Share / Redaction Notes: Safe to share as a checklist template. Do not include secrets, credentials, private URLs, browser cookies, PII, raw logs, private request payloads, or long diffs in package instances.
 
-Groundwork coordinators, runtime adapter authors, and reviewers deciding whether a temporary branch associated with one `codex_app_managed_worktree_thread` task can be retained, cleaned locally, escalated for remote cleanup, or routed to a human decision.
+## Native Closeout Mapping
 
-## Reader Action Needed
+This checklist supplies evidence for `native_closeout_package.cleanup_decision.branch_action`.
 
-Fill this checklist after closeout, archive, merge-back, discard, or blocked-with-human-decision evidence has been preserved, and before any branch cleanup recommendation is made.
-
-## Decision Supported
-
-Whether branch cleanup is not applicable, should retain the branch, may recommend local deletion, must route remote deletion to explicit approval, or must stop for a human decision because branch state is unknown or high risk.
-
-## Scope
-
-Branch cleanup decision evidence for one managed worktree lifecycle. This checklist is protocol evidence only; it does not execute git commands and does not claim that cleanup occurred.
-
-## Out of Scope
-
-Thread archive, managed worktree deletion, merge-back, force deletion execution, remote branch deletion execution, commits, pushes, pull requests, tracker mutation, release readiness, UAT readiness, and final acceptance.
-
-## Evidence Level
-
-Derived from PRD v0.3.3 FR-3, the managed worktree lifecycle protocol, closeout package rules, and Groundwork git-boundary safety rules.
+- `cleanup_decision.branch_action: delete_local_branch` is allowed only when this checklist fully supports a local, task-scoped, safe deletion recommendation.
+- `cleanup_decision.branch_action: retain_branch` is used when branch retention is safer, branch cleanup is not currently needed, or evidence supports keeping the branch for review, audit, rollback, remediation, or human inspection.
+- `cleanup_decision.branch_action: human_decision` is used when branch existence, ownership, scope, merge state, protection state, worktree status, remote cleanup, force deletion, or approval evidence is missing or high risk.
+- `cleanup_decision.branch_action: not_applicable` is used only when evidence proves no associated branch exists or branch cleanup is outside the closeout scope.
+- Branch cleanup evidence must not set or imply `merge_decision.recommendation`.
+- Thread archive and worktree retention are handled by `cleanup_decision.thread_action` and `cleanup_decision.worktree_action`, not by this branch checklist.
 
 ## Required Shape
 
@@ -53,11 +50,19 @@ branch_cleanup:
   risk:
     reason_to_retain: ""
     blockers: []
+
+  native_closeout_mapping:
+    branch_action: delete_local_branch | retain_branch | human_decision | not_applicable
+    mapping_reason: ""
+    completed_cleanup_evidence: []
 ```
+
+`branch_cleanup.cleanup_recommendation` is a legacy v0.3.3 compatibility field. Native closeout packages should consume `native_closeout_mapping.branch_action` as `cleanup_decision.branch_action` and must not use a broad `cleanup_action` field.
 
 ## Core Rules
 
 - Branch cleanup is never inferred from thread archive, managed worktree removal, closeout, merge-back, discard, or review pass.
+- Branch cleanup is a cleanup decision only. It is not a merge recommendation and must not appear under `merge_decision`.
 - `runtime_correlation_id` is the stable cleanup identity. Thread title and branch name are not enough to correlate cleanup with the child runtime.
 - Unknown branch state must route to `human_decision` or `retain`.
 - High-risk branch state must block deletion until the risk is resolved or a human explicitly decides retention or cleanup.
@@ -147,16 +152,16 @@ Set `approval_required: false` only for `no_branch_detected`, `retain` when the 
 
 ## Status Mapping
 
-| Evidence | Recommendation |
-|---|---|
-| No associated branch exists | `no_branch_detected` |
-| Unknown branch existence, owner, scope, merge state, protection state, or worktree status | `human_decision` or `retain` |
-| Local task branch, merged or intentionally discarded, not checked out, not protected/default/base | `delete_local` |
-| Local branch unmerged, checked out, shared, protected/default/base, or still needed | `retain` or `human_decision` |
-| Staged, unstaged dirty, untracked, or stash state is unknown or may belong to the branch | `retain` or `human_decision` |
-| Remote branch exists and deletion approval is missing | `human_decision` |
-| Remote branch exists and explicit deletion approval is present | `delete_remote` as the approved next action |
-| Force deletion would be needed | `human_decision` |
+| Evidence | Legacy recommendation | Native closeout mapping |
+|---|---|---|
+| No associated branch exists | `no_branch_detected` | `cleanup_decision.branch_action: not_applicable` |
+| Unknown branch existence, owner, scope, merge state, protection state, or worktree status | `human_decision` or `retain` | `cleanup_decision.branch_action: human_decision` or `retain_branch` |
+| Local task branch, merged or intentionally discarded, not checked out, not protected/default/base | `delete_local` | `cleanup_decision.branch_action: delete_local_branch` |
+| Local branch unmerged, checked out, shared, protected/default/base, or still needed | `retain` or `human_decision` | `cleanup_decision.branch_action: retain_branch` or `human_decision` |
+| Staged, unstaged dirty, untracked, or stash state is unknown or may belong to the branch | `retain` or `human_decision` | `cleanup_decision.branch_action: retain_branch` or `human_decision` |
+| Remote branch exists and deletion approval is missing | `human_decision` | `cleanup_decision.branch_action: human_decision` |
+| Remote branch exists and explicit deletion approval is present | `delete_remote` as the approved next action | `cleanup_decision.branch_action: human_decision`; remote deletion remains a separately approved action |
+| Force deletion would be needed | `human_decision` | `cleanup_decision.branch_action: human_decision` |
 
 ## Reporting Rules
 
@@ -165,6 +170,7 @@ When reporting branch cleanup state:
 - say whether this is a recommendation, approval gate, or completed runtime action;
 - cite the exact evidence fields used for local/remote/default/protected/unmerged decisions;
 - state that archive and branch cleanup are separate if archive evidence is also present;
+- state that branch cleanup is separate from merge decision and does not make `merge_decision.recommendation: merge` safe;
 - do not claim branch cleanup completed without adapter/runtime evidence and approval where required.
 
 ## Checklist And Eval Hooks
@@ -177,3 +183,4 @@ Branch cleanup checklist validation and evals should reject:
 - remote deletion recommendations without explicit approval;
 - force deletion recommendations without explicit human decision;
 - `no_branch_detected` when branch evidence is missing rather than proven absent.
+- packages that express branch cleanup through a broad native `cleanup_action` field instead of `cleanup_decision.branch_action`.

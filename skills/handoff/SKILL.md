@@ -33,6 +33,55 @@ Reference existing PRDs, issues, plans, commits, diffs, verification notes, life
 
 When maintaining the Groundwork repository itself, apply the repo-local `AGENTS.md` Done Definition before reporting the work complete.
 
+For Codex-native Local to Worktree or Worktree to Local continuation, use a `native_handoff_package`. Groundwork prepares this compact package only; official Codex Handoff owns moving the thread and code between Local and Worktree and owns the Git operations performed by that native flow. Do not claim that Groundwork executes Codex App Handoff, creates the native worktree, restores the associated worktree, archives the thread, or moves code.
+
+Required shape:
+
+```yaml
+native_handoff_package:
+  direction: local_to_worktree | worktree_to_local
+  goal: ""
+  scope: []
+  out_of_scope: []
+  base:
+    base_ref: ""
+    base_commit: ""
+    branch: ""
+  native_context:
+    thread_ref:
+      value: ""
+      availability: visible | unavailable_before_handoff | unavailable_in_current_surface | redacted
+    worktree_path:
+      value: ""
+      availability: visible | unavailable_before_handoff | unavailable_in_current_surface | redacted
+    worktree_association:
+      value: ""
+      availability: visible | unavailable_before_handoff | unavailable_in_current_surface | redacted
+  route_decision_ref: ""
+  relevant_artifacts: []
+  changed_files: []
+  evidence:
+    commands_run: []
+    checks_passed: []
+    checks_failed: []
+    not_run: []
+  open_risks: []
+  next_command: ""
+  stop_condition: ""
+  redaction_notes: ""
+```
+
+Native handoff package rules:
+
+- The package must be self-contained enough for a new session to continue without hidden parent-session history.
+- The package must cite canonical artifacts instead of copying full PRDs, full issue bodies, long diffs, logs, or transcripts.
+- `native_context.thread_ref`, `native_context.worktree_path`, and `native_context.worktree_association` must always include explicit `availability` values.
+- Local to Worktree packages prepared before Codex creates or exposes the native worktree must set `native_context.worktree_path.availability: unavailable_before_handoff`; do not invent a future path, native ID, or thread reference.
+- Worktree to Local packages must include `changed_files`, `evidence`, `open_risks`, `stop_condition`, and all `native_context` fields with explicit availability markers before closeout. If visible native context exists, record it with `availability: visible`; if it is hidden in the current surface, mark it `unavailable_in_current_surface`; if intentionally withheld, mark it `redacted`.
+- Worktree to Local `changed_files` must list the returned file boundary. If no files changed, include an explicit empty list plus evidence that no files changed.
+- The package must state `redaction_notes` even when no sensitive data was present.
+- The package must never instruct a future reader to use `git add .`; use explicit pathspecs and denylist guidance when staging or commit continuation is in scope.
+
 Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` to decide whether lifecycle state is needed, stale, or only referenced. Use `skills/_shared/ARTIFACT-PROMOTION.md` to separate canonical artifacts from recoverable lifecycle state: handoff should cite PRDs, issue maps, verification reports, and external issues instead of copying them.
 
 Use `REVIEW-PACKAGE.md` when the next reader needs a review package rather than a basic continuation summary. Use `skills/_shared/SUBAGENT-DELEGATION.md` when the handoff prepares a fresh-context subagent review.
@@ -79,9 +128,10 @@ When freshness is `stale` or `unknown`, keep the handoff actionable:
 5. Apply the State Freshness Algorithm, then reference existing `STATE.md` by path when present, with freshness and update-needed status, or recommend creating/updating it when the threshold is met.
 6. Capture current state, decisions, evidence, gaps, and risks.
 7. Capture allowed/disallowed files when file boundary matters.
-8. Include audience, goal, current decision, source artifacts, evidence, open risks, next skill, do-not-assume, git boundary, and redaction note when producing a review package.
-9. Include only enough detail to resume safely; default to a one-screen continuation summary when no durable handoff file is needed.
-10. Recommend the next skill or direct action.
+8. Include `native_handoff_package` when continuation crosses Local and Worktree. Keep Codex-native thread/worktree fields as explicit availability-marked context, not inferred runtime claims.
+9. Include audience, goal, current decision, source artifacts, evidence, open risks, next skill, do-not-assume, git boundary, and redaction note when producing a review package.
+10. Include only enough detail to resume safely; default to a one-screen continuation summary when no durable handoff file is needed.
+11. Recommend the next skill or direct action.
 
 ## CHECKPOINTS
 
@@ -107,6 +157,7 @@ When freshness is `stale` or `unknown`, keep the handoff actionable:
 ## Do Not
 
 - Do not turn the handoff into a diary, transcript, or chronological status log.
+- Do not claim Groundwork performs official Codex Handoff, creates native Codex worktrees, moves code between Local and Worktree, or owns native Handoff Git operations.
 - Do not copy long diffs, full PRDs, issue bodies, plans, commits, lifecycle state, raw logs, or transcripts.
 - Do not hide unverified claims; label them as open gaps, risks, or `Do-Not-Assume`.
 - Do not duplicate canonical artifacts when a stable path, issue ID, commit, or redacted source identifier is enough.

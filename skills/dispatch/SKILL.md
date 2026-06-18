@@ -55,11 +55,15 @@ When maintaining the Groundwork repository itself, apply the repo-local `AGENTS.
 - classify each task as `write_implementation`, `read_only_review`, `planning_only`, `hybrid`, `diagnosis`, `verification`, or `direct`
 - consume the Goal Contract when present and identify missing required Goal Contract fields
 - assign exactly one `runtime_id` per routed task
+- assign exactly one v0.4.0 route decision per routed task: `local_direct`, `local_with_artifact`, `worktree_isolated`, `worktree_review_only`, or `automation_candidate`
+- emit the v0.4.0 dispatch surface under `dispatch_native_alignment`: route decision, policy, source package, handoff expectation, closeout expectation, verification expectation, approval requirements, and runtime evidence ownership
 - assign isolation level, execution profile, validation expectation, and expected Result Package
 - identify parallelization eligibility and conflict/dependency groups when enough evidence exists
-- route read-only and planning-only tasks away from managed worktree runtimes
+- route read-only and planning-only tasks away from `worktree_isolated` and managed worktree runtimes
 - split hybrid work before any write worktree package is generated
-- default write implementation tasks to managed worktree only when readiness, Goal Contract, source package, and validation package are present
+- default write implementation tasks to managed worktree only when readiness, Goal Contract, `dispatch_native_alignment.source_package`, `dispatch_native_alignment.verification_expectation`, and a concrete `worktree_isolated` route justification are present
+- mark v0.3.3 custom lifecycle, registry, child-thread identity, selector-enforcement, and background-run fields as legacy compatibility unless adapter/runtime evidence exists
+- keep `automation_candidate` recommendation-only; do not create, update, schedule, or archive automations from dispatch
 - stop before execution unless the user explicitly requests execution and the current runtime exposes the required tools
 - report selector enforcement transparently: use `tool_enforced` only when the adapter confirms selector support; otherwise use `prompt_preference`, `unavailable`, or `unknown`
 
@@ -125,7 +129,11 @@ source:
 runtime_policy:
   remote_writes_allowed: false
   destructive_actions_allowed: false
-tasks: []
+tasks:
+  - dispatch_native_alignment:
+      policy:
+        remote_writes_allowed: false
+        destructive_actions_allowed: false
 ```
 
 Expected Result Package
@@ -153,6 +161,12 @@ runtime_policy:
   max_parallel_units: 3
   remote_writes_allowed: false
   destructive_actions_allowed: false
+  route_enum:
+    - local_direct
+    - local_with_artifact
+    - worktree_isolated
+    - worktree_review_only
+    - automation_candidate
 
 model_policy:
   selector_enforcement: tool_if_available_else_prompt_preference
@@ -164,23 +178,97 @@ tasks:
     readiness: ""
     runtime_id: ""
     runtime_reason: ""
-    runtime_identity:
-      runtime_correlation_id: ""
-      dispatch_id: ""
-      task_id: ""
-      parent_thread_identifier: ""
-      child_thread_identifier: ""
-      initial_thread_title: ""
-      current_thread_title: ""
-      title_mutation_detected: true | false | unknown
-    worktree_registry:
-      base_ref: ""
-      branch: ""
-      artifact_path: ""
-      owner_skill: "dispatch"
-      current_status: created | active | review-ready | blocked | merge-ready | merged | archived | abandoned
-      created_at: ""
-      last_checked_at: ""
+    dispatch_native_alignment:
+      route_decision:
+        route: local_direct | local_with_artifact | worktree_isolated | worktree_review_only | automation_candidate
+        reason: ""
+        why_not_worktree: ""
+        why_worktree_if_selected: ""
+        expected_touched_files: []
+        workspace_state:
+          current_branch: ""
+          dirty_files: []
+          unrelated_dirty_files: []
+          staged_files: []
+          untracked_files: []
+          status_checked: true | false
+        base_state:
+          base_ref: ""
+          base_commit: ""
+          base_stale: true | false | unknown
+          base_refresh_required: true | false | unknown
+        conflict:
+          conflict_group: ""
+          shared_files: []
+          serial_dependency: none | blocked_until_merge | human_decision
+        runtime_surface:
+          codex_app_worktree_available: true | false | unknown
+          local_environment_required: true | false | unknown
+          automation_surface_available: true | false | unknown
+        risk:
+          git_write: true | false
+          remote_write: true | false
+          destructive: true | false
+          secrets_or_pii: true | false
+          customer_visible: true | false
+        setup_requirements: []
+        required_local_files: []
+        rollback_or_archive_path: ""
+        evidence_required_before_closeout: []
+      source_package:
+        prd_excerpt: ""
+        issue_body: ""
+        known_source_or_first_inspection_step: ""
+        redactions_applied: ""
+      policy:
+        remote_writes_allowed: false
+        destructive_actions_allowed: false
+        approval_required: true | false
+      handoff_expected:
+        required: true | false
+        direction: local_to_worktree | worktree_to_local | not_applicable
+        artifact_path: ""
+        package_ref: native_handoff_package | not_applicable
+      closeout_expected:
+        required: true | false
+        package_ref: native_closeout_package | review_package | not_applicable
+        merge_gate: evidence_git_boundary_review_and_merge_source_required | not_applicable
+      verification_expectation:
+        fastest_signal: ""
+        required_evidence: ""
+        release_readiness_claimed: false
+      approval_requirements:
+        required: true | false
+        reason: ""
+        remote_writes_allowed: false
+        destructive_actions_allowed: false
+      runtime_evidence:
+        codex_native_required: true | false
+        evidence_owner: codex_runtime | adapter | user_supplied | not_applicable
+        worktree_creation_claimed: false
+        handoff_execution_claimed: false
+        archive_or_cleanup_claimed: false
+        runtime_success_claimed: false
+        cache_refresh_claimed: false
+    legacy_compatibility:
+      status: deprecated_in_place_for_v0_3_3_compatibility
+      runtime_identity:
+        runtime_correlation_id: ""
+        dispatch_id: ""
+        task_id: ""
+        parent_thread_identifier: ""
+        child_thread_identifier: ""
+        initial_thread_title: ""
+        current_thread_title: ""
+        title_mutation_detected: true | false | unknown
+      worktree_registry:
+        base_ref: ""
+        branch: ""
+        artifact_path: ""
+        owner_skill: "dispatch"
+        current_status: legacy_compatibility_only
+        created_at: ""
+        last_checked_at: ""
     isolation:
       context: ""
       filesystem: ""
@@ -207,10 +295,7 @@ tasks:
       block_reason: ""
       release_evidence: ""
     source_package:
-      prd_excerpt: ""
-      issue_body: ""
-      known_source_or_first_inspection_step: ""
-      redactions_applied: ""
+      deprecated_by: dispatch_native_alignment.source_package
     goal_contract:
       goal_command: ""
       outcome: ""
@@ -227,6 +312,7 @@ tasks:
       preferred_runtime: ""
       result_package_expected: ""
     goal_mode:
+      status: legacy_adapter_prompt_evidence_only
       required: true | false
       goal_contract_lint: pass | fail | not_run
       child_prompt_lint: pass | fail | not_run
@@ -239,19 +325,21 @@ tasks:
       routing_reason: ""
       selector_enforcement: "" # tool_enforced | prompt_preference | unavailable | unknown
     validation:
-      fastest_signal: ""
-      required_evidence: ""
+      deprecated_by: dispatch_native_alignment.verification_expectation
     runtime_package:
+      status: legacy_adapter_package_shape_only
       adapter: ""
       expected_output: ""
       can_write_files: false
       worktree_init_preflight:
+        status: legacy_route_setup_evidence_only
         starting_state: working-tree | existing-branch | unknown
         branch_name: ""
         dirty_base_inheritance_required: true | false
         branch_exists_verified: true | false | not_required
         init_status: not_started | passed | failed | blocked
       lifecycle_expectation:
+        status: legacy_compatibility_only
         returned_state: review_package_returned
         next_state: clean_review_pending | needs_remediation | blocked
         child_may_self_archive: false
@@ -272,6 +360,13 @@ tasks:
     readiness: ready_for_agent
     runtime_id: codex_subagent
     runtime_reason: "Independent read-only review with no file edits required."
+    dispatch_native_alignment:
+      route_decision:
+        route: worktree_review_only
+        reason: "Fresh-context review can inspect evidence without a write diff."
+        why_not_worktree: "Read-only review is forbidden from worktree_isolated."
+        why_worktree_if_selected: ""
+        expected_touched_files: []
     isolation:
       context: subagent_prompt
       filesystem: none
@@ -291,13 +386,20 @@ tasks:
     readiness: needs_split
     runtime_id: main_thread_readonly
     runtime_reason: "First inspect evidence and produce a concrete write slice or a no-change finding."
+    dispatch_native_alignment:
+      route_decision:
+        route: local_with_artifact
+        reason: "Hybrid work must produce a diagnosis artifact before any write slice can be routed."
+        why_not_worktree: "No concrete write subtask exists yet."
+        why_worktree_if_selected: ""
+        expected_touched_files: []
     runtime_package:
       adapter: main_thread_readonly
       expected_output: diagnosis_package
       can_write_files: false
 ```
 
-Managed worktree packages are valid only when the task is a ready write implementation and runtime identity, Goal Contract, source package, and validation package are all present:
+Managed worktree packages are valid only when the task is a ready write implementation and `dispatch_native_alignment` has native source, handoff, closeout, verification, approval, and runtime-evidence expectations:
 
 ```yaml
 tasks:
@@ -306,24 +408,104 @@ tasks:
     task_type: write_implementation
     readiness: ready_for_agent
     runtime_id: codex_app_managed_worktree_thread
-    runtime_reason: "Accepted write implementation with runtime identity, complete Goal Contract, source package, and validation package."
-    runtime_identity:
-      runtime_correlation_id: "gw:<workstream>:issue-4a:001:<short_hash>"
-      dispatch_id: "<present>"
-      task_id: "issue-4a"
-      parent_thread_identifier: "<present_or_empty>"
-      child_thread_identifier: "<present_or_empty>"
-      initial_thread_title: "<display_only_or_empty>"
-      current_thread_title: "<display_only_or_empty>"
-      title_mutation_detected: unknown
-    worktree_registry:
-      base_ref: "<base_branch_or_commit>"
-      branch: "<child_branch_or_empty>"
-      artifact_path: "artifacts/<workstream>/issue-4a/"
-      owner_skill: dispatch
-      current_status: created
-      created_at: "<timestamp>"
-      last_checked_at: "<timestamp>"
+    runtime_reason: "Accepted write implementation with a concrete worktree_isolated route decision, complete Goal Contract, native source package, verification expectation, and legacy compatibility correlation."
+    dispatch_native_alignment:
+      route_decision:
+        route: worktree_isolated
+        reason: "Concrete write task touches shared dispatch contracts and needs isolated diff review."
+        why_not_worktree: ""
+        why_worktree_if_selected: "Shared contract files and dependent lifecycle templates need clean diff boundaries."
+        expected_touched_files:
+          - "skills/dispatch/DISPATCH-PACKAGE.md"
+          - "skills/dispatch/RESULT-PACKAGE.md"
+        workspace_state:
+          current_branch: "<present_or_unknown>"
+          dirty_files: []
+          unrelated_dirty_files: []
+          staged_files: []
+          untracked_files: []
+          status_checked: true
+        base_state:
+          base_ref: "<current_base_or_empty>"
+          base_commit: "<present_or_unknown>"
+          base_stale: false
+          base_refresh_required: false
+        conflict:
+          conflict_group: "managed-worktree-runtime-identity"
+          shared_files:
+            - "skills/dispatch/DISPATCH-PACKAGE.md"
+          serial_dependency: none
+        runtime_surface:
+          codex_app_worktree_available: unknown
+          local_environment_required: false
+          automation_surface_available: false
+        risk:
+          git_write: true
+          remote_write: false
+          destructive: false
+          secrets_or_pii: false
+          customer_visible: false
+        setup_requirements: []
+        required_local_files: []
+        rollback_or_archive_path: "Return review_package; coordinator decides merge, hold, or archive later."
+        evidence_required_before_closeout:
+          - "review_package"
+          - "git boundary"
+          - "validation result"
+      source_package:
+        prd_excerpt: "PRD v0.4.0 FR-405 requires dispatch runtime surface reduction."
+        issue_body: "Shrink dispatch output to route, policy, source, handoff, closeout, verification, approval, and runtime evidence ownership."
+        known_source_or_first_inspection_step: "Read DISPATCH-PACKAGE.md, native handoff contract, and native closeout contract before editing."
+        redactions_applied: "none"
+      policy:
+        remote_writes_allowed: false
+        destructive_actions_allowed: false
+        approval_required: false
+      handoff_expected:
+        required: true
+        direction: local_to_worktree
+        artifact_path: "artifacts/<workstream>/issue-4a/native-handoff-package.md"
+        package_ref: native_handoff_package
+      closeout_expected:
+        required: true
+        package_ref: native_closeout_package
+        merge_gate: evidence_git_boundary_review_and_merge_source_required
+      verification_expectation:
+        fastest_signal: "<present>"
+        required_evidence: "<present>"
+        release_readiness_claimed: false
+      approval_requirements:
+        required: false
+        reason: ""
+        remote_writes_allowed: false
+        destructive_actions_allowed: false
+      runtime_evidence:
+        codex_native_required: true
+        evidence_owner: adapter
+        worktree_creation_claimed: false
+        handoff_execution_claimed: false
+        archive_or_cleanup_claimed: false
+        runtime_success_claimed: false
+        cache_refresh_claimed: false
+    legacy_compatibility:
+      status: deprecated_in_place_for_v0_3_3_compatibility
+      runtime_identity:
+        runtime_correlation_id: "gw:<workstream>:issue-4a:001:<short_hash>"
+        dispatch_id: "<present>"
+        task_id: "issue-4a"
+        parent_thread_identifier: "<availability_marker_or_empty>"
+        child_thread_identifier: "<availability_marker_or_empty>"
+        initial_thread_title: "<display_only_or_empty>"
+        current_thread_title: "<display_only_or_empty>"
+        title_mutation_detected: unknown
+      worktree_registry:
+        base_ref: "<base_branch_or_commit>"
+        branch: "<child_branch_or_empty>"
+        artifact_path: "artifacts/<workstream>/issue-4a/"
+        owner_skill: dispatch
+        current_status: legacy_compatibility_only
+        created_at: "<timestamp>"
+        last_checked_at: "<timestamp>"
     isolation:
       context: thread
       filesystem: codex_managed_worktree
@@ -350,10 +532,7 @@ tasks:
       block_reason: ""
       release_evidence: "No prerequisite managed worktree task is required for this example package."
     source_package:
-      prd_excerpt: "PRD v0.3.3 FR-5 requires stable runtime identity for managed worktree packages."
-      issue_body: "Add runtime identity fields and stop using thread title as source-of-truth identity."
-      known_source_or_first_inspection_step: "Read DISPATCH-PACKAGE.md, RESULT-PACKAGE.md, and managed worktree adapter templates before editing."
-      redactions_applied: "none"
+      deprecated_by: dispatch_native_alignment.source_package
     goal_contract:
       goal_command: "/goal Add stable runtime identity fields to the managed worktree dispatch package templates"
       outcome: "<present>"
@@ -370,14 +549,14 @@ tasks:
       preferred_runtime: "<present>"
       result_package_expected: review_package
     goal_mode:
+      status: legacy_adapter_prompt_evidence_only
       required: true
       goal_contract_lint: pass
       child_prompt_lint: pass
       rendered_prompt_first_non_empty_line: starts_with_goal
       runtime_goal_mode_evidence_expected: present
     validation:
-      fastest_signal: "<present>"
-      required_evidence: "<present>"
+      deprecated_by: dispatch_native_alignment.verification_expectation
     execution_profile:
       model_profile: "<present_or_empty>"
       reasoning_effort: medium
@@ -385,17 +564,20 @@ tasks:
       routing_reason: "<present>"
       selector_enforcement: tool_if_available_else_prompt_preference
     runtime_package:
+      status: legacy_adapter_package_shape_only
       adapter: codex_app_managed_worktree_thread
       thread_title: "Add stable runtime identity fields"
       expected_output: review_package
       can_write_files: true
       worktree_init_preflight:
+        status: legacy_route_setup_evidence_only
         starting_state: working-tree
         branch_name: ""
         dirty_base_inheritance_required: false
         branch_exists_verified: not_required
         init_status: passed
       lifecycle_expectation:
+        status: legacy_compatibility_only
         returned_state: review_package_returned
         next_state: clean_review_pending
         child_may_self_archive: false
