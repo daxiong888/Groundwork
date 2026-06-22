@@ -4,6 +4,26 @@ All notable changes to Groundwork are documented in this file.
 
 ## Unreleased
 
+## v0.4.1 - 2026-06-22
+
+### Added
+
+- Added `evals/prompts/trace-first-verify-review.csv` as a compact trace-ready verify/review eval slice for v0.4.1.
+- Added targeted rows for verify scope-first reports, code-diff-only readiness boundaries, QA failure shape, clean-review fan-out, self-review blocking, read-only clean review, missing validation, and low-risk coordinator intake exceptions.
+- Added deterministic runner behavior checks for code-diff-only readiness pass claims and low-risk archive or branch-cleanup readiness claims.
+
+### Changed
+
+- Bumped plugin metadata to `0.4.1` for the compact trace-ready verify/review eval slice.
+- Wired `trace-first-verify-review.csv` into `DEFAULT_SUITES` and the trace-ready routing summary path while preserving the legacy `routing_rows` summary field.
+- Renamed the runner's primary trace-ready row helper to `is_trace_ready_row()` and retained `is_routing_reliability_row()` as a compatibility alias.
+- Documented that the v0.4.1 trace-first suite is a compact targeted smoke path, not the full v0.4.x schema, score, report, or trace-diagnostics platform.
+
+### Notes
+
+- This release does not add public skills, runtime dependencies, task databases, hooks, MCP servers, marketplace behavior, or a full trace/schema/report platform.
+- Local schema, syntax, CSV, and runner tests support the compact v0.4.1 scope; real runtime baseline evidence still requires installed plugin cache/source equivalence or a supported refresh step before being treated as release-gating evidence.
+
 ## v0.3.4 - 2026-06-18
 
 ### Added
