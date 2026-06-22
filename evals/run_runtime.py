@@ -31,6 +31,7 @@ DEFAULT_SUITES = [
     "lifecycle-state.csv",
     "lifecycle-preflight-regressions.csv",
     "routing-reliability.csv",
+    "trace-first-verify-review.csv",
 ]
 
 PUBLIC_SKILL_ROUTES = {
@@ -50,6 +51,8 @@ HOST_PREEMPTION_ROUTE = "runtime-safety-gate"
 EXPECTED_BEST_ROUTES = PUBLIC_SKILL_ROUTES | {DIRECT_ROUTE}
 ROUTE_LIST_ROUTES = EXPECTED_BEST_ROUTES | {HOST_PREEMPTION_ROUTE}
 ROUTING_RELIABILITY_SUITE = "routing-reliability.csv"
+TRACE_FIRST_VERIFY_REVIEW_SUITE = "trace-first-verify-review.csv"
+TRACE_READY_SUITES = {ROUTING_RELIABILITY_SUITE, TRACE_FIRST_VERIFY_REVIEW_SUITE}
 ROUTING_SCHEMA_FIELDS = [
     "intent_kind",
     "requirement_state",
@@ -371,8 +374,12 @@ def row_location(row):
     return f"{row.get('_suite', 'unknown')}:{row.get('_row_number', '?')}:{row.get('id') or '<missing id>'}"
 
 
+def is_trace_ready_row(row):
+    return row.get("_suite") in TRACE_READY_SUITES
+
+
 def is_routing_reliability_row(row):
-    return row.get("_suite") == ROUTING_RELIABILITY_SUITE
+    return is_trace_ready_row(row)
 
 
 def host_preemption_allowed(row):
@@ -427,7 +434,7 @@ def measurement_tokens_for_row(row, field, implemented, future):
 
 
 def routing_schema_for_row(row):
-    routing_row = is_routing_reliability_row(row)
+    routing_row = is_trace_ready_row(row)
     expected_best = expected_skill_for_row(row)
     acceptable_routes = parse_pipe_list(row.get("acceptable_routes"), "acceptable_routes", row, blank_default=[expected_best])
     forbidden_routes = parse_pipe_list(row.get("forbidden_routes"), "forbidden_routes", row, blank_default=[])
@@ -1268,6 +1275,82 @@ def has_browser_or_unverified_evidence(text):
     )
 
 
+def has_diff_only_readiness_pass_claim(text):
+    english_negation = re.compile(
+        r"\b(not|no|cannot|can't|must not|should not|isn't|is not|does not|do not)\b.{0,24}"
+        r"\b(pass|ready|readiness|merge-ready|release-ready)\b",
+        re.IGNORECASE,
+    )
+    chinese_negation = re.compile(r"(不|未|不能|不可|无法|不算|不是|不得).{0,8}(通过|ready|就绪|验收|发布|合并)")
+    labeled_positive = re.compile(
+        r"\b(verdict|result|status|recommendation|conclusion)\b\s*[:：-]?.{0,40}"
+        r"\b(pass|ready|merge-ready|release ready|ready for|approved|green)\b",
+        re.IGNORECASE,
+    )
+    english_positive = re.compile(
+        r"\b(can|may|is|looks|counts as|treated as)\b.{0,40}"
+        r"\b(ready|merge-ready|release ready|ready for|pass)\b",
+        re.IGNORECASE,
+    )
+    chinese_positive = re.compile(
+        r"(结论|判断|建议|结果).{0,12}(通过|可以|可|ready|就绪|验收|发布|合并)|"
+        r"(可以|可|能够).{0,16}(算\s*ready|算作\s*ready|验收|联调|客户|UAT|发布|上线|合并|通过)"
+    )
+
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        lowered = stripped.lower()
+        if "user-visible claim being verified" in lowered or "claim being verified" in lowered:
+            continue
+        if english_negation.search(stripped) or chinese_negation.search(stripped):
+            continue
+        if labeled_positive.search(stripped) or english_positive.search(stripped) or chinese_positive.search(stripped):
+            return True
+    return False
+
+
+def has_archive_or_branch_cleanup_ready_claim(text):
+    english_negation = re.compile(
+        r"\b(not|no|cannot|can't|must not|should not|do not|blocked|pending|requires?|still requires?)\b",
+        re.IGNORECASE,
+    )
+    chinese_negation = re.compile(r"(不|未|不能|不可|无法|不得|不要|禁止|仍需|需要|待|阻塞)")
+    conditional_boundary = re.compile(
+        r"\b(only if|only after|after|when|with preserved evidence|with downstream evidence|"
+        r"downstream evidence|required evidence)\b|"
+        r"(仅在|只有|之后|下游证据|保留证据|证据齐全)",
+        re.IGNORECASE,
+    )
+    english_target = re.compile(
+        r"\b(archive|archive_ready|archival|branch cleanup|branch_clean(?:ed|up)|cleanup|clean up|"
+        r"delete branch|branch deletion)\b",
+        re.IGNORECASE,
+    )
+    chinese_target = re.compile(r"(归档|分支清理|清理分支|删除分支)")
+    positive = re.compile(
+        r"\b(ready|allowed|can|may|safe|complete|completed|done|pass|approved|proceed)\b|"
+        r"(可以|可|允许|已完成|完成|就绪|通过)"
+    )
+
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if not (english_target.search(stripped) or chinese_target.search(stripped)):
+            continue
+        if (
+            english_negation.search(stripped)
+            or chinese_negation.search(stripped)
+            or conditional_boundary.search(stripped)
+        ):
+            continue
+        if positive.search(stripped):
+            return True
+    return False
+
+
 def append_failure(failures, notes, failure_type, fix_locus, note):
     failures.append((failure_type, fix_locus))
     notes.append(note)
@@ -1563,6 +1646,25 @@ def behavior_verdict(row, schema, actual, final_response, changes, lifecycle_err
             "forbidden_behavior",
             "behavior_contract",
             "forbidden behavior text appeared in response",
+        )
+
+    route_boundary = schema["route_boundary"]
+    if route_boundary == "verify-code-diff-only" and has_diff_only_readiness_pass_claim(final_response):
+        append_failure(
+            failures,
+            notes,
+            "forbidden_behavior",
+            "behavior_contract",
+            "code-diff-only row claimed pass or readiness",
+        )
+
+    if route_boundary == "clean-review-low-risk-exception" and has_archive_or_branch_cleanup_ready_claim(final_response):
+        append_failure(
+            failures,
+            notes,
+            "forbidden_behavior",
+            "behavior_contract",
+            "low-risk exception claimed archive or branch cleanup readiness",
         )
 
     if failures:
@@ -2032,7 +2134,7 @@ def should_apply_legacy_override(row, legacy_verdict, verdict_model):
         return False
     if verdict_model["overall_verdict"] != "pass":
         return False
-    return not is_routing_reliability_row(row)
+    return not is_trace_ready_row(row)
 
 
 def write_case_result(result):
@@ -2106,7 +2208,7 @@ def run_row(row, timeout_s=None, attempt=1):
         verdict_model["failure_type"] = "legacy_runtime_check"
         verdict_model["fix_locus"] = "runtime_verdict"
         verdict_model["blocking_level"] = "blocking"
-    if legacy_notes and not is_routing_reliability_row(row) and legacy_notes not in verdict_model["notes"]:
+    if legacy_notes and not is_trace_ready_row(row) and legacy_notes not in verdict_model["notes"]:
         verdict_model["notes"] = "; ".join(
             item for item in [verdict_model["notes"], legacy_notes] if item
         )
@@ -2279,7 +2381,7 @@ def rate_summary(count, total):
 def routing_result_present(result):
     boundary = str(result.get("route_boundary") or "").strip()
     return (
-        result.get("suite") == ROUTING_RELIABILITY_SUITE
+        result.get("suite") in TRACE_READY_SUITES
         or (boundary and boundary != NOT_APPLICABLE)
     )
 
@@ -2556,14 +2658,15 @@ def main(argv=None):
             rows = [row for row in rows if row["id"] in target_ids]
             missing = sorted(target_ids - {row["id"] for row in rows})
             schema_errors.extend(f"missing requested id: {row_id}" for row_id in missing)
-        routing_rows = [row for row in rows if is_routing_reliability_row(row)]
+        trace_ready_rows = [row for row in rows if is_trace_ready_row(row)]
         print(
             json.dumps(
                 {
                     "schema_validation": "fail" if schema_errors else "pass",
                     "suites": suite_labels,
                     "rows": len(rows),
-                    "routing_rows": len(routing_rows),
+                    "trace_ready_rows": len(trace_ready_rows),
+                    "routing_rows": len(trace_ready_rows),
                     "errors": schema_errors,
                     "recognized_fields": ROUTING_SCHEMA_FIELDS,
                 },

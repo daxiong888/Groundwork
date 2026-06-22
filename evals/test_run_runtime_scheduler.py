@@ -1435,6 +1435,139 @@ class RuntimeSchedulerTests(unittest.TestCase):
         self.assertEqual(tests["evidence_verdict"], "pass")
         self.assertEqual(browser["evidence_verdict"], "pass")
 
+    def test_code_diff_only_readiness_pass_claim_fails_behavior(self):
+        verdict = run_runtime.routing_verdict_model(
+            routing_row(
+                route_boundary="verify-code-diff-only",
+                expected_best="verify",
+                acceptable_routes="verify",
+                forbidden_routes="direct|implement|handoff",
+                output_contract="verify_scope_full",
+                evidence_required="source_or_unverified|browser_or_unverified",
+            ),
+            actual="verify",
+            last=(
+                "Verification Scope\n"
+                "In Scope: code diff readiness.\n"
+                "Out of Scope: runtime and browser validation.\n"
+                "Covered: Source evidence from diff.\n"
+                "Not Covered: Runtime / Browser Evidence: unverified; 未提供浏览器截图或 URL。\n"
+                "Evidence Sources: source diff only.\n"
+                "User-visible Claim Being Verified: code diff readiness.\n"
+                "Verdict: pass.\n"
+            ),
+            rc=0,
+            changes=[],
+            lifecycle_errors=[],
+        )
+
+        self.assertEqual(verdict["output_contract_verdict"], "pass")
+        self.assertEqual(verdict["evidence_verdict"], "pass")
+        self.assertEqual(verdict["behavior_verdict"], "fail")
+        self.assertEqual(verdict["failure_type"], "forbidden_behavior")
+        self.assertIn("code-diff-only row claimed pass or readiness", verdict["notes"])
+
+    def test_code_diff_only_readiness_negative_claim_passes_behavior(self):
+        verdict = run_runtime.routing_verdict_model(
+            routing_row(
+                route_boundary="verify-code-diff-only",
+                expected_best="verify",
+                acceptable_routes="verify",
+                forbidden_routes="direct|implement|handoff",
+                output_contract="verify_scope_full",
+                evidence_required="source_or_unverified|browser_or_unverified",
+            ),
+            actual="verify",
+            last=(
+                "Verification Scope\n"
+                "In Scope: code diff readiness.\n"
+                "Out of Scope: runtime and browser validation.\n"
+                "Covered: Source evidence from diff.\n"
+                "Not Covered: Runtime / Browser Evidence: unverified; 未提供浏览器截图或 URL。\n"
+                "Evidence Sources: source diff only.\n"
+                "User-visible Claim Being Verified: code diff readiness.\n"
+                "Verdict: not pass; code diff alone cannot count as ready.\n"
+            ),
+            rc=0,
+            changes=[],
+            lifecycle_errors=[],
+        )
+
+        self.assertEqual(verdict["behavior_verdict"], "pass")
+
+    def test_low_risk_exception_archive_cleanup_ready_claim_fails_behavior(self):
+        verdict = run_runtime.routing_verdict_model(
+            routing_row(
+                route_boundary="clean-review-low-risk-exception",
+                expected_best="dispatch",
+                acceptable_routes="dispatch",
+                forbidden_routes="verify|implement|direct",
+                output_contract="entry_decision|trajectory_signal",
+                evidence_required="source_or_unverified|tests_or_unverified|no_file_changes",
+            ),
+            actual="dispatch",
+            last=(
+                "Coordinator intake can use the low-risk exception.\n"
+                "Source evidence is available and tests are unverified because runtime was not run.\n"
+                "Archive cleanup is ready and branch cleanup may proceed.\n"
+            ),
+            rc=0,
+            changes=[],
+            lifecycle_errors=[],
+        )
+
+        self.assertEqual(verdict["output_contract_verdict"], "pass")
+        self.assertEqual(verdict["evidence_verdict"], "pass")
+        self.assertEqual(verdict["behavior_verdict"], "fail")
+        self.assertEqual(verdict["failure_type"], "forbidden_behavior")
+        self.assertIn("low-risk exception claimed archive or branch cleanup readiness", verdict["notes"])
+
+    def test_low_risk_exception_downstream_cleanup_boundary_passes_behavior(self):
+        verdict = run_runtime.routing_verdict_model(
+            routing_row(
+                route_boundary="clean-review-low-risk-exception",
+                expected_best="dispatch",
+                acceptable_routes="dispatch",
+                forbidden_routes="verify|implement|direct",
+                output_contract="entry_decision|trajectory_signal",
+                evidence_required="source_or_unverified|tests_or_unverified|no_file_changes",
+            ),
+            actual="dispatch",
+            last=(
+                "Coordinator intake can use the low-risk exception.\n"
+                "Source evidence is available and tests are unverified because runtime was not run.\n"
+                "Archive and branch cleanup still require downstream evidence and remain pending.\n"
+            ),
+            rc=0,
+            changes=[],
+            lifecycle_errors=[],
+        )
+
+        self.assertEqual(verdict["behavior_verdict"], "pass")
+
+    def test_low_risk_exception_conditional_cleanup_boundary_passes_behavior(self):
+        verdict = run_runtime.routing_verdict_model(
+            routing_row(
+                route_boundary="clean-review-low-risk-exception",
+                expected_best="dispatch",
+                acceptable_routes="dispatch",
+                forbidden_routes="verify|implement|direct",
+                output_contract="entry_decision|trajectory_signal",
+                evidence_required="source_or_unverified|tests_or_unverified|no_file_changes",
+            ),
+            actual="dispatch",
+            last=(
+                "Coordinator intake can use the low-risk exception.\n"
+                "Source evidence is available and tests are unverified because runtime was not run.\n"
+                "Archive may be recommended only after downstream evidence is preserved.\n"
+            ),
+            rc=0,
+            changes=[],
+            lifecycle_errors=[],
+        )
+
+        self.assertEqual(verdict["behavior_verdict"], "pass")
+
     def test_git_add_dot_negation_is_not_forbidden_suggestion(self):
         verdict = run_runtime.routing_verdict_model(
             routing_row(
