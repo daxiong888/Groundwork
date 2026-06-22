@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+"""Small dependency-free validator for the Groundwork schema subset.
+
+Supported keywords: $ref, allOf, if/then, const, enum, type, minLength,
+pattern, items, uniqueItems, required, propertyNames, properties,
+additionalProperties. This is not a full JSON Schema implementation.
+"""
+
 import argparse
 import json
 import re
