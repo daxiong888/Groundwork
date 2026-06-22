@@ -1275,6 +1275,82 @@ def has_browser_or_unverified_evidence(text):
     )
 
 
+def has_diff_only_readiness_pass_claim(text):
+    english_negation = re.compile(
+        r"\b(not|no|cannot|can't|must not|should not|isn't|is not|does not|do not)\b.{0,24}"
+        r"\b(pass|ready|readiness|merge-ready|release-ready)\b",
+        re.IGNORECASE,
+    )
+    chinese_negation = re.compile(r"(不|未|不能|不可|无法|不算|不是|不得).{0,8}(通过|ready|就绪|验收|发布|合并)")
+    labeled_positive = re.compile(
+        r"\b(verdict|result|status|recommendation|conclusion)\b\s*[:：-]?.{0,40}"
+        r"\b(pass|ready|merge-ready|release ready|ready for|approved|green)\b",
+        re.IGNORECASE,
+    )
+    english_positive = re.compile(
+        r"\b(can|may|is|looks|counts as|treated as)\b.{0,40}"
+        r"\b(ready|merge-ready|release ready|ready for|pass)\b",
+        re.IGNORECASE,
+    )
+    chinese_positive = re.compile(
+        r"(结论|判断|建议|结果).{0,12}(通过|可以|可|ready|就绪|验收|发布|合并)|"
+        r"(可以|可|能够).{0,16}(算\s*ready|算作\s*ready|验收|联调|客户|UAT|发布|上线|合并|通过)"
+    )
+
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        lowered = stripped.lower()
+        if "user-visible claim being verified" in lowered or "claim being verified" in lowered:
+            continue
+        if english_negation.search(stripped) or chinese_negation.search(stripped):
+            continue
+        if labeled_positive.search(stripped) or english_positive.search(stripped) or chinese_positive.search(stripped):
+            return True
+    return False
+
+
+def has_archive_or_branch_cleanup_ready_claim(text):
+    english_negation = re.compile(
+        r"\b(not|no|cannot|can't|must not|should not|do not|blocked|pending|requires?|still requires?)\b",
+        re.IGNORECASE,
+    )
+    chinese_negation = re.compile(r"(不|未|不能|不可|无法|不得|不要|禁止|仍需|需要|待|阻塞)")
+    conditional_boundary = re.compile(
+        r"\b(only if|only after|after|when|with preserved evidence|with downstream evidence|"
+        r"downstream evidence|required evidence)\b|"
+        r"(仅在|只有|之后|下游证据|保留证据|证据齐全)",
+        re.IGNORECASE,
+    )
+    english_target = re.compile(
+        r"\b(archive|archive_ready|archival|branch cleanup|branch_clean(?:ed|up)|cleanup|clean up|"
+        r"delete branch|branch deletion)\b",
+        re.IGNORECASE,
+    )
+    chinese_target = re.compile(r"(归档|分支清理|清理分支|删除分支)")
+    positive = re.compile(
+        r"\b(ready|allowed|can|may|safe|complete|completed|done|pass|approved|proceed)\b|"
+        r"(可以|可|允许|已完成|完成|就绪|通过)"
+    )
+
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if not (english_target.search(stripped) or chinese_target.search(stripped)):
+            continue
+        if (
+            english_negation.search(stripped)
+            or chinese_negation.search(stripped)
+            or conditional_boundary.search(stripped)
+        ):
+            continue
+        if positive.search(stripped):
+            return True
+    return False
+
+
 def append_failure(failures, notes, failure_type, fix_locus, note):
     failures.append((failure_type, fix_locus))
     notes.append(note)
@@ -1570,6 +1646,25 @@ def behavior_verdict(row, schema, actual, final_response, changes, lifecycle_err
             "forbidden_behavior",
             "behavior_contract",
             "forbidden behavior text appeared in response",
+        )
+
+    route_boundary = schema["route_boundary"]
+    if route_boundary == "verify-code-diff-only" and has_diff_only_readiness_pass_claim(final_response):
+        append_failure(
+            failures,
+            notes,
+            "forbidden_behavior",
+            "behavior_contract",
+            "code-diff-only row claimed pass or readiness",
+        )
+
+    if route_boundary == "clean-review-low-risk-exception" and has_archive_or_branch_cleanup_ready_claim(final_response):
+        append_failure(
+            failures,
+            notes,
+            "forbidden_behavior",
+            "behavior_contract",
+            "low-risk exception claimed archive or branch cleanup readiness",
         )
 
     if failures:
