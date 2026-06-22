@@ -3,6 +3,7 @@
   "$id": "https://groundwork.dev/schemas/groundwork-common.schema.json",
   "title": "Groundwork Common Eval Schema Definitions",
   "description": "Shared JSON Schema 2020-12 definitions for Groundwork trace-first eval verdicts, routing, execution primitives, evidence, blocking, checker results, and score metadata.",
+  "$comment": "This file is a shared $defs library. Product schemas should $ref these definitions rather than treating this as the primary score instance schema.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
