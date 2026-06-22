@@ -374,8 +374,12 @@ def row_location(row):
     return f"{row.get('_suite', 'unknown')}:{row.get('_row_number', '?')}:{row.get('id') or '<missing id>'}"
 
 
-def is_routing_reliability_row(row):
+def is_trace_ready_row(row):
     return row.get("_suite") in TRACE_READY_SUITES
+
+
+def is_routing_reliability_row(row):
+    return is_trace_ready_row(row)
 
 
 def host_preemption_allowed(row):
@@ -430,7 +434,7 @@ def measurement_tokens_for_row(row, field, implemented, future):
 
 
 def routing_schema_for_row(row):
-    routing_row = is_routing_reliability_row(row)
+    routing_row = is_trace_ready_row(row)
     expected_best = expected_skill_for_row(row)
     acceptable_routes = parse_pipe_list(row.get("acceptable_routes"), "acceptable_routes", row, blank_default=[expected_best])
     forbidden_routes = parse_pipe_list(row.get("forbidden_routes"), "forbidden_routes", row, blank_default=[])
@@ -2035,7 +2039,7 @@ def should_apply_legacy_override(row, legacy_verdict, verdict_model):
         return False
     if verdict_model["overall_verdict"] != "pass":
         return False
-    return not is_routing_reliability_row(row)
+    return not is_trace_ready_row(row)
 
 
 def write_case_result(result):
@@ -2109,7 +2113,7 @@ def run_row(row, timeout_s=None, attempt=1):
         verdict_model["failure_type"] = "legacy_runtime_check"
         verdict_model["fix_locus"] = "runtime_verdict"
         verdict_model["blocking_level"] = "blocking"
-    if legacy_notes and not is_routing_reliability_row(row) and legacy_notes not in verdict_model["notes"]:
+    if legacy_notes and not is_trace_ready_row(row) and legacy_notes not in verdict_model["notes"]:
         verdict_model["notes"] = "; ".join(
             item for item in [verdict_model["notes"], legacy_notes] if item
         )
@@ -2559,14 +2563,15 @@ def main(argv=None):
             rows = [row for row in rows if row["id"] in target_ids]
             missing = sorted(target_ids - {row["id"] for row in rows})
             schema_errors.extend(f"missing requested id: {row_id}" for row_id in missing)
-        routing_rows = [row for row in rows if is_routing_reliability_row(row)]
+        trace_ready_rows = [row for row in rows if is_trace_ready_row(row)]
         print(
             json.dumps(
                 {
                     "schema_validation": "fail" if schema_errors else "pass",
                     "suites": suite_labels,
                     "rows": len(rows),
-                    "routing_rows": len(routing_rows),
+                    "trace_ready_rows": len(trace_ready_rows),
+                    "routing_rows": len(trace_ready_rows),
                     "errors": schema_errors,
                     "recognized_fields": ROUTING_SCHEMA_FIELDS,
                 },

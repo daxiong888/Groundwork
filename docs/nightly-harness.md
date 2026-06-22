@@ -21,6 +21,8 @@ The nightly harness is a future local or Codex Cloud evaluation loop for Groundw
 - `evals/prompts/lifecycle-state.csv` for v0.3 lifecycle-state boundaries.
 - `evals/fixtures/*` for local source, no-test, and static prototype behavior.
 
+`trace-first-verify-review.csv` is included in `evals/run_runtime.py` default suites as the compact v0.4.1 targeted smoke path. It is not the full v0.4.x schema/score/report/trace-diagnostics platform and does not turn default local runs into release-gating runtime evidence by itself.
+
 ## Nightly Regression Suite
 
 Each run should record:
