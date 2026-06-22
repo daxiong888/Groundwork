@@ -69,6 +69,13 @@ class ReportTests(unittest.TestCase):
         self.assertIn(report.EVIDENCE_BOUNDARY, output)
         self.assertIn("not runtime, cache-refresh, release, UAT, or customer-readiness evidence", output)
 
+    def test_report_summarizes_existing_patch_suggestions(self):
+        output = report.render_report(Path("evals/fixtures/patch-suggestions"))
+
+        self.assertIn("Patch suggestion count: 1", output)
+        self.assertIn("`ps-001`", output)
+        self.assertIn("auto_apply `False`", output)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,31 @@
+{
+  "suggestions": [
+    {
+      "suggestion_id": "ps-001",
+      "triggering_cases": [
+        "trace-ready-forbidden-behavior"
+      ],
+      "failure_type": "forbidden_behavior",
+      "fix_locus": "behavior_contract",
+      "proposed_patch_summary": "Review behavior_contract for failed deterministic checker(s): trace_ready.code_diff_only_readiness_claim.",
+      "affected_files": [],
+      "rollback": "Discard this suggestion artifact; no repository files were modified.",
+      "human_decision": "none",
+      "auto_apply": false,
+      "notes": [
+        "Generated from classified eval failure; proposal only.",
+        "Schema-only sample; not runtime evidence.",
+        "code-diff-only row claimed pass or readiness"
+      ],
+      "source_artifacts": [
+        "results.jsonl",
+        "score/trace-ready-forbidden-behavior.score.json",
+        "summary.json"
+      ],
+      "checker_ids": [
+        "trace_ready.code_diff_only_readiness_claim"
+      ],
+      "severity": "p2"
+    }
+  ]
+}
