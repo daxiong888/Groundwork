@@ -2,13 +2,11 @@
 
 import re
 
-from .common import has_required_field
 from .results import checker_result
 
 GIT_ADD_DOT_CHECKER_ID = "forbidden.git_add_dot"
 CODE_DIFF_ONLY_READINESS_CHECKER_ID = "trace_ready.code_diff_only_readiness_claim"
 LOW_RISK_CLEANUP_CHECKER_ID = "trace_ready.low_risk_cleanup_claim"
-MISSING_TARGET_READER_CHECKER_ID = "artifact.missing_target_reader"
 
 
 def forbidden_git_add_dot_suggestion(text):
@@ -138,15 +136,3 @@ def check_low_risk_cleanup_claim(text):
             notes=["low-risk exception claimed archive or branch cleanup readiness"],
         )
     return checker_result(LOW_RISK_CLEANUP_CHECKER_ID, "pass")
-
-
-def check_missing_target_reader(text):
-    if not has_required_field(text, "Target Reader"):
-        return checker_result(
-            MISSING_TARGET_READER_CHECKER_ID,
-            "fail",
-            severity="p2",
-            fix_locus="artifact_policy",
-            notes=["artifact header missing Target Reader"],
-        )
-    return checker_result(MISSING_TARGET_READER_CHECKER_ID, "pass")
