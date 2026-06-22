@@ -2,6 +2,14 @@
 
 import re
 
+from .common import has_required_field
+from .results import checker_result
+
+GIT_ADD_DOT_CHECKER_ID = "forbidden.git_add_dot"
+CODE_DIFF_ONLY_READINESS_CHECKER_ID = "trace_ready.code_diff_only_readiness_claim"
+LOW_RISK_CLEANUP_CHECKER_ID = "trace_ready.low_risk_cleanup_claim"
+MISSING_TARGET_READER_CHECKER_ID = "artifact.missing_target_reader"
+
 
 def forbidden_git_add_dot_suggestion(text):
     command_re = re.compile(r"(^|\n)\s*(?:[$>]?\s*)git\s+add\s+\.(?:\s|$)", re.IGNORECASE)
@@ -18,6 +26,18 @@ def forbidden_git_add_dot_suggestion(text):
         if not negation_re.search(line):
             return True
     return False
+
+
+def check_git_add_dot(text):
+    if forbidden_git_add_dot_suggestion(text):
+        return checker_result(
+            GIT_ADD_DOT_CHECKER_ID,
+            "fail",
+            severity="p2",
+            fix_locus="skill_output_contract",
+            notes=["forbidden git add . suggestion"],
+        )
+    return checker_result(GIT_ADD_DOT_CHECKER_ID, "pass")
 
 
 def has_diff_only_readiness_pass_claim(text):
@@ -54,6 +74,18 @@ def has_diff_only_readiness_pass_claim(text):
         if labeled_positive.search(stripped) or english_positive.search(stripped) or chinese_positive.search(stripped):
             return True
     return False
+
+
+def check_code_diff_only_readiness(text):
+    if has_diff_only_readiness_pass_claim(text):
+        return checker_result(
+            CODE_DIFF_ONLY_READINESS_CHECKER_ID,
+            "fail",
+            severity="p2",
+            fix_locus="behavior_contract",
+            notes=["code-diff-only row claimed pass or readiness"],
+        )
+    return checker_result(CODE_DIFF_ONLY_READINESS_CHECKER_ID, "pass")
 
 
 def has_archive_or_branch_cleanup_ready_claim(text):
@@ -95,3 +127,26 @@ def has_archive_or_branch_cleanup_ready_claim(text):
             return True
     return False
 
+
+def check_low_risk_cleanup_claim(text):
+    if has_archive_or_branch_cleanup_ready_claim(text):
+        return checker_result(
+            LOW_RISK_CLEANUP_CHECKER_ID,
+            "fail",
+            severity="p2",
+            fix_locus="behavior_contract",
+            notes=["low-risk exception claimed archive or branch cleanup readiness"],
+        )
+    return checker_result(LOW_RISK_CLEANUP_CHECKER_ID, "pass")
+
+
+def check_missing_target_reader(text):
+    if not has_required_field(text, "Target Reader"):
+        return checker_result(
+            MISSING_TARGET_READER_CHECKER_ID,
+            "fail",
+            severity="p2",
+            fix_locus="artifact_policy",
+            notes=["artifact header missing Target Reader"],
+        )
+    return checker_result(MISSING_TARGET_READER_CHECKER_ID, "pass")
