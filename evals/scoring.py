@@ -116,14 +116,27 @@ def infer_score_subject(result, expected_skill, suite):
 
     route_boundary = str(result.get("route_boundary") or "").lower()
     suite_text = suite.lower()
-    if expected_skill == "verify" or "verify" in suite_text or "verify" in route_boundary:
-        return "verify"
-    if "review" in suite_text or "review" in route_boundary:
-        return "review"
-    if "routing" in suite_text or "routing" in route_boundary:
-        return "routing"
-    if "closeout" in suite_text or "closeout" in route_boundary:
+    if "closeout" in route_boundary:
         return "closeout"
+    if "review" in route_boundary:
+        return "review"
+    if "routing" in route_boundary:
+        return "routing"
+    if "verify" in route_boundary:
+        return "verify"
+
+    if expected_skill == "verify":
+        return "verify"
+    if expected_skill == "dispatch" and "review" in suite_text:
+        return "review"
+    if "routing" in suite_text:
+        return "routing"
+    if "closeout" in suite_text:
+        return "closeout"
+    if "review" in suite_text and "verify" not in suite_text:
+        return "review"
+    if "verify" in suite_text:
+        return "verify"
     return "generic"
 
 

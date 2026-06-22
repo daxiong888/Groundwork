@@ -71,6 +71,21 @@ class ScoringTests(unittest.TestCase):
         self.assertEqual(score["failure_type"], "codex_timeout")
         self.assertEqual(self.validate_score(score), [])
 
+    def test_clean_review_boundary_infers_review_subject(self):
+        score = scoring.score_from_result(
+            {
+                "id": "clean-review",
+                "suite": "trace-first-verify-review.csv",
+                "expected_route": "dispatch",
+                "actual_route": "dispatch",
+                "route_boundary": "clean-review-fanout",
+                "verdict": "pass",
+            }
+        )
+
+        self.assertEqual(score["score_subject"], "review")
+        self.assertEqual(self.validate_score(score), [])
+
 
 if __name__ == "__main__":
     unittest.main()
