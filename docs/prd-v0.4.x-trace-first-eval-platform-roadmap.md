@@ -153,6 +153,11 @@ evals/schema_validation.py
 evals/scoring.py
 ```
 
+Schema convention:
+
+- Schema files live under `schemas/`.
+- Schema files use JSON Schema 2020-12.
+
 Required behavior:
 
 - Existing `evals/run_runtime.py --validate-schema` continues to work.
@@ -434,13 +439,12 @@ v0.4.5 gates:
 
 ## 13. Open Questions
 
-1. Should v0.4.2 introduce schemas under `schemas/` or under `evals/schemas/`?
-2. Should score JSON be written during every runtime run or only when an explicit `--score-json` option is enabled first?
-3. Should deterministic checks remain callable from `evals/run_runtime.py` or become an importable package with a small CLI?
-4. Should raw trace promotion default to `.groundwork/harness/` and copy only redacted summaries into `artifacts/evals/`?
-5. Should CI workflow be added in v0.4.5, or should the first version document local CI-equivalent commands only?
-6. Should `review` remain only a schema/lens name for the entire v0.4.x line, with no public skill until a separate accepted PRD?
-7. Which v0.4.x increment should own the larger 20+ fixture suite: v0.4.4, v0.4.5, or v0.5.0 promotion?
+1. Should score JSON be written during every runtime run or only when an explicit `--score-json` option is enabled first?
+2. Should deterministic checks remain callable from `evals/run_runtime.py` or become an importable package with a small CLI?
+3. Should raw trace promotion default to `.groundwork/harness/` and copy only redacted summaries into `artifacts/evals/`?
+4. Should CI workflow be added in v0.4.5, or should the first version document local CI-equivalent commands only?
+5. Should `review` remain only a schema/lens name for the entire v0.4.x line, with no public skill until a separate accepted PRD?
+6. Which v0.4.x increment should own the larger 20+ fixture suite: v0.4.4, v0.4.5, or v0.5.0 promotion?
 
 ---
 

@@ -58,6 +58,8 @@ Add the shared schema foundation for verdicts, workflow routes, execution primit
 Acceptance Criteria:
 
 - Add `schemas/groundwork-common.schema.json` or accepted equivalent location.
+- Use `schemas/` as the schema root.
+- Use JSON Schema 2020-12.
 - Define `overall_verdict: pass | partial | fail | blocked`.
 - Define workflow route enum for existing public skill routes, direct fallback, runtime-safety-gate where appropriate, and unknown.
 - Define execution primitive enum for local direct/artifact, worktree isolated/review-only, automation candidate, subagent review candidate, blocked no-execution, not applicable, and unknown.
@@ -115,8 +117,7 @@ Goal Contract Status: `not_generated_by_to_issues`.
 
 Goal Contract Missing Fields:
 
-- JSON Schema draft version.
-- Whether schema files live under `schemas/` or `evals/schemas/`.
+- None.
 
 Runtime Missing Fields:
 
@@ -124,7 +125,7 @@ Runtime Missing Fields:
 
 Ready-for-Agent Missing Fields:
 
-- Maintainer decision on schema directory.
+- None for V042-001.
 
 Triage Recommendation Candidate: `ready-for-agent candidate`.
 
@@ -1299,7 +1300,7 @@ V042-001 -> V042-002 -> V042-003 -> V042-004
 
 ## Minimal Next Step
 
-Run `triage` on V042-001 and V042-002 together only if the maintainer is ready to decide schema location and JSON Schema draft. Otherwise start with V042-001 alone.
+Run `triage` on V042-002 and V042-003 together only if the maintainer is ready to decide score JSON write behavior and schema validation dependency policy. V042-001 has a confirmed schema root of `schemas/` and uses JSON Schema 2020-12.
 
 ---
 
