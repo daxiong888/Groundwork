@@ -65,4 +65,12 @@ jobs:
           python evals/patch_suggestions.py --run-dir evals/fixtures/patch-suggestions >/tmp/groundwork-patch-suggestions.json
 
       - name: Whitespace
-        run: git diff --check
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch origin "${{ github.base_ref }}" --depth=1
+            git diff --check "origin/${{ github.base_ref }}...HEAD"
+          elif git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+            git diff --check HEAD^..HEAD
+          else
+            git diff --check HEAD
+          fi
