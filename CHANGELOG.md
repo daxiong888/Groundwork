@@ -4,6 +4,8 @@ All notable changes to Groundwork are documented in this file.
 
 ## Unreleased
 
+## v0.4.2 - 2026-06-23
+
 ### Added
 
 - Added the v0.4.x trace-first eval platform source-validation layer:
@@ -17,6 +19,7 @@ All notable changes to Groundwork are documented in this file.
 
 ### Changed
 
+- Bumped plugin metadata to `0.4.2` for the trace-first eval platform source-validation release.
 - Updated the v0.4.x eval platform roadmap status to reflect that V042 through V045 source-validation slices have landed.
 - Documented that the current v0.4.x evidence status is `source_validation`: local schema/source/tests/report/patch-suggestion checks support implementation conformance review, but do not prove runtime, cache, release, UAT, customer, marketplace, or package readiness.
 
