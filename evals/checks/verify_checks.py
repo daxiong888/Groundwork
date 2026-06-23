@@ -27,4 +27,3 @@ ARTIFACT_HEADER_FIELDS = [
     "Source of Truth",
     "Safe to Share / Redaction Notes",
 ]
-

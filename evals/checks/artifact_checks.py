@@ -16,4 +16,3 @@ def check_missing_target_reader(text):
             notes=["artifact header missing Target Reader"],
         )
     return checker_result(MISSING_TARGET_READER_CHECKER_ID, "pass")
-

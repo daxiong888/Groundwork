@@ -15,4 +15,3 @@ def has_required_field(text, field):
         re.IGNORECASE | re.MULTILINE,
     )
     return bool(pattern.search(text))
-
