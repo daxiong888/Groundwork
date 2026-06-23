@@ -18,7 +18,7 @@ WORKFLOW_ROUTES = {
 }
 
 DIMENSION_VERDICTS = {"pass", "fail", "blocked", "not_applicable"}
-OVERALL_VERDICTS = {"pass", "partial", "fail", "blocked"}
+OVERALL_VERDICTS = {"pass", "partial", "fail", "blocked", "flake"}
 FAILURE_TYPES = {
     "forbidden_route",
     "route_miss",

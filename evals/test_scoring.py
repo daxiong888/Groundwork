@@ -71,6 +71,21 @@ class ScoringTests(unittest.TestCase):
         self.assertEqual(score["failure_type"], "codex_timeout")
         self.assertEqual(self.validate_score(score), [])
 
+    def test_flake_overall_verdict_is_preserved(self):
+        score = scoring.score_from_result(
+            {
+                "id": "accepted-flake",
+                "suite": "routing-reliability.csv",
+                "verdict": "flake",
+                "failure_type": "none",
+                "notes": "passed on rerun after fail",
+            }
+        )
+
+        self.assertEqual(score["overall_verdict"], "flake")
+        self.assertEqual(score["failure_type"], "none")
+        self.assertEqual(self.validate_score(score), [])
+
     def test_clean_review_boundary_infers_review_subject(self):
         score = scoring.score_from_result(
             {

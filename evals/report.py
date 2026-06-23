@@ -71,7 +71,7 @@ def verdict_for_result(result):
 
 
 def is_nonpass_result(result):
-    return verdict_for_result(result) not in {"pass", "not_applicable"}
+    return verdict_for_result(result) not in {"pass", "flake", "not_applicable"}
 
 
 def sorted_counts(counter):

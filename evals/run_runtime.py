@@ -12,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 
-from checks.common import missing_required_fields
+from checks.common import has_required_field, missing_required_fields
 from checks.forbidden_patterns import (
     forbidden_git_add_dot_suggestion,
     has_archive_or_branch_cleanup_ready_claim,

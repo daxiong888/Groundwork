@@ -63,6 +63,25 @@ class ReportTests(unittest.TestCase):
         self.assertIn("invalid JSON", output)
         self.assertIn("- pass: 1", output)
 
+    def test_report_treats_flake_as_non_failure(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            (run_dir / "summary.json").write_text(
+                '{"counts":{"flake":1},"suites":["smoke.csv"],"failures":[]}\n',
+                encoding="utf-8",
+            )
+            (run_dir / "results.jsonl").write_text(
+                '{"id":"flake-001","suite":"smoke.csv","verdict":"flake","notes":"passed on rerun"}\n',
+                encoding="utf-8",
+            )
+
+            output = report.render_report(run_dir)
+
+        self.assertIn("- flake: 1", output)
+        self.assertIn("- No non-pass cases.", output)
+        self.assertIn("- No top regressions detected.", output)
+        self.assertNotIn("`flake-001` [smoke.csv] flake", output)
+
     def test_report_contains_evidence_boundary(self):
         output = self.render_fixture()
 

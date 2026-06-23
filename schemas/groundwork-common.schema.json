@@ -17,6 +17,7 @@
       "enum": [
         "pass",
         "partial",
+        "flake",
         "fail",
         "blocked"
       ]
