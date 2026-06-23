@@ -7,9 +7,9 @@ Artifact Type: roadmap PRD.
 Source of Truth: PR #63 compact v0.4.1 scope, `docs/prd-v0.4.1-trace-first-verify-review-eval.md`, `evals/run_runtime.py`, `docs/skill-success-metrics.md`, v0.4.0 native worktree/handoff governance boundaries, and the earlier Groundwork iteration research note recommending nightly evaluation plus patch proposals without automatic skill mutation.
 Scope: v0.4.2 through v0.4.5 planning for schema-backed scoring, deterministic checker modularization, trace artifact/diagnostics, eval reports, patch suggestions, CI gates, and release-evidence boundaries.
 Out of Scope: Public skill expansion, runtime ownership, automatic Codex worktree creation, default subagent spawning, automation scheduling, MCP/hooks/task CRUD, dashboards/databases, automatic skill mutation, automatic PR/issue creation, release readiness claims from docs or schema edits alone, and v0.5 product packaging decisions.
-Evidence Level: Planning artifact derived from current repository contracts and PR #63 validation notes. No runtime baseline, installed-plugin cache equivalence, release readiness, UAT readiness, or customer readiness is claimed by this document.
+Evidence Level: Roadmap plus source-validation status note. V042 through V045 source-validation slices have landed in this repository, but no runtime baseline, installed-plugin cache equivalence, release readiness, UAT readiness, customer readiness, marketplace readiness, or package readiness is claimed by this document.
 Safe to Share / Redaction Notes: Safe to share as a design artifact. It contains no secrets, credentials, private URLs, browser cookies, PII, raw traces, logs, or production data.
-Status: Draft for maintainer review.
+Status: Source-validation roadmap implemented for V042 through V045; v0.5.0 promotion remains deferred until runtime/release evidence exists.
 Version Track: v0.4.x after compact v0.4.1.
 Last Updated: 2026-06-22.
 
@@ -62,21 +62,32 @@ v0.4.5  CI minimum gate and release-evidence policy
 
 The key product rule remains the same: Groundwork learns through evidence and patch proposals, but it does not automatically mutate main skills, spawn subagents, schedule automations, create worktrees, or claim release readiness without runtime evidence.
 
+## 3.1 Current Implementation Status
+
+The V042 through V045 slices have been implemented as a source-validation eval platform layer:
+
+| Version slice | Capability status | Evidence status |
+| --- | --- | --- |
+| v0.4.2 | Schemas under `schemas/`, dependency-free schema validation, score dict adapter, sample score fixtures, and metrics documentation are present. | `source_validation` only; score schemas and fixtures are not runtime evidence. |
+| v0.4.3 | Deterministic checks are extracted into `evals/checks/`, stable checker ids and checker result objects are present, and checker documentation/tests cover the v0.4.1 hard-negative cases. | `source_validation` only; checker unit tests are not runtime/cache/release evidence. |
+| v0.4.4 | Trace artifact layout/redaction policy, trace diagnostics parser, report generator, and proposal-only patch suggestions are present. | `source_validation` only; reports and patch suggestions are review artifacts, not runtime/release/UAT/customer evidence. |
+| v0.4.5 | Schema/source CI workflow, optional runtime eval gate documentation, and release evidence claim template are present. | `source_validation` for local/CI source checks. Hosted GitHub Actions run evidence is not attached in this repository state. |
+
+The current status can support implementation conformance review of the v0.4.x source-validation platform. It must not be used to claim runtime readiness, installed plugin cache equivalence, release readiness, UAT readiness, customer readiness, marketplace readiness, or package readiness.
+
 ---
 
 ## 4. Problem Statement
 
-PR #63 proves that trace-ready rows can extend the existing runner without expanding Groundwork runtime ownership. However, the current implementation is still a compact slice:
+PR #63 proved that trace-ready rows could extend the existing runner without expanding Groundwork runtime ownership. The follow-up V042 through V045 slices have since implemented the source-validation platform layer, while runtime/release promotion remains intentionally deferred:
 
-- route and evidence checks are still largely runner-local;
-- score output is not yet a stable JSON artifact;
-- schemas are not yet explicit files;
-- deterministic checks are not yet modular;
-- raw trace diagnostics are not yet first-class;
-- report generation and patch suggestions are not yet durable artifacts;
-- CI gates are not yet defined as schema-only versus runtime-optional layers.
+- score output is schema-backed, but score JSON is still not runtime evidence;
+- deterministic checks are modular and named, but checker results are still source-validation evidence unless tied to a real runtime run;
+- trace diagnostics, reports, and patch suggestions exist, but raw traces require scratch/redaction handling before promotion;
+- CI/source gates are defined, but hosted CI run evidence and optional runtime evidence are separate claims;
+- release, UAT, customer, marketplace, and package readiness require evidence outside this roadmap document.
 
-If these are all attempted in one release, the version becomes too broad and hard to verify. If they are not planned, later work may re-expand v0.4.1 or blur evidence boundaries. The v0.4.x roadmap exists to keep each increment small, reviewable, and honest about what evidence it actually adds.
+The v0.4.x roadmap keeps each increment small, reviewable, and honest about what evidence it actually adds. The next promotion step is not more source scaffolding; it is repeated runtime/release evidence collection under explicit installed-plugin, source/cache, redaction, and limitation fields.
 
 ---
 
@@ -437,17 +448,18 @@ v0.4.5 gates:
 
 ---
 
-## 13. Open Questions
+## 13. Deferred Promotion Questions
 
-1. Should score JSON be written during every runtime run or only when an explicit `--score-json` option is enabled first?
-2. Should deterministic checks remain callable from `evals/run_runtime.py` or become an importable package with a small CLI?
-3. Should raw trace promotion default to `.groundwork/harness/` and copy only redacted summaries into `artifacts/evals/`?
-4. Should CI workflow be added in v0.4.5, or should the first version document local CI-equivalent commands only?
-5. Should `review` remain only a schema/lens name for the entire v0.4.x line, with no public skill until a separate accepted PRD?
-6. Which v0.4.x increment should own the larger 20+ fixture suite: v0.4.4, v0.4.5, or v0.5.0 promotion?
+These questions are no longer blockers for V042 through V045 source-validation work. They belong to a later v0.5.0 promotion or runtime-evidence track:
+
+1. Should score JSON be written during every runtime run or only when an explicit score-output option is enabled?
+2. Should deterministic checks become a user-facing CLI, or remain an importable eval harness package?
+3. What exact hosted GitHub Actions run evidence should be attached before calling the schema/source workflow verified in CI rather than locally validated?
+4. Should `review` remain only a schema/lens name for the v0.4.x line, with no public skill until a separate accepted PRD?
+5. Which v0.5.0 promotion slice should own the larger 20+ fixture suite?
 
 ---
 
 ## 14. Next Action
 
-Use the companion issue map at `artifacts/v0.4.x-trace-first-eval-platform-roadmap/issue-map.md` to decide whether v0.4.2 should start with schema files or a score JSON spike. Do not start CI or trace diagnostics before the score contract is stable.
+Close V045-004 after changelog and release docs are reviewed. Then move to a v0.5.0 promotion plan only if maintainers want to collect repeated runtime evidence, hosted CI evidence, installed plugin cache/source equivalence, and larger fixture coverage. Do not claim runtime, cache, release, UAT, customer, marketplace, or package readiness from the v0.4.x source-validation platform alone.
