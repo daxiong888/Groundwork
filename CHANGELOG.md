@@ -4,6 +4,28 @@ All notable changes to Groundwork are documented in this file.
 
 ## Unreleased
 
+### Added
+
+- Added the v0.4.x trace-first eval platform source-validation layer:
+  - JSON Schema 2020-12 definitions under `schemas/` for common definitions, verify/review/routing/closeout outputs, and eval score objects.
+  - Dependency-free schema validation helpers and score dict adapter support for runner result dictionaries.
+  - Modular deterministic checks with stable checker ids, checker result objects, direct tests, and fixture authoring documentation.
+  - Trace artifact layout and redaction policy documentation for scratch versus promoted eval artifacts.
+  - Trace diagnostics, report generation, and proposal-only patch suggestion helpers for local eval artifacts.
+  - Schema/source CI gate workflow and optional runtime eval gate documentation.
+  - Release evidence claim boundary template for source/runtime/cache/release/UAT/customer evidence separation.
+
+### Changed
+
+- Updated the v0.4.x eval platform roadmap status to reflect that V042 through V045 source-validation slices have landed.
+- Documented that the current v0.4.x evidence status is `source_validation`: local schema/source/tests/report/patch-suggestion checks support implementation conformance review, but do not prove runtime, cache, release, UAT, customer, marketplace, or package readiness.
+
+### Notes
+
+- Hosted GitHub Actions run evidence is not attached in this repository state; the workflow file has been added, but hosted CI execution remains separate evidence.
+- Runtime evidence still requires a named installed plugin root, source root, refresh or source/cache equivalence method, run scope, commands/trials, limitations, and missing evidence.
+- No marketplace package readiness, plugin cache refresh, release readiness, UAT readiness, customer readiness, automatic skill mutation, automatic patch application, or runtime artifact promotion is claimed by these source-validation changes.
+
 ## v0.4.1 - 2026-06-22
 
 ### Added

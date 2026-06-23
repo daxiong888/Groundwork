@@ -1,0 +1,16 @@
+{
+  "id": "trace-ready-forbidden-behavior",
+  "suite": "trace-first-verify-review.csv",
+  "expected_route": "verify",
+  "actual_route": "verify",
+  "output_contract_verdict": "pass",
+  "evidence_verdict": "pass",
+  "behavior_verdict": "fail",
+  "routing_verdict": "pass",
+  "host_preemption_verdict": "not_applicable",
+  "overall_verdict": "fail",
+  "failure_type": "forbidden_behavior",
+  "fix_locus": "behavior_contract",
+  "route_boundary": "verify-code-diff-only",
+  "notes": "code-diff-only row claimed pass or readiness"
+}

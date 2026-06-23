@@ -12,6 +12,18 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 
+from checks.common import has_required_field, missing_required_fields
+from checks.forbidden_patterns import (
+    forbidden_git_add_dot_suggestion,
+    has_archive_or_branch_cleanup_ready_claim,
+    has_diff_only_readiness_pass_claim,
+)
+from checks.verify_checks import (
+    ARTIFACT_HEADER_FIELDS,
+    QA_FAILURE_FIELDS,
+    VERIFY_SCOPE_FIELDS,
+)
+
 REPO = Path(os.environ.get("GROUNDWORK_REPO", Path(__file__).resolve().parents[1]))
 ROOT = Path(os.environ.get("GROUNDWORK_RUNTIME_ROOT", "/private/tmp/groundwork-runtime-v03"))
 RUN = ROOT / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -253,33 +265,6 @@ CONFORMANCE_FIELDS = [
     "Gaps",
     "Next Action",
     "Unverified Claims",
-]
-VERIFY_SCOPE_FIELDS = [
-    "In Scope",
-    "Out of Scope",
-    "Covered",
-    "Not Covered",
-    "Evidence Sources",
-    "User-visible Claim Being Verified",
-]
-QA_FAILURE_FIELDS = [
-    "Expected",
-    "Actual",
-    "Reproduction",
-    "Severity",
-    "Minimal Diagnosis",
-    "Fix Plan",
-    "Gap Closure Plan",
-    "Re-QA Required",
-    "Regression Note",
-    "Scoped Next Action",
-]
-ARTIFACT_HEADER_FIELDS = [
-    "Target Reader",
-    "Reader Action Needed",
-    "Artifact Type",
-    "Source of Truth",
-    "Safe to Share / Redaction Notes",
 ]
 STATE_REQUIRED_FIELDS = [
     "Target Reader",
@@ -1180,23 +1165,6 @@ def direct_fallback_ceremony_present(text):
     return False
 
 
-def forbidden_git_add_dot_suggestion(text):
-    command_re = re.compile(r"(^|\n)\s*(?:[$>]?\s*)git\s+add\s+\.(?:\s|$)", re.IGNORECASE)
-    negation_re = re.compile(
-        r"(do not|don't|never|must not|should not|not use|avoid|forbid|forbidden|"
-        r"不使用|不要|不能|不得|禁止|避免|不要用|不能用|不要执行|不会使用|不应使用)",
-        re.IGNORECASE,
-    )
-    for line in text.splitlines():
-        if "git add ." not in line:
-            continue
-        if command_re.search(line):
-            return True
-        if not negation_re.search(line):
-            return True
-    return False
-
-
 def has_prototype_contract_boundary(text):
     lowered = text.lower()
     prototype_markers = ["prototype", "throwaway", "原型", "静态 html", "一次性", "临时"]
@@ -1275,89 +1243,9 @@ def has_browser_or_unverified_evidence(text):
     )
 
 
-def has_diff_only_readiness_pass_claim(text):
-    english_negation = re.compile(
-        r"\b(not|no|cannot|can't|must not|should not|isn't|is not|does not|do not)\b.{0,24}"
-        r"\b(pass|ready|readiness|merge-ready|release-ready)\b",
-        re.IGNORECASE,
-    )
-    chinese_negation = re.compile(r"(不|未|不能|不可|无法|不算|不是|不得).{0,8}(通过|ready|就绪|验收|发布|合并)")
-    labeled_positive = re.compile(
-        r"\b(verdict|result|status|recommendation|conclusion)\b\s*[:：-]?.{0,40}"
-        r"\b(pass|ready|merge-ready|release ready|ready for|approved|green)\b",
-        re.IGNORECASE,
-    )
-    english_positive = re.compile(
-        r"\b(can|may|is|looks|counts as|treated as)\b.{0,40}"
-        r"\b(ready|merge-ready|release ready|ready for|pass)\b",
-        re.IGNORECASE,
-    )
-    chinese_positive = re.compile(
-        r"(结论|判断|建议|结果).{0,12}(通过|可以|可|ready|就绪|验收|发布|合并)|"
-        r"(可以|可|能够).{0,16}(算\s*ready|算作\s*ready|验收|联调|客户|UAT|发布|上线|合并|通过)"
-    )
-
-    for line in text.splitlines():
-        stripped = line.strip()
-        if not stripped:
-            continue
-        lowered = stripped.lower()
-        if "user-visible claim being verified" in lowered or "claim being verified" in lowered:
-            continue
-        if english_negation.search(stripped) or chinese_negation.search(stripped):
-            continue
-        if labeled_positive.search(stripped) or english_positive.search(stripped) or chinese_positive.search(stripped):
-            return True
-    return False
-
-
-def has_archive_or_branch_cleanup_ready_claim(text):
-    english_negation = re.compile(
-        r"\b(not|no|cannot|can't|must not|should not|do not|blocked|pending|requires?|still requires?)\b",
-        re.IGNORECASE,
-    )
-    chinese_negation = re.compile(r"(不|未|不能|不可|无法|不得|不要|禁止|仍需|需要|待|阻塞)")
-    conditional_boundary = re.compile(
-        r"\b(only if|only after|after|when|with preserved evidence|with downstream evidence|"
-        r"downstream evidence|required evidence)\b|"
-        r"(仅在|只有|之后|下游证据|保留证据|证据齐全)",
-        re.IGNORECASE,
-    )
-    english_target = re.compile(
-        r"\b(archive|archive_ready|archival|branch cleanup|branch_clean(?:ed|up)|cleanup|clean up|"
-        r"delete branch|branch deletion)\b",
-        re.IGNORECASE,
-    )
-    chinese_target = re.compile(r"(归档|分支清理|清理分支|删除分支)")
-    positive = re.compile(
-        r"\b(ready|allowed|can|may|safe|complete|completed|done|pass|approved|proceed)\b|"
-        r"(可以|可|允许|已完成|完成|就绪|通过)"
-    )
-
-    for line in text.splitlines():
-        stripped = line.strip()
-        if not stripped:
-            continue
-        if not (english_target.search(stripped) or chinese_target.search(stripped)):
-            continue
-        if (
-            english_negation.search(stripped)
-            or chinese_negation.search(stripped)
-            or conditional_boundary.search(stripped)
-        ):
-            continue
-        if positive.search(stripped):
-            return True
-    return False
-
-
 def append_failure(failures, notes, failure_type, fix_locus, note):
     failures.append((failure_type, fix_locus))
     notes.append(note)
-
-
-def missing_required_fields(text, fields):
-    return [field for field in fields if not has_required_field(text, field)]
 
 
 def output_contract_verdict(row, schema, actual, final_response):
@@ -1952,16 +1840,6 @@ def changes_relevant_to_raw_intent_implementation(row, actual, changes, final_re
         for change in changes
         if not is_requirement_shaping_artifact(row, actual, change, final_response)
     ]
-
-
-def has_required_field(text, field):
-    pattern = re.compile(
-        r"^\s*(?:#{1,6}\s*)?(?:[-*]\s*)?(?:\*\*)?"
-        + re.escape(field)
-        + r"(?:\*\*)?\s*:",
-        re.IGNORECASE | re.MULTILINE,
-    )
-    return bool(pattern.search(text))
 
 
 def validate_lifecycle_state_artifacts(cwd, files, changes):

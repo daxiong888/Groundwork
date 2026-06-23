@@ -46,6 +46,8 @@ The v0.3.4 governance baseline hardens the current nine public skills without ad
 
 The v0.4.0 native worktree handoff alignment shrinks Groundwork back toward route, policy, evidence, handoff, and closeout governance around Codex-native worktrees. It adds native handoff and closeout package contracts, `.worktreeinclude` safety guidance, release-evidence claim boundaries, and eval coverage while keeping Codex App/runtime adapters responsible for actual worktree creation, Handoff execution, runtime execution, and cleanup operations.
 
+The v0.4.x trace-first eval platform work adds a source-validation layer for schema-backed score objects, deterministic checker ids, trace artifact policy, trace diagnostics, eval reports, proposal-only patch suggestions, schema/source CI, optional runtime eval guidance, and release evidence claim templates. Its current evidence status is `source_validation`: local schemas, fixtures, unit tests, source checks, reports, and patch suggestions support implementation review, but they are not runtime, cache, release, UAT, customer, marketplace, or package-readiness evidence.
+
 This repository currently contains:
 
 - project vision and boundaries
@@ -56,6 +58,7 @@ This repository currently contains:
 - Codex plugin manifest
 - nine public skills, including `dispatch`
 - native Codex worktree/handoff governance contracts for v0.4.0
+- v0.4.x trace-first eval platform source-validation docs, schemas, helpers, checker modules, reports, patch suggestions, CI workflow, and release evidence claim template
 - skill trigger fixtures
 - structured smoke and safety fixtures
 - skill reliability fixtures

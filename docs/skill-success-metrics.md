@@ -81,6 +81,58 @@ Regression records for accepted routing failures must include:
 - sample-backfill decision: `add_row`, `update_row`, `covered_by_existing_row`, or `no_backfill_with_reason`;
 - verification evidence after fix or deferral.
 
+## v0.4.2 Schema-backed Score Fields
+
+Schema-backed scores are optional per-case score artifacts for trace-ready eval work. They document score shape and adapter vocabulary; they do not replace legacy `results.jsonl`, `summary.json`, or `routing_summary` outputs.
+
+Schema files:
+
+- `schemas/groundwork-common.schema.json`
+- `schemas/groundwork-verify.schema.json`
+- `schemas/groundwork-review.schema.json`
+- `schemas/groundwork-routing.schema.json`
+- `schemas/groundwork-closeout.schema.json`
+- `schemas/groundwork-eval-score.schema.json`
+
+Per-case score wrapper fields:
+
+- `metadata`
+- `case_id`
+- `suite`
+- `score_subject`
+- `expected_skill`
+- `triggered_skill`
+- `expected_execution_primitive`
+- `selected_execution_primitive`
+- `output_contract_verdict`
+- `evidence_verdict`
+- `behavior_verdict`
+- `routing_verdict`
+- `host_preemption_verdict`
+- `overall_verdict`
+- `failure_type`
+- `fix_locus`
+- `checker_results`
+- `notes`
+
+`score_subject` classifies the score lens as `verify`, `review`, `routing`, `closeout`, or `generic`. It is not a skill route. `review` is a schema/lens vocabulary value only and must not be advertised as a public Groundwork skill.
+
+`evals/scoring.py` provides a pure adapter from current runner result dictionaries to this score wrapper. It does not change `evals/run_runtime.py` default output, write score artifacts by default, introduce runtime eval, or require new dependencies.
+
+## Trace-ready Rows and Routing Compatibility
+
+- `trace_ready_rows` is the preferred count for rows using the routing/trace-ready verdict model.
+- `routing_rows` remains a legacy-compatible alias for existing consumers.
+- `routing_summary` remains the run-level summary for trace-ready route/verdict rows.
+- Legacy prompt suites may continue to omit trace-ready routing fields and may continue using the skill-level metrics above.
+- The score adapter uses `expected_skill` and `triggered_skill` as score wrapper field names, while runner route fields remain `expected_route` and `actual_route`.
+
+## Schema Score Evidence Boundary
+
+Schema validation proves only that a score artifact follows the expected shape. It is source/schema validation evidence, not runtime, cache-refresh, release, UAT, or customer-readiness evidence.
+
+Runtime or release evidence must name the installed plugin root, source root, refresh or source/cache equivalence method, run scope, commands or trials, limitations, and missing evidence. Score schemas, score fixtures, adapter tests, and local CSV/schema checks must not be used alone to claim runtime behavior, release readiness, UAT readiness, customer readiness, plugin-cache freshness, or marketplace equivalence.
+
 ## Measurement Token Rules
 
 Routing rows use finite measurement tokens for `output_contract` and `evidence_required`. They are not arbitrary prose and must not silently pass through fuzzy text judgment.

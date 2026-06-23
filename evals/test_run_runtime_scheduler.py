@@ -1144,6 +1144,41 @@ class RuntimeSchedulerTests(unittest.TestCase):
         self.assertEqual(state_files, [])
         self.assertEqual(errors, [])
 
+    def test_lifecycle_state_artifact_required_fields_are_checked(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            state = root / "artifacts" / "admin-user-filter" / "STATE.md"
+            state.parent.mkdir(parents=True)
+            state.write_text(
+                "\n".join(
+                    [
+                        "Target Reader: maintainer",
+                        "Reader Action Needed: continue",
+                        "Decision Supported: resume scoped work",
+                        "Scope: admin user filter",
+                        "Out of Scope: release readiness",
+                        "Evidence Level: local state only",
+                        "Last Updated: 2026-06-23T00:00:00Z",
+                        "Canonical Sources: issue map",
+                        "Current Workflow Mode: implement",
+                        "Current Gap Closure: none",
+                        "Next Skill: verify",
+                        "Stop Condition: reviewed",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            state_files, errors = run_runtime.validate_lifecycle_state_artifacts(
+                root,
+                ["artifacts/admin-user-filter/STATE.md"],
+                ["A artifacts/admin-user-filter/STATE.md"],
+            )
+
+        self.assertEqual(state_files, ["artifacts/admin-user-filter/STATE.md"])
+        self.assertEqual(errors, [])
+
     def test_external_non_groundwork_skill_hits_do_not_become_actual_route(self):
         actual, hits = run_runtime.parse_actual_skill(
             "/Users/me/.codex/plugins/cache/openai-curated/superpowers/skills/using-superpowers/SKILL.md",

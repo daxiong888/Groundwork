@@ -1,0 +1,78 @@
+name: evals
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - v0.4.x-trace-first-roadmap
+
+jobs:
+  schema-source-gate:
+    name: Schema and source gate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Python syntax
+        run: |
+          python -m py_compile \
+            evals/run_runtime.py \
+            evals/schema_validation.py \
+            evals/scoring.py \
+            evals/report.py \
+            evals/patch_suggestions.py
+
+      - name: Prompt CSV parse
+        run: |
+          python - <<'PY'
+          import csv
+          from pathlib import Path
+
+          for path in sorted(Path("evals/prompts").glob("*.csv")):
+              with path.open(newline="", encoding="utf-8") as handle:
+                  list(csv.DictReader(handle))
+          print("csv ok")
+          PY
+
+      - name: Unit tests
+        run: |
+          python -m unittest evals.test_schema_validation
+          python -m unittest evals.test_scoring
+          python -m unittest evals.test_checks
+          python -m unittest evals.test_trace_diagnostics
+          python -m unittest evals.test_report
+          python -m unittest evals.test_patch_suggestions
+          PYTHONPATH=evals python -m unittest evals.test_run_runtime_scheduler
+
+      - name: Trace-ready schema validation
+        run: |
+          python evals/run_runtime.py --validate-schema --suite trace-first-verify-review.csv
+
+      - name: Fixture CLIs
+        run: |
+          python evals/schema_validation.py schemas/groundwork-eval-score.schema.json evals/fixtures/score/valid-eval-score.json
+          python evals/report.py --run-dir evals/fixtures/report >/tmp/groundwork-report.md
+          python evals/patch_suggestions.py --run-dir evals/fixtures/patch-suggestions >/tmp/groundwork-patch-suggestions.json
+
+      - name: Whitespace
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch origin "${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}" --depth=1
+            git diff --check "origin/${{ github.base_ref }}...HEAD"
+          elif git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+            git diff --check HEAD^..HEAD
+          else
+            git diff --check HEAD
+          fi
