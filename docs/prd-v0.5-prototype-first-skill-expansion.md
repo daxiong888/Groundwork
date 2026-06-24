@@ -539,7 +539,7 @@ skills/prototype/SKILL.md
 evals/prompts/v0.5-grill.csv
 ```
 
-Dependencies: V050-001.
+Dependencies: V050-001 and V050-001A.
 
 ### V050-003B: Public `grill` Skill
 
@@ -670,7 +670,11 @@ evals/prompts/v0.5-role-separation.csv
 evals/prompts/v0.5-prototype-lab.csv
 ```
 
-Dependencies: V050-001 through V050-006B.
+Dependencies:
+
+- V050-001, V050-001A, V050-001B, V050-002.
+- V050-003A, V050-004A, V050-005A, V050-005B, V050-005C, V050-006A.
+- Any publicization slices that are accepted into v0.5.
 
 ---
 
