@@ -26,6 +26,7 @@ Should trigger:
 Should not trigger:
 
 - The user only needs PRD wording; use `to-prd`.
+- The user explicitly asks for grilling or broad planning clarification before a concrete prototype question exists; use `skills/_shared/GRILLING.md` and route to `to-prd`, decision mapping, or `prototype` only after the next question is clear.
 - The user asks to implement production code; use `implement`.
 - The user asks for readiness evidence after implementation; use `verify`.
 - The user asks to verify frontend contract claims against backend source truth; use `verify`.
@@ -53,20 +54,23 @@ Use `skills/_shared/VISUAL-HANDOFF-PACKET.md` when a prototype output becomes a 
 
 Use `skills/_shared/ROLE-SEPARATION.md` when a prototype materially informs design, skill behavior, frontend/backend contract truth, or downstream implementation. A designer/planner prototype can provide design source and self-check evidence, but it cannot independently verify or clean-review its own material design.
 
+Use `skills/_shared/GRILLING.md` before prototype work only when material ambiguity blocks identifying the prototype question and the unknowns are not yet enumerable. Ask one highest-impact question at a time and treat the result as clarification only. Do not grill when a concrete throwaway UI, state, interaction, visual, or business-rule artifact can answer the question faster; keep that work in `prototype`.
+
 ## Workflow
 
 1. State the prototype question, decision needed, and contract sources inspected or unavailable.
-2. Choose `LOGIC.md` for simple state, data, reducer, or business-rule prototypes.
-3. Choose `LOGIC-LAB.md` when logic exploration needs explicit state-machine, reducer, transform, validation, or business-rule cases.
-4. Choose `UI.md` for a single UI/static HTML prototype, visual state, or interaction review.
-5. Choose `UI-VARIANTS.md` when material visual or interaction uncertainty requires multiple structurally different alternatives.
-6. Keep the artifact throwaway and narrow.
-7. Apply `DECISION-CAPTURE.md` so confirmed decisions, rejected variants, assumptions, open questions, and next route are explicit.
-8. Apply `CONTRACT-BOUNDARY.md` so prototype-only fields or client-derived logic are never treated as backend contract truth.
-9. Apply `skills/_shared/VISUAL-HANDOFF-PACKET.md` when the output is meant for frontend/backend visual review or handoff; include `Mock vs Confirmed Field Badges`, `Do Not Implement / Do Not Assume`, and `Evidence Boundary`.
-10. Verify runtime/browser behavior when visual or interaction claims matter.
-11. Draft findings as proposed PRD, issue, contract, or implementation feedback unless source-truth verification or explicit user confirmation has already happened.
-12. State cleanup decision: delete, absorb, or keep temporarily with reason and review timing.
+2. If no concrete prototype question exists because material ambiguity is not yet enumerable, apply `skills/_shared/GRILLING.md` instead of inventing a prototype scope.
+3. Choose `LOGIC.md` for simple state, data, reducer, or business-rule prototypes.
+4. Choose `LOGIC-LAB.md` when logic exploration needs explicit state-machine, reducer, transform, validation, or business-rule cases.
+5. Choose `UI.md` for a single UI/static HTML prototype, visual state, or interaction review.
+6. Choose `UI-VARIANTS.md` when material visual or interaction uncertainty requires multiple structurally different alternatives.
+7. Keep the artifact throwaway and narrow.
+8. Apply `DECISION-CAPTURE.md` so confirmed decisions, rejected variants, assumptions, open questions, and next route are explicit.
+9. Apply `CONTRACT-BOUNDARY.md` so prototype-only fields or client-derived logic are never treated as backend contract truth.
+10. Apply `skills/_shared/VISUAL-HANDOFF-PACKET.md` when the output is meant for frontend/backend visual review or handoff; include `Mock vs Confirmed Field Badges`, `Do Not Implement / Do Not Assume`, and `Evidence Boundary`.
+11. Verify runtime/browser behavior when visual or interaction claims matter.
+12. Draft findings as proposed PRD, issue, contract, or implementation feedback unless source-truth verification or explicit user confirmation has already happened.
+13. State cleanup decision: delete, absorb, or keep temporarily with reason and review timing.
 
 Do not stop with a browser opt-in question such as asking whether to open a local URL. If browser/runtime evidence is useful but unavailable or not yet approved, still produce the prototype contract-boundary output first, mark the visual or interaction evidence as `unverified`, and name the smallest follow-up browser check.
 
@@ -80,6 +84,7 @@ Do not stop with a browser opt-in question such as asking whether to open a loca
 - STOP before claiming UAT, release, customer readiness, marketplace, installed-plugin, browser, or runtime evidence from prototype output alone.
 - STOP before treating UI variants as final frontend implementation commitment.
 - STOP before treating Logic/state lab output as server truth without source evidence.
+- STOP before using prototype to answer non-enumerable material ambiguity. Apply `skills/_shared/GRILLING.md` first, ask one highest-impact question, and keep the result as clarification rather than prototype, acceptance, or implementation readiness evidence.
 
 ## Failure Branches
 
@@ -102,6 +107,7 @@ Do not stop with a browser opt-in question such as asking whether to open a loca
 - Do not treat UI variants as final frontend implementation commitment.
 - Do not treat Logic/state lab output as server truth without source evidence.
 - Do not turn prototype into implementation or verification; keep it a throwaway decision aid and route production changes to `implement` or source-truth evidence review to `verify`.
+- Do not use prototype to replace shared grilling when the user needs clarification before the prototype question can be named.
 
 ## Output Shape
 
