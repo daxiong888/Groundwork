@@ -48,6 +48,8 @@ The v0.4.0 native worktree handoff alignment shrinks Groundwork back toward rout
 
 The v0.4.x trace-first eval platform work adds a source-validation layer for schema-backed score objects, deterministic checker ids, trace artifact policy, trace diagnostics, eval reports, proposal-only patch suggestions, schema/source CI, optional runtime eval guidance, and release evidence claim templates. Its current evidence status is `source_validation`: local schemas, fixtures, unit tests, source checks, reports, and patch suggestions support implementation review, but they are not runtime, cache, release, UAT, customer, marketplace, or package-readiness evidence.
 
+The v0.5 public skill expansion policy shifts Groundwork from a fixed public-skill-count rule to quality-gated expansion. New public skills require accepted scope plus the shared [`skills/_shared/SKILL-QUALITY.md`](skills/_shared/SKILL-QUALITY.md) checklist, routing review, and positive, negative, and hard-negative eval expectations before merge. Behaviors that do not pass that bar should stay as shared references, branch/workflow lenses, router behavior, or one-off guides.
+
 This repository currently contains:
 
 - project vision and boundaries
@@ -59,6 +61,7 @@ This repository currently contains:
 - nine public skills, including `dispatch`
 - native Codex worktree/handoff governance contracts for v0.4.0
 - v0.4.x trace-first eval platform source-validation docs, schemas, helpers, checker modules, reports, patch suggestions, CI workflow, and release evidence claim template
+- v0.5 public skill expansion policy and shared skill-quality gate
 - skill trigger fixtures
 - structured smoke and safety fixtures
 - skill reliability fixtures
