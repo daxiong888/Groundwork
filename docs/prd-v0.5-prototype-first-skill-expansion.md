@@ -4,14 +4,14 @@ Target Reader: Groundwork maintainers, implementation agents, reviewers, verifie
 Reader Action Needed: Review this consolidated PRD as the single v0.5 source of truth; do not use the former addenda as parallel acceptance sources.
 Decision Supported: Whether Groundwork should accept a prototype-first, role-separated, capability-aware, quality-gated skill expansion direction for v0.5, and which parts belong in MVP versus later releases.
 Artifact Type: PRD.
-Source of Truth: Maintainer request to fold review feedback into the v0.5 PRD; review feedback attachment supplied on 2026-06-23; the branch-local v0.5 PRD/addenda being consolidated; repo-local Groundwork guidance and shared artifact rules.
+Source of Truth: Maintainer request to fold review feedback into the v0.5 PRD; review feedback attachment supplied on 2026-06-23; follow-up review feedback supplied on 2026-06-24; the branch-local v0.5 PRD/addenda being consolidated; repo-local Groundwork guidance and shared artifact rules.
 Scope: v0.5 planning for public skill expansion policy, skill quality gates, role separation, runtime capability discovery, model/runtime selector evidence boundaries, Prototype Lab shared references, visual handoff packet rules, skill-audit workflow requirements, and focused implementation slices.
 Out of Scope: Implementing the skills in this PRD pass; claiming runtime, installed-plugin, marketplace, UAT, release, customer, browser, selector-enforcement, or cache/source-refresh readiness; changing plugin metadata; creating issues, PRs, worktrees, subagents, or remote tracker state.
 Evidence Level: Planning evidence only. This PRD consolidates existing branch documents and maintainer review feedback. It does not add runtime evidence, installed-plugin evidence, browser evidence, release evidence, UAT evidence, marketplace evidence, or current official-doc verification.
 Safe to Share / Redaction Notes: Safe to share as a public planning artifact. It contains no secrets, credentials, private URLs, browser cookies, PII, production data, raw traces, or sensitive logs.
-Status: Draft PRD after review consolidation.
+Status: Accepted draft PRD baseline after review consolidation; implementation should not start until the issue-slice clarifications in this document are reflected in the issue map.
 Version Track: v0.5.0 candidate.
-Last Updated: 2026-06-23.
+Last Updated: 2026-06-24.
 Branch: `prd/v0.5-prototype-first-skill-expansion`.
 
 ---
@@ -458,6 +458,8 @@ A skill author must not be the final authority that approves its own material sk
 
 ## 15. Proposed Issue Slices
 
+Issue slices must preserve the MVP rule that conditional public skills start as shared references or workflow lenses. Creating `skills/<candidate>/SKILL.md` is a public skill surface change because `skills/` holds public skill contracts. Public candidate files may be created only in the explicit publicization slice after the reference-first slice and route negatives pass.
+
 ### V050-001: Public Skill Expansion Policy and Skill-quality Gate
 
 Goal: Update repo guidance and add shared skill-quality policy.
@@ -486,6 +488,7 @@ skills/verify/SKILL.md
 skills/dispatch/SKILL.md
 skills/handoff/SKILL.md
 skills/prototype/SKILL.md
+evals/prompts/v0.5-role-separation.csv
 ```
 
 Dependencies: V050-001.
@@ -503,18 +506,33 @@ skills/_shared/SUBAGENT-DELEGATION.md
 skills/dispatch/SKILL.md
 skills/implement/SKILL.md
 skills/verify/SKILL.md
+evals/prompts/v0.5-runtime-capability.csv
 ```
 
 Dependencies: V050-001 and V050-001A.
 
-### V050-003: `grill` Candidate and Shared Grilling Loop
+### V050-002: Setup Guidance and Capability Seed Handling
 
-Goal: Add standalone grill only if route negatives prove it is distinct from `to-prd`.
+Goal: Add setup guidance and capability seed handling without creating a public `setup-groundwork` skill.
 
 Primary files:
 
 ```text
-skills/grill/SKILL.md
+docs/maintainer-workflows.md
+docs/capability-seeds/README.md
+docs/capability-seeds/codex-model-menu-2026-06-23.md
+skills/_shared/RUNTIME-CAPABILITY.md
+```
+
+Dependencies: V050-001B.
+
+### V050-003A: Shared Grilling Loop and Route Negatives
+
+Goal: Add shared grilling behavior and route negatives without creating a public `grill` skill.
+
+Primary files:
+
+```text
 skills/_shared/GRILLING.md
 skills/to-prd/SKILL.md
 skills/prototype/SKILL.md
@@ -523,20 +541,49 @@ evals/prompts/v0.5-grill.csv
 
 Dependencies: V050-001.
 
-### V050-004: `decision-map` Conditional Candidate
+### V050-003B: Public `grill` Skill
 
-Goal: Add decision mapping after route-conflict negatives prove it is not duplicating `write-plan`, `to-prd`, `dispatch`, or direct answers.
+Goal: Create the public `grill` skill only after V050-003A demonstrates distinct routing and hard negatives pass.
+
+Primary files:
+
+```text
+skills/grill/SKILL.md
+evals/prompts/v0.5-grill.csv
+```
+
+Dependencies: V050-003A and maintainer acceptance of public exposure.
+
+### V050-004A: Shared Decision Mapping Reference
+
+Goal: Add decision mapping as a shared reference and route-conflict evals without creating a public `decision-map` skill.
+
+Primary files:
+
+```text
+skills/_shared/DECISION-MAPPING.md
+skills/_shared/COGNITIVE-BUDGET.md
+skills/to-prd/SKILL.md
+skills/write-plan/SKILL.md
+skills/dispatch/SKILL.md
+evals/prompts/v0.5-decision-map.csv
+```
+
+Dependencies: V050-001B.
+
+### V050-004B: Public `decision-map` Skill
+
+Goal: Create the public `decision-map` skill only after V050-004A proves it is not duplicating `write-plan`, `to-prd`, `dispatch`, or direct answers.
 
 Primary files:
 
 ```text
 skills/decision-map/SKILL.md
 skills/decision-map/DECISION-MAP-TEMPLATE.md
-skills/_shared/COGNITIVE-BUDGET.md
 evals/prompts/v0.5-decision-map.csv
 ```
 
-Dependencies: V050-001B.
+Dependencies: V050-004A and maintainer acceptance of public exposure.
 
 ### V050-005A: Prototype Decision Capture and Contract Boundary
 
@@ -582,24 +629,37 @@ skills/prototype/SKILL.md
 
 Dependencies: V050-005A.
 
-### V050-006: Skill-audit Workflow / Reference
+### V050-006A: Shared Skill-audit Workflow / Reference
 
-Goal: Add skill-audit as a required workflow/reference and decide later whether it merits public exposure.
+Goal: Add skill-audit as a required workflow/reference without creating a public `skill-audit` skill.
 
 Primary files:
 
 ```text
 skills/_shared/SKILL-QUALITY.md
-skills/skill-audit/SKILL.md
-skills/skill-audit/SKILL-AUDIT-TEMPLATE.md
+skills/_shared/SKILL-AUDIT.md
 evals/prompts/v0.5-skill-audit.csv
 ```
 
 Dependencies: V050-001 and V050-001A.
 
+### V050-006B: Public `skill-audit` Skill
+
+Goal: Create the public `skill-audit` skill only if direct invocation and routing negatives prove it merits public exposure.
+
+Primary files:
+
+```text
+skills/skill-audit/SKILL.md
+skills/skill-audit/SKILL-AUDIT-TEMPLATE.md
+evals/prompts/v0.5-skill-audit.csv
+```
+
+Dependencies: V050-006A and maintainer acceptance of public exposure.
+
 ### V050-007: v0.5 Regression Suite
 
-Goal: Add positive, negative, and hard-negative fixtures for v0.5 routes and evidence boundaries.
+Goal: Add cross-suite positive, negative, and hard-negative fixtures for v0.5 routes and evidence boundaries. This slice aggregates and broadens coverage; it must not be the only place where V050-001A or V050-001B hard-negative evals land.
 
 Primary files:
 
@@ -610,7 +670,7 @@ evals/prompts/v0.5-role-separation.csv
 evals/prompts/v0.5-prototype-lab.csv
 ```
 
-Dependencies: V050-001 through V050-006.
+Dependencies: V050-001 through V050-006B.
 
 ---
 
@@ -636,8 +696,7 @@ These are genuinely unresolved and should be answered during issue slicing or im
 1. Should `grill` ship as public in v0.5, or should it first land as shared behavior behind `to-prd` and `prototype`?
 2. Does `decision-map` pass enough route-conflict negatives to justify a public skill in v0.5?
 3. Should `skill-audit` be public in v0.5, or required only as a shared workflow/reference?
-4. What is the first durable location for setup guidance if `setup-groundwork` stays non-public in MVP?
-5. Which local Spark characterization evals are required before any Spark-specific implementation routing is more than provisional?
+4. Which local Spark characterization evals are required before any Spark-specific implementation routing is more than provisional?
 
 ---
 
@@ -662,4 +721,4 @@ Any future runtime/release claim must name installed plugin root, source root, c
 
 ## 19. Next Action
 
-If this PRD direction is accepted, slice V050-001 through V050-007 into focused tasks. The first implementation slice should be V050-001 because every later skill addition depends on the shared skill-quality gate and updated public skill expansion policy.
+If this PRD direction is accepted, slice V050-001 through V050-007 into focused tasks. The first implementation slice should be V050-001 because every later skill addition depends on the shared skill-quality gate and updated public skill expansion policy. Do not create `skills/grill/SKILL.md`, `skills/decision-map/SKILL.md`, or `skills/skill-audit/SKILL.md` until their shared-reference slice has passed route negatives and the maintainer accepts public exposure.
