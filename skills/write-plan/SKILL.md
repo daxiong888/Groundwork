@@ -21,6 +21,7 @@ Should not trigger:
 
 - Requirements are unclear; use `to-prd`.
 - Work units are not split; use `to-issues`.
+- The user asks which enumerable option to choose, or asks to compare tradeoffs, dependencies, decision criteria, or consequences before an implementation path is accepted; use `skills/_shared/DECISION-MAPPING.md` as a shared lens instead.
 - The user asks whether the task is ready; use `triage`.
 - The user asks to make code changes now; use `implement`.
 - The user asks to implement now and only needs an inline mini-plan; `implement` uses `skills/implement/LIGHTWEIGHT-PLAN.md`.
@@ -31,6 +32,8 @@ Should not trigger:
 Use the accepted task, PRD/spec, issue, current source references, existing lifecycle state, roadmap, and known verification expectations. Do not invent exact file paths, APIs, schemas, or commands before inspection. If the workspace has no source or tests, say so and plan first inspection or validation steps instead of naming fictional files.
 
 When maintaining the Groundwork repository itself, apply the repo-local `AGENTS.md` Done Definition before reporting the work complete.
+
+Use `skills/_shared/DECISION-MAPPING.md` only when an implementation path has not been accepted and the user needs to choose among enumerable options. Once an issue or task is accepted and the user asks for implementation steps, dependencies, stop conditions, or verification checkpoints, preserve the `write-plan` route and do not turn the plan into decision-map ceremony.
 
 Use `skills/_shared/LIFECYCLE-STATE.md` when planning a multi-stage or multi-session workstream. Do not create lifecycle files or recommend lifecycle artifacts for ordinary implementation plans.
 
@@ -67,6 +70,7 @@ Use `skills/_shared/LIFECYCLE-STATE.md` when planning a multi-stage or multi-ses
 ## Do Not
 
 - Do not force a full `write-plan` workflow for small implementation tasks that only need the `implement` lightweight plan.
+- Do not route an accepted issue implementation plan to decision mapping; use decision mapping only before the implementation path is accepted or when the user explicitly asks for option comparison.
 - Do not invent source paths, commands, schemas, owners, dependencies, or verification evidence to make the plan look executable.
 - Do not create lifecycle artifacts, `STATE.md`, `ROADMAP.md`, or durable plan artifacts for ordinary implementation plans or ordinary single-session work.
 

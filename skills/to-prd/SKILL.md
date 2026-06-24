@@ -1,6 +1,6 @@
 ---
 name: to-prd
-description: Use grill-before-write to shape raw, draft, new, or ambiguous product/engineering intent into a compact PRD/spec before task slicing or implementation, without inventing product truth. Use for 新需求, 需求收敛, 整理成 PRD, 写需求说明, clarify acceptance, UAT feedback, draft PRDs before acceptance, raw 方案/solution ideas, raw issue-split requests, vague urgency like 先做起来, or raw product, plugin install/upgrade, marketplace, runtime, version, workflow capability, and skill-selection changes. Do not use for tiny title or wording rewrites.
+description: Use shared grilling before write when raw, draft, new, or ambiguous product/engineering intent needs clarification, then shape it into a compact PRD/spec before task slicing or implementation without inventing product truth. Use for 新需求, 需求收敛, 整理成 PRD, 写需求说明, clarify acceptance, UAT feedback, draft PRDs before acceptance, raw 方案/solution ideas, raw issue-split requests, vague urgency like 先做起来, or raw product, plugin install/upgrade, marketplace, runtime, version, workflow capability, and skill-selection changes. Do not use for tiny title or wording rewrites.
 ---
 
 # to-prd
@@ -24,6 +24,8 @@ Should trigger:
 Should not trigger:
 
 - A small direct answer or rewrite is enough.
+- The user asks to choose among enumerable options, compare tradeoffs, dependencies, decision criteria, or consequences without asking for a PRD/spec; use `skills/_shared/DECISION-MAPPING.md` as the shared lens instead.
+- The user explicitly asks for grilling but the request is a tiny direct task, a repo-doc-answerable question, an accepted implementation task, an enumerable decision comparison, or a concrete prototype question; use the narrower route from `skills/_shared/GRILLING.md`.
 - The PRD is already accepted and the user asks to split tasks; use `to-issues`.
 - The user clearly says to skip PRD/spec shaping and implement directly; use `implement`, which still owns lifecycle, source, git, test, and risk gates.
 - The user asks only whether a task is ready; use `triage`.
@@ -36,14 +38,18 @@ Use user-provided context first. Inspect source, docs, prototype output, tickets
 
 When maintaining the Groundwork repository itself, apply the repo-local `AGENTS.md` Done Definition before reporting the work complete.
 
-Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` before shaping new requirements, version enhancements, workflow changes, runtime changes, plugin changes, skill-selection changes, or product decisions. Treat raw requirements and raw solution ideas as `Requirement State: raw` and route to grill-before-write / PRD shaping by default. Do not proceed directly to implementation or issue splitting until the requirement is accepted enough to move downstream, unless the user explicitly requests that bypass.
+Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` before shaping new requirements, version enhancements, workflow changes, runtime changes, plugin changes, skill-selection changes, or product decisions. Treat raw requirements and raw solution ideas as `Requirement State: raw` and route to shared grilling / PRD shaping by default. Do not proceed directly to implementation or issue splitting until the requirement is accepted enough to move downstream, unless the user explicitly requests that bypass.
+
+Use `skills/_shared/GRILLING.md` when material ambiguity blocks PRD shaping and the unknowns are not yet enumerable. Ask one highest-impact question at a time, inspect repo/source evidence before asking when it can answer the question, and treat the result as clarification only. Shared grilling may prepare a PRD route, but it is not PRD acceptance, implementation readiness, clean review, independent verification, or runtime/browser/UAT/release evidence.
+
+Use `skills/_shared/DECISION-MAPPING.md` when the options are already enumerable and the user needs a comparison of tradeoffs, dependencies, decision criteria, or consequences before choosing a path. Decision mapping is a shared reference, not a public `decision-map` skill, and it must not replace PRD shaping when the user explicitly asks to write requirements, acceptance criteria, or a spec.
 
 ## Workflow
 
 1. Identify the target reader and decision the PRD must support.
-2. Run lifecycle preflight and the grill-before-write gate: explicitly list target reader, decision supported, known facts, assumptions, open questions, and needs confirmation before drafting.
+2. Run lifecycle preflight and apply `skills/_shared/GRILLING.md` when material ambiguity blocks drafting: explicitly list target reader, decision supported, known facts, assumptions, open questions, and needs confirmation before drafting.
 3. Inspect local code/docs/tickets/data first when they can answer a clarification question.
-4. Ask at most 5 high-impact clarification questions; in interactive work, ask one question at a time.
+4. Ask one high-impact clarification question at a time. Use multiple questions only when the user asks for a non-interactive questionnaire or written PRD gap list.
 5. Include a recommended answer or default decision and impact for each clarification question when evidence supports one.
 6. Mark every unknown backend field, business state, unsupported ability, or missing acceptance detail as **NEEDS CLARIFICATION**; never invent product truth or mutate it from prototype-only mock data.
 7. Use the internal scope-shaping branch owned by `to-prd` if acceptance or user intent is unclear. Do not present `scope` as a public skill or route.
@@ -77,6 +83,7 @@ Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` before shaping new requirements, ver
 - Do not write or update a durable PRD file just because the output looks reusable; require user intent, source-of-truth need, or artifact promotion.
 - Do not recommend `to-issues` or `implement` while blocking **NEEDS CLARIFICATION** items remain unresolved.
 - Recommend `verify` only for evidence/consistency review, not for readiness or downstream delivery, while blocking **NEEDS CLARIFICATION** items remain.
+- Do not carry all grilling behavior inside `to-prd` without the shared boundary; apply `skills/_shared/GRILLING.md` and route direct answers, decision mapping, prototype exploration, accepted implementation work, and readiness checks away from PRD shaping when they are the narrower fit.
 - Do not expose secrets, credentials, PII, sensitive logs, screenshots, private request payloads, or database rows in PRD artifacts.
 
 ## Output Shape

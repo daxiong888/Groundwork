@@ -3,9 +3,12 @@
 Target Reader: Open-source maintainers and reviewers evaluating how Groundwork supports real Codex-assisted maintenance.
 Reader Action Needed: Decide when to use the full Groundwork loop, when to use a smaller path, and how to preserve evidence without adding ceremony.
 Decision Supported: Whether Groundwork fits maintainer workflows such as PR clarification, implementation, verification, review transfer, and release evidence.
+Artifact Type: maintainer workflow guide.
+Source of Truth: `docs/prd.md`, `docs/product-principles.md`, `docs/prd-v0.5-prototype-first-skill-expansion.md`, public skill contracts, and runtime baseline reports under `evals/baselines/`.
 Scope: Maintainer-facing use of the public Groundwork skills, especially `to-prd`, `implement`, `verify`, and `handoff`.
 Out of Scope: Replacing GitHub issues, CI, human code review, release ownership, security review, or Codex host approval enforcement.
 Evidence Level: Grounded in `docs/prd.md`, `docs/product-principles.md`, the public skill surface, v0.2.x/v0.3 changelog entries, and runtime baseline reports under `evals/baselines/`.
+Safe to Share / Redaction Notes: Safe to share as-is; contains no secrets, credentials, private payloads, or personal data.
 
 Groundwork helps maintainers run evidence-first coding loops with Codex. It is optimized for situations where correctness depends on more than a code diff: PRD/spec clarity, source-code truth, runtime evidence, integration contracts, UAT behavior, and handoff quality.
 
@@ -113,6 +116,20 @@ Every durable artifact should carry the audience-first header fields defined in 
 v0.3.4 is a main-chain governance baseline for the current nine public skills, including package-only `dispatch`. It strengthens layered `AGENTS.md`, artifact headers, grill-before-write, prototype contract boundaries, implement planning/TDD-lite, verify scope/lenses, QA-fix-QA, git boundary, handoff review packages, and the shared done definition inherited by `dispatch`.
 
 It is not a new runtime, plugin split, automation layer, task database, or subagent spawning system. Runtime evidence still requires installed plugin cache/source equivalence or a supported marketplace refresh before it can be treated as release-gating evidence.
+
+## Public Skill Expansion Boundary
+
+Groundwork no longer treats the public skill surface as fixed-count by default. It treats expansion as a quality-gated maintainer decision: accepted scope must explicitly authorize the new public skill, and the candidate must pass the shared [`SKILL-QUALITY.md`](../skills/_shared/SKILL-QUALITY.md) checklist, routing review, and positive, negative, and hard-negative eval expectations before merge.
+
+Maintainers should first classify new behavior as one of five surfaces: public skill, shared reference, branch/workflow lens, router behavior, or one-off guide. Use the smallest surface that preserves a clear trigger contract and evidence boundary. A candidate that lacks a distinct invocation moment, conflicts with an existing route, or cannot state should-not-trigger cases should stay out of `skills/<name>/SKILL.md`.
+
+## Setup Guidance Reference
+
+`setup-groundwork` is guide/reference first. Groundwork should not require a setup pass before ordinary use, and maintainers should not create `skills/setup-groundwork/SKILL.md` unless a later accepted scope proves a repeated setup trigger, clear should/should-not routing, and the public skill-quality gate.
+
+Use lightweight setup notes only when they help a maintainer choose local evidence sources, runtime boundaries, or repository conventions before a task starts. Prefer existing canonical docs, repo-local `AGENTS.md`, shared guardrails, and small references over a generated questionnaire or duplicate onboarding artifact.
+
+Capability seeds belong in [`capability-seeds/`](capability-seeds/) as dated evidence inputs. A seed may record a user-observed menu, screenshot summary, stated environment fact, or docs reference, but it is not runtime/tool enforcement evidence. When model or runtime selection matters, pair the seed with the status language from [`RUNTIME-CAPABILITY.md`](../skills/_shared/RUNTIME-CAPABILITY.md) and keep `selector_enforcement` as `unknown` or `prompt_preference` unless a tool/runtime report proves enforcement for the specific run.
 
 ## Maintainer Boundary
 

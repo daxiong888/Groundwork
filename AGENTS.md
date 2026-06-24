@@ -6,7 +6,7 @@ Groundwork is a Codex-native evidence-first R&D workflow base. The public skill 
 
 ## Repository Layout
 
-- `skills/`: public skill contracts and shared guardrails. Keep public skill count stable unless a scoped issue explicitly expands it.
+- `skills/`: public skill contracts and shared guardrails. Keep public skill surface stable unless an accepted PRD, scoped issue, or maintainer directive explicitly expands it and the candidate passes the shared skill-quality, routing, and eval gates.
 - `skills/_shared/`: reusable gates for lifecycle preflight, artifact policy, git topology, git boundary, locale, and subagent delegation.
 - `docs/`: canonical product and maintainer documentation. Prefer updating an existing canonical doc over creating a duplicate.
 - `evals/prompts/`: CSV regression suites for routing, guardrails, lifecycle, and skill behavior.
@@ -18,7 +18,8 @@ Groundwork is a Codex-native evidence-first R&D workflow base. The public skill 
 
 ## Scope Rules
 
-- Do not add new public skills unless a GitHub issue explicitly requires it.
+- Do not add new public skills unless an accepted PRD, scoped issue, or maintainer directive explicitly expands the public surface and the candidate passes `skills/_shared/SKILL-QUALITY.md`, routing, and eval gates.
+- Prefer shared references, branch/workflow lenses, router behavior, or one-off guides over public skills when the behavior does not have a distinct invocation moment.
 - Edit only files needed for the scoped issue or checkpoint.
 - Preferred edit areas are `skills/`, `docs/`, `evals/`, and this repo-local `AGENTS.md`.
 - Do not mutate shared global skills, production systems, remote data, `.groundwork` runtime contents, `.trellis`, `refer/`, unrelated docs, or dependency/lock files unless the user explicitly expands scope.
@@ -60,7 +61,7 @@ Groundwork work is locally done only when all applicable items are true:
 
 - Source truth was inspected from local PRD/spec, skill docs, source, tests, fixtures, or verified user input.
 - The implementation or documentation diff is minimal and limited to the scoped issue or checkpoint.
-- Public skill surface stayed unchanged unless explicitly required.
+- Public skill surface stayed unchanged unless explicitly required and quality-gated.
 - Durable artifacts include the required audience-first header fields or the missing fields are reported as gaps.
 - Relevant eval prompt CSV, plugin JSON, and whitespace checks were run or explicitly reported as not run with a reason.
 - Runtime/cache claims name the installed plugin root and cache/source refresh or equivalence evidence; otherwise they are not claimed.
