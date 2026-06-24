@@ -123,6 +123,14 @@ Groundwork no longer treats the public skill surface as fixed-count by default. 
 
 Maintainers should first classify new behavior as one of five surfaces: public skill, shared reference, branch/workflow lens, router behavior, or one-off guide. Use the smallest surface that preserves a clear trigger contract and evidence boundary. A candidate that lacks a distinct invocation moment, conflicts with an existing route, or cannot state should-not-trigger cases should stay out of `skills/<name>/SKILL.md`.
 
+## Setup Guidance Reference
+
+`setup-groundwork` is guide/reference first. Groundwork should not require a setup pass before ordinary use, and maintainers should not create `skills/setup-groundwork/SKILL.md` unless a later accepted scope proves a repeated setup trigger, clear should/should-not routing, and the public skill-quality gate.
+
+Use lightweight setup notes only when they help a maintainer choose local evidence sources, runtime boundaries, or repository conventions before a task starts. Prefer existing canonical docs, repo-local `AGENTS.md`, shared guardrails, and small references over a generated questionnaire or duplicate onboarding artifact.
+
+Capability seeds belong in [`capability-seeds/`](capability-seeds/) as dated evidence inputs. A seed may record a user-observed menu, screenshot summary, stated environment fact, or docs reference, but it is not runtime/tool enforcement evidence. When model or runtime selection matters, pair the seed with the status language from [`RUNTIME-CAPABILITY.md`](../skills/_shared/RUNTIME-CAPABILITY.md) and keep `selector_enforcement` as `unknown` or `prompt_preference` unless a tool/runtime report proves enforcement for the specific run.
+
 ## Maintainer Boundary
 
 Groundwork should help maintainers reduce review and coding load without hiding responsibility. The maintainer still decides what qualifies, what merges, what releases, what gets security review, and what evidence is sufficient for the repository.

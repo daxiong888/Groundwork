@@ -2,8 +2,8 @@ Target Reader: Groundwork dispatchers, implementers, verifiers, subagent package
 Reader Action Needed: Separate runtime capability seeds, routing preferences, concrete runtime evidence, selector enforcement evidence, and runtime mismatch handling before making runtime or model claims.
 Decision Supported: Whether Groundwork may recommend, request, claim, block, or ask approval for model/runtime selection and selector enforcement.
 Artifact Type: shared guardrail.
-Source of Truth: `docs/prd-v0.5-prototype-first-skill-expansion.md` FR-520 through FR-524, AC-C5 through AC-C7, AC-D2, and `artifacts/v0.5-prototype-first-skill-expansion/issue-map.md` V050-001B.
-Scope: Lazy runtime capability discovery, selector-enforcement statuses, evidence layers, runtime mismatch reporting, and runtime/cache claim boundaries.
+Source of Truth: `docs/prd-v0.5-prototype-first-skill-expansion.md` FR-520 through FR-524, FR-543, AC-C5 through AC-C7, AC-D2, AC-D3, and `artifacts/v0.5-prototype-first-skill-expansion/issue-map.md` V050-001B and V050-002.
+Scope: Lazy runtime capability discovery, selector-enforcement statuses, evidence layers, runtime mismatch reporting, capability seed handling, and runtime/cache claim boundaries.
 Out of Scope: Implementing router automation, creating child threads or subagents, maintaining a permanent global model table, proving installed-plugin runtime behavior, or replacing runtime adapter contracts.
 Evidence Level: Source-validation policy only. This file does not prove installed plugin, marketplace, runtime, model, selector, cache refresh, UAT, release, browser, or customer readiness.
 Safe to Share / Redaction Notes: Safe to share as-is; contains no secrets, credentials, PII, private payloads, logs, or production data.
@@ -72,6 +72,24 @@ Keep these layers separate in packages and final reports:
 | Local characterization eval | Groundwork-specific fit for a profile or workflow | Universal benchmark, release readiness, or customer/UAT readiness |
 
 Capability seed facts must be labeled as seed facts and kept separate from runtime/tool enforcement evidence.
+
+## Capability Seed Handling
+
+Capability seeds are dated evidence inputs, not setup requirements or runtime truth. Store reusable seed notes under [`docs/capability-seeds/`](../../docs/capability-seeds/) with the audience-first header fields and an explicit status pair.
+
+For a user-observed model menu seed, use:
+
+```yaml
+capability_status: user_supplied
+selector_enforcement: unknown
+evidence_layer: user_observed_model_menu_seed
+runtime_evidence: not_claimed
+official_current_behavior: not_claimed
+```
+
+If a seed is used in a Dispatch Package, Goal Contract, or prompt as a desired selector, the selector status may be `prompt_preference` for that request. Keep `selector_enforcement` as `unknown` for the seed itself, and do not upgrade it to `tool_enforced` unless the executing tool/runtime reports enforcement for that specific run.
+
+The 2026-06-23 Codex model menu seed is recorded at [`docs/capability-seeds/codex-model-menu-2026-06-23.md`](../../docs/capability-seeds/codex-model-menu-2026-06-23.md). It documents a user-supplied observation only. It does not prove current official OpenAI/Codex behavior, every Codex surface, API availability, subagent/worktree availability, runtime execution, installed-plugin behavior, or selector enforcement.
 
 ## Runtime Mismatch Handling
 

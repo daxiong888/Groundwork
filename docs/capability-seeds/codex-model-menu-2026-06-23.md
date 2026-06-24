@@ -63,6 +63,11 @@ runtime_capability_seed:
   observed_by: maintainer
   observed_at: 2026-06-23
   source_type: user_supplied_observation
+  capability_status: user_supplied
+  selector_enforcement: unknown
+  evidence_layer: user_observed_model_menu_seed
+  runtime_evidence: not_claimed
+  official_current_behavior: not_claimed
   codex_surface: unknown_codex_ui_surface
   exact_visible_labels:
     - GPT-5.5
@@ -88,6 +93,8 @@ runtime_capability_seed:
     - API availability
 ```
 
+This seed may guide a future prompt preference or runtime inspection. If it is used only as prompt/package input, `selector_enforcement` is at most `prompt_preference`. It remains `unknown` for this seed because no tool/runtime evidence in this repository proves selector enforcement for the observed menu.
+
 ## Provisional Profile Mapping
 
 Use only when current runtime capability evidence confirms the same or equivalent menu.
@@ -110,3 +117,5 @@ Refresh or replace this seed when:
 - subagent or child-thread runtime availability affects the route;
 - a release/runtime readiness claim references model selection;
 - official docs or runtime adapter reports provide stronger current evidence.
+
+Current official OpenAI/Codex behavior is not claimed by this seed. Verify current official documentation and cite it before making official product claims.
