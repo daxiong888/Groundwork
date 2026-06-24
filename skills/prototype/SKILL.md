@@ -19,6 +19,8 @@ Should trigger:
 - "评审静态筛选器原型并判断哪些字段能进入后端合同"
 - "从原型里区分 backend contract candidate、mock 和 client-derived logic"
 - "用原型记录 confirmed decisions、rejected variants、mock fields 和 next route"
+- "对这个交互做 UI variants 比较再决定"
+- "用 Logic/state lab 探一下 reducer、状态机或业务规则"
 - "这个流程先用 prototype 看看"
 
 Should not trigger:
@@ -29,6 +31,9 @@ Should not trigger:
 - The user asks to verify frontend contract claims against backend source truth; use `verify`.
 - The task is a small direct explanation with no artifact value.
 - The user asks for multiple visual variants only as decoration without a decision need.
+- The user only asks for final frontend implementation commitment, not prototype exploration; use `implement`.
+- The user only asks for server/source truth, not prototype exploration; use `verify`.
+- The user only asks for runtime, browser, UAT, release, customer-readiness, marketplace, or installed-plugin evidence; use `verify`.
 
 ## Required Evidence
 
@@ -40,6 +45,10 @@ Prototype contract-boundary review stays in `prototype` when the source of truth
 
 Use `DECISION-CAPTURE.md` for decision-oriented prototype work. Prototype outputs must separate confirmed decisions, rejected variants, unverified assumptions, mock/illustrative fields, client-derived logic, contract impact, open questions, and next route before downstream PRD, issue, implementation, verification, or handoff work.
 
+Use `UI-VARIANTS.md` when material visual or interaction design uncertainty needs a small set of structurally different alternatives. UI variants are exploratory; they must not be treated as final implementation commitment, backend/API contract truth, runtime evidence, browser evidence, UAT evidence, or release evidence by themselves.
+
+Use `LOGIC-LAB.md` when state-machine, reducer, data-transform, validation, or business-rule uncertainty needs bounded exploration. Logic/state lab output is exploratory; it must not be treated as server truth without source evidence, backend/API contract truth, runtime evidence, browser evidence, UAT evidence, or release evidence by itself.
+
 Use `skills/_shared/VISUAL-HANDOFF-PACKET.md` when a prototype output becomes a visual handoff packet, HTML packet, screenshot-backed review note, generated visual artifact, or frontend/backend review packet. The packet remains a communication artifact unless separate source/API, browser, runtime, UAT, or release evidence is produced and named.
 
 Use `skills/_shared/ROLE-SEPARATION.md` when a prototype materially informs design, skill behavior, frontend/backend contract truth, or downstream implementation. A designer/planner prototype can provide design source and self-check evidence, but it cannot independently verify or clean-review its own material design.
@@ -47,15 +56,17 @@ Use `skills/_shared/ROLE-SEPARATION.md` when a prototype materially informs desi
 ## Workflow
 
 1. State the prototype question, decision needed, and contract sources inspected or unavailable.
-2. Choose `LOGIC.md` for state, data, reducer, or business-rule prototypes.
-3. Choose `UI.md` for UI/static HTML prototypes, visual states, and interaction review.
-4. Keep the artifact throwaway and narrow.
-5. Apply `DECISION-CAPTURE.md` so confirmed decisions, rejected variants, assumptions, open questions, and next route are explicit.
-6. Apply `CONTRACT-BOUNDARY.md` so prototype-only fields or client-derived logic are never treated as backend contract truth.
-7. Apply `skills/_shared/VISUAL-HANDOFF-PACKET.md` when the output is meant for frontend/backend visual review or handoff; include `Mock vs Confirmed Field Badges`, `Do Not Implement / Do Not Assume`, and `Evidence Boundary`.
-8. Verify runtime/browser behavior when visual or interaction claims matter.
-9. Draft findings as proposed PRD, issue, contract, or implementation feedback unless source-truth verification or explicit user confirmation has already happened.
-10. State cleanup decision: delete, absorb, or keep temporarily with reason and review timing.
+2. Choose `LOGIC.md` for simple state, data, reducer, or business-rule prototypes.
+3. Choose `LOGIC-LAB.md` when logic exploration needs explicit state-machine, reducer, transform, validation, or business-rule cases.
+4. Choose `UI.md` for a single UI/static HTML prototype, visual state, or interaction review.
+5. Choose `UI-VARIANTS.md` when material visual or interaction uncertainty requires multiple structurally different alternatives.
+6. Keep the artifact throwaway and narrow.
+7. Apply `DECISION-CAPTURE.md` so confirmed decisions, rejected variants, assumptions, open questions, and next route are explicit.
+8. Apply `CONTRACT-BOUNDARY.md` so prototype-only fields or client-derived logic are never treated as backend contract truth.
+9. Apply `skills/_shared/VISUAL-HANDOFF-PACKET.md` when the output is meant for frontend/backend visual review or handoff; include `Mock vs Confirmed Field Badges`, `Do Not Implement / Do Not Assume`, and `Evidence Boundary`.
+10. Verify runtime/browser behavior when visual or interaction claims matter.
+11. Draft findings as proposed PRD, issue, contract, or implementation feedback unless source-truth verification or explicit user confirmation has already happened.
+12. State cleanup decision: delete, absorb, or keep temporarily with reason and review timing.
 
 Do not stop with a browser opt-in question such as asking whether to open a local URL. If browser/runtime evidence is useful but unavailable or not yet approved, still produce the prototype contract-boundary output first, mark the visual or interaction evidence as `unverified`, and name the smallest follow-up browser check.
 
@@ -67,6 +78,8 @@ Do not stop with a browser opt-in question such as asking whether to open a loca
 - STOP before treating a visual handoff packet as source/API, browser, runtime, UAT, release, customer-readiness, or implementation evidence unless the qualifying evidence is produced and named.
 - STOP before using a visual artifact, generated image, screenshot, HTML packet, or static prototype as browser/runtime evidence unless an actual browser/runtime run was performed and recorded.
 - STOP before claiming UAT, release, customer readiness, marketplace, installed-plugin, browser, or runtime evidence from prototype output alone.
+- STOP before treating UI variants as final frontend implementation commitment.
+- STOP before treating Logic/state lab output as server truth without source evidence.
 
 ## Failure Branches
 
@@ -86,6 +99,8 @@ Do not stop with a browser opt-in question such as asking whether to open a loca
 - Do not let prototype polish, browser behavior, or interaction smoothness imply real backend or frontend implementation capability.
 - Do not present client-derived labels, filters, counters, sort order, or status mapping as server truth without source evidence.
 - Do not treat visual artifacts, screenshots, generated images, static HTML, or prototype packets as browser/runtime/UAT/release evidence without an actual run and recorded evidence.
+- Do not treat UI variants as final frontend implementation commitment.
+- Do not treat Logic/state lab output as server truth without source evidence.
 - Do not turn prototype into implementation or verification; keep it a throwaway decision aid and route production changes to `implement` or source-truth evidence review to `verify`.
 
 ## Output Shape
