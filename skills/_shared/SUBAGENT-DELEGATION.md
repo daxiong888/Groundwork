@@ -3,9 +3,16 @@
 Target Reader: Codex preparing a fresh-context subagent review.
 Reader Action Needed: Give the subagent enough evidence to review without relying on parent session memory.
 Decision Supported: Whether delegation is bounded, evidence-backed, and safe to run.
+Artifact Type: shared guardrail.
+Source of Truth: Groundwork issue #12 acceptance criteria, Groundwork subagent safety preferences, PRD v0.3.3 FR-7 clean review constraints, and docs/prd-v0.5-prototype-first-skill-expansion.md runtime capability boundaries.
 Scope: Fresh context packages for review dimensions such as spec compliance, contract compliance, code quality, test adequacy, runtime evidence, git boundary, and clean review fan-out.
 Out of Scope: Default subagent use, nested delegation, scope expansion, or file modification without explicit permission.
 Evidence Level: Groundwork issue #12 acceptance criteria, Groundwork subagent safety preferences, and PRD v0.3.3 FR-7 clean review constraints.
+Safe to Share / Redaction Notes: Safe to share as-is; contains no secrets, credentials, PII, private payloads, logs, or production data.
+
+Related References:
+
+- `skills/_shared/RUNTIME-CAPABILITY.md` for runtime mismatch, selector enforcement, and capability-status boundaries.
 
 ## Required Package
 
@@ -46,6 +53,9 @@ Rules:
 - State that the subagent cannot modify files unless file mutation is explicitly delegated.
 - Require findings to cite the supplied artifacts, paths, commands, or observations.
 - If evidence is missing, require `unverified` or `blocked`, not invented facts.
+- Do not silently substitute a subagent for a requested child thread or managed worktree runtime. If the user requested a child thread/worktree and only subagent delegation is available, include the Runtime mismatch block from `skills/_shared/RUNTIME-CAPABILITY.md` and require user approval before fallback execution.
+- Do not silently substitute a child thread or managed worktree for a requested subagent. If a subagent was requested and only child-thread/worktree execution is available, include the Runtime mismatch block and require user approval before fallback execution.
+- A subagent prompt preference for model, reasoning, or runtime is not `tool_enforced` selector evidence. Use `prompt_preference`, `unavailable`, or `unknown` unless a runtime/tool report proves selector enforcement.
 
 ## Clean Review Fan-out
 

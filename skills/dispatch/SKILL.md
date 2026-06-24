@@ -49,6 +49,10 @@ Do not use this skill when:
 
 When maintaining the Groundwork repository itself, apply the repo-local `AGENTS.md` Done Definition before reporting the work complete.
 
+Use `skills/_shared/RUNTIME-CAPABILITY.md` before recommending, requesting, or reporting runtime/model selection. Dispatch must keep capability seed facts, prompt preferences, runtime/tool evidence, official docs, and community evidence separate.
+
+Use `skills/_shared/COGNITIVE-BUDGET.md` for `model_profile`, reasoning/thinking preference, cost/latency bias, and Spark final authority restrictions. Route by profile before mapping to a concrete model.
+
 `dispatch` must:
 
 - confirm source truth, issue set, readiness source, and evidence level before routing
@@ -66,6 +70,10 @@ When maintaining the Groundwork repository itself, apply the repo-local `AGENTS.
 - keep `automation_candidate` recommendation-only; do not create, update, schedule, or archive automations from dispatch
 - stop before execution unless the user explicitly requests execution and the current runtime exposes the required tools
 - report selector enforcement transparently: use `tool_enforced` only when the adapter confirms selector support; otherwise use `prompt_preference`, `unavailable`, or `unknown`
+- add `capability_status` and `selector_enforcement` whenever runtime/model selection is material; do not claim `tool_enforced` from prompt text, Goal Contract text, Dispatch Package text, model menu seeds, or routing profiles alone
+- report Runtime mismatch when requested runtime and available/proposed runtime differ; do not silently substitute subagents for child-thread/worktree runtimes or child-thread/worktree runtimes for subagents
+- treat user-observed model menu seeds as dated `user_supplied` capability facts, not universal runtime truth
+- avoid permanent global concrete model tables; concrete model mapping is evidence-bound and secondary to profile routing
 - apply `skills/_shared/ROLE-SEPARATION.md` when routing material work: separate designer/planner, implementer, clean reviewer, verifier, and coordinator roles; do not route a same-session implementer as clean reviewer or final verifier for its own material change
 - include role-separation closeout expectations for material tasks using `Role`, `Design Source`, `Self-check Evidence`, `Clean Review Evidence`, `Independent Verification Evidence`, `Runtime Evidence`, `Browser Evidence`, `UAT Evidence`, `Release Evidence`, `Readiness Boundary`, and `Required Next Independent Role`
 
@@ -106,11 +114,18 @@ Source Truth
 - Evidence Level:
 
 Runtime Capability Check
+- capability_status: known | unknown | user_supplied | docs_reference | tool_enforced
+- selector_enforcement: tool_enforced | prompt_preference | unavailable | unknown
+- Evidence layer: prompt_preference | runtime_tool_evidence | user_observed_model_menu_seed | official_docs | community_evidence | local_characterization_eval
 - Available / assumed runtimes:
 - Runtime selectors available:
 - Subagent execution available:
 - Worktree thread execution available:
-- Fallback behavior:
+- Requested runtime:
+- Available runtime:
+- Runtime mismatch: yes | no | unknown
+- Fallback proposed:
+- User approval required:
 
 Task Matrix
 | Task | Type | Readiness | Runtime | Isolation | Parallelization | Goal | Execution Profile | Validation | Result Package | Approval Needed |
@@ -182,7 +197,12 @@ runtime_policy:
     - automation_candidate
 
 model_policy:
-  selector_enforcement: tool_if_available_else_prompt_preference
+  capability_status: unknown
+  selector_enforcement: unknown
+  selector_enforcement_policy: tool_if_available_else_prompt_preference
+  evidence_layer: prompt_preference
+  concrete_model_mapping: evidence_bound
+  permanent_global_model_table: forbidden
 
 tasks:
   - task_id: ""
@@ -218,6 +238,15 @@ tasks:
           codex_app_worktree_available: true | false | unknown
           local_environment_required: true | false | unknown
           automation_surface_available: true | false | unknown
+          subagent_available: true | false | unknown
+          capability_status: known | unknown | user_supplied | docs_reference | tool_enforced
+          selector_enforcement: tool_enforced | prompt_preference | unavailable | unknown
+          evidence_layer: prompt_preference | runtime_tool_evidence | user_observed_model_menu_seed | official_docs | community_evidence | local_characterization_eval
+          requested_runtime: ""
+          available_runtime: ""
+          runtime_mismatch: yes | no | unknown
+          fallback_proposed: ""
+          user_approval_required: true | false
         risk:
           git_write: true | false
           remote_write: true | false
@@ -344,11 +373,14 @@ tasks:
       rendered_prompt_first_non_empty_line: starts_with_goal | missing | invalid
       runtime_goal_mode_evidence_expected: present
     execution_profile:
-      model_profile: ""
-      reasoning_effort: "" # low | medium | high
+      model_profile: "" # fast_scan | balanced_work | strong_reasoning | exhaustive_review | spark_iteration
+      concrete_model: ""
+      reasoning_effort: "" # low | medium | high | xhigh | unknown
       cost_latency_bias: "" # fast | balanced | quality
       routing_reason: ""
+      capability_status: "" # known | unknown | user_supplied | docs_reference | tool_enforced
       selector_enforcement: "" # tool_enforced | prompt_preference | unavailable | unknown
+      evidence_layer: "" # prompt_preference | runtime_tool_evidence | user_observed_model_menu_seed | official_docs | community_evidence | local_characterization_eval
     validation:
       deprecated_by: dispatch_native_alignment.verification_expectation
     runtime_package:
@@ -584,10 +616,13 @@ tasks:
       deprecated_by: dispatch_native_alignment.verification_expectation
     execution_profile:
       model_profile: "<present_or_empty>"
+      concrete_model: ""
       reasoning_effort: medium
       cost_latency_bias: balanced
       routing_reason: "<present>"
-      selector_enforcement: tool_if_available_else_prompt_preference
+      capability_status: unknown
+      selector_enforcement: prompt_preference
+      evidence_layer: prompt_preference
     runtime_package:
       status: legacy_adapter_package_shape_only
       adapter: codex_app_managed_worktree_thread

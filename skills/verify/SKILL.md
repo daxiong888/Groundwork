@@ -108,6 +108,10 @@ Use implementation evidence review only when the user asks whether a finished im
 
 Use `skills/_shared/ROLE-SEPARATION.md` for material readiness claims. `verify` may provide `Independent Verification Evidence` only when it begins from explicit scope and inspects or runs evidence independent from the same-session designer/implementer. If the only available evidence is same-session self-check, implementation summary, or self-run tests, block or mark the readiness claim `unverified` instead of passing it.
 
+Use `skills/_shared/RUNTIME-CAPABILITY.md` when verifying model/runtime execution, selector enforcement, subagent or child-thread/worktree routing, runtime cache, installed plugin, marketplace, release, UAT, or customer claims. If only prompt text, package text, source diff, or implementation summary is available, mark runtime/tool and selector claims `unverified` or `not applicable`; do not claim `tool_enforced`.
+
+Use `skills/_shared/COGNITIVE-BUDGET.md` when a readiness claim depends on model profile choice. Verify profile fit separately from concrete model execution, and block or mark unverified any Spark or fast-profile final-authority claim.
+
 Use specialized references when they apply:
 
 - `QA-FIX-QA.md` for failed verification or QA-to-fix-to-QA advice that needs expected/actual/reproduction/severity/diagnosis/fix/re-QA.
@@ -206,12 +210,13 @@ Never place task-state recommendations before the required `Verification Scope` 
 8. Use `CONTRACT-DOC-REVIEW.md` when frontend-facing docs or API contract claims matter.
 9. Separate data, environment, and customer/UAT readiness.
 10. Map `Claim / AC -> Evidence -> Result -> Gap -> Severity`.
-11. If verification fails or the user asks how to handle a QA failure, include the `QA Failure` shape from `QA-FIX-QA.md`. If concrete failure details are missing, still emit the shape and mark missing fields as `not provided` or `unverified`; do not substitute a generic process. Do not update a failure verdict to `pass` until the original reproduction/check has been re-QA'd.
-12. Mark missing checks as `unverified`.
-13. Keep any customer-facing summary optional and secondary to engineering readiness.
-14. Give a verdict: `pass`, `partial`, `fail`, or `blocked`.
-15. Add a task-state recommendation after the verification body.
-16. After the verification body, add a lifecycle state note only when `LIFECYCLE-STATE.md` thresholds are met. Never place lifecycle notes before `Verification Scope`.
+11. For runtime/model claims, map `capability_status`, `selector_enforcement`, evidence layer, Runtime mismatch, and runtime/cache refresh evidence to the claim. Prompt preference alone cannot satisfy `tool_enforced`.
+12. If verification fails or the user asks how to handle a QA failure, include the `QA Failure` shape from `QA-FIX-QA.md`. If concrete failure details are missing, still emit the shape and mark missing fields as `not provided` or `unverified`; do not substitute a generic process. Do not update a failure verdict to `pass` until the original reproduction/check has been re-QA'd.
+13. Mark missing checks as `unverified`.
+14. Keep any customer-facing summary optional and secondary to engineering readiness.
+15. Give a verdict: `pass`, `partial`, `fail`, or `blocked`.
+16. Add a task-state recommendation after the verification body.
+17. After the verification body, add a lifecycle state note only when `LIFECYCLE-STATE.md` thresholds are met. Never place lifecycle notes before `Verification Scope`.
 
 ## Output Shape
 
@@ -244,6 +249,15 @@ Verification Summary
 - Source Evidence
 - Test Evidence
 - Runtime / Browser Evidence
+- Runtime Capability:
+  - capability_status:
+  - selector_enforcement:
+  - Evidence layer:
+  - Requested runtime:
+  - Available runtime:
+  - Runtime mismatch:
+  - Fallback proposed:
+  - User approval required:
 - Data Readiness
 - Environment Readiness
 - Customer / UAT Readiness

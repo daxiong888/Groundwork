@@ -56,6 +56,10 @@ Use `LIGHTWEIGHT-PLAN.md` before editing: What, Why, Files, Test, Risk. Map acce
 
 Use `skills/_shared/ROLE-SEPARATION.md` for material changes. `implement` may provide `Self-check Evidence` from its own inspection and checks, but must not label that evidence as `Clean Review Evidence` or `Independent Verification Evidence`. For material changes, the final report must include `Role`, `Design Source`, `Self-check Evidence`, `Clean Review Evidence`, `Independent Verification Evidence`, `Runtime Evidence`, `Browser Evidence`, `UAT Evidence`, `Release Evidence`, `Readiness Boundary`, and `Required Next Independent Role`.
 
+Use `skills/_shared/RUNTIME-CAPABILITY.md` when the implementation request or final report references runtime/model selection, selector enforcement, child-thread/worktree execution, subagents, runtime cache, marketplace, or installed-plugin behavior. `implement` may report source-validation checks it ran, but must not claim runtime execution, cache refresh, model execution, or selector enforcement without runtime/tool evidence.
+
+Use `skills/_shared/COGNITIVE-BUDGET.md` when recommending a model profile. Recommend `model_profile` before any concrete model, and do not use Spark or any fast profile as final clean reviewer, final verifier, public skill approver, release/UAT authority, or customer authority.
+
 For read-only implementation conformance review, do not force a fix plan. Inspect the task/PRD, source, tests, and git boundary when available; report whether the implementation satisfies acceptance, what evidence was checked, what gaps remain, and explicitly avoid UAT/release/readiness verdicts unless the user asks for them.
 
 Use this output block for read-only conformance review, and include the same field labels in implementation final reports when the task asks for implementation conformance, gated implementation, or reviewable delivery evidence. Keep the exact field labels:
@@ -120,10 +124,12 @@ If using a subagent for review, use `skills/_shared/SUBAGENT-DELEGATION.md`. The
 8. Run the fastest relevant checks, including the original failing check when one exists.
 9. Add or update a focused regression test/check when feasible and proportional to risk.
 10. If fixing a verify failure, confirm the original failure was re-QA'd or explain why it remains unverified.
-11. In the final report, include `Scope`, `Acceptance Map`, `Evidence Inspected`, `Findings P0/P1/P2`, `Non-Readiness Boundary`, `Gaps`, and `Next Action` when the task touches implementation conformance, gated implementation, or reviewable delivery evidence.
-12. Run self-review from `SELF-REVIEW.md`.
-13. Report local evidence and remaining gaps, but do not claim final readiness.
-14. Recommend `verify` for readiness.
+11. If runtime/model selection is material, include `capability_status`, `selector_enforcement`, evidence layer, and Runtime mismatch status; use `unknown`, `unavailable`, or `prompt_preference` rather than silent substitution when runtime/tool evidence is absent.
+12. For runtime/cache claims, name installed plugin root, source root, cache/source refresh or equivalence evidence, run scope, commands/trials, and limitations; otherwise state that runtime evidence was not refreshed and is not claimed.
+13. In the final report, include `Scope`, `Acceptance Map`, `Evidence Inspected`, `Findings P0/P1/P2`, `Non-Readiness Boundary`, `Gaps`, and `Next Action` when the task touches implementation conformance, gated implementation, or reviewable delivery evidence.
+14. Run self-review from `SELF-REVIEW.md`.
+15. Report local evidence and remaining gaps, but do not claim final readiness.
+16. Recommend `verify` for readiness.
 
 ## CHECKPOINTS
 
@@ -166,6 +172,15 @@ TDD-Lite / No-Test Justification
 Files Changed
 Checks Run
 Unverified Claims
+Runtime Capability:
+- capability_status:
+- selector_enforcement:
+- Evidence layer:
+- Requested runtime:
+- Available runtime:
+- Runtime mismatch:
+- Fallback proposed:
+- User approval required:
 Role:
 Design Source:
 Self-check Evidence:
