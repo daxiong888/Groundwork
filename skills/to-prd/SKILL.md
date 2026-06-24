@@ -24,6 +24,7 @@ Should trigger:
 Should not trigger:
 
 - A small direct answer or rewrite is enough.
+- The user asks to choose among enumerable options, compare tradeoffs, dependencies, decision criteria, or consequences without asking for a PRD/spec; use `skills/_shared/DECISION-MAPPING.md` as the shared lens instead.
 - The user explicitly asks for grilling but the request is a tiny direct task, a repo-doc-answerable question, an accepted implementation task, an enumerable decision comparison, or a concrete prototype question; use the narrower route from `skills/_shared/GRILLING.md`.
 - The PRD is already accepted and the user asks to split tasks; use `to-issues`.
 - The user clearly says to skip PRD/spec shaping and implement directly; use `implement`, which still owns lifecycle, source, git, test, and risk gates.
@@ -40,6 +41,8 @@ When maintaining the Groundwork repository itself, apply the repo-local `AGENTS.
 Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` before shaping new requirements, version enhancements, workflow changes, runtime changes, plugin changes, skill-selection changes, or product decisions. Treat raw requirements and raw solution ideas as `Requirement State: raw` and route to shared grilling / PRD shaping by default. Do not proceed directly to implementation or issue splitting until the requirement is accepted enough to move downstream, unless the user explicitly requests that bypass.
 
 Use `skills/_shared/GRILLING.md` when material ambiguity blocks PRD shaping and the unknowns are not yet enumerable. Ask one highest-impact question at a time, inspect repo/source evidence before asking when it can answer the question, and treat the result as clarification only. Shared grilling may prepare a PRD route, but it is not PRD acceptance, implementation readiness, clean review, independent verification, or runtime/browser/UAT/release evidence.
+
+Use `skills/_shared/DECISION-MAPPING.md` when the options are already enumerable and the user needs a comparison of tradeoffs, dependencies, decision criteria, or consequences before choosing a path. Decision mapping is a shared reference, not a public `decision-map` skill, and it must not replace PRD shaping when the user explicitly asks to write requirements, acceptance criteria, or a spec.
 
 ## Workflow
 

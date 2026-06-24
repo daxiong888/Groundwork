@@ -26,6 +26,23 @@ Concrete model labels are runtime-specific evidence, not permanent global truth.
 | `exhaustive_review` | independent clean review, skill-audit, architecture/security/privacy/schema/data correctness review | high or xhigh when available | quality | Still needs source evidence, role separation, and verification scope; does not prove runtime readiness by itself. |
 | `spark_iteration` | bounded fast coding iteration with a fast feedback loop | low or medium; high only for bounded loops when available | fastest practical loop | Spark final authority restrictions apply: not final clean reviewer, final verifier, public skill approver, release/UAT authority, or customer authority. |
 
+## Decision Mapping Guidance
+
+Use `skills/_shared/DECISION-MAPPING.md` when options are already enumerable and the work is to compare tradeoffs, dependencies, and decision criteria.
+
+Decision mapping usually fits `balanced_work` for low-risk choices with clear evidence and `strong_reasoning` for cross-cutting product, architecture, runtime, or public-skill exposure choices. Use `exhaustive_review` only for an independent review of a decision map, not for the same author to approve their own decision.
+
+When a decision map compares runtime/model options, keep the recommendation at the profile and prompt preference layer unless runtime/tool evidence proves more:
+
+```yaml
+model_profile: fast_scan | balanced_work | strong_reasoning | exhaustive_review | spark_iteration
+selector_enforcement: prompt_preference | unavailable | unknown
+evidence_layer: prompt_preference
+runtime_evidence: not_claimed
+```
+
+Do not report selector enforcement, concrete runtime execution, installed-plugin behavior, cache refresh, UAT readiness, release readiness, or customer readiness from decision mapping alone.
+
 ## Profile-To-Model Mapping Gate
 
 Before mapping a profile to a concrete model, record the evidence layer:

@@ -41,6 +41,7 @@ Do not use this skill when:
 - requirements are not accepted; use `to-prd`
 - issues are not sliced; use `to-issues`
 - readiness is unknown; use `triage`
+- the user asks which enumerable runtime, model-profile, skill-route, or workflow option to choose before there is an accepted ready package; use `skills/_shared/DECISION-MAPPING.md` as a shared lens, while keeping runtime capability evidence boundaries explicit
 - the user asks to implement one scoped task directly; use `implement`
 - the user only asks for an implementation plan; use `write-plan`
 - the user asks whether finished work is ready or verified; use `verify`
@@ -52,6 +53,8 @@ When maintaining the Groundwork repository itself, apply the repo-local `AGENTS.
 Use `skills/_shared/RUNTIME-CAPABILITY.md` before recommending, requesting, or reporting runtime/model selection. Dispatch must keep capability seed facts, prompt preferences, runtime/tool evidence, official docs, and community evidence separate.
 
 Use `skills/_shared/COGNITIVE-BUDGET.md` for `model_profile`, reasoning/thinking preference, cost/latency bias, and Spark final authority restrictions. Route by profile before mapping to a concrete model.
+
+Use `skills/_shared/DECISION-MAPPING.md` only for pre-dispatch option comparison when the user needs to choose among enumerable runtime, model-profile, skill-route, or workflow paths. Preserve `dispatch` when accepted, ready tasks need runtime routing, an execution matrix, model/profile recommendations, package-only handoff, or Result Package expectations. A decision map can recommend a dispatch path, but it must not generate or execute the dispatch package and must not claim selector enforcement beyond prompt preference without runtime/tool evidence.
 
 `dispatch` must:
 
