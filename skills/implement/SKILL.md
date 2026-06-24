@@ -54,6 +54,8 @@ Use `skills/_shared/GIT-TOPOLOGY-GATE.md` before writing files for PR-bound impl
 
 Use `LIGHTWEIGHT-PLAN.md` before editing: What, Why, Files, Test, Risk. Map acceptance criteria to planned change, test/check, and expected evidence.
 
+Use `skills/_shared/ROLE-SEPARATION.md` for material changes. `implement` may provide `Self-check Evidence` from its own inspection and checks, but must not label that evidence as `Clean Review Evidence` or `Independent Verification Evidence`. For material changes, the final report must include `Role`, `Design Source`, `Self-check Evidence`, `Clean Review Evidence`, `Independent Verification Evidence`, `Runtime Evidence`, `Browser Evidence`, `UAT Evidence`, `Release Evidence`, `Readiness Boundary`, and `Required Next Independent Role`.
+
 For read-only implementation conformance review, do not force a fix plan. Inspect the task/PRD, source, tests, and git boundary when available; report whether the implementation satisfies acceptance, what evidence was checked, what gaps remain, and explicitly avoid UAT/release/readiness verdicts unless the user asks for them.
 
 Use this output block for read-only conformance review, and include the same field labels in implementation final reports when the task asks for implementation conformance, gated implementation, or reviewable delivery evidence. Keep the exact field labels:
@@ -164,6 +166,17 @@ TDD-Lite / No-Test Justification
 Files Changed
 Checks Run
 Unverified Claims
+Role:
+Design Source:
+Self-check Evidence:
+Clean Review Evidence:
+Independent Verification Evidence:
+Runtime Evidence:
+Browser Evidence:
+UAT Evidence:
+Release Evidence:
+Readiness Boundary:
+Required Next Independent Role:
 Self-Review
 Result
 Remaining Gaps

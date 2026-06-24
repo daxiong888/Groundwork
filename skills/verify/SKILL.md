@@ -106,6 +106,8 @@ Use source evidence, test output, runtime/browser evidence, data readiness, envi
 
 Use implementation evidence review only when the user asks whether a finished implementation is ready, verified, releaseable, handoff-ready, or evidence-supported. For a read-only conformance review of implementation against TASK/PRD with no UAT/readiness judgment, use `implement`.
 
+Use `skills/_shared/ROLE-SEPARATION.md` for material readiness claims. `verify` may provide `Independent Verification Evidence` only when it begins from explicit scope and inspects or runs evidence independent from the same-session designer/implementer. If the only available evidence is same-session self-check, implementation summary, or self-run tests, block or mark the readiness claim `unverified` instead of passing it.
+
 Use specialized references when they apply:
 
 - `QA-FIX-QA.md` for failed verification or QA-to-fix-to-QA advice that needs expected/actual/reproduction/severity/diagnosis/fix/re-QA.
@@ -245,6 +247,17 @@ Verification Summary
 - Data Readiness
 - Environment Readiness
 - Customer / UAT Readiness
+- Role:
+- Design Source:
+- Self-check Evidence:
+- Clean Review Evidence:
+- Independent Verification Evidence:
+- Runtime Evidence:
+- Browser Evidence:
+- UAT Evidence:
+- Release Evidence:
+- Readiness Boundary:
+- Required Next Independent Role:
 - Git Boundary
 - UI Evidence
 - Risks

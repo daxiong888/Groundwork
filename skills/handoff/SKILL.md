@@ -91,6 +91,8 @@ For complex work separation, `handoff` preserves continuation state and ownershi
 
 When a P1, public API, migration, schema, security, privacy, auth, permissions, data correctness, shared contract, package schema, adapter contract, state machine, weak-validation, or multi-package change is handed off without fresh clean review evidence, record that as an open gap or do-not-assume item. Do not let handoff wording imply that child implementer self-check is clean review.
 
+Use `skills/_shared/ROLE-SEPARATION.md` when preserving material continuation state. Handoff may report received evidence and the next independent role, but must not upgrade `Self-check Evidence` into `Clean Review Evidence` or `Independent Verification Evidence`.
+
 Small, low-risk continuation notes should remain compact. Do not force a full separation package when no separation threshold applies and a concise handoff can safely identify source truth, current state, gaps, and next action.
 
 Use `skills/_shared/LIFECYCLE-STATE.md` when the user asks to pause, resume, switch sessions, save state, continue later, or otherwise preserve workstream recovery state.
@@ -172,6 +174,17 @@ Current Decision
 Source Artifacts
 Decisions Made
 Evidence
+Role:
+Design Source:
+Self-check Evidence:
+Clean Review Evidence:
+Independent Verification Evidence:
+Runtime Evidence:
+Browser Evidence:
+UAT Evidence:
+Release Evidence:
+Readiness Boundary:
+Required Next Independent Role:
 Open Gaps
 Risks
 Lifecycle State

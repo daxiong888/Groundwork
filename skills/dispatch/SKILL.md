@@ -66,6 +66,8 @@ When maintaining the Groundwork repository itself, apply the repo-local `AGENTS.
 - keep `automation_candidate` recommendation-only; do not create, update, schedule, or archive automations from dispatch
 - stop before execution unless the user explicitly requests execution and the current runtime exposes the required tools
 - report selector enforcement transparently: use `tool_enforced` only when the adapter confirms selector support; otherwise use `prompt_preference`, `unavailable`, or `unknown`
+- apply `skills/_shared/ROLE-SEPARATION.md` when routing material work: separate designer/planner, implementer, clean reviewer, verifier, and coordinator roles; do not route a same-session implementer as clean reviewer or final verifier for its own material change
+- include role-separation closeout expectations for material tasks using `Role`, `Design Source`, `Self-check Evidence`, `Clean Review Evidence`, `Independent Verification Evidence`, `Runtime Evidence`, `Browser Evidence`, `UAT Evidence`, `Release Evidence`, `Readiness Boundary`, and `Required Next Independent Role`
 
 ## Hard Stop Before Execution
 
@@ -140,6 +142,17 @@ Expected Result Package
 - Runtime:
 - Output Type:
 - Required Evidence:
+- Role:
+- Design Source:
+- Self-check Evidence:
+- Clean Review Evidence:
+- Independent Verification Evidence:
+- Runtime Evidence:
+- Browser Evidence:
+- UAT Evidence:
+- Release Evidence:
+- Readiness Boundary:
+- Required Next Independent Role:
 
 Next Action
 ````
@@ -233,6 +246,18 @@ tasks:
         required: true | false
         package_ref: native_closeout_package | review_package | not_applicable
         merge_gate: evidence_git_boundary_review_and_merge_source_required | not_applicable
+        role_separation:
+          Role: coordinator | designer_planner | implementer | clean_reviewer | verifier | not_applicable
+          Design Source: ""
+          Self-check Evidence: ""
+          Clean Review Evidence: ""
+          Independent Verification Evidence: ""
+          Runtime Evidence: ""
+          Browser Evidence: ""
+          UAT Evidence: ""
+          Release Evidence: ""
+          Readiness Boundary: ""
+          Required Next Independent Role: ""
       verification_expectation:
         fastest_signal: ""
         required_evidence: ""

@@ -37,6 +37,8 @@ When maintaining the Groundwork repository itself, apply the repo-local `AGENTS.
 
 Prototype contract-boundary review stays in `prototype` when the source of truth is a prototype, mock, screenshot, or static HTML. Classify backend contract candidates, mock/illustrative fields, and client-derived logic, but do not verify source truth or mark backend contract as confirmed unless PRD, backend source, API response, API schema, or explicit user confirmation is actually present.
 
+Use `skills/_shared/ROLE-SEPARATION.md` when a prototype materially informs design, skill behavior, frontend/backend contract truth, or downstream implementation. A designer/planner prototype can provide design source and self-check evidence, but it cannot independently verify or clean-review its own material design.
+
 ## Workflow
 
 1. State the prototype question, decision needed, and contract sources inspected or unavailable.
@@ -88,6 +90,17 @@ Contract Impact: none / needs confirmation / confirmed update
 States Covered
 Interactions Covered
 Browser / Runtime Evidence
+Role:
+Design Source:
+Self-check Evidence:
+Clean Review Evidence:
+Independent Verification Evidence:
+Runtime Evidence:
+Browser Evidence:
+UAT Evidence:
+Release Evidence:
+Readiness Boundary:
+Required Next Independent Role:
 Known Gaps
 Implementation Implications
 Proposed PRD / Issue / Contract Feedback
