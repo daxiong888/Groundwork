@@ -4,6 +4,30 @@ All notable changes to Groundwork are documented in this file.
 
 ## Unreleased
 
+## v0.5.0 - 2026-06-25
+
+### Added
+
+- Added the v0.5 prototype-first public skill expansion policy:
+  - quality-gated public skill expansion through `SKILL-QUALITY`;
+  - role separation for implementation self-check, clean review, independent verification, runtime evidence, browser evidence, UAT evidence, and release evidence;
+  - lazy runtime capability and selector-enforcement evidence boundaries;
+  - capability seed documentation for dated, user-supplied model menu observations;
+  - shared references for grilling, decision mapping, skill-audit, visual handoff packets, prototype decision capture, UI variants, and logic/state labs.
+- Added v0.5 eval prompt fixtures for role separation, runtime capability, shared grilling, shared decision mapping, shared skill-audit, prototype lab, and aggregate skill expansion hard negatives.
+
+### Changed
+
+- Bumped plugin metadata to `0.5.0` for the prototype-first skill expansion source-validation release.
+- Updated `dispatch`, `implement`, `verify`, `handoff`, `prototype`, `to-prd`, and `write-plan` guidance to preserve source-validation, role-separation, runtime/cache, browser, UAT, release, and customer-readiness evidence boundaries.
+- Kept `grill`, `decision-map`, and `skill-audit` as shared references or workflows rather than public skills pending explicit maintainer public-exposure acceptance.
+
+### Notes
+
+- This release is source-validation focused. CSV parsing, source inspection, GitHub schema/source gate, and documentation checks do not prove installed plugin runtime behavior, selector enforcement, marketplace readiness, browser behavior, UAT readiness, release readiness, or customer readiness.
+- Runtime/cache claims still require a named installed plugin root, source root, refresh or source/cache equivalence method, run scope, commands/trials, limitations, and missing evidence.
+- The v0.5 prompt CSVs are fixture/source coverage; they are not default runtime-suite evidence unless explicitly passed to `evals/run_runtime.py` or later added to `DEFAULT_SUITES` with installed-plugin/source-equivalence evidence.
+
 ## v0.4.2 - 2026-06-23
 
 ### Added
