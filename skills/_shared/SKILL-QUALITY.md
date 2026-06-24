@@ -4,7 +4,7 @@ Target Reader: Groundwork maintainers, skill authors, implementers, clean review
 Reader Action Needed: Use this checklist before adding a public skill or approving a material skill-quality change.
 Decision Supported: Whether a candidate belongs in the public skill surface, a shared reference, a branch/workflow lens, router behavior, or a one-off guide.
 Artifact Type: shared guardrail.
-Source of Truth: `docs/prd-v0.5-prototype-first-skill-expansion.md` FR-501 through FR-504 and V050-001 in `artifacts/v0.5-prototype-first-skill-expansion/issue-map.md`.
+Source of Truth: `docs/prd-v0.5-prototype-first-skill-expansion.md` FR-501 through FR-504, FR-542, section 12, V050-001, and V050-006A in `artifacts/v0.5-prototype-first-skill-expansion/issue-map.md`.
 Scope: Public skill expansion policy, shared skill-quality checks, routing/eval gates, and evidence boundaries for public skill merge decisions.
 Out of Scope: Creating public skills, deciding release readiness, claiming installed-plugin runtime behavior, changing plugin metadata, or replacing clean review and independent verification.
 Evidence Level: Source-validation policy. This file is local guidance only until separately reviewed and verified.
@@ -39,6 +39,14 @@ A new public skill may be merged only when all of these are true:
 9. Route-conflict negatives prove the skill does not steal direct answers, accepted implementation work, verification, handoff, or another public skill's route.
 10. A separate clean review or skill-quality review checks the candidate before merge; the author or implementer self-check is not final approval.
 
+## Required Skill-audit Lens
+
+Public skill additions and material skill changes must use `skills/_shared/SKILL-AUDIT.md` as the shared audit workflow/reference before they can be accepted.
+
+`skill-audit` is classified as a required shared workflow/reference first. It must not be promoted to `skills/skill-audit/SKILL.md` or treated as a public skill unless a later accepted publicization slice proves direct invocation value, routing negatives pass, and maintainer acceptance explicitly authorizes public exposure.
+
+The shared audit lens covers invocation class, trigger description, workflow, information hierarchy, progressive disclosure, duplication, failure branches, evidence boundary, and eval coverage. Author self-audit is useful self-check evidence only; public skill approval, material skill-quality approval, and final acceptance require an independent clean review or maintainer acceptance according to `skills/_shared/ROLE-SEPARATION.md`.
+
 ## Hard-negative Expectations
 
 Every public skill candidate must include hard negatives that fail when:
@@ -48,6 +56,8 @@ Every public skill candidate must include hard negatives that fail when:
 - trigger or should-not-trigger coverage is missing;
 - routing negatives are skipped or treated as optional;
 - hard-negative eval expectations are omitted;
+- a public skill addition skips trigger, should-not-trigger, or hard-negative eval review;
+- the shared `skill-audit` reference is treated as a public skill before accepted public exposure and maintainer acceptance;
 - prompt text alone is treated as runtime, selector, browser, UAT, release, customer, marketplace, or installed-plugin cache evidence;
 - the author or same-session implementer approves their own material skill-quality change as final.
 
