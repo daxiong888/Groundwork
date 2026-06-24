@@ -40,6 +40,8 @@ Prototype contract-boundary review stays in `prototype` when the source of truth
 
 Use `DECISION-CAPTURE.md` for decision-oriented prototype work. Prototype outputs must separate confirmed decisions, rejected variants, unverified assumptions, mock/illustrative fields, client-derived logic, contract impact, open questions, and next route before downstream PRD, issue, implementation, verification, or handoff work.
 
+Use `skills/_shared/VISUAL-HANDOFF-PACKET.md` when a prototype output becomes a visual handoff packet, HTML packet, screenshot-backed review note, generated visual artifact, or frontend/backend review packet. The packet remains a communication artifact unless separate source/API, browser, runtime, UAT, or release evidence is produced and named.
+
 Use `skills/_shared/ROLE-SEPARATION.md` when a prototype materially informs design, skill behavior, frontend/backend contract truth, or downstream implementation. A designer/planner prototype can provide design source and self-check evidence, but it cannot independently verify or clean-review its own material design.
 
 ## Workflow
@@ -50,9 +52,10 @@ Use `skills/_shared/ROLE-SEPARATION.md` when a prototype materially informs desi
 4. Keep the artifact throwaway and narrow.
 5. Apply `DECISION-CAPTURE.md` so confirmed decisions, rejected variants, assumptions, open questions, and next route are explicit.
 6. Apply `CONTRACT-BOUNDARY.md` so prototype-only fields or client-derived logic are never treated as backend contract truth.
-7. Verify runtime/browser behavior when visual or interaction claims matter.
-8. Draft findings as proposed PRD, issue, contract, or implementation feedback unless source-truth verification or explicit user confirmation has already happened.
-9. State cleanup decision: delete, absorb, or keep temporarily with reason and review timing.
+7. Apply `skills/_shared/VISUAL-HANDOFF-PACKET.md` when the output is meant for frontend/backend visual review or handoff; include `Mock vs Confirmed Field Badges`, `Do Not Implement / Do Not Assume`, and `Evidence Boundary`.
+8. Verify runtime/browser behavior when visual or interaction claims matter.
+9. Draft findings as proposed PRD, issue, contract, or implementation feedback unless source-truth verification or explicit user confirmation has already happened.
+10. State cleanup decision: delete, absorb, or keep temporarily with reason and review timing.
 
 Do not stop with a browser opt-in question such as asking whether to open a local URL. If browser/runtime evidence is useful but unavailable or not yet approved, still produce the prototype contract-boundary output first, mark the visual or interaction evidence as `unverified`, and name the smallest follow-up browser check.
 
@@ -61,6 +64,7 @@ Do not stop with a browser opt-in question such as asking whether to open a loca
 - STOP before handing prototype findings to frontend, PRD, issue, or contract notes unless contract sources, confirmed backend fields, mock / illustrative fields, client-derived logic, and unverified assumptions are separated.
 - STOP before calling any field, state, enum, payload, or rule a confirmed backend contract unless it is source-backed by PRD, backend source, API response, API/schema evidence, or explicit user confirmation.
 - STOP before promoting a prototype artifact into a durable source of truth unless `Contract Impact` is `confirmed update`; otherwise record `needs confirmation` and concrete confirmation questions.
+- STOP before treating a visual handoff packet as source/API, browser, runtime, UAT, release, customer-readiness, or implementation evidence unless the qualifying evidence is produced and named.
 - STOP before using a visual artifact, generated image, screenshot, HTML packet, or static prototype as browser/runtime evidence unless an actual browser/runtime run was performed and recorded.
 - STOP before claiming UAT, release, customer readiness, marketplace, installed-plugin, browser, or runtime evidence from prototype output alone.
 
@@ -103,6 +107,7 @@ Next Route: to-prd / to-issues / implement / verify / handoff / dispatch / clean
 States Covered
 Interactions Covered
 Browser / Runtime Evidence
+Visual Handoff Packet
 Role:
 Design Source:
 Self-check Evidence:
@@ -137,6 +142,8 @@ Contract boundary outputs must explicitly separate:
 - Next route (`to-prd`, `to-issues`, `implement`, `verify`, `handoff`, `dispatch`, `cleanup`, or `no follow-up`)
 
 Prototype output is not a frontend contract unless contract claims are source-backed or explicitly confirmed by the user.
+
+Visual handoff packet output must include the required sections from `skills/_shared/VISUAL-HANDOFF-PACKET.md` or mark unavailable sections as `not applicable`. Its `Mock vs Confirmed Field Badges` and `Do Not Implement / Do Not Assume` sections must prevent mock fields, illustrative fields, and client-derived logic from becoming confirmed backend/API/schema truth.
 
 Feedback wording must preserve the source boundary:
 

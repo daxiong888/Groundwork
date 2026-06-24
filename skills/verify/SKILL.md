@@ -106,6 +106,8 @@ Use source evidence, test output, runtime/browser evidence, data readiness, envi
 
 Use implementation evidence review only when the user asks whether a finished implementation is ready, verified, releaseable, handoff-ready, or evidence-supported. For a read-only conformance review of implementation against TASK/PRD with no UAT/readiness judgment, use `implement`.
 
+Use `skills/_shared/VISUAL-HANDOFF-PACKET.md` when the claim depends on a visual handoff packet, HTML packet, screenshot set, generated image, visual artifact, prototype output, or frontend/backend review packet. A visual packet is a communication artifact, not browser evidence, runtime evidence, UAT evidence, release evidence, customer-readiness evidence, or confirmed API/schema/source truth unless the packet names the separate qualifying evidence and `verify` inspects it.
+
 Use `skills/_shared/ROLE-SEPARATION.md` for material readiness claims. `verify` may provide `Independent Verification Evidence` only when it begins from explicit scope and inspects or runs evidence independent from the same-session designer/implementer. If the only available evidence is same-session self-check, implementation summary, or self-run tests, block or mark the readiness claim `unverified` instead of passing it.
 
 Use `skills/_shared/RUNTIME-CAPABILITY.md` when verifying model/runtime execution, selector enforcement, subagent or child-thread/worktree routing, runtime cache, installed plugin, marketplace, release, UAT, or customer claims. If only prompt text, package text, source diff, or implementation summary is available, mark runtime/tool and selector claims `unverified` or `not applicable`; do not claim `tool_enforced`.
@@ -180,6 +182,7 @@ Never place task-state recommendations before the required `Verification Scope` 
 - STOP before any verdict unless `Verification Scope` includes concrete `Covered`, `Not Covered`, and `Evidence Sources` fields.
 - STOP before claiming `pass`, readiness, UAT, release, or handoff confidence unless fresh in-scope evidence has been inspected or run.
 - If only source, doc, diff, summary, or historical evidence is available, state that evidence boundary and do not upgrade it into runtime, browser, data, environment, or UAT evidence.
+- If only a visual handoff packet, HTML packet, screenshot, generated image, visual artifact, or prototype output is available, classify it as communication artifact evidence only and do not upgrade it into source/API, browser, runtime, UAT, release, customer-readiness, or final readiness evidence.
 
 ## Failure Branches
 
@@ -190,6 +193,8 @@ Never place task-state recommendations before the required `Verification Scope` 
 | Tests were not run | Report tests as not run. | Do not claim test-backed behavior passed. |
 | UI tool choice does not match the claim | Use `UI-TOOL-ROUTER.md` or mark UI evidence `unverified`. | Do not claim visual, responsive, interaction, console, or network evidence from the wrong tool. |
 | UAT/customer readiness is claimed without runtime evidence | Separate source, test, runtime/browser, data, environment, and UAT/customer readiness. | Do not give UAT/customer `pass` without the required runtime and readiness evidence. |
+| Visual packet output is treated as browser/runtime/UAT/release evidence | Reclassify it as a communication artifact and inspect only separately named qualifying evidence. | Mark browser/runtime/UAT/release/customer-readiness claims `unverified` unless actual evidence is produced and named. |
+| Mock fields from a visual packet are treated as confirmed API/schema truth | Reclassify them as `mock / illustrative / not backend contract` or `proposed contract hypothesis`. | Route source/API/schema confirmation to source inspection or mark the claim `unverified`. |
 
 ## Do Not
 
@@ -197,6 +202,7 @@ Never place task-state recommendations before the required `Verification Scope` 
 - Do not treat a diff summary, old test run, or stale runtime note as current readiness evidence.
 - Do not issue a review verdict before declaring scope, coverage, and evidence sources.
 - Do not hide source/doc-only or no-command boundaries in prose after the verdict.
+- Do not treat visual handoff packets, screenshots, generated images, HTML packets, or prototype output as browser evidence, runtime evidence, UAT evidence, release evidence, or confirmed API/schema/source truth by themselves.
 
 ## Workflow
 
@@ -209,14 +215,15 @@ Never place task-state recommendations before the required `Verification Scope` 
 7. Use `UI-TOOL-ROUTER.md` when visual or interaction claims matter.
 8. Use `CONTRACT-DOC-REVIEW.md` when frontend-facing docs or API contract claims matter.
 9. Separate data, environment, and customer/UAT readiness.
-10. Map `Claim / AC -> Evidence -> Result -> Gap -> Severity`.
-11. For runtime/model claims, map `capability_status`, `selector_enforcement`, evidence layer, Runtime mismatch, and runtime/cache refresh evidence to the claim. Prompt preference alone cannot satisfy `tool_enforced`.
-12. If verification fails or the user asks how to handle a QA failure, include the `QA Failure` shape from `QA-FIX-QA.md`. If concrete failure details are missing, still emit the shape and mark missing fields as `not provided` or `unverified`; do not substitute a generic process. Do not update a failure verdict to `pass` until the original reproduction/check has been re-QA'd.
-13. Mark missing checks as `unverified`.
-14. Keep any customer-facing summary optional and secondary to engineering readiness.
-15. Give a verdict: `pass`, `partial`, `fail`, or `blocked`.
-16. Add a task-state recommendation after the verification body.
-17. After the verification body, add a lifecycle state note only when `LIFECYCLE-STATE.md` thresholds are met. Never place lifecycle notes before `Verification Scope`.
+10. For visual packets, map packet sections, `Mock vs Confirmed`, `Do Not Implement / Do Not Assume`, and `Evidence Boundary` before judging any readiness claim.
+11. Map `Claim / AC -> Evidence -> Result -> Gap -> Severity`.
+12. For runtime/model claims, map `capability_status`, `selector_enforcement`, evidence layer, Runtime mismatch, and runtime/cache refresh evidence to the claim. Prompt preference alone cannot satisfy `tool_enforced`.
+13. If verification fails or the user asks how to handle a QA failure, include the `QA Failure` shape from `QA-FIX-QA.md`. If concrete failure details are missing, still emit the shape and mark missing fields as `not provided` or `unverified`; do not substitute a generic process. Do not update a failure verdict to `pass` until the original reproduction/check has been re-QA'd.
+14. Mark missing checks as `unverified`.
+15. Keep any customer-facing summary optional and secondary to engineering readiness.
+16. Give a verdict: `pass`, `partial`, `fail`, or `blocked`.
+17. Add a task-state recommendation after the verification body.
+18. After the verification body, add a lifecycle state note only when `LIFECYCLE-STATE.md` thresholds are met. Never place lifecycle notes before `Verification Scope`.
 
 ## Output Shape
 
@@ -274,6 +281,7 @@ Verification Summary
 - Required Next Independent Role:
 - Git Boundary
 - UI Evidence
+- Visual Packet Evidence Boundary
 - Risks
 - Unverified Claims
 - Next Action

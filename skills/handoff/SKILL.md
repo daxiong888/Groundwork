@@ -93,6 +93,8 @@ When a P1, public API, migration, schema, security, privacy, auth, permissions, 
 
 Use `skills/_shared/ROLE-SEPARATION.md` when preserving material continuation state. Handoff may report received evidence and the next independent role, but must not upgrade `Self-check Evidence` into `Clean Review Evidence` or `Independent Verification Evidence`.
 
+Use `skills/_shared/VISUAL-HANDOFF-PACKET.md` when handoff cites or carries a visual handoff packet, HTML packet, screenshot set, generated visual artifact, prototype output, or frontend/backend review packet. Treat it as a communication artifact, not readiness evidence; put unsupported API/schema/source, browser, runtime, UAT, release, and customer-readiness claims under `Do-Not-Assume` unless separate qualifying evidence is named.
+
 Small, low-risk continuation notes should remain compact. Do not force a full separation package when no separation threshold applies and a concise handoff can safely identify source truth, current state, gaps, and next action.
 
 Use `skills/_shared/LIFECYCLE-STATE.md` when the user asks to pause, resume, switch sessions, save state, continue later, or otherwise preserve workstream recovery state.
@@ -130,10 +132,11 @@ When freshness is `stale` or `unknown`, keep the handoff actionable:
 5. Apply the State Freshness Algorithm, then reference existing `STATE.md` by path when present, with freshness and update-needed status, or recommend creating/updating it when the threshold is met.
 6. Capture current state, decisions, evidence, gaps, and risks.
 7. Capture allowed/disallowed files when file boundary matters.
-8. Include `native_handoff_package` when continuation crosses Local and Worktree. Keep Codex-native thread/worktree fields as explicit availability-marked context, not inferred runtime claims.
-9. Include audience, goal, current decision, source artifacts, evidence, open risks, next skill, do-not-assume, git boundary, and redaction note when producing a review package.
-10. Include only enough detail to resume safely; default to a one-screen continuation summary when no durable handoff file is needed.
-11. Recommend the next skill or direct action.
+8. Preserve visual packet boundaries when present: require state/flow, UI surface, API contract mapping, Mock vs Confirmed fields, open questions, `Do Not Implement / Do Not Assume`, and evidence boundary, or record the missing packet sections as continuation gaps.
+9. Include `native_handoff_package` when continuation crosses Local and Worktree. Keep Codex-native thread/worktree fields as explicit availability-marked context, not inferred runtime claims.
+10. Include audience, goal, current decision, source artifacts, evidence, open risks, next skill, do-not-assume, git boundary, and redaction note when producing a review package.
+11. Include only enough detail to resume safely; default to a one-screen continuation summary when no durable handoff file is needed.
+12. Recommend the next skill or direct action.
 
 ## CHECKPOINTS
 
@@ -195,6 +198,7 @@ Lifecycle State
 Allowed / Disallowed Files
 Git Boundary
 Do-Not-Assume
+Visual Packet Evidence Boundary
 Redaction Note
 Next Action
 Artifact Recommendation
