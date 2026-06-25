@@ -14,7 +14,7 @@ Safe to Share / Redaction Notes: Safe to share as-is; contains no secrets, crede
 
 `grill` is a public candidate only after shared route negatives prove a distinct invocation moment and hard negatives against over-questioning pass.
 
-Do not create `skills/grill/SKILL.md` or treat this shared reference as a public skill. Public exposure belongs to the later V050-003B slice and requires maintainer acceptance, route-negative evidence, and independent skill-quality review.
+Do not create `skills/grill/SKILL.md` or treat this shared reference as a public skill. Public exposure belongs only to a later accepted publicization scope after route-negative evidence, hard negatives, independent skill-quality review, and maintainer acceptance.
 
 Do not create `skills/socratic/SKILL.md`, `skills/domain-language/SKILL.md`, or `skills/grill-with-docs/SKILL.md` for v0.5.1 MVP behavior. Socratic questioning is a shared selection aid, not a public workflow surface.
 

@@ -24,9 +24,9 @@ Locale: durable artifact in English; user-facing reports in Chinese.
 Source of Truth: maintainer direction plus current Groundwork v0.5.0 repository state.
 Requirement State: PRD accepted for v0.5.1 MVP implementation.
 Artifact Promotion: required; this document is intended to become the canonical v0.5.1 planning source if accepted.
-Execution Topology: branch-local documentation artifact only.
-Risk Gate: git write to PRD/docs files only.
-Verification Strategy: documentation consistency checks, stale-state search, `git diff --check`, and CSV/plugin metadata validation if implementation later touches those areas.
+Execution Topology: branch-local source-validation change set over docs, shared references, `to-prd` guidance, and eval prompt fixtures.
+Risk Gate: docs / `skills/_shared` / `skills/to-prd` / eval prompt writes only; no public skill files, plugin metadata, runtime execution, marketplace, release, cache, tracker, worktree, or remote state mutation.
+Verification Strategy: source diff review, CSV parse, plugin JSON sanity check when relevant, stale-state search, forbidden public-skill path check, and CI/eval workflow evidence when available.
 Lifecycle State: not needed for this bounded planning pass.
 Stop Condition: v0.5.1 MVP source changes, eval prompts, and evidence boundaries are coherent enough for local source-validation review.
 
@@ -674,7 +674,7 @@ Deferred to later accepted scope:
 
 ## 19. Release and Evidence Boundary
 
-This PRD can support maintainer product/design review only. It cannot support:
+This PRD can support maintainer product/design review and local source-validation implementation review only. It cannot support:
 
 - installed plugin runtime readiness;
 - marketplace readiness;
