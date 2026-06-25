@@ -1,15 +1,15 @@
 # PRD v0.5.1: Socratic Grilling and Domain-language Workflow Hardening
 
 Target Reader: Groundwork maintainers, skill authors, implementers, clean reviewers, verifiers, and workflow designers planning the v0.5.1 iteration.
-Reader Action Needed: Review this PRD as a proposed v0.5.1 source of truth before implementation slicing; confirm whether the MVP should stay shared-reference-only or publicize any new skill surface later.
-Decision Supported: Whether Groundwork should extend the v0.5 decision-first workflow with higher-quality first questions, conditional domain-language conflict handling, and positive-value plus anti-overquestioning evals while preserving public-surface gates.
+Reader Action Needed: Use this accepted PRD as the v0.5.1 MVP implementation and review source of truth; keep public-surface expansion deferred unless a later accepted slice authorizes it.
+Decision Supported: How Groundwork should extend the v0.5 decision-first workflow with higher-quality first questions, conditional domain-language conflict handling, and positive-value plus anti-overquestioning evals while preserving public-surface gates.
 Artifact Type: PRD.
-Source of Truth: Maintainer request to create a v0.5.1 PRD from the discussion about Socratic questioning, mattpocock `grill-me` / `grill-with-docs`, and the current Groundwork v0.5.0 implementation; current repository guidance, v0.5 PRD, shared grilling reference, skill-quality gate, role-separation gate, prototype contract-boundary behavior, and eval fixtures.
+Source of Truth: Maintainer request to create and implement a v0.5.1 PRD from the discussion about Socratic questioning, mattpocock `grill-me` / `grill-with-docs`, and the current Groundwork v0.5.0 implementation; current repository guidance, v0.5 PRD, shared grilling reference, skill-quality gate, role-separation gate, prototype contract-boundary behavior, and eval fixtures.
 Scope: v0.5.1 planning for shared Socratic question quality, conditional domain-language / term-conflict handling, route-impact requirements for questions, compact grilling output, regression touchpoints, and positive-value plus hard-negative eval coverage.
-Out of Scope: Implementing source changes in this PRD pass; creating public `socratic`, `grill`, `domain-language`, or `grill-with-docs` skills; claiming runtime, installed-plugin, marketplace, UAT, release, browser, selector-enforcement, customer, or cache/source-refresh readiness; mutating plugin metadata; creating issues, PRs, worktrees, subagents, or remote tracker state.
-Evidence Level: Planning evidence only. This PRD is a branch-local documentation artifact. It does not provide runtime evidence, installed-plugin evidence, browser evidence, release evidence, UAT evidence, marketplace evidence, or current external-repo verification.
+Out of Scope: Creating public `socratic`, `grill`, `domain-language`, or `grill-with-docs` skills; claiming runtime, installed-plugin, marketplace, UAT, release, browser, selector-enforcement, customer, or cache/source-refresh readiness; mutating plugin metadata; creating issues, PRs, worktrees, subagents, or remote tracker state.
+Evidence Level: Accepted local PRD/source-validation scope. This PRD does not provide runtime evidence, installed-plugin evidence, browser evidence, release evidence, UAT evidence, marketplace evidence, or current external-repo verification.
 Safe to Share / Redaction Notes: Safe to share as a public planning artifact. It contains no secrets, credentials, private URLs, browser cookies, PII, production data, raw traces, or sensitive logs.
-Status: Draft PRD for maintainer review.
+Status: Accepted PRD for v0.5.1 MVP implementation.
 Version Track: v0.5.1 candidate.
 Last Updated: 2026-06-25.
 Branch: `prd/v0.5.1-socratic-grilling-expansion`.
@@ -22,13 +22,13 @@ Intent: product capability hardening after v0.5 public-skill-expansion policy.
 Suggested Workflow Mode: to-prd.
 Locale: durable artifact in English; user-facing reports in Chinese.
 Source of Truth: maintainer direction plus current Groundwork v0.5.0 repository state.
-Requirement State: PRD draft for maintainer acceptance.
+Requirement State: PRD accepted for v0.5.1 MVP implementation.
 Artifact Promotion: required; this document is intended to become the canonical v0.5.1 planning source if accepted.
 Execution Topology: branch-local documentation artifact only.
 Risk Gate: git write to PRD/docs files only.
 Verification Strategy: documentation consistency checks, stale-state search, `git diff --check`, and CSV/plugin metadata validation if implementation later touches those areas.
 Lifecycle State: not needed for this bounded planning pass.
-Stop Condition: v0.5.1 MVP scope, later scope, acceptance criteria, issue slices, and evidence boundaries are coherent enough for maintainer review.
+Stop Condition: v0.5.1 MVP source changes, eval prompts, and evidence boundaries are coherent enough for local source-validation review.
 
 ---
 
@@ -209,7 +209,7 @@ Defer to v0.5.2 / v0.6:
 
 Shared grilling should prefer these question types. A question is valid only when it can change the next route, artifact boundary, acceptance criteria, contract boundary, or evidence requirement.
 
-### 8.1 Definition Question
+### 9.1 Definition Question
 
 Purpose: clarify what a term means before it is written into PRD, prototype, contract, issue, or implementation.
 
@@ -234,7 +234,7 @@ Use when:
 - a business state name could map to multiple backend statuses;
 - a term affects acceptance criteria.
 
-### 8.2 Boundary Question
+### 9.2 Boundary Question
 
 Purpose: decide which artifact or workflow owns the claim.
 
@@ -249,7 +249,7 @@ Use when:
 - an implementation summary might be treated as verification;
 - the next route is ambiguous.
 
-### 8.3 Evidence Question
+### 9.3 Evidence Question
 
 Purpose: separate facts from assumptions.
 
@@ -263,7 +263,7 @@ Use when:
 - readiness claims depend on old or same-session evidence;
 - source truth could be inspected before asking the user.
 
-### 8.4 Consequence Question
+### 9.4 Consequence Question
 
 Purpose: identify whether the answer matters enough to ask now.
 
@@ -277,7 +277,7 @@ Use when:
 - multiple possible questions compete;
 - the agent needs to choose one highest-impact question.
 
-### 8.5 Counterexample Question
+### 9.5 Counterexample Question
 
 Purpose: make assumptions falsifiable.
 
@@ -291,7 +291,7 @@ Use when:
 - a prototype suggests behavior but source truth is unknown;
 - verification needs to define a minimal failing check.
 
-### 8.6 Canonical-term Question
+### 9.6 Canonical-term Question
 
 Purpose: pick the artifact-local term without upgrading it beyond its evidence layer.
 
@@ -582,7 +582,7 @@ skills/to-prd/PRD-TEMPLATE.md
 evals/prompts/v0.5.1-socratic-grilling.csv
 ```
 
-Dependencies: V051-001 if the conditional bucket uses shared grilling question-quality behavior.
+Dependencies: V051-001.
 
 ### V051-003: Regression Touchpoints
 
@@ -661,10 +661,14 @@ Dependencies: V051-001 through V051-003 and maintainer acceptance.
 
 ---
 
-## 18. Open Questions
+## 18. Deferred Decisions
 
-1. Should public `grill` be reconsidered during v0.5.1, or should it remain explicitly later scope until multiple real direct-invocation cases exist?
-2. Should Groundwork ever maintain a persistent project glossary, or should terminology stay artifact-local unless the user asks for durable context?
+No v0.5.1 MVP blocker remains open in this PRD.
+
+Deferred to later accepted scope:
+
+1. Public `grill` may be reconsidered only after shared-reference behavior has direct-invocation evidence, route negatives, hard negatives, skill-quality review, and maintainer acceptance.
+2. Persistent project glossary support remains out of v0.5.1. Terminology stays artifact-local unless a later accepted requirement proves durable context is needed.
 
 ---
 
@@ -689,6 +693,6 @@ Any future runtime/release claim must name installed plugin root, source root, c
 
 ## 20. Next Action
 
-If this PRD direction is accepted, slice V051-001 through V051-003 into focused MVP tasks. The first implementation slice should be V051-001 because every later domain-language and regression-touchpoint change depends on the shared Socratic taxonomy, question-quality gate, compact output contract, and route-after-answer behavior.
+For v0.5.1 MVP implementation, apply V051-001 through V051-003 as a shared-reference-first change set. V051-001 remains the dependency root because every later domain-language and regression-touchpoint change depends on the shared Socratic taxonomy, question-quality gate, compact output contract, and route-after-answer behavior.
 
 Do not create `skills/socratic/SKILL.md`, `skills/grill/SKILL.md`, `skills/domain-language/SKILL.md`, or `skills/grill-with-docs/SKILL.md` during the MVP. Public exposure belongs only to a later accepted publicization slice after route negatives, hard negatives, skill-quality review, and maintainer acceptance.

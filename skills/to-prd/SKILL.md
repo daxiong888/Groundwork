@@ -42,6 +42,8 @@ Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` before shaping new requirements, ver
 
 Use `skills/_shared/GRILLING.md` when material ambiguity blocks PRD shaping and the unknowns are not yet enumerable. Ask one highest-impact question at a time, inspect repo/source evidence before asking when it can answer the question, and treat the result as clarification only. Shared grilling may prepare a PRD route, but it is not PRD acceptance, implementation readiness, clean review, independent verification, or runtime/browser/UAT/release evidence.
 
+Use `skills/_shared/DOMAIN-LANGUAGE.md` when terminology materially affects acceptance, contract truth, source truth, prototype interpretation, verification, or handoff. Do not print a full `Domain Language / Term Conflict` bucket when no material term conflict exists. Keep glossary-only alignment separate from PRD truth, contract truth, source truth, runtime evidence, user confirmation, and unknown terms.
+
 Use `skills/_shared/DECISION-MAPPING.md` when the options are already enumerable and the user needs a comparison of tradeoffs, dependencies, decision criteria, or consequences before choosing a path. Decision mapping is a shared reference, not a public `decision-map` skill, and it must not replace PRD shaping when the user explicitly asks to write requirements, acceptance criteria, or a spec.
 
 ## Workflow
@@ -49,13 +51,15 @@ Use `skills/_shared/DECISION-MAPPING.md` when the options are already enumerable
 1. Identify the target reader and decision the PRD must support.
 2. Run lifecycle preflight and apply `skills/_shared/GRILLING.md` when material ambiguity blocks drafting: explicitly list target reader, decision supported, known facts, assumptions, open questions, and needs confirmation before drafting.
 3. Inspect local code/docs/tickets/data first when they can answer a clarification question.
-4. Ask one high-impact clarification question at a time. Use multiple questions only when the user asks for a non-interactive questionnaire or written PRD gap list.
+4. Ask one highest route-impact clarification question at a time. Use multiple questions only when the user asks for a non-interactive questionnaire or written PRD gap list.
 5. Include a recommended answer or default decision and impact for each clarification question when evidence supports one.
 6. Mark every unknown backend field, business state, unsupported ability, or missing acceptance detail as **NEEDS CLARIFICATION**; never invent product truth or mutate it from prototype-only mock data.
-7. Use the internal scope-shaping branch owned by `to-prd` if acceptance or user intent is unclear. Do not present `scope` as a public skill or route.
-8. Keep the PRD compact and implementation-ready.
-9. Include stable acceptance criteria IDs such as `AC-1`, `AC-2`.
-10. Recommend `to-issues` only when the PRD/spec is accepted enough to slice.
+7. Apply `Domain Language / Term Conflict` only when terms materially affect acceptance, contract truth, source truth, prototype interpretation, verification, or handoff; omit it or mark `none material` in durable PRDs when no material conflict exists.
+8. Use the evidence-layer labels `glossary_only`, `PRD_truth`, `contract_truth`, `source_truth`, `runtime_evidence`, `user_confirmed`, and `unknown` for material term conflicts.
+9. Use the internal scope-shaping branch owned by `to-prd` if acceptance or user intent is unclear. Do not present `scope` as a public skill or route.
+10. Keep the PRD compact and implementation-ready.
+11. Include stable acceptance criteria IDs such as `AC-1`, `AC-2`.
+12. Recommend `to-issues` only when the PRD/spec is accepted enough to slice.
 
 ## CHECKPOINTS
 
@@ -63,6 +67,7 @@ Use `skills/_shared/DECISION-MAPPING.md` when the options are already enumerable
 - STOP before creating or updating a PRD file unless the user asked for a durable artifact, the output must become a source of truth, or artifact promotion is explicitly justified.
 - STOP before writing a durable PRD artifact unless the exact audience-first header fields are present: `Target Reader`, `Reader Action Needed`, `Decision Supported`, `Artifact Type`, `Source of Truth`, `Scope`, `Out of Scope`, `Evidence Level`, and `Safe to Share / Redaction Notes`.
 - STOP before recommending `to-issues` when the PRD/spec is raw, draft-only, or still has blocking **NEEDS CLARIFICATION** items.
+- STOP before promoting a term conflict when its evidence layer is missing or when glossary-only alignment is being treated as contract/source/runtime/readiness truth.
 
 ## Failure Branches
 
@@ -70,6 +75,7 @@ Use `skills/_shared/DECISION-MAPPING.md` when the options are already enumerable
 |---|---|---|
 | Available evidence is missing | Mark source truth as `unknown` and ask the highest-impact clarification question. | Keep unknown fields as **NEEDS CLARIFICATION**. |
 | Evidence conflicts with user input | Name the conflict and separate verified facts from assumptions. | Do not choose product truth unless a canonical source is clear. |
+| User terminology conflicts with repo/source/API/UI terminology | Add a material `Domain Language / Term Conflict` only if correctness is affected; otherwise keep normal output compact. | Use `glossary_only`, `PRD_truth`, `contract_truth`, `source_truth`, `runtime_evidence`, `user_confirmed`, or `unknown` and name the promotion blocker. |
 | User asks for a PRD file but facts are incomplete | Produce a draft with blocking gaps or stop for clarification. | Do not present the artifact as accepted or issue-ready. |
 | User asks for a PRD artifact from sensitive source material | Redact secret values, private URLs, credentials, PII, sensitive logs, screenshots, requests, and database rows before drafting or writing. | Preserve only stable non-secret identifiers, source types, and decisions needed for review. |
 | User asks to split issues from raw intent | Stop before `to-issues`. | State that PRD/spec acceptance is required first. |
@@ -80,6 +86,8 @@ Use `skills/_shared/DECISION-MAPPING.md` when the options are already enumerable
 - Do not turn raw, draft-only, or contradictory requirements into accepted product truth.
 - Do not invent backend fields, business states, metrics, owners, timelines, APIs, or acceptance details.
 - Do not promote prototype-only mock data into confirmed source truth.
+- Do not treat glossary-only alignment as accepted PRD truth, backend/API contract truth, source truth, implementation readiness, verification evidence, UAT evidence, release evidence, or customer readiness.
+- Do not create `skills/socratic/SKILL.md`, `skills/grill/SKILL.md`, `skills/domain-language/SKILL.md`, or `skills/grill-with-docs/SKILL.md` for v0.5.1 MVP behavior.
 - Do not write or update a durable PRD file just because the output looks reusable; require user intent, source-of-truth need, or artifact promotion.
 - Do not recommend `to-issues` or `implement` while blocking **NEEDS CLARIFICATION** items remain unresolved.
 - Recommend `verify` only for evidence/consistency review, not for readiness or downstream delivery, while blocking **NEEDS CLARIFICATION** items remain.
@@ -88,7 +96,7 @@ Use `skills/_shared/DECISION-MAPPING.md` when the options are already enumerable
 
 ## Output Shape
 
-Use `GRILL-BEFORE-WRITE.md` and `PRD-TEMPLATE.md` as the default structure.
+Use `GRILL-BEFORE-WRITE.md` and `PRD-TEMPLATE.md` as the default structure. `Domain Language / Term Conflict` is conditional: omit it in normal conversation output when no material term conflict exists, and omit it or mark `none material` in durable PRDs.
 
 ```text
 Target Reader
@@ -104,6 +112,7 @@ Known Facts
 Assumptions
 Open Questions
 Needs Confirmation
+Domain Language / Term Conflict
 PRD Summary
 Problem
 Goal
