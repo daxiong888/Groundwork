@@ -41,6 +41,18 @@
 ## Needs Confirmation
 - [Unknown business fact, field, state, permission, user behavior, or acceptance detail that must not be invented] **NEEDS CLARIFICATION**
 
+## Domain Language / Term Conflict
+- none material.
+
+Use a full bucket only when terminology materially affects acceptance, contract truth, source truth, prototype interpretation, verification, or handoff:
+
+- User term: [Term from user/request]
+- Existing repo/doc/API/UI term: [Existing term or `none found`]
+- Conflict: [Why this matters]
+- Canonical term for this artifact: [Artifact-local term]
+- Evidence layer: [glossary_only | PRD_truth | contract_truth | source_truth | runtime_evidence | user_confirmed | unknown]
+- Promotion blocked until: [Evidence or confirmation needed]
+
 ## PRD Summary
 - [One-paragraph summary of the requested change]
 
