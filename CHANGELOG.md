@@ -4,6 +4,25 @@ All notable changes to Groundwork are documented in this file.
 
 ## Unreleased
 
+## v0.5.1 - 2026-06-25
+
+### Added
+
+- Added shared Socratic grilling guidance for route-impact question selection, compact interactive output, route-after-answer behavior, and bad-question anti-patterns.
+- Added `skills/_shared/DOMAIN-LANGUAGE.md` as a lightweight evidence-boundary vocabulary for term conflicts and promotion blockers.
+- Added `evals/prompts/v0.5.1-socratic-grilling.csv` as the focused canonical v0.5.1 suite for positive-value and hard-negative Socratic grilling behavior.
+
+### Changed
+
+- Bumped plugin metadata to `0.5.1` for the Socratic grilling and domain-language workflow hardening source-validation release.
+- Updated `to-prd` grilling and PRD template guidance so `Domain Language / Term Conflict` is conditional and does not promote PRD-only wording into backend/API contract truth.
+- Added scoped regression prompt rows for grilling, prototype, verify, skill-audit, and guardrail boundaries while keeping `socratic`, `grill`, and `domain-language` out of the public skill surface.
+
+### Notes
+
+- This release is source-validation focused. Local source checks, CSV parsing, GitHub schema/source gate, and clean review do not prove runtime, selector-enforcement, browser, UAT, release, customer, marketplace, or installed-plugin cache behavior by themselves.
+- Runtime/cache claims require a named installed plugin root, source root, refresh or source/cache equivalence method, run scope, commands/trials, limitations, and missing evidence.
+
 ## v0.5.0 - 2026-06-25
 
 ### Added
