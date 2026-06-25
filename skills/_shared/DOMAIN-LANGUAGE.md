@@ -56,7 +56,7 @@ Domain Language / Term Conflict: none material.
 2. PRD wording is not backend/API contract truth.
 3. Prototype labels are not source truth.
 4. UI labels are not API fields unless source-backed or explicitly confirmed.
-5. Backend/API contract truth requires PRD, backend source, API response, schema, accepted contract artifact, or explicit user confirmation.
+5. Backend/API contract truth requires inspected backend/API source, API response, schema, accepted contract artifact, or explicit user confirmation for that contract boundary. PRD wording alone remains `PRD_truth` until separately backed by contract/source evidence or contract-scoped user confirmation.
 6. Runtime, browser, UAT, release, customer, marketplace, installed-plugin, cache-refresh, and selector-enforcement claims require separate named evidence.
 7. If user terminology conflicts with source truth, surface the conflict instead of silently choosing one.
 8. Do not create backend fields, business states, APIs, metrics, permissions, owners, timelines, or acceptance details from term alignment alone.
