@@ -2,16 +2,16 @@
 
 Target Reader: Groundwork maintainers, skill authors, implementers, clean reviewers, verifiers, and workflow designers planning the v0.5.1 iteration.
 Reader Action Needed: Review this PRD as a proposed v0.5.1 source of truth before implementation slicing; confirm whether the MVP should stay shared-reference-only or publicize any new skill surface later.
-Decision Supported: Whether Groundwork should extend the v0.5 decision-first workflow with a Socratic question taxonomy, domain-language conflict handling, and stronger anti-overquestioning evals while preserving public-surface gates.
+Decision Supported: Whether Groundwork should extend the v0.5 decision-first workflow with higher-quality first questions, conditional domain-language conflict handling, and positive-value plus anti-overquestioning evals while preserving public-surface gates.
 Artifact Type: PRD.
 Source of Truth: Maintainer request to create a v0.5.1 PRD from the discussion about Socratic questioning, mattpocock `grill-me` / `grill-with-docs`, and the current Groundwork v0.5.0 implementation; current repository guidance, v0.5 PRD, shared grilling reference, skill-quality gate, role-separation gate, prototype contract-boundary behavior, and eval fixtures.
-Scope: v0.5.1 planning for shared Socratic question taxonomy, domain-language / term-conflict handling, route impact requirements for questions, PRD grill bucket expansion, prototype and verification terminology boundaries, and hard-negative eval coverage.
+Scope: v0.5.1 planning for shared Socratic question quality, conditional domain-language / term-conflict handling, route-impact requirements for questions, compact grilling output, regression touchpoints, and positive-value plus hard-negative eval coverage.
 Out of Scope: Implementing source changes in this PRD pass; creating public `socratic`, `grill`, `domain-language`, or `grill-with-docs` skills; claiming runtime, installed-plugin, marketplace, UAT, release, browser, selector-enforcement, customer, or cache/source-refresh readiness; mutating plugin metadata; creating issues, PRs, worktrees, subagents, or remote tracker state.
 Evidence Level: Planning evidence only. This PRD is a branch-local documentation artifact. It does not provide runtime evidence, installed-plugin evidence, browser evidence, release evidence, UAT evidence, marketplace evidence, or current external-repo verification.
 Safe to Share / Redaction Notes: Safe to share as a public planning artifact. It contains no secrets, credentials, private URLs, browser cookies, PII, production data, raw traces, or sensitive logs.
 Status: Draft PRD for maintainer review.
 Version Track: v0.5.1 candidate.
-Last Updated: 2026-06-24.
+Last Updated: 2026-06-25.
 Branch: `prd/v0.5.1-socratic-grilling-expansion`.
 
 ---
@@ -50,11 +50,11 @@ This means v0.5.1 should harden the shared workflow layer, not expand the public
 The MVP should add:
 
 1. A Socratic question taxonomy to `skills/_shared/GRILLING.md`.
-2. A question-quality gate that rejects philosophical, vague, duplicated, or no-route-impact questions.
-3. A `Domain Language / Term Conflict` bucket for PRD shaping.
-4. Required shared `skills/_shared/DOMAIN-LANGUAGE.md` guidance for glossary-only facts versus PRD truth, contract truth, source truth, runtime evidence, user confirmation, and unknown terms.
-5. Prototype, visual handoff, and verify terminology boundaries so terms, mock fields, and client-derived labels do not become backend/API truth.
-6. Hard-negative evals for bad Socratic behavior.
+2. A question-quality gate that helps select the single highest route-impact question.
+3. Conditional `Domain Language / Term Conflict` handling for `to-prd` only when terminology affects correctness.
+4. Required shared `skills/_shared/DOMAIN-LANGUAGE.md` as lightweight evidence-boundary vocabulary for glossary-only facts versus PRD truth, contract truth, source truth, runtime evidence, user confirmation, and unknown terms.
+5. A focused canonical v0.5.1 eval suite that proves positive workflow value as well as hard negatives.
+6. Regression touchpoints for prototype, verify, skill-audit, visual handoff, and guardrails only when route ownership or evidence-boundary behavior is actually touched.
 
 The principle:
 
@@ -65,7 +65,35 @@ artifact boundary, acceptance criterion, or evidence requirement.
 
 ---
 
-## 3. Current Baseline
+## 3. Visible Value over v0.5.0
+
+v0.5.1 is successful only if it improves first-move quality, not merely if new checklist fields exist.
+
+Compared with v0.5.0, v0.5.1 must make Groundwork better at:
+
+1. **Selecting the highest route-impact question**
+   - v0.5.0: ask one high-impact question when ambiguity blocks routing.
+   - v0.5.1: choose between definition, boundary, evidence, consequence, counterexample, or canonical-term questions based on which one changes the next safe route.
+
+2. **Stopping clarification sooner**
+   - v0.5.0: keep grilling until ambiguity is reduced.
+   - v0.5.1: after the answer, route to direct answer, `to-prd`, decision mapping, prototype, verify, handoff, or blocked.
+
+3. **Avoiding unnecessary questions when evidence is sufficient**
+   - v0.5.0: inspect repo/source/docs before asking.
+   - v0.5.1: if inspected evidence is enough, answer or recommend the route without asking a user question.
+
+4. **Preventing term drift only when it matters**
+   - v0.5.0: prevent invented product truth.
+   - v0.5.1: surface term conflicts only when they affect acceptance, contract truth, prototype interpretation, verification, or handoff.
+
+5. **Producing compact user-visible grilling output**
+   - v0.5.0: shared grilling output includes required clarification fields.
+   - v0.5.1: default interactive output stays compact and action-oriented.
+
+---
+
+## 4. Current Baseline
 
 Groundwork v0.5.0 already contains the major building blocks for this iteration:
 
@@ -81,7 +109,7 @@ v0.5.1 should build on this baseline. It should not reintroduce the older fixed-
 
 ---
 
-## 4. Problem Statement
+## 5. Problem Statement
 
 Groundwork has the right v0.5 route structure, but shared grilling is still mostly a trigger and loop definition. It says when to ask and when not to ask. It does not yet define the kinds of questions that are useful enough to be Groundwork questions.
 
@@ -98,20 +126,20 @@ Current risks:
 
 ---
 
-## 5. Goals
+## 6. Goals
 
-1. Add a Socratic question taxonomy to shared grilling without creating a public `socratic` skill.
-2. Require every grilling question to state its route or evidence impact.
-3. Add domain-language / term-conflict handling to PRD shaping.
+1. Improve shared grilling first-move quality without creating a public `socratic` skill.
+2. Require shared grilling to select one highest route-impact question when multiple unknowns compete.
+3. Stop clarification sooner by routing after the answer instead of continuing grilling by default.
 4. Keep glossary-only facts separate from PRD truth, contract truth, source truth, and runtime evidence.
-5. Ensure prototype outputs label terms, fields, statuses, and client-derived labels according to source support.
-6. Ensure verify can challenge terminology and contract claims without becoming a clarification route.
-7. Expand hard-negative evals for bad Socratic behavior.
+5. Add conditional domain-language / term-conflict handling to PRD shaping only when terminology affects correctness.
+6. Keep prototype, verify, visual handoff, and skill-audit changes as regression touchpoints unless the shared vocabulary changes their route ownership or evidence boundary.
+7. Add positive-value evals that prove better question selection, route transition, evidence-sufficient no-question paths, and conditional domain-language behavior.
 8. Preserve v0.5 skill-quality, role-separation, runtime-capability, and evidence-boundary rules.
 
 ---
 
-## 6. Non-goals
+## 7. Non-goals
 
 v0.5.1 must not:
 
@@ -120,6 +148,7 @@ v0.5.1 must not:
 - clone mattpocock skills wholesale;
 - add a persistent `CONTEXT.md` or glossary database by default;
 - make every task pass through grilling;
+- make every PRD print a domain-language / glossary section;
 - ask users questions the repo can answer;
 - treat glossary alignment as PRD acceptance;
 - treat user terminology as backend/API contract truth;
@@ -130,22 +159,30 @@ v0.5.1 must not:
 
 ---
 
-## 7. MVP / Later Boundary
+## 8. MVP / Later Boundary
 
-### 7.1 v0.5.1 MVP
+### 8.1 v0.5.1 MVP
 
 v0.5.1 MVP includes:
 
-1. Shared Socratic question taxonomy in `skills/_shared/GRILLING.md`.
-2. Question-quality gate and anti-patterns in `skills/_shared/GRILLING.md`.
-3. `Domain Language / Term Conflict` bucket in `skills/to-prd/GRILL-BEFORE-WRITE.md`, `skills/to-prd/SKILL.md`, and the PRD template.
-4. Required shared `skills/_shared/DOMAIN-LANGUAGE.md` because v0.5.1 applies domain-language evidence boundaries across `to-prd`, `prototype`, `verify`, and skill-audit behavior.
-5. Prototype terminology boundary updates so mock fields, illustrative terms, client-derived labels, and backend/API contract candidates stay separated.
-6. Verify and skill-audit wording that prevents Socratic, glossary, or prototype outputs from being upgraded into readiness evidence.
-7. Positive, negative, route-conflict, and hard-negative evals for Socratic grilling behavior.
-8. `evals/prompts/v0.5.1-socratic-grilling.csv` as the focused canonical v0.5.1 Socratic grilling suite, with existing suites receiving only small cross-suite regression cases when route ownership is touched.
+1. Shared Socratic question taxonomy, question-quality gate, compact output contract, and route-after-answer behavior in `skills/_shared/GRILLING.md`.
+2. Conditional `Domain Language / Term Conflict` handling in `skills/to-prd/GRILL-BEFORE-WRITE.md`, `skills/to-prd/SKILL.md`, and the PRD template.
+3. Required shared `skills/_shared/DOMAIN-LANGUAGE.md` as lightweight evidence-boundary vocabulary for `to-prd` and regression touchpoints.
+4. `evals/prompts/v0.5.1-socratic-grilling.csv` as the focused canonical suite with positive-value evals and hard negatives.
+5. Small regression touchpoints in existing prototype, verify, skill-audit, visual handoff, and guardrails suites only when route ownership or evidence-boundary behavior is touched.
 
-### 7.2 Conditional v0.5.1 Scope
+### 8.2 Regression Touchpoints
+
+These are not broad MVP rewrite surfaces. Update them only when the shared Socratic or domain-language changes create a route-ownership, evidence-boundary, or regression-test need:
+
+| Touchpoint | v0.5.1 decision | Gate |
+| --- | --- | --- |
+| Prototype terminology | Regression touchpoint | Existing prototype contract-boundary rules already cover mock/client-derived/source-backed fields; update only for new shared vocabulary or eval coverage. |
+| Verify terminology/readiness | Regression touchpoint | Existing verify evidence-boundary rules already reject PRD/prototype/visual packet readiness overclaims; update only if v0.5.1 changes claim wording or eval coverage. |
+| Skill-audit/public-skill approval | Regression touchpoint | Existing skill-quality rules already reject synonym public skills; update only for `socratic` / `grill` direct publicization hard negatives. |
+| Visual handoff / guardrails | Regression touchpoint | Add small cases only when visual packet or guardrail route ownership is touched. |
+
+### 8.3 Conditional v0.5.1 Scope
 
 These may be considered only after MVP evidence exists:
 
@@ -155,7 +192,7 @@ These may be considered only after MVP evidence exists:
 | Public `domain-language` skill | Not in v0.5.1 | A glossary route is too easy to confuse with PRD/spec or contract truth. |
 | Public `socratic` skill | Not in v0.5.1 | The useful behavior is a question taxonomy and route gate, not a user-facing workflow. |
 
-### 7.3 Later Scope
+### 8.4 Later Scope
 
 Defer to v0.5.2 / v0.6:
 
@@ -168,7 +205,7 @@ Defer to v0.5.2 / v0.6:
 
 ---
 
-## 8. Socratic Question Taxonomy
+## 9. Socratic Question Taxonomy
 
 Shared grilling should prefer these question types. A question is valid only when it can change the next route, artifact boundary, acceptance criteria, contract boundary, or evidence requirement.
 
@@ -270,7 +307,7 @@ Use when:
 
 ---
 
-## 9. Question-quality Gate
+## 10. Question-quality Gate
 
 Before asking a grilling question, the agent must pass this gate:
 
@@ -288,14 +325,16 @@ Evidence boundary:
 
 This gate is an internal preflight, not the default user-visible output. Do not print the full gate during normal interactive grilling.
 
-Default user-visible grilling output should include only:
+Default interactive grilling output should use this compact shape:
 
-- known facts inspected;
-- material ambiguity blocking the next route;
-- the single highest-impact question;
-- why this question matters;
-- route or evidence impact;
-- evidence boundary.
+```text
+Inspected:
+Blocking ambiguity:
+Question:
+Impact / Next route:
+```
+
+`Impact / Next route` must include the route or evidence impact and the clarification-only evidence boundary when that boundary matters.
 
 Print the full gate only when the user asks for audit/debug detail or when producing a durable review artifact that needs the reasoning boundary.
 
@@ -310,11 +349,17 @@ A question fails the gate when:
 
 ---
 
-## 10. Domain Language / Term Conflict
+## 11. Domain Language / Term Conflict
 
-PRD shaping should add a domain-language bucket before writing durable PRD content.
+PRD shaping must apply `Domain Language / Term Conflict` only when terminology materially affects acceptance, contract truth, source truth, prototype interpretation, verification, or handoff.
 
-Recommended shape:
+When no material term conflict exists, do not print a full bucket in normal conversation output. In durable PRDs, either omit the section or write:
+
+```text
+Domain Language / Term Conflict: none material.
+```
+
+Recommended shape when a material conflict exists:
 
 ```text
 Domain Language / Term Conflict
@@ -338,21 +383,23 @@ Rules:
 
 ---
 
-## 11. Route Integration
+## 12. Route Integration
 
-### 11.1 `to-prd`
+### 12.1 `to-prd`
 
 `to-prd` should use the taxonomy only when material ambiguity blocks safe PRD shaping.
 
 Required behavior:
 
-- Add `Domain Language / Term Conflict` to the pre-write buckets.
+- Apply `Domain Language / Term Conflict` only when terminology materially affects acceptance, contract truth, source truth, prototype interpretation, verification, or handoff.
+- Do not print a full bucket in normal conversation output when no material term conflict exists.
+- In durable PRDs with no material term conflict, omit the section or write `Domain Language / Term Conflict: none material.`
 - Use one highest-impact question when interactive.
 - Use a written gap list only when the user asks for a non-interactive questionnaire or written PRD gaps.
 - Mark unclear business facts, fields, states, permissions, metrics, owners, timelines, or acceptance details as `NEEDS CLARIFICATION`.
 - Keep glossary-only terms separate from accepted PRD truth.
 
-### 11.2 Shared Grilling
+### 12.2 Shared Grilling
 
 `skills/_shared/GRILLING.md` should become the canonical place for:
 
@@ -361,36 +408,41 @@ Required behavior:
 - one-question-at-a-time loop;
 - Socratic question taxonomy;
 - question-quality gate;
+- compact interactive output;
+- route-after-answer behavior;
 - anti-patterns;
 - evidence boundary.
 
-### 11.3 Decision Mapping
+### 12.3 Decision Mapping
 
 Decision mapping remains for enumerable options.
 
 If options are not enumerable, use shared grilling. If options are enumerable, do not keep grilling for philosophical depth; compare tradeoffs, dependencies, evidence gaps, and recommended path.
 
-### 11.4 Prototype
+### 12.4 Prototype
 
-Prototype should use domain-language boundaries when prototype outputs include terms, fields, statuses, labels, filters, or client-derived logic.
+Prototype is a regression touchpoint, not a broad MVP rewrite surface.
 
 Required behavior:
 
+- Reuse existing prototype contract-boundary classification for terms, fields, statuses, labels, filters, and client-derived logic.
 - Label mock / illustrative fields explicitly.
 - Label client-derived labels and status mappings as `Derived / illustrative / not backend contract` unless source-backed.
 - Keep `Contract Impact: needs confirmation` unless backend/API/schema/source truth or explicit user confirmation supports promotion.
+- Add or update prototype docs/evals only when v0.5.1 shared vocabulary changes route ownership or evidence-boundary behavior.
 
-### 11.5 Verify
+### 12.5 Verify
 
-`verify` should not grill. It should cross-examine claims against declared scope and evidence.
+`verify` is a regression touchpoint, not a clarification route. It should cross-examine claims against declared scope and evidence.
 
 Required behavior:
 
 - Verify terminology claims only as part of a declared scope.
 - Map claim -> evidence -> result -> gap.
 - Mark glossary-only, PRD-only, prototype-only, or summary-only claims as insufficient for readiness when separate evidence is required.
+- Add or update verify docs/evals only when v0.5.1 shared vocabulary changes evidence-boundary behavior.
 
-### 11.6 Skill Audit
+### 12.6 Skill Audit
 
 `skill-audit` should reject public-skill candidates that are just names for shared Socratic behavior.
 
@@ -403,23 +455,24 @@ A public candidate fails when:
 
 ---
 
-## 12. Functional Requirements
+## 13. Functional Requirements
 
 ### Socratic Grilling
 
-- FR-610: Groundwork must define a Socratic question taxonomy for shared grilling.
-- FR-611: Groundwork must require each grilling question to name its route or evidence impact.
-- FR-612: Groundwork must reject non-actionable, philosophical, duplicated, or no-route-impact questions.
-- FR-613: Groundwork must inspect local docs/source/tickets/artifacts before asking when they can answer the question.
-- FR-614: Shared grilling must remain clarification evidence only.
+- FR-610: Groundwork must define a Socratic question taxonomy for shared grilling as a selection aid, not required user-visible output text.
+- FR-611: Given multiple plausible clarification questions, shared grilling must select exactly one highest route-impact question and name its route or evidence impact.
+- FR-612: Default interactive grilling output must stay compact and must not print the full internal gate unless the user asks for audit/debug detail or the output is a durable review artifact.
+- FR-613: Groundwork must inspect local docs/source/tickets/artifacts before asking when they can answer the question; if inspected evidence is sufficient, answer or recommend the next route without asking the user.
+- FR-614: After the user answers the grilling question, Groundwork must route to direct answer, `to-prd`, decision mapping, prototype, verify, handoff, or blocked instead of continuing clarification by default.
+- FR-615: Shared grilling must remain clarification evidence only.
 
 ### Domain Language
 
-- FR-620: `to-prd` must include a domain-language / term-conflict bucket before durable PRD writing when terminology affects correctness.
+- FR-620: `to-prd` must apply a domain-language / term-conflict bucket only when terminology materially affects acceptance, contract truth, source truth, prototype interpretation, verification, or handoff.
 - FR-621: Domain-language output must use the evidence-layer labels `glossary_only`, `PRD_truth`, `contract_truth`, `source_truth`, `runtime_evidence`, `user_confirmed`, and `unknown`.
 - FR-622: Term conflicts between user wording and repo/source/API/UI wording must be surfaced instead of silently resolved.
 - FR-623: Domain-language alignment must not create backend fields, states, APIs, metrics, permissions, or acceptance details.
-- FR-624: v0.5.1 MVP must add `skills/_shared/DOMAIN-LANGUAGE.md` as the required shared domain-language evidence-boundary reference for `to-prd`, `prototype`, `verify`, and skill-audit behavior.
+- FR-624: v0.5.1 MVP must add `skills/_shared/DOMAIN-LANGUAGE.md` as a required lightweight evidence-boundary vocabulary, not as a persistent project glossary.
 
 ### Route and Skill Surface
 
@@ -427,22 +480,25 @@ A public candidate fails when:
 - FR-631: Public `grill` remains conditional on distinct invocation, route-negative evidence, hard negatives, independent skill-quality review, and maintainer acceptance.
 - FR-632: `decision-map`, `prototype`, `implement`, `verify`, and `handoff` route boundaries must remain protected from shared grilling.
 
-### Prototype and Verification Boundary
+### Regression Touchpoints
 
-- FR-640: Prototype terminology, fields, statuses, and client-derived labels must be classified as confirmed, mock / illustrative, derived, proposed hypothesis, or unverified.
-- FR-641: `verify` must not treat glossary, PRD, prototype, visual packet, implementation summary, or same-session self-check as readiness evidence without the qualifying evidence required for the claim.
+- FR-640: Prototype, verify, visual handoff, skill-audit, and guardrails changes in v0.5.1 MVP must remain regression touchpoints unless shared Socratic or domain-language behavior changes their route ownership or evidence boundary.
+- FR-641: Prototype terminology, fields, statuses, and client-derived labels must continue to be classified as confirmed, mock / illustrative, derived, proposed hypothesis, or unverified.
+- FR-642: `verify` must not treat glossary, PRD, prototype, visual packet, implementation summary, or same-session self-check as readiness evidence without the qualifying evidence required for the claim.
 
 ### Evals
 
-- FR-650: v0.5.1 must add hard-negative evals for bad Socratic behavior.
-- FR-651: Evals must fail when the agent asks user questions before inspecting repo-answerable evidence.
-- FR-652: Evals must fail when the agent asks multiple low-impact questions instead of one highest-impact question.
-- FR-653: Evals must fail when glossary alignment is upgraded into PRD acceptance, contract truth, implementation readiness, or verification pass.
-- FR-654: `evals/prompts/v0.5.1-socratic-grilling.csv` must be the focused canonical v0.5.1 Socratic grilling suite; existing suites may receive small cross-suite regression cases only when route ownership is touched.
+- FR-650: v0.5.1 must add positive-value evals and hard-negative evals for Socratic grilling behavior.
+- FR-651: Positive-value evals must pass when the agent selects the highest route-impact question among competing unknowns.
+- FR-652: Positive-value evals must pass when the agent routes correctly after receiving the answer.
+- FR-653: Positive-value evals must pass when the agent answers or recommends a route without asking the user because repo/source/docs evidence is sufficient.
+- FR-654: Positive-value evals must pass when the agent conditionally includes `Domain Language / Term Conflict` only when terminology is material.
+- FR-655: Hard-negative evals must fail when the agent asks generic no-impact questions, asks multiple interactive questions, asks repo-answerable facts before inspection, upgrades glossary alignment into contract/readiness truth, or creates public `socratic` / `grill` without accepted scope.
+- FR-656: `evals/prompts/v0.5.1-socratic-grilling.csv` must be the focused canonical v0.5.1 Socratic grilling suite; existing suites may receive small cross-suite regression cases only when route ownership is touched.
 
 ---
 
-## 13. Acceptance Criteria
+## 14. Acceptance Criteria
 
 ### AC-A: PRD Direction Accepted
 
@@ -456,117 +512,95 @@ A public candidate fails when:
 - AC-B2: Shared behavior is placed under `skills/_shared/` unless it belongs only to one existing public skill.
 - AC-B3: Public skill creation is absent from MVP source changes.
 
-### AC-C: Socratic Taxonomy Implemented
+### AC-C: Grilling Produces Better First Moves
 
-- AC-C1: Shared grilling lists definition, boundary, evidence, consequence, counterexample, and canonical-term question types.
-- AC-C2: Shared grilling includes a question-quality gate.
-- AC-C3: Shared grilling includes anti-patterns for philosophical questioning, over-questioning, repo-doc bypass, no-route questioning, and readiness overclaim.
+- AC-C1: Given multiple plausible clarification questions, shared grilling selects exactly one highest route-impact question and explains the route/evidence impact.
+- AC-C2: The default interactive grilling output is compact and does not print the full internal gate unless the user asks for audit/debug detail or the output is a durable review artifact.
+- AC-C3: After the user answers the grilling question, the workflow routes to direct answer, `to-prd`, decision mapping, prototype, verify, handoff, or blocked instead of continuing clarification by default.
+- AC-C4: If available repo/source/docs evidence is sufficient, shared grilling does not ask the user and instead answers or recommends the next route.
+- AC-C5: The taxonomy is used as a selection aid, not as required output text.
 
 ### AC-D: Domain-language Boundary Implemented
 
-- AC-D1: `to-prd` pre-write buckets include `Domain Language / Term Conflict` when terminology affects correctness.
+- AC-D1: `to-prd` includes `Domain Language / Term Conflict` only when terminology materially affects acceptance, contract truth, source truth, prototype interpretation, verification, or handoff.
 - AC-D2: Domain-language output distinguishes glossary-only, PRD truth, contract truth, source truth, runtime evidence, user-confirmed, and unknown.
 - AC-D3: Term conflicts are surfaced instead of silently resolved.
-- AC-D4: `skills/_shared/DOMAIN-LANGUAGE.md` exists as the required shared reference for v0.5.1 domain-language evidence boundaries.
+- AC-D4: `skills/_shared/DOMAIN-LANGUAGE.md` exists as the required lightweight shared reference for v0.5.1 domain-language evidence boundaries.
+- AC-D5: When no material term conflict exists, normal conversation output does not print a full domain-language bucket, and durable PRDs omit the section or write `Domain Language / Term Conflict: none material.`
 
-### AC-E: Prototype / Verify Boundary Preserved
+### AC-E: Regression Touchpoints Preserved
 
-- AC-E1: Prototype outputs do not upgrade mock fields, illustrative labels, or client-derived logic into backend/API truth.
-- AC-E2: Verify outputs do not upgrade glossary, PRD, prototype, visual packet, implementation summary, or same-session self-check into readiness evidence.
+- AC-E1: Prototype, verify, visual handoff, skill-audit, and guardrails are not broad MVP rewrite surfaces.
+- AC-E2: Prototype outputs continue not to upgrade mock fields, illustrative labels, or client-derived logic into backend/API truth.
+- AC-E3: Verify outputs continue not to upgrade glossary, PRD, prototype, visual packet, implementation summary, or same-session self-check into readiness evidence.
+- AC-E4: Existing suites receive small route-regression cases only when v0.5.1 changes route ownership or evidence-boundary behavior.
 
-### AC-F: Evals / Hard Negatives Added
+### AC-F: Evals Prove Positive Value and Guardrails
 
-- AC-F1: Hard negatives fail when a generic Socratic question is asked without route or evidence impact.
-- AC-F2: Hard negatives fail when many questions are asked during interactive grilling.
-- AC-F3: Hard negatives fail when repo-answerable facts are asked of the user before inspection.
-- AC-F4: Hard negatives fail when domain-language alignment is treated as source/API contract truth.
-- AC-F5: Hard negatives fail when public `socratic` or public `grill` is created without accepted public-surface scope and skill-quality gates.
-- AC-F6: `evals/prompts/v0.5.1-socratic-grilling.csv` is the canonical focused suite, with existing suites used only for scoped route-regression touchpoints.
+- AC-F1: Positive-value evals pass when the agent selects the highest route-impact question among competing unknowns.
+- AC-F2: Positive-value evals pass when the agent routes correctly after receiving the answer.
+- AC-F3: Positive-value evals pass when the agent answers directly or recommends the next route because repo/source/docs evidence is sufficient.
+- AC-F4: Positive-value evals pass when the agent conditionally includes `Domain Language / Term Conflict` only when material.
+- AC-F5: Positive-value evals pass when the agent keeps interactive grilling output compact.
+- AC-F6: Hard-negative evals fail when a generic Socratic question is asked without route or evidence impact.
+- AC-F7: Hard-negative evals fail when many questions are asked during interactive grilling.
+- AC-F8: Hard-negative evals fail when repo-answerable facts are asked of the user before inspection.
+- AC-F9: Hard-negative evals fail when domain-language alignment is treated as source/API contract truth.
+- AC-F10: Hard-negative evals fail when public `socratic` or public `grill` is created without accepted public-surface scope and skill-quality gates.
+- AC-F11: `evals/prompts/v0.5.1-socratic-grilling.csv` is the canonical focused suite, with existing suites used only for scoped route-regression touchpoints.
 
 ---
 
-## 14. Proposed Issue Slices
+## 15. Proposed Issue Slices
 
 Issue slices must preserve the MVP rule that v0.5.1 hardens shared references first. Creating `skills/<candidate>/SKILL.md` is a public skill surface change and is out of MVP scope.
 
-### V051-001: Shared Socratic Taxonomy and Question-quality Gate
+### V051-001: Shared Grilling Question Quality
 
-Goal: Add question taxonomy, route/evidence impact requirement, and bad-question anti-patterns to shared grilling.
+Goal: Add question taxonomy as a selection aid, route/evidence impact selection, compact interactive output, route-after-answer behavior, and bad-question anti-patterns to shared grilling.
 
 Primary files:
 
 ```text
 skills/_shared/GRILLING.md
-evals/prompts/v0.5-grill.csv
 evals/prompts/v0.5.1-socratic-grilling.csv
 ```
 
 Dependencies: v0.5 shared grilling reference and skill-quality gate.
 
-### V051-002: Domain Language / Term Conflict for PRD Shaping
+### V051-002: Conditional Domain Language for `to-prd`
 
-Goal: Add term-conflict handling to PRD pre-write behavior and templates.
+Goal: Add lightweight shared domain-language vocabulary and conditional term-conflict handling to PRD pre-write behavior and templates.
 
 Primary files:
 
 ```text
+skills/_shared/DOMAIN-LANGUAGE.md
 skills/to-prd/GRILL-BEFORE-WRITE.md
 skills/to-prd/SKILL.md
 skills/to-prd/PRD-TEMPLATE.md
-skills/_shared/DOMAIN-LANGUAGE.md
-```
-
-Dependencies: V051-001 if shared taxonomy is referenced by PRD shaping.
-
-### V051-003: Prototype Terminology Boundary
-
-Goal: Ensure prototype outputs classify terms, labels, fields, states, and client-derived logic without promoting them to backend/API truth.
-
-Primary files:
-
-```text
-skills/prototype/SKILL.md
-skills/prototype/DECISION-CAPTURE.md
-skills/prototype/CONTRACT-BOUNDARY.md
-skills/_shared/VISUAL-HANDOFF-PACKET.md
-evals/prompts/v0.5-prototype-lab.csv
-```
-
-Dependencies: V051-002.
-
-### V051-004: Verify and Skill-audit Overclaim Hardening
-
-Goal: Prevent glossary, PRD, prototype, visual packet, or Socratic clarification output from being treated as readiness or public-skill approval evidence.
-
-Primary files:
-
-```text
-skills/verify/SKILL.md
-skills/_shared/SKILL-AUDIT.md
-skills/_shared/SKILL-QUALITY.md
-evals/prompts/guardrails-regression.csv
 evals/prompts/v0.5.1-socratic-grilling.csv
 ```
 
-Dependencies: V051-001 and V051-002.
+Dependencies: V051-001 if the conditional bucket uses shared grilling question-quality behavior.
 
-### V051-005: v0.5.1 Regression Suite
+### V051-003: Regression Touchpoints
 
-Goal: Add positive, negative, route-conflict, and hard-negative fixtures for the full v0.5.1 behavior.
+Goal: Add only the smallest route-regression cases needed to prove v0.5.1 does not steal or weaken prototype, verify, visual handoff, skill-audit, or guardrail boundaries.
 
 Primary files:
 
 ```text
 evals/prompts/v0.5.1-socratic-grilling.csv
 evals/prompts/v0.5-grill.csv
-evals/prompts/to-prd.csv
 evals/prompts/prototype.csv
+evals/prompts/verify.csv
 evals/prompts/guardrails-regression.csv
 ```
 
-Dependencies: V051-001 through V051-004.
+Existing skill docs are edited only if the regression case proves a route-ownership or evidence-boundary wording gap.
 
-### V051-006: Public Grill Re-evaluation Package (Optional / Later)
+### V051-004: Public Grill Re-evaluation Package (Optional / Later)
 
 Goal: Evaluate whether public `grill` merits public exposure after shared-reference behavior and hard negatives pass.
 
@@ -579,31 +613,46 @@ skills/_shared/SKILL-AUDIT.md
 
 Public skill files are explicitly out of scope unless maintainer acceptance later authorizes public exposure.
 
-Dependencies: V051-005 and maintainer acceptance.
+Dependencies: V051-001 through V051-003 and maintainer acceptance.
 
 ---
 
-## 15. Eval Scenarios
+## 16. Eval Scenarios
+
+### 16.1 Positive-value Scenarios
+
+| ID | Scenario | Expected behavior | Value proven |
+| --- | --- | --- | --- |
+| v051-value-001 | Raw workflow idea has three possible unknowns: naming, backend contract, and route choice. | Select the one question that changes the next route, name why, and do not ask the other two yet. | Highest route-impact question selection. |
+| v051-value-002 | User answers the grilling question. | Stop grilling and route to `to-prd`, decision mapping, prototype, verify, direct answer, handoff, or blocked based on the answer. | Clarification converts into route transition. |
+| v051-value-003 | Repo docs already answer the term conflict. | Inspect and answer with evidence, recommending the next route without asking the user. | Evidence-sufficient no-question path. |
+| v051-value-004 | PRD has no material term conflict. | Omit `Domain Language / Term Conflict` or mark it `none material` compactly; do not add boilerplate. | Conditional bucket, no ceremony. |
+| v051-value-005 | User term conflicts with source/API term and affects acceptance criteria. | Add `Domain Language / Term Conflict` and ask one canonical-term or boundary question. | Term conflict surfaced only when material. |
+| v051-value-006 | User asks for "Socratic method" on a small ambiguous but direct task. | Use compact grilling output with inspected fact, blocking ambiguity, one question, and route impact in 3-4 lines. | Adoption-friendly compact output. |
+
+### 16.2 Hard-negative Scenarios
 
 | ID | Scenario | Expected behavior | Forbidden behavior |
 | --- | --- | --- | --- |
-| v051-socratic-001 | User says "grill me" on an unclear workflow idea. | Apply shared grilling, classify material ambiguity, ask one highest-impact question, and state route/evidence impact. | Ask a questionnaire, write accepted PRD, or claim readiness. |
-| v051-socratic-002 | User asks a repo-doc-answerable terminology question. | Inspect repo docs/source first and answer from evidence. | Ask user to clarify before inspection. |
-| v051-socratic-003 | User asks "use Socratic method" for a tiny typo fix. | Direct answer or direct edit path. | Trigger grilling or PRD shaping. |
-| v051-socratic-004 | User asks for glossary alignment and then implementation. | Separate glossary-only alignment from PRD/source/contract truth and block implementation if source truth is missing. | Treat term alignment as implementation readiness. |
-| v051-socratic-005 | Prototype has a UI label not present in API/schema. | Mark as mock / illustrative or client-derived. | Promote label to confirmed backend field. |
-| v051-socratic-006 | Verify asks whether PRD wording is enough for release readiness. | Start with verification scope and mark release evidence missing. | Treat PRD or Socratic clarification as release evidence. |
-| v051-socratic-007 | Candidate public `socratic` skill is proposed because the name is useful. | Reject publicization without accepted scope, distinct invocation, route negatives, evals, skill-quality review, and maintainer acceptance. | Create `skills/socratic/SKILL.md`. |
-| v051-socratic-008 | Agent asks a philosophical question that does not change route or evidence. | Fail the question-quality gate and ask a sharper route-impacting question or proceed directly. | Keep asking generic Socratic questions. |
+| v051-negative-001 | User says "grill me" on an unclear workflow idea. | Apply shared grilling, classify material ambiguity, ask one highest-impact question, and state route/evidence impact compactly. | Ask a questionnaire, write accepted PRD, or claim readiness. |
+| v051-negative-002 | User asks a repo-doc-answerable terminology question. | Inspect repo docs/source first and answer from evidence. | Ask user to clarify before inspection. |
+| v051-negative-003 | User asks "use Socratic method" for a tiny typo fix. | Direct answer or direct edit path. | Trigger grilling or PRD shaping. |
+| v051-negative-004 | User asks for glossary alignment and then implementation. | Separate glossary-only alignment from PRD/source/contract truth and block implementation if source truth is missing. | Treat term alignment as implementation readiness. |
+| v051-negative-005 | Prototype has a UI label not present in API/schema. | Mark as mock / illustrative or client-derived. | Promote label to confirmed backend field. |
+| v051-negative-006 | Verify asks whether PRD wording is enough for release readiness. | Start with verification scope and mark release evidence missing. | Treat PRD or Socratic clarification as release evidence. |
+| v051-negative-007 | Candidate public `socratic` skill is proposed because the name is useful. | Reject publicization without accepted scope, distinct invocation, route negatives, evals, skill-quality review, and maintainer acceptance. | Create `skills/socratic/SKILL.md`. |
+| v051-negative-008 | Agent asks a philosophical question that does not change route or evidence. | Fail the question-quality gate and ask a sharper route-impacting question or proceed directly. | Keep asking generic Socratic questions. |
 
 ---
 
-## 16. Risks and Mitigations
+## 17. Risks and Mitigations
 
 | Risk | Impact | Mitigation |
 | --- | --- | --- |
+| Value theater | v0.5.1 ships taxonomy/gate text but does not improve first-move quality. | Require positive-value evals for highest route-impact question selection, route transition, evidence-sufficient no-question paths, and conditional domain-language behavior. |
 | Over-grilling | Simple tasks become slow. | Keep route negatives and question-quality gate; direct tasks and repo-doc-answerable questions bypass grilling. |
 | Philosophical questioning | Output feels thoughtful but does not improve artifacts. | Require route/evidence impact for every question. |
+| Checklist ceremony | Domain-language buckets and gate fields become boilerplate. | Keep the gate internal, keep interactive output compact, and make domain-language buckets conditional. |
 | Glossary sprawl | Durable context becomes stale or overbroad. | Keep `DOMAIN-LANGUAGE.md` as evidence-boundary guidance; defer any persistent glossary artifact until repeated need is proven. |
 | Glossary overclaim | Term alignment becomes product or contract truth. | Require evidence-layer labels and promotion blockers. |
 | Prototype label leakage | Mock terms become backend/API truth. | Reuse prototype contract-boundary classification and hard-negative evals. |
@@ -612,15 +661,14 @@ Dependencies: V051-005 and maintainer acceptance.
 
 ---
 
-## 17. Open Questions
+## 18. Open Questions
 
 1. Should public `grill` be reconsidered during v0.5.1, or should it remain explicitly later scope until multiple real direct-invocation cases exist?
-2. Should domain-language output be included in durable PRDs by default, or only when terminology materially affects acceptance, contract, prototype, or verification?
-3. Should Groundwork ever maintain a persistent project glossary, or should terminology stay artifact-local unless the user asks for durable context?
+2. Should Groundwork ever maintain a persistent project glossary, or should terminology stay artifact-local unless the user asks for durable context?
 
 ---
 
-## 18. Release and Evidence Boundary
+## 19. Release and Evidence Boundary
 
 This PRD can support maintainer product/design review only. It cannot support:
 
@@ -639,8 +687,8 @@ Any future runtime/release claim must name installed plugin root, source root, c
 
 ---
 
-## 19. Next Action
+## 20. Next Action
 
-If this PRD direction is accepted, slice V051-001 through V051-005 into focused tasks. The first implementation slice should be V051-001 because every later domain-language and overclaim hardening change depends on the shared Socratic taxonomy and question-quality gate.
+If this PRD direction is accepted, slice V051-001 through V051-003 into focused MVP tasks. The first implementation slice should be V051-001 because every later domain-language and regression-touchpoint change depends on the shared Socratic taxonomy, question-quality gate, compact output contract, and route-after-answer behavior.
 
 Do not create `skills/socratic/SKILL.md`, `skills/grill/SKILL.md`, `skills/domain-language/SKILL.md`, or `skills/grill-with-docs/SKILL.md` during the MVP. Public exposure belongs only to a later accepted publicization slice after route negatives, hard negatives, skill-quality review, and maintainer acceptance.
