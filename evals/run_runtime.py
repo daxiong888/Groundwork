@@ -40,6 +40,7 @@ DEFAULT_SUITES = [
     "safety.csv",
     "reliability.csv",
     "guardrails-regression.csv",
+    "v0.5.2-wiki.csv",
     "lifecycle-state.csv",
     "lifecycle-preflight-regressions.csv",
     "routing-reliability.csv",
@@ -56,6 +57,7 @@ PUBLIC_SKILL_ROUTES = {
     "implement",
     "verify",
     "handoff",
+    "wiki",
 }
 DIRECT_ROUTE = "direct"
 UNKNOWN_ROUTE = "unknown"

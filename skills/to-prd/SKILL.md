@@ -44,13 +44,15 @@ Use `skills/_shared/GRILLING.md` when material ambiguity blocks PRD shaping and 
 
 Use `skills/_shared/DOMAIN-LANGUAGE.md` when terminology materially affects acceptance, contract truth, source truth, prototype interpretation, verification, or handoff. Do not print a full `Domain Language / Term Conflict` bucket when no material term conflict exists. Keep glossary-only alignment separate from PRD truth, contract truth, source truth, runtime evidence, user confirmation, and unknown terms.
 
+Use `skills/_shared/LLM-WIKI.md` when a project wiki exists or the user provides wiki pages as context. Wiki pages may orient PRD drafting and help avoid asking for facts already supported by cited sources, but wiki synthesis is not PRD acceptance, product truth, source truth, contract truth, implementation readiness, or verification evidence. If wiki pages are `draft`, `contested`, `stale_suspected`, `deprecated`, `archived`, glossary-only, uncited, page-level-source-only, or otherwise insufficient, mark the affected requirement as **NEEDS CLARIFICATION** or inspect the cited source instead of promoting the wiki claim.
+
 Use `skills/_shared/DECISION-MAPPING.md` when the options are already enumerable and the user needs a comparison of tradeoffs, dependencies, decision criteria, or consequences before choosing a path. Decision mapping is a shared reference, not a public `decision-map` skill, and it must not replace PRD shaping when the user explicitly asks to write requirements, acceptance criteria, or a spec.
 
 ## Workflow
 
 1. Identify the target reader and decision the PRD must support.
 2. Run lifecycle preflight and apply `skills/_shared/GRILLING.md` when material ambiguity blocks drafting: explicitly list target reader, decision supported, known facts, assumptions, open questions, and needs confirmation before drafting.
-3. Inspect local code/docs/tickets/data first when they can answer a clarification question.
+3. Inspect local code/docs/tickets/data first when they can answer a clarification question. If a relevant project wiki exists, read it as orientation and follow cited sources for material PRD facts.
 4. Ask one highest route-impact clarification question at a time. Use multiple questions only when the user asks for a non-interactive questionnaire or written PRD gap list.
 5. Include a recommended answer or default decision and impact for each clarification question when evidence supports one.
 6. Mark every unknown backend field, business state, unsupported ability, or missing acceptance detail as **NEEDS CLARIFICATION**; never invent product truth or mutate it from prototype-only mock data.
@@ -60,6 +62,7 @@ Use `skills/_shared/DECISION-MAPPING.md` when the options are already enumerable
 10. Keep the PRD compact and implementation-ready.
 11. Include stable acceptance criteria IDs such as `AC-1`, `AC-2`.
 12. Recommend `to-issues` only when the PRD/spec is accepted enough to slice.
+13. Include a `Wiki Update Candidate` only when PRD shaping creates durable reusable project knowledge that should be maintained by `wiki`; do not auto-apply wiki updates from PRD drafting unless the current request explicitly includes wiki maintenance.
 
 ## CHECKPOINTS
 
@@ -80,6 +83,7 @@ Use `skills/_shared/DECISION-MAPPING.md` when the options are already enumerable
 | User asks for a PRD artifact from sensitive source material | Redact secret values, private URLs, credentials, PII, sensitive logs, screenshots, requests, and database rows before drafting or writing. | Preserve only stable non-secret identifiers, source types, and decisions needed for review. |
 | User asks to split issues from raw intent | Stop before `to-issues`. | State that PRD/spec acceptance is required first. |
 | User gives a raw solution idea or vague urgency as if it were implementation-ready | Keep ownership in `to-prd`. | State that urgency or a proposed solution is not an explicit PRD bypass, then shape the requirement or ask the highest-impact clarification question. |
+| Wiki context is relevant but not source-backed enough | Use it as orientation only and inspect cited sources or ask the highest-impact clarification question. | Do not treat wiki synthesis, page-level source lists, glossary pages, stale pages, or uncited claims as accepted PRD truth. |
 
 ## Do Not
 
@@ -87,6 +91,7 @@ Use `skills/_shared/DECISION-MAPPING.md` when the options are already enumerable
 - Do not invent backend fields, business states, metrics, owners, timelines, APIs, or acceptance details.
 - Do not promote prototype-only mock data into confirmed source truth.
 - Do not treat glossary-only alignment as accepted PRD truth, backend/API contract truth, source truth, implementation readiness, verification evidence, UAT evidence, release evidence, or customer readiness.
+- Do not treat wiki synthesis, stale wiki pages, page-level source lists, uncited claims, or external graph/search/index output as accepted PRD truth, source truth, contract truth, implementation readiness, verification evidence, UAT evidence, release evidence, marketplace evidence, installed-plugin evidence, or cache-refresh evidence.
 - Do not create `skills/socratic/SKILL.md`, `skills/grill/SKILL.md`, `skills/domain-language/SKILL.md`, or `skills/grill-with-docs/SKILL.md` for v0.5.1 MVP behavior.
 - Do not write or update a durable PRD file just because the output looks reusable; require user intent, source-of-truth need, or artifact promotion.
 - Do not recommend `to-issues` or `implement` while blocking **NEEDS CLARIFICATION** items remain unresolved.

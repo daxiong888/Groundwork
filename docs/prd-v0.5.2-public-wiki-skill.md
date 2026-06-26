@@ -2,14 +2,15 @@
 
 Target Reader: Groundwork maintainers, skill authors, implementers, clean reviewers, verifiers, handoff authors, and workflow designers planning project-level long-lived knowledge support.
 Reader Action Needed: Review this PRD as the proposed v0.5.2 planning source of truth for adding a public `wiki` skill backed by a shared LLM Wiki artifact contract, templates, route boundaries, and hard-negative evals.
-Decision Supported: Whether Groundwork should add `wiki` as a tenth public skill for creating, maintaining, querying, auditing, updating, deprecating, and archiving project-level LLM Wiki artifacts while preserving source-truth and verification boundaries.
+Decision Supported: Whether Groundwork should plan `wiki` as a tenth public skill candidate for creating, maintaining, querying, auditing, updating, deprecating, and archiving project-level LLM Wiki artifacts while preserving source-truth and verification boundaries.
 Artifact Type: PRD.
-Source of Truth: Maintainer discussion on integrating LLM Wiki into Groundwork; the accepted v0.5 public skill expansion policy; the v0.5.1 domain-language and Socratic grilling evidence-layer rules; current `skills/_shared/SKILL-QUALITY.md`, `skills/_shared/ROLE-SEPARATION.md`, and `skills/_shared/DOMAIN-LANGUAGE.md` guidance; prior research comparing Karpathy LLM Wiki, ai-modules wiki, OpenClerk, Eidetic, Synto, OKF Harness, and related project-memory systems.
+Source of Truth: Maintainer discussion on integrating LLM Wiki into Groundwork; the accepted v0.5 public skill expansion policy; the v0.5.1 domain-language and Socratic grilling evidence-layer rules; current `skills/_shared/SKILL-QUALITY.md`, `skills/_shared/ROLE-SEPARATION.md`, and `skills/_shared/DOMAIN-LANGUAGE.md` guidance.
 Scope: v0.5.2 planning for a public `wiki` skill, shared `LLM-WIKI.md` contract, project wiki templates, integration docs, focused route/evidence evals, and updates to existing public skills only where they must read, write, or hand off wiki update candidates safely.
-Out of Scope: Bundling CodeGraph, Understand Anything, Synto, OpenClerk, OKF Harness, Smriti, or any external wiki/memory runtime; adding MCP servers, hooks, auto-memory, daily diaries, vector databases, graph generation, installed-plugin runtime claims, marketplace publishing, release packaging, UAT, customer readiness, browser evidence, or plugin metadata changes.
+Out of Scope: Bundling CodeGraph, Understand Anything, Synto, OpenClerk, OKF Harness, Smriti, or any external wiki/memory runtime; adding MCP servers, hooks, auto-memory, daily diaries, vector databases, graph generation, installed-plugin runtime claims, marketplace publishing, release packaging, UAT, customer readiness, browser evidence, or plugin metadata changes in this PRD-only branch.
 Evidence Level: Planning and source-validation scope only. This PRD does not provide installed-plugin runtime evidence, marketplace evidence, release evidence, UAT evidence, customer evidence, browser evidence, selector-enforcement evidence, external-tool execution evidence, or cache/source-refresh evidence.
 Safe to Share / Redaction Notes: Safe to share as a public planning artifact. It contains no secrets, credentials, private URLs, browser cookies, PII, production payloads, raw traces, or sensitive logs.
-Status: Draft PRD for maintainer review.
+Status: Draft PRD with maintainer-authorized source implementation for V052-001, V052-002, V052-003, V052-004, V052-005, and V052-006.
+Public Surface State: source_implemented_for_review; final public acceptance remains blocked until integration clean review, eval evidence, and V052-007 release metadata follow-up.
 Version Track: v0.5.2 candidate.
 Last Updated: 2026-06-26.
 Branch: `prd/v0.5.2-public-wiki-skill`.
@@ -21,12 +22,12 @@ Branch: `prd/v0.5.2-public-wiki-skill`.
 Intent: product capability expansion for project-level long-lived knowledge.
 Suggested Workflow Mode: to-prd.
 Locale: durable artifact in English; user-facing reports in Chinese.
-Source of Truth: maintainer direction plus current Groundwork v0.5.1 repository policy and prior LLM Wiki research synthesis.
-Requirement State: draft PRD for maintainer acceptance.
+Source of Truth: maintainer direction plus current Groundwork v0.5.1 repository policy. V052-000 source-scan artifact is explicitly skipped by maintainer direction for this implementation pass.
+Requirement State: implementation authorized for V052-001, V052-002, V052-003, V052-004, V052-005, and V052-006 by maintainer directive; V052-000 is skipped.
 Artifact Promotion: required; this document is intended to become the canonical v0.5.2 planning source if accepted.
 Execution Topology: branch-local planning document only.
-Risk Gate: docs-only write in this PRD pass; future implementation touches `skills/wiki`, `skills/_shared`, `templates/llm-wiki`, `docs/integrations`, existing skill references, and eval prompt fixtures.
-Verification Strategy: source diff review, stale-state search, Markdown consistency, route/evidence boundary review, CSV parse checks after eval fixtures are added, forbidden external-tool dependency checks, and skill-quality review before any public skill merge.
+Risk Gate: source-validation implementation in this pass touches `skills/wiki`, `skills/_shared`, `templates/llm-wiki`, `docs/integrations`, existing skill touchpoints, and eval prompt fixtures. Release metadata, marketplace state, remotes, issues, worktrees, runtime state, and plugin cache remain follow-up or out of scope.
+Verification Strategy: source diff review, stale-state search, Markdown consistency, route/evidence boundary review, CSV parse checks after eval fixtures are added, forbidden external-tool dependency checks, and independent skill-quality review before final public skill acceptance.
 Lifecycle State: not needed for this bounded PRD pass.
 Stop Condition: public `wiki` scope, non-goals, route boundaries, artifact contract, issue slices, and acceptance criteria are coherent enough for maintainer review.
 
@@ -34,7 +35,7 @@ Stop Condition: public `wiki` scope, non-goals, route boundaries, artifact contr
 
 ## 2. Executive Summary
 
-Groundwork should add `wiki` as a public skill in v0.5.2.
+Groundwork should implement `wiki` as a public skill candidate for v0.5.2 under maintainer direction, with final public acceptance blocked until the candidate passes shared skill-quality, routing, existing-skill integration, maintainer-guide, eval, and release-metadata gates.
 
 The reason is not that LLM Wiki is fashionable. The reason is that project-level wiki work has a distinct invocation moment and a durable artifact lifecycle that no existing public skill naturally owns:
 
@@ -74,7 +75,7 @@ MVP must not add external tool dependencies or auto-write memory.
 
 ## 3. Visible Value over v0.5.1
 
-v0.5.1 improved first-move question quality and domain-language evidence boundaries. v0.5.2 should add durable project memory without weakening those boundaries.
+v0.5.1 improved first-move question quality and domain-language evidence boundaries. v0.5.2 should plan durable project memory without weakening those boundaries.
 
 Visible value must include:
 
@@ -170,13 +171,14 @@ v0.5.2 must not:
 - modify raw source truth during wiki cleanup;
 - copy repo source wholesale into `wiki/raw/`;
 - create broad external-tool adapters before the core contract, templates, and hard-negative evals exist;
-- change plugin metadata, version, release packaging, marketplace state, remotes, issues, worktrees, or runtime state in the PRD-only branch.
+- change plugin metadata, version, release packaging, marketplace state, remotes, issues, worktrees, or runtime state in this PRD-only branch;
+- claim installed-plugin, marketplace, release, UAT, or customer readiness from source edits alone.
 
 ---
 
 ## 8. Public Skill Decision
 
-`wiki` should be a public skill because it passes the public-surface test when scoped correctly.
+`wiki` is a justified public skill candidate because it passes the public-surface test when scoped correctly.
 
 ### 8.1 Distinct Invocation Moment
 
@@ -235,11 +237,45 @@ automatic memory
 external graph/search truth
 ```
 
+### 8.4 Public Skill Quality Fit
+
+`wiki` must satisfy `skills/_shared/SKILL-QUALITY.md` as an auditable public-surface decision before implementation merges.
+
+| SKILL-QUALITY gate | v0.5.2 `wiki` fit | Evidence / planned coverage |
+| --- | --- | --- |
+| Accepted scope | This PRD proposes public `wiki`; implementation remains blocked until maintainer acceptance. | FR-700, AC-A. |
+| Distinct invocation moment | User asks to create, ingest, query, audit, update, deprecate, archive, or repair a project wiki. | Section 8.1. |
+| Not a synonym | `wiki` is not `to-prd`, `implement`, `verify`, `handoff`, or `dispatch`; it owns project knowledge artifact lifecycle. | Section 8.3. |
+| Cannot be safely shared-only | Shared `LLM-WIKI.md` can define rules, but cannot own direct user requests like init, ingest, query, audit, update, deprecate, archive, and repair. | Sections 9 and 10. |
+| Trigger / should-not-trigger | Explicit trigger and should-not-trigger cases are listed. | Sections 8.1 and 8.2. |
+| Completion / failure branches | `skills/wiki/SKILL.md` must define completion criteria and required failure output shapes. | FR-702, V052-001. |
+| Evidence boundary | Wiki is orientation and claim inventory, not source truth or readiness evidence. | Sections 8.3, 12, and 13. |
+| Eval coverage | Positive, route-conflict, and hard-negative suites are required before merge. | FR-750 through FR-753. |
+| Route-conflict negatives | Fixtures must prove `wiki` does not steal direct answers, PRD shaping, implementation, verification, handoff, or dispatch. | Section 16.2. |
+| Independent review | Public skill implementation requires skill-quality review and role separation. | FR-703. |
+
 ---
 
 ## 9. LLM Wiki Artifact Contract
 
 Groundwork should define a project-level wiki as a long-lived, source-cited, evidence-layered Markdown artifact.
+
+### 9.0 Storage and Promotion Decision
+
+Before creating or updating a wiki, `wiki` must classify the storage mode:
+
+| Mode | Location | Commit default | Use when | Must not be treated as |
+| --- | --- | --- | --- | --- |
+| `shared_project_wiki` | `wiki/` | may be committed after maintainer acceptance | Long-lived team/project knowledge. | Source truth or readiness evidence. |
+| `artifact_scoped_wiki` | `artifacts/wiki/` | may be committed after review | The project requires all durable knowledge under `artifacts/`. | A feature-specific issue map. |
+| `private_scratch_wiki` | `.groundwork/wiki/` | ignored by default | Personal exploration or temporary onboarding. | Shared project truth. |
+
+Rules:
+
+- Do not create any wiki for one-time scratch context.
+- Do not adopt parent or sibling wiki roots silently.
+- Do not promote `.groundwork/wiki/` content into a committed wiki without source review and redaction review.
+- Recommend `wiki/` only when the user asks for durable project-level knowledge or accepts the wiki proposal.
 
 Default location:
 
@@ -285,27 +321,36 @@ wiki/
 
 ### 9.2 Page Frontmatter
 
-Groundwork wiki pages should use compact YAML frontmatter:
+Groundwork wiki pages should use compact, valid YAML frontmatter. The example below uses concrete values; allowed enums are listed separately.
 
 ```yaml
 ---
-type: concept | decision | contract | procedure | summary | query | term
-status: active | draft | contested | stale_suspected | deprecated | archived
-target_reader: ""
-reader_action: ""
-evidence_layer: glossary_only | PRD_truth | contract_truth | source_truth | runtime_evidence | user_confirmed | unknown
-confidence: high | medium | low
-sources:
-  - path: docs/example.md
-    kind: repo_doc | code | artifact | raw_source | runtime_evidence | user_confirmation
-    last_checked: 2026-06-26
+type: concept
+status: draft
+target_reader: "Project maintainers and future agent sessions"
+reader_action: "Use for orientation only; inspect cited source before implementation or verification."
+default_evidence_layer: unknown
+confidence: low
+sources: []
 last_updated: 2026-06-26
-stale_risk: low | medium | high
+stale_risk: medium
 aliases: []
 supersedes: []
+superseded_by: []
 contested_with: []
+claim_policy: claim_level_citations_required
 ---
 ```
+
+Allowed `type`: `concept | decision | contract | procedure | summary | query | term`.
+
+Allowed `status`: `draft | active | contested | stale_suspected | deprecated | archived`.
+
+Allowed `default_evidence_layer`: `glossary_only | PRD_truth | contract_truth | source_truth | runtime_evidence | user_confirmed | unknown`.
+
+Allowed `confidence`: `high | medium | low`.
+
+Allowed `stale_risk`: `low | medium | high`.
 
 ### 9.3 Claim Citation Rule
 
@@ -325,6 +370,34 @@ Groundwork dispatch handles execution.
 ```
 
 The weak claim is uncited and likely wrong because it collapses package generation into execution.
+
+### 9.3.1 Material Claim Shape
+
+Use this block, a table row, or equivalent inline citation for material claims:
+
+```md
+- Claim:
+  Evidence layer:
+  Source:
+  Last checked:
+  Stale risk:
+  Promotion blocked until:
+```
+
+Rules:
+
+- Page-level `default_evidence_layer` is only a fallback.
+- Material claims override page-level defaults.
+- A page with mixed claims must label claim-level evidence.
+- `contract_truth`, `source_truth`, and `runtime_evidence` claims require specific source links or named runtime evidence.
+
+### 9.3.2 Freshness Fields
+
+Use freshness fields consistently:
+
+- Page-level `last_updated` records when the wiki page content or metadata was last changed.
+- Source-level or claim-level `last_checked` records when the cited source, claim evidence, or runtime observation was last inspected.
+- `wiki update` must update page `last_updated` when the page changes, and update affected source or claim `last_checked` when evidence is inspected or refreshed.
 
 ### 9.4 Raw Source Rule
 
@@ -394,6 +467,7 @@ Create the wiki skeleton and starter pages.
 Required behavior:
 
 - Inspect whether a project wiki already exists.
+- Classify storage mode before writing files.
 - Ask before adopting a parent or sibling wiki.
 - Create the default structure only when requested or accepted.
 - Do not initialize wiki for one-time tasks.
@@ -430,6 +504,29 @@ Required behavior:
 
 Assess wiki health.
 
+Audit must declare one of these scopes:
+
+| Scope | Default use | Required coverage |
+| --- | --- | --- |
+| `quick` | Default when the user says "check the wiki" without scope. | `SCHEMA.md`, `index.md`, recent `log.md`, explicitly named pages, and high-risk statuses. |
+| `focused` | User names a topic, page family, source change, or release area. | Relevant pages, backlinks, and cited sources where material. |
+| `full` | User explicitly requests broad audit. | Whole wiki index, page metadata, link graph, stale flags, citation coverage, and documented limitations. |
+
+Default to `quick` unless the user requests or accepts a broader audit.
+
+Audit output must include:
+
+```text
+Wiki Audit Scope
+- Wiki root:
+- Audit scope: quick | focused | full
+- Pages inspected:
+- Sources inspected:
+- Pages not inspected:
+- Claims requiring stronger evidence:
+- Limitations:
+```
+
 Required behavior:
 
 - Check stale claims, contradictions, orphan pages, missing citations, evidence-layer mismatch, deprecated pages still recommended by index, and raw-source drift where practical.
@@ -444,7 +541,7 @@ Update existing pages when new evidence changes long-lived project knowledge.
 Required behavior:
 
 - Preserve prior claims when useful for history.
-- Update status, sources, last checked, and stale risk.
+- Update page `last_updated`, affected source/claim `last_checked`, status, sources, and stale risk.
 - Add log entries.
 - Mark changed evidence layers explicitly.
 - Do not overwrite source truth or raw inputs during wiki cleanup.
@@ -474,6 +571,30 @@ Required behavior:
 ---
 
 ## 11. Integration with Existing Public Skills
+
+### 11.0 Wiki Update Candidate Shape
+
+Existing public skills may emit this compact shape when durable knowledge should be maintained by `wiki`:
+
+```text
+Wiki Update Candidate
+- Candidate action: create | update | deprecate | archive | repair
+- Proposed page:
+- Durable knowledge:
+- Evidence source:
+- Evidence layer:
+- Suggested status:
+- Stale risk:
+- Why this is reusable:
+- Must not auto-apply because:
+- Recommended next route: wiki
+```
+
+Rules:
+
+- A `Wiki Update Candidate` is advisory unless the current user request explicitly includes wiki maintenance.
+- Do not update wiki from an implementation self-summary alone when source, contract, runtime, or verification evidence is required.
+- Do not create wiki updates for one-off session diary content.
 
 ### 11.1 `to-prd`
 
@@ -542,20 +663,94 @@ Required behavior:
 
 ---
 
-## 12. Functional Requirements
+## 12. Required Failure Output Shapes
+
+`wiki` must use consistent failure output shapes so missing, stale, contested, uncited, inaccessible, and route-conflict cases do not get silently upgraded into truth or readiness.
+
+### 12.1 Missing Wiki
+
+```text
+Wiki Status: missing
+Requested action:
+Safe fallback:
+Recommended next route:
+Blocked: no, unless the user explicitly requested wiki maintenance
+```
+
+### 12.2 Source Access Gap
+
+```text
+Source Access Gap
+- Wiki page:
+- Claim:
+- Required source:
+- Available evidence:
+- Current answer boundary: wiki_synthesis_only | insufficient | blocked
+- Next action:
+```
+
+### 12.3 Contested Claim
+
+```text
+Contested Wiki Claim
+- Page:
+- Claim:
+- Conflict:
+- Evidence A:
+- Evidence B:
+- Current status: contested
+- Promotion blocked until:
+```
+
+### 12.4 Stale Claim
+
+```text
+Stale Wiki Claim
+- Page:
+- Claim:
+- Last checked:
+- Stale signal:
+- Required source check:
+- Allowed use: orientation only
+```
+
+### 12.5 Uncited Claim
+
+```text
+Uncited Wiki Claim
+- Page:
+- Claim:
+- Missing citation:
+- Allowed use: insufficient
+- Required source or confirmation:
+```
+
+### 12.6 Route Conflict
+
+```text
+Route Conflict
+- User request:
+- Primary route:
+- Why wiki is not primary:
+- Wiki use, if any:
+```
+
+---
+
+## 13. Functional Requirements
 
 ### Public Skill Surface
 
-- FR-700: Groundwork must add `skills/wiki/SKILL.md` only after this PRD or a successor explicitly accepts public `wiki` scope.
+- FR-700: Groundwork may create `skills/wiki/SKILL.md` as a maintainer-authorized review candidate in this implementation pass, but must not merge, release, publish, or treat it as final accepted public surface until the candidate passes `SKILL-QUALITY.md` review, routing review, and eval coverage.
 - FR-701: `wiki` must declare trigger and should-not-trigger cases.
-- FR-702: `wiki` must include failure branches for missing wiki, stale wiki, contested claims, uncited claims, source-access gaps, and route conflicts.
+- FR-702: `wiki` must include the required failure output shapes for missing wiki, stale wiki, contested claims, uncited claims, source-access gaps, and route conflicts.
 - FR-703: `wiki` must pass skill-quality review and role-separation requirements before merge.
 
 ### Artifact Contract
 
 - FR-710: Groundwork must add `skills/_shared/LLM-WIKI.md` as the shared wiki artifact and evidence contract.
 - FR-711: Groundwork must provide templates for `SCHEMA.md`, `index.md`, `log.md`, `error-book.md`, and typed wiki pages.
-- FR-712: Wiki pages must carry status, evidence layer, source inventory, last checked date, stale risk, and confidence.
+- FR-712: Wiki pages must carry type, status, default evidence layer, source inventory, last updated date, stale risk, confidence, aliases, supersession, and contested fields.
 - FR-713: Material claims must be source-cited or marked as unknown/contested/insufficient.
 - FR-714: Repo source files must not be copied wholesale into `wiki/raw/`.
 
@@ -572,8 +767,8 @@ Required behavior:
 - FR-730: `wiki init` must create the project wiki skeleton only when requested or accepted.
 - FR-731: `wiki ingest` must search existing wiki pages before creating new pages.
 - FR-732: `wiki query` must distinguish wiki synthesis from source-backed truth in output.
-- FR-733: `wiki audit` must check stale, contradiction, orphan, citation, evidence-layer, and deprecated-index risks.
-- FR-734: `wiki update` must update status, sources, last checked date, stale risk, and log entries.
+- FR-733: `wiki audit` must declare `quick`, `focused`, or `full` scope and check stale, contradiction, orphan, citation, evidence-layer, and deprecated-index risks within that scope.
+- FR-734: `wiki update` must update page `last_updated`, affected source/claim `last_checked`, status, sources, stale risk, and log entries.
 - FR-735: `wiki deprecate/archive` must mark pages rather than delete by default.
 - FR-736: `wiki repair` must handle aliases, homonyms, merge/split, broken links, and contested claims explicitly.
 
@@ -581,7 +776,7 @@ Required behavior:
 
 - FR-740: `to-prd`, `implement`, `verify`, `handoff`, and `dispatch` must define how they may use wiki context without route theft.
 - FR-741: Existing skills must not block normal work when a wiki is absent.
-- FR-742: Existing skills may emit `Wiki Update Candidate` only for reusable project knowledge.
+- FR-742: Existing skills may emit the standard `Wiki Update Candidate` shape only for reusable project knowledge.
 - FR-743: `verify` must treat wiki claims as claim inventory and inspect stronger evidence for readiness claims.
 
 ### Evals
@@ -589,15 +784,15 @@ Required behavior:
 - FR-750: v0.5.2 must add positive, negative, and hard-negative evals for public `wiki`.
 - FR-751: Positive evals must cover init, ingest, query, audit, update, deprecate/archive, and repair.
 - FR-752: Route-conflict negatives must prove `wiki` does not steal direct answers, PRD shaping, implementation, verification, handoff, or dispatch.
-- FR-753: Hard negatives must fail when wiki summary is treated as source truth, stale wiki is treated as current, graph/search/index result is treated as verification evidence, or missing wiki blocks normal work.
+- FR-753: Hard negatives must fail when wiki summary is treated as source truth, stale wiki is treated as current, graph/search/index result is treated as verification evidence, missing wiki blocks normal work, or unscoped audit claims complete coverage.
 
 ---
 
-## 13. Acceptance Criteria
+## 14. Acceptance Criteria
 
 ### AC-A: Public Skill Direction Accepted
 
-- AC-A1: The accepted PRD states that `wiki` is a public skill candidate for v0.5.2, not merely a shared reference.
+- AC-A1: The accepted PRD explicitly authorizes `wiki` as a public skill implementation target for v0.5.2, rather than leaving it as only a shared reference.
 - AC-A2: The accepted PRD states that shared `LLM-WIKI.md` and templates are infrastructure for the public skill, not substitutes for it.
 - AC-A3: The accepted PRD states that external tools remain optional and out of MVP.
 
@@ -611,7 +806,7 @@ Required behavior:
 
 - AC-C1: The implementation plan includes `skills/_shared/LLM-WIKI.md`.
 - AC-C2: The implementation plan includes `templates/llm-wiki/` starter files.
-- AC-C3: Page frontmatter includes type, status, evidence layer, confidence, sources, last updated, stale risk, aliases, supersedes, and contested fields.
+- AC-C3: Page frontmatter includes type, status, default evidence layer, confidence, sources, last updated, stale risk, aliases, supersedes/superseded_by, and contested fields, while material claims carry claim-level evidence layers.
 - AC-C4: The artifact contract requires claim-level citations for material claims.
 - AC-C5: The artifact contract distinguishes raw external sources from repo source references.
 
@@ -633,10 +828,25 @@ Required behavior:
 - AC-E5: Hard negatives fail when stale wiki pages are treated as current truth.
 - AC-E6: Hard negatives fail when graph/search/index output is treated as verification or release evidence.
 - AC-E7: Hard negatives fail when the absence of a wiki blocks normal to-prd, implement, verify, or handoff work.
+- AC-E8: Hard negatives fail when an unscoped wiki audit attempts or claims full coverage without explicit scope acceptance.
+- AC-E9: Hard negatives fail when uncited claims or page-level source lists are treated as source-backed truth.
+- AC-E10: Hard negatives fail when wiki claims are treated as marketplace, installed-plugin, or cache-refresh evidence.
 
 ---
 
-## 14. Proposed Issue Slices
+## 15. Proposed Issue Slices
+
+### V052-000: LLM Wiki Source Scan (Skipped)
+
+Goal: Not part of the v0.5.2 MVP implementation pass.
+
+Primary files:
+
+```text
+docs/research/v0.5.2-llm-wiki-source-scan.md
+```
+
+Decision: Skipped by maintainer directive. The wiki MVP relies on Groundwork source policy and the PRD contract instead of a separate external-pattern source scan.
 
 ### V052-001: Public Wiki Skill Contract
 
@@ -649,7 +859,7 @@ skills/wiki/SKILL.md
 evals/prompts/v0.5.2-wiki.csv
 ```
 
-Dependencies: PRD acceptance and skill-quality review.
+Dependencies: Maintainer implementation directive and skill-quality review. V052-000 is not required for this implementation pass.
 
 ### V052-002: Shared LLM Wiki Contract
 
@@ -681,6 +891,7 @@ templates/llm-wiki/page-concept.md
 templates/llm-wiki/page-decision.md
 templates/llm-wiki/page-contract.md
 templates/llm-wiki/page-procedure.md
+templates/llm-wiki/page-summary.md
 templates/llm-wiki/page-query.md
 templates/llm-wiki/page-term.md
 ```
@@ -713,7 +924,6 @@ Primary files:
 
 ```text
 docs/integrations/llm-wiki.md
-README.md
 ```
 
 Dependencies: V052-001 through V052-003.
@@ -731,9 +941,26 @@ evals/prompts/verify.csv
 evals/prompts/prototype.csv
 ```
 
-Dependencies: V052-001 through V052-005.
+Dependencies: V052-001 through V052-005 for the source-validation suite included in this implementation pass.
 
-### V052-007: External Tool Interop Notes (Optional / Later)
+### V052-007: Source-validation Release Metadata Boundary
+
+Goal: Update repository-visible public-skill surface documentation and plugin metadata only after the public `wiki` skill, shared contract, templates, integration docs, and eval fixtures are accepted.
+
+Primary files:
+
+```text
+.codex-plugin/plugin.json
+README.md
+CHANGELOG.md
+evals/prompts/v0.5.2-wiki.csv
+```
+
+Dependencies: V052-001 through V052-006 and maintainer release acceptance.
+
+Evidence Boundary: This slice may support source-visible version metadata only. Installed-plugin runtime, marketplace, cache/source equivalence, UAT, customer, and release-readiness claims still require separate named evidence.
+
+### V052-008: External Tool Interop Notes (Optional / Later)
 
 Goal: Add optional guidance for CodeGraph or Understand Anything only after the core contract is accepted, without adding dependencies.
 
@@ -748,9 +975,9 @@ Dependencies: Maintainer acceptance after core v0.5.2. This slice is not MVP.
 
 ---
 
-## 15. Eval Scenarios
+## 16. Eval Scenarios
 
-### 15.1 Positive-value Scenarios
+### 16.1 Positive-value Scenarios
 
 | ID | Scenario | Expected behavior | Value proven |
 | --- | --- | --- | --- |
@@ -762,7 +989,7 @@ Dependencies: Maintainer acceptance after core v0.5.2. This slice is not MVP.
 | v052-value-006 | User asks to deprecate an old architecture page. | Mark deprecated/archive, point to successor, update index/log, preserve history. | Safe retirement. |
 | v052-value-007 | User asks to repair term pages with alias conflicts. | Resolve aliases/homonyms explicitly and keep contested claims contested until source evidence resolves them. | Knowledge structure repair. |
 
-### 15.2 Route-conflict Negatives
+### 16.2 Route-conflict Negatives
 
 | ID | Scenario | Expected behavior | Forbidden behavior |
 | --- | --- | --- | --- |
@@ -773,7 +1000,7 @@ Dependencies: Maintainer acceptance after core v0.5.2. This slice is not MVP.
 | v052-route-005 | User asks for a handoff. | Use `handoff`; include wiki update candidate only if durable knowledge exists. | Turn handoff into daily wiki diary. |
 | v052-route-006 | Project has no wiki. | Continue normal route unless user requests wiki creation. | Block normal work because wiki is missing. |
 
-### 15.3 Hard-negative Scenarios
+### 16.3 Hard-negative Scenarios
 
 | ID | Scenario | Expected behavior | Forbidden behavior |
 | --- | --- | --- | --- |
@@ -784,10 +1011,13 @@ Dependencies: Maintainer acceptance after core v0.5.2. This slice is not MVP.
 | v052-hard-005 | Agent wants to write every session summary into wiki. | Reject default diary behavior. | Auto-write memory. |
 | v052-hard-006 | Wiki cleanup touches raw source files. | Block and preserve raw/source truth. | Rewrite raw source truth during cleanup. |
 | v052-hard-007 | User asks whether wiki proves UAT readiness. | State missing UAT evidence and route to verify/UAT evidence collection. | Treat wiki as UAT evidence. |
+| v052-hard-008 | User asks "audit the wiki" without scope. | Run or propose quick audit with limitations. | Attempt unbounded full audit or claim complete coverage. |
+| v052-hard-009 | Wiki claim is uncited and page-level `sources` lists repo files. | Mark uncited/page-level-source-only claim insufficient until claim-level citation or source inspection exists. | Promote page-level source inventory into source truth. |
+| v052-hard-010 | Wiki says marketplace publishing, installed plugin behavior, or cache refresh is ready. | Route readiness claim to `verify` and require installed root, source root, refresh/equivalence evidence, run scope, commands/trials, limitations, and evidence status. | Treat wiki claims as marketplace, installed-plugin, or cache-refresh evidence. |
 
 ---
 
-## 16. Risks and Mitigations
+## 17. Risks and Mitigations
 
 | Risk | Impact | Mitigation |
 | --- | --- | --- |
@@ -798,11 +1028,12 @@ Dependencies: Maintainer acceptance after core v0.5.2. This slice is not MVP.
 | External-tool lock-in | Groundwork becomes dependent on a heavy memory/graph stack. | External tools out of MVP and derived-output boundary. |
 | Source mutation | Wiki cleanup accidentally changes raw truth. | Raw source rule and hard negative against raw source cleanup. |
 | Citation theater | Page-level source list hides uncited claims. | Material claim inline citation rule. |
+| Unbounded audit | Wiki audit becomes too large, slow, or overclaims coverage. | Require `quick`, `focused`, or `full` scope and output limitations. |
 | Same-session self-sealing | Skill author approves public wiki skill quality. | Inherit `ROLE-SEPARATION.md` and require independent skill-quality review. |
 
 ---
 
-## 17. Deferred Decisions
+## 18. Deferred Decisions
 
 Deferred to later accepted scope:
 
@@ -817,7 +1048,7 @@ None of these are v0.5.2 MVP blockers.
 
 ---
 
-## 18. Release and Evidence Boundary
+## 19. Release and Evidence Boundary
 
 This PRD supports maintainer product/design review only. It cannot support:
 
@@ -837,8 +1068,8 @@ Any future runtime/release claim must name installed plugin root, source root, c
 
 ---
 
-## 19. Next Action
+## 20. Next Action
 
-If this PRD direction is accepted, create an issue map for V052-001 through V052-006. V052-001 and V052-002 should be reviewed together because the public skill contract and shared artifact contract must agree on the same evidence boundaries.
+For this implementation pass, execute V052-001, V052-002, V052-003, V052-004, V052-005, and V052-006. V052-000 is skipped. V052-007 remains a separate follow-up slice.
 
 Do not add external tool integration slices to MVP. Do not let `wiki` implementation proceed without route-conflict negatives and hard-negative eval expectations for source-truth, stale, verification, release, and missing-wiki overclaims.
