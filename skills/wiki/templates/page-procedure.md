@@ -21,7 +21,7 @@ claim_policy: claim_level_citations_required
 
 ## Steps
 
-1. 
+1.
 
 ## Material Claims
 
