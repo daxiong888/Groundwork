@@ -1,3 +1,20 @@
+---
+type: procedure
+status: draft
+target_reader: "Project maintainers, wiki authors, reviewers, and future agent sessions"
+reader_action: "Review material wiki changes, source refreshes, deprecations, and repairs before relying on recent wiki claims."
+default_evidence_layer: unknown
+confidence: low
+sources: []
+last_updated: 2026-06-26
+stale_risk: medium
+aliases: []
+supersedes: []
+superseded_by: []
+contested_with: []
+claim_policy: claim_level_citations_required
+---
+
 # LLM Wiki Log
 
 Target Reader: Project maintainers, wiki authors, reviewers, and future agent sessions.

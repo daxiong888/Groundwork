@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Groundwork is a Codex-native evidence-first R&D workflow base. The public skill surface is intentionally small: `to-prd`, `to-issues`, `triage`, `write-plan`, `prototype`, `implement`, `verify`, `handoff`, and `dispatch`.
+Groundwork is a Codex-native evidence-first R&D workflow base. The public skill surface is intentionally small: `to-prd`, `to-issues`, `triage`, `write-plan`, `prototype`, `implement`, `verify`, `handoff`, `dispatch`, and `wiki`.
 
 ## Repository Layout
 

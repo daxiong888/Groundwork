@@ -1,3 +1,20 @@
+---
+type: contract
+status: draft
+target_reader: "Project maintainers, wiki authors, clean reviewers, and future agent sessions"
+reader_action: "Use this schema before adding or changing pages in this project wiki."
+default_evidence_layer: unknown
+confidence: low
+sources: []
+last_updated: 2026-06-26
+stale_risk: medium
+aliases: []
+supersedes: []
+superseded_by: []
+contested_with: []
+claim_policy: claim_level_citations_required
+---
+
 # LLM Wiki Schema
 
 Target Reader: Project maintainers, wiki authors, clean reviewers, and future agent sessions.

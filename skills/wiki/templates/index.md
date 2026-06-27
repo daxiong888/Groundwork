@@ -1,3 +1,20 @@
+---
+type: summary
+status: draft
+target_reader: "Project maintainers, contributors, reviewers, and future agent sessions"
+reader_action: "Start here to find active project knowledge pages and understand which claims need source inspection."
+default_evidence_layer: unknown
+confidence: low
+sources: []
+last_updated: 2026-06-26
+stale_risk: medium
+aliases: []
+supersedes: []
+superseded_by: []
+contested_with: []
+claim_policy: claim_level_citations_required
+---
+
 # Project LLM Wiki
 
 Target Reader: Project maintainers, contributors, reviewers, and future agent sessions.

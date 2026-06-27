@@ -1,3 +1,20 @@
+---
+type: procedure
+status: draft
+target_reader: "Wiki maintainers, skill authors, reviewers, and future agent sessions"
+reader_action: "Check recurring wiki mistakes before changing wiki structure, evidence claims, or route boundaries."
+default_evidence_layer: unknown
+confidence: low
+sources: []
+last_updated: 2026-06-26
+stale_risk: medium
+aliases: []
+supersedes: []
+superseded_by: []
+contested_with: []
+claim_policy: claim_level_citations_required
+---
+
 # LLM Wiki Error Book
 
 Target Reader: Wiki maintainers, skill authors, reviewers, and future agent sessions.
