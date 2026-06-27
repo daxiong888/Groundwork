@@ -550,6 +550,35 @@ class RouterObservabilityTests(unittest.TestCase):
         self.assertIn("implement", row["forbidden_routes"])
         self.assertNotIn("token=abc123", row["expected_behavior"])
 
+    def test_backfill_cli_runs_from_repo_root_without_pythonpath(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            score_path = Path(tmp) / "router-score.json"
+            score_path.write_text(
+                json.dumps(
+                    {
+                        "turn_id": "t1",
+                        "expected_route": "implement",
+                        "actual_route": "implement",
+                        "acceptable_routes": ["implement"],
+                        "forbidden_routes": ["verify"],
+                        "failure_type": "none",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            result = subprocess.run(
+                [sys.executable, "evals/router_observability/backfill_row.py", "--score", str(score_path)],
+                cwd=ROOT,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=True,
+            )
+
+            self.assertIn("ro-backfill-t1", result.stdout)
+            self.assertEqual(result.stderr, "")
+
     def test_backfill_preserves_verify_output_contract_failure(self):
         score = {
             "turn_id": "t1",
