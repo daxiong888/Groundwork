@@ -8,11 +8,11 @@ Decision Supported: Whether Groundwork should add a live observability harness a
 
 Artifact Type: PRD / architecture decision record.
 
-Source of Truth: Current Groundwork repository guidance, `skills/dispatch/SKILL.md`, `docs/prd-dispatch-runtime-router.md`, `docs/prd-routing-reliability.md`, `docs/skill-success-metrics.md`, `docs/eval-trace-artifacts.md`, `docs/nightly-harness.md`, `evals/run_runtime.py`, `evals/prompts/routing-reliability.csv`, `evals/report.py`, `evals/checks/trace_diagnostics.py`, and official Codex documentation for hooks, non-interactive mode, automations, and GitHub Action.
+Source of Truth: Current Groundwork repository guidance, `skills/dispatch/SKILL.md`, `skills/dispatch/ROUTING-PROFILES.md`, `skills/_shared/COGNITIVE-BUDGET.md`, `skills/_shared/RUNTIME-CAPABILITY.md`, `docs/prd-dispatch-runtime-router.md`, `docs/prd-routing-reliability.md`, `docs/skill-success-metrics.md`, `docs/eval-trace-artifacts.md`, `docs/nightly-harness.md`, `evals/run_runtime.py`, `evals/prompts/routing-reliability.csv`, `evals/report.py`, `evals/checks/trace_diagnostics.py`, and official Codex documentation for hooks, non-interactive mode, automations, and GitHub Action.
 
-Scope: Personal maintainer cross-project trial, plugin-bundled dormant hook entrypoints, per-project opt-in activation, observe-only live router decision visibility by default, turn-level trace capture with explicit coverage limitations, reuse of existing routing/verdict vocabulary, local scratch artifacts, redacted promoted artifacts, replay path from reviewed real traces into eval rows, proposal-only self-improvement, and harness selection boundaries.
+Scope: Personal maintainer cross-project trial, plugin-bundled dormant hook entrypoints, per-project opt-in activation, observe-only live router decision visibility by default, turn-level trace capture with explicit coverage limitations, reuse of existing routing/verdict vocabulary, dispatch runtime decision observability, dispatch execution profile observability for model profile / reasoning effort / cost-latency bias, local scratch artifacts, redacted promoted artifacts, replay path from reviewed real traces into eval rows, proposal-only self-improvement, and harness selection boundaries.
 
-Out of Scope: New public Groundwork skills, learned routing, embedding/reranker service, MCP server, task database, dashboard, automatic skill mutation, automatic PR/issue creation, automatic tracker writes, automatic trace capture merely because the plugin is installed or updated, default route-hint injection, default prompt blocking, default Stop continuation, default subagent spawning, default managed worktree execution, runtime adapter execution, general-user automatic activation, plugin release, marketplace packaging, cache refresh, UAT/customer readiness, or claims that hook traces alone prove release readiness.
+Out of Scope: New public Groundwork skills, learned routing, embedding/reranker service, MCP server, task database, dashboard, automatic skill mutation, automatic model or reasoning selector mutation, automatic PR/issue creation, automatic tracker writes, automatic trace capture merely because the plugin is installed or updated, default route-hint injection, default prompt blocking, default Stop continuation, default subagent spawning, default managed worktree execution, runtime adapter execution, applying selector enforcement from Groundwork, general-user automatic activation, plugin release, marketplace packaging, cache refresh, UAT/customer readiness, or claims that hook traces alone prove release readiness.
 
 Evidence Level: Product design grounded in inspected repository files and official Codex documentation as of 2026-06-27. This PRD does not add runtime evidence, cache/source equivalence evidence, release evidence, UAT evidence, or customer-readiness evidence.
 
@@ -52,7 +52,7 @@ Stop Condition: PRD is complete enough to split into implementation issues.
 
 ## 2. Executive Summary
 
-Groundwork already has router-like behavior. The current problem is not that routing is absent. The problem is that route selection, runtime selection, route hit detection, and contract adherence are still too opaque during normal Codex use.
+Groundwork already has router-like behavior. The current problem is not that routing is absent. The problem is that route selection, runtime selection, execution profile selection, route hit detection, and contract adherence are still too opaque during normal Codex use.
 
 This PRD defines **Router Observability v0**:
 
@@ -73,19 +73,22 @@ Router owns semantic decisions.
 Harness owns visibility, replay, scoring, and governance.
 ```
 
-Groundwork should not add another public router skill. Instead, it should expose and score the decisions made by the existing routing reliability layer and the existing `dispatch` runtime router.
+Groundwork should not add another public router skill. Instead, it should expose and score the decisions made by the existing routing reliability layer, the existing `dispatch` runtime router, and the existing dispatch execution profile policy for model profile, reasoning effort, and cost-latency bias.
 
 The v0 acceptance target is intentionally personal and cross-project:
 
 ```text
 accepted v0 = maintainer can install/update the Groundwork plugin,
-              trust dormant hook entrypoints once,
+              review and trust the current dormant hook definitions
+              for the installed plugin version when Codex requires it,
               opt selected projects into observe-only tracking,
               inspect route cards and score JSON,
               and decide which failures deserve eval backfill.
 ```
 
 v0 defaults to dormant hook entrypoints plus `observe_only` when a project explicitly opts in. Installing or updating the plugin may make hook entrypoints available, but it must not start trace capture by itself.
+
+Install/update in v0 means the maintainer uses an existing local plugin install or supported plugin update path. This PRD does not create marketplace release packaging or claim marketplace readiness.
 
 In `observe_only`, hooks may write scratch artifacts and cards for opted-in projects, but they must not inject route hints, block prompts, rewrite tool calls, request Stop continuation, create warnings in normal passing cases, or change model behavior.
 
@@ -409,23 +412,62 @@ Runtime: codex_app_managed_worktree_thread
 Route decision: worktree_isolated
 Isolation: codex_managed_worktree
 Selector enforcement: prompt_preference | unknown | tool_enforced
+Execution profile: strong_reasoning / high / quality
 Result package expected: review_package
 Execution status: not_executed_by_dispatch
 ```
 
-### 8.5 Groundwork Turn Trace
+### 8.5 Execution Profile Decision
+
+An Execution Profile Decision is the dispatch-level recommendation for model profile, reasoning effort, and cost-latency bias. It is not proof that a runtime applied those selectors.
+
+Minimum shape:
+
+```json
+{
+  "model_profile": "fast_scan | balanced_work | strong_reasoning | exhaustive_review | spark_iteration | unknown",
+  "reasoning_effort": "low | medium | high | xhigh | unknown",
+  "cost_latency_bias": "fast | balanced | quality | unknown",
+  "profile_source": "dispatch_routing_profile | task_package | user_request | unknown",
+  "profile_source_value": "original source text or empty",
+  "profile_options": {
+    "model_profiles": ["exhaustive_review"],
+    "reasoning_efforts": ["medium", "high"],
+    "cost_latency_biases": ["balanced", "quality"]
+  },
+  "normalization_reason": "why the selected normalized values fit this task",
+  "selector_enforcement": "tool_enforced | prompt_preference | unavailable | unknown",
+  "capability_status": "known | unknown | user_supplied | docs_reference | tool_enforced",
+  "evidence_layer": "prompt_preference | runtime_tool_evidence | user_observed_model_menu_seed | official_docs | community_evidence | local_characterization_eval",
+  "concrete_model": "evidence_bound_or_empty"
+}
+```
+
+Rules:
+
+- Profile recommendations are observable dispatch intent.
+- The primary `model_profile`, `reasoning_effort`, and `cost_latency_bias` fields store normalized selected values from `skills/_shared/COGNITIVE-BUDGET.md`.
+- If `skills/dispatch/ROUTING-PROFILES.md` provides natural language or range values such as `reviewer profile`, `medium/high`, or `balanced/quality`, the trace must preserve the original source in `profile_source_value`, list candidates in `profile_options`, choose one normalized value for the material task, and explain the choice in `normalization_reason`.
+- `tool_enforced` requires runtime adapter or tool evidence for the specific run.
+- Prompt/package preferences remain `prompt_preference`, `unavailable`, or `unknown` unless selector application is reported by the runtime.
+- v0 must not expose or require model internal reasoning content; `reasoning_effort` means selector preference only.
+- v0 must not auto-change model or reasoning settings.
+
+### 8.6 Groundwork Turn Trace
 
 A Groundwork Turn Trace is a local scratch record for one Codex turn. It ties together:
 
 ```text
 prompt input metadata
-prompt summary and hash
+prompt deterministic metadata and hash
 entry decision
 optional dispatch decision
 tool events
 permission or risk events
 final assistant message metadata
-final summary and hash
+final deterministic metadata and hash
+checker evidence
+execution profile decision, if dispatch is involved
 changed file snapshot
 router score
 router card
@@ -433,7 +475,7 @@ router card
 
 It should live under ignored local scratch by default. Raw prompt and raw final text are disabled by default. They require explicit opt-in, stay scratch-only, and must be excluded from promotion unless redacted and reviewed.
 
-### 8.6 Router Score
+### 8.7 Router Score
 
 A Router Score is a machine-readable verdict for one turn. It should reuse the existing verdict dimensions:
 
@@ -456,12 +498,14 @@ expected_route_source
 actual_route_source
 skill_hit_source
 tool_coverage_status
+execution_profile_source
+selector_enforcement
 score_eligibility
 ```
 
 If the source strength is insufficient, the score must use `unknown`, `partial`, or `insufficient_evidence` instead of converting uncertainty into a passing verdict.
 
-### 8.7 Self-Improvement Proposal
+### 8.8 Self-Improvement Proposal
 
 A Self-Improvement Proposal is a review artifact created from repeated failures. It may suggest docs, eval, frontmatter, or runner changes, but it must not auto-apply them.
 
@@ -494,7 +538,7 @@ Layer 0: Groundwork source contracts
   - eval schemas
 
 Layer 1: Live hook capture
-  - SessionStart
+  - SessionStart, deferred unless RO-003 proves session-level metadata is needed
   - UserPromptSubmit
   - PreToolUse / PermissionRequest
   - PostToolUse
@@ -503,6 +547,7 @@ Layer 1: Live hook capture
 Layer 2: Shared routing and verdict model
   - routing schema
   - route detection
+  - dispatch execution profile schema
   - output/evidence/behavior checks
   - summary metrics
 
@@ -622,7 +667,7 @@ Add a policy target for live router observability scratch output:
 
 ```text
 .groundwork/harness/router-observability/<session-id>/<turn-id>/
-  prompt-summary.json
+  prompt-metadata.json
   prompt.raw.json                 # optional / explicit opt-in only
   router-decision.json
   dispatch-decision.json          # optional
@@ -630,7 +675,7 @@ Add a policy target for live router observability scratch output:
   permission-events.jsonl
   file-snapshot-before.json       # optional / path-only by default
   file-snapshot-after.json        # optional / path-only by default
-  final-summary.txt
+  final-metadata.json
   final.raw.txt                   # optional / explicit opt-in only
   router-score.json
   router-card.md
@@ -644,7 +689,7 @@ Rules:
 - This directory is ignored local scratch.
 - Raw traces are not committed.
 - Raw prompt and raw final text are disabled by default.
-- Prompt/final summaries should prefer stable non-sensitive markers, short snippets, hashes, and decision evidence over full content.
+- Prompt/final metadata should use deterministic, minimized fields such as stable non-sensitive markers, short snippets, hashes, checker inputs, and decision evidence. It is not LLM summarization.
 - Raw prompt/final capture requires an explicit maintainer opt-in and must record retention and redaction status.
 - Raw command output, browser logs, private payloads, cookies, and secrets must not be promoted.
 - Promoted artifacts must follow `docs/eval-trace-artifacts.md`.
@@ -722,7 +767,7 @@ Captured fields:
   "turn_id": "...",
   "hook_event_name": "PostToolUse",
   "tool_name": "Bash",
-  "coverage_status": "observed | partial | unsupported | unknown",
+  "coverage_status": "observed_supported | unsupported | unknown",
   "risk_markers": ["git_write"],
   "evidence_markers": ["git_status"],
   "status": "pass | fail | unknown",
@@ -774,7 +819,7 @@ Inputs:
 
 Outputs:
 
-- `final-summary.txt`;
+- `final-metadata.json`;
 - `final.raw.txt` only when explicit raw capture is enabled;
 - `router-score.json`;
 - `router-card.md`;
@@ -796,9 +841,9 @@ Acceptance criteria:
 - Does not claim release readiness or runtime readiness.
 - Does not modify user code.
 
-### FR-6: Dispatch Runtime Decision Observability
+### FR-6: Dispatch Runtime and Execution Profile Observability
 
-When `dispatch` is selected or mentioned, observability must record runtime route decisions separately from entry route decisions.
+When `dispatch` is selected or mentioned, observability must record runtime route decisions and execution profile recommendations separately from entry route decisions.
 
 Required fields:
 
@@ -809,8 +854,24 @@ Required fields:
   "task_type": "write_implementation | read_only_review | planning_only | hybrid | diagnosis | verification | direct",
   "runtime_id": "codex_app_managed_worktree_thread | codex_subagent | main_thread_direct | main_thread_readonly | clean_reviewer",
   "route_decision": "local_direct | local_with_artifact | worktree_isolated | worktree_review_only | automation_candidate",
-  "selector_enforcement": "tool_enforced | prompt_preference | unavailable | unknown",
-  "capability_status": "known | unknown | user_supplied | docs_reference | tool_enforced",
+  "execution_profile": {
+    "model_profile": "fast_scan | balanced_work | strong_reasoning | exhaustive_review | spark_iteration | unknown",
+    "reasoning_effort": "low | medium | high | xhigh | unknown",
+    "cost_latency_bias": "fast | balanced | quality | unknown",
+    "profile_source": "dispatch_routing_profile | task_package | user_request | unknown",
+    "profile_source_value": "original source text or empty",
+    "profile_options": {
+      "model_profiles": ["exhaustive_review"],
+      "reasoning_efforts": ["medium", "high"],
+      "cost_latency_biases": ["balanced", "quality"]
+    },
+    "normalization_reason": "why the selected normalized values fit this task",
+    "concrete_model": "",
+    "capability_status": "known | unknown | user_supplied | docs_reference | tool_enforced",
+    "selector_enforcement": "tool_enforced | prompt_preference | unavailable | unknown",
+    "selector_enforcement_policy": "tool_if_available_else_prompt_preference",
+    "evidence_layer": "prompt_preference | runtime_tool_evidence | user_observed_model_menu_seed | official_docs | community_evidence | local_characterization_eval"
+  },
   "expected_result_package": "review_package | findings_package | diagnosis_package | direct_result | review_findings",
   "execution_claim": "not_executed_by_dispatch"
 }
@@ -821,12 +882,20 @@ Rules:
 - Dispatch may produce package expectations.
 - Dispatch observability must not imply execution.
 - Runtime adapter execution evidence must be separate.
+- Execution profile recommendations are routing intent, not proof that a concrete model or reasoning selector was applied.
+- Execution profile fields must be normalized to the canonical profile vocabulary from `skills/_shared/COGNITIVE-BUDGET.md`.
+- Natural language or range defaults from `skills/dispatch/ROUTING-PROFILES.md` must be preserved in `profile_source_value` and `profile_options`; the selected normalized value must be justified in `normalization_reason`.
+- A model/profile claim may report `tool_enforced` only when a runtime adapter or tool confirms selector application for that specific run.
+- `reasoning_effort` means selector preference or adapter-reported selector status only; it must not capture, request, expose, or summarize model internal reasoning content.
+- v0 must not auto-change model, reasoning effort, or cost-latency bias.
 - `automation_candidate` remains recommendation-only unless a future accepted issue explicitly implements an automation adapter.
 
 Acceptance criteria:
 
-- Router card shows dispatch route and execution boundary when dispatch is involved.
+- Router card shows dispatch route, execution profile, selector enforcement status, and execution boundary when dispatch is involved.
+- Natural language or range profile defaults are normalized to canonical profile fields while preserving source value, candidate options, and normalization reason.
 - `dispatch` failures are separable from public skill entry failures.
+- Execution profile mismatch is separable from runtime route mismatch and public skill entry failures.
 - No dispatch hook creates worktrees, subagents, automations, PRs, issues, commits, or pushes.
 
 ### FR-7: Trace-Derived Regression Row Generator
@@ -1022,7 +1091,49 @@ Acceptance criteria:
 }
 ```
 
-### 11.2 `tool-events.jsonl`
+### 11.2 `dispatch-decision.json`
+
+Created only when `dispatch` is selected, mentioned, or produces a package recommendation.
+
+```json
+{
+  "schema_version": "router_observability.dispatch_decision.v0",
+  "session_id": "...",
+  "turn_id": "...",
+  "dispatch_version": 2,
+  "task_id": "...",
+  "task_type": "write_implementation | read_only_review | planning_only | hybrid | diagnosis | verification | direct",
+  "runtime_id": "codex_app_managed_worktree_thread | codex_subagent | main_thread_direct | main_thread_readonly | clean_reviewer",
+  "route_decision": "local_direct | local_with_artifact | worktree_isolated | worktree_review_only | automation_candidate",
+  "execution_profile": {
+    "model_profile": "fast_scan | balanced_work | strong_reasoning | exhaustive_review | spark_iteration | unknown",
+    "reasoning_effort": "low | medium | high | xhigh | unknown",
+    "cost_latency_bias": "fast | balanced | quality | unknown",
+    "profile_source": "dispatch_routing_profile | task_package | user_request | unknown",
+    "profile_source_value": "Read-only multi-perspective review -> reviewer profile / medium/high / balanced/quality",
+    "profile_options": {
+      "model_profiles": ["exhaustive_review"],
+      "reasoning_efforts": ["medium", "high"],
+      "cost_latency_biases": ["balanced", "quality"]
+    },
+    "normalization_reason": "selected high and quality because this is a material clean review",
+    "concrete_model": "",
+    "capability_status": "known | unknown | user_supplied | docs_reference | tool_enforced",
+    "selector_enforcement": "tool_enforced | prompt_preference | unavailable | unknown",
+    "selector_enforcement_policy": "tool_if_available_else_prompt_preference",
+    "evidence_layer": "prompt_preference | runtime_tool_evidence | user_observed_model_menu_seed | official_docs | community_evidence | local_characterization_eval"
+  },
+  "expected_result_package": "review_package | findings_package | diagnosis_package | direct_result | review_findings",
+  "execution_claim": "not_executed_by_dispatch",
+  "selector_evidence": {
+    "runtime_reported": false,
+    "source": "dispatch_package | runtime_adapter | tool_report | unknown",
+    "notes": []
+  }
+}
+```
+
+### 11.3 `tool-events.jsonl`
 
 Each row:
 
@@ -1035,7 +1146,7 @@ Each row:
   "hook_event_name": "PostToolUse",
   "tool_name": "Bash",
   "command_class": "git | test | file_read | file_write | browser | unknown",
-  "coverage_status": "observed | partial | unsupported | unknown",
+  "coverage_status": "observed_supported | unsupported | unknown",
   "coverage_limitations": [],
   "risk_markers": ["git_write"],
   "evidence_markers": ["git_status"],
@@ -1047,7 +1158,7 @@ Each row:
 }
 ```
 
-### 11.3 `router-score.json`
+### 11.4 `router-score.json`
 
 ```json
 {
@@ -1059,12 +1170,16 @@ Each row:
   "expected_route_source": "deterministic_entry_classifier | fixture | heuristic | unknown",
   "actual_route_source": "hook_event | final_message_marker | codex_exec_json | changed_file_snapshot | unknown",
   "skill_hit_source": "hook_event | codex_exec_json | final_message_marker | unknown",
-  "tool_coverage_status": "complete | partial | unsupported | unknown",
+  "tool_coverage_status": "supported_events_observed | partial | unsupported | unknown",
   "score_eligibility": "baseline_eligible | guided_hint_excluded | insufficient_evidence",
   "acceptable_routes": ["write-plan"],
   "forbidden_routes": ["implement", "verify", "direct"],
   "routing_verdict": "fail",
   "host_preemption_verdict": "not_applicable",
+  "execution_profile_verdict": "mismatch | pass | insufficient_evidence | not_applicable",
+  "execution_profile_source": "dispatch_decision | runtime_adapter | final_message_marker | unknown",
+  "selector_enforcement": "prompt_preference | tool_enforced | unavailable | unknown",
+  "selector_mismatch_reason": "profile_too_weak_for_risk | profile_too_expensive_for_scope | selector_unavailable | selector_unverified | none",
   "output_contract_verdict": "pass",
   "evidence_verdict": "fail",
   "behavior_verdict": "fail",
@@ -1075,12 +1190,22 @@ Each row:
   "skill_hits": [],
   "dispatch_decisions": [],
   "router_hint_emitted": false,
+  "checker_results": [
+    {
+      "checker_id": "verify_scope_full",
+      "verdict": "fail",
+      "evidence": {
+        "first_line_class": "not_verification_scope",
+        "missing_fields": ["Covered", "Not Covered"]
+      }
+    }
+  ],
   "notes": "expected route write-plan, loaded implement",
   "evidence_boundary": "local hook score only; not release evidence"
 }
 ```
 
-### 11.4 `router-card.md`
+### 11.5 `router-card.md`
 
 Required sections:
 
@@ -1093,6 +1218,8 @@ Actual Route
 Actual Route Source
 Tool Coverage
 Dispatch Runtime Decision, if applicable
+Execution Profile Decision, if applicable
+Selector Enforcement Evidence, if applicable
 Verdicts
 Failure Classification
 Evidence Used
@@ -1101,7 +1228,7 @@ Score Eligibility
 Next Suggested Action
 ```
 
-### 11.5 Self-Improvement Proposal
+### 11.6 Self-Improvement Proposal
 
 Recommended markdown shape:
 
@@ -1129,20 +1256,47 @@ Evidence Boundary:
 
 ## 12. Routing and Dispatch Scoring Rules
 
-### 12.1 Route Selection Pass
+### 12.1 Live Score Authority Gate
 
-A route selection passes when:
+Live hook scores must pass an authority gate before they can contribute to passive baseline routing metrics.
+
+A live score is `baseline_eligible` only when all of these are true:
+
+- `decision_mode = observe_only`;
+- `router_hint_emitted = false`;
+- `expected_route_source` is `fixture` or `deterministic_entry_classifier`;
+- if `expected_route_source = deterministic_entry_classifier`, the classifier version has accepted fixture or eval evidence;
+- `actual_route_source` is not `unknown`;
+- `skill_hit_source` is not required for the claim, or is not `unknown`;
+- `tool_coverage_status` is `supported_events_observed`, or the missing coverage is irrelevant to the score claim;
+- if the score claims model profile, reasoning effort, or cost-latency selector correctness, `execution_profile_source` is not `unknown`;
+- if the score claims selector application, `selector_enforcement = tool_enforced`;
+- if the score claims only selector recommendation quality, `selector_enforcement = prompt_preference | tool_enforced` is acceptable and the card must label it as recommendation evidence, not execution evidence;
+- raw prompt/final capture is not required to reproduce the checker result, or `checker_results` contains enough deterministic evidence.
+
+If any required source-strength condition is missing:
+
+- `score_eligibility = insufficient_evidence`;
+- `routing_verdict = blocked`;
+- the turn must not count toward `best_route_hit_at_1`, `acceptable_route_coverage`, or passive route-pair confusion;
+- the router card must explain which source, coverage, or selector-evidence field blocked baseline scoring.
+
+Heuristic live candidates may still help diagnosis, but they are not route truth.
+
+### 12.2 Route Selection Pass
+
+For fixture-backed eval rows and live scores that pass the authority gate, route selection passes when:
 
 - `actual_route == expected_best`; or
 - `actual_route` is in `acceptable_routes`; and
 - `actual_route` is not in `forbidden_routes`; and
 - host preemption is valid or not applicable.
 
-### 12.2 Best Route Still Matters
+### 12.3 Best Route Still Matters
 
 `acceptable_routes` may allow safe alternatives, but `best_route_hit_at_1` remains a trend signal. Broadening acceptable routes must not hide unclear ownership.
 
-### 12.3 Forbidden Route Hit
+### 12.4 Forbidden Route Hit
 
 A forbidden route hit fails even when the final answer looks plausible.
 
@@ -1155,7 +1309,7 @@ Actual: implement
 Result: fail, even if the implementation was competent
 ```
 
-### 12.4 Right Route, Wrong Path
+### 12.5 Right Route, Wrong Path
 
 If the right skill is selected but output/evidence/behavior contracts fail, the route verdict may pass while overall verdict fails.
 
@@ -1169,11 +1323,32 @@ Overall: fail
 Fix locus: skill_output_contract
 ```
 
-### 12.5 Dispatch Does Not Execute
+### 12.6 Dispatch Does Not Execute
 
 A dispatch decision is scored for package correctness, runtime fit, capability evidence, selector enforcement transparency, and result expectation.
 
 It is not scored as execution evidence unless a runtime adapter separately reports execution.
+
+### 12.7 Execution Profile Scoring
+
+Execution profile scoring is separate from runtime route scoring.
+
+An execution profile passes when:
+
+- `model_profile`, `reasoning_effort`, and `cost_latency_bias` are present when dispatch makes them material;
+- `profile_source` is `dispatch_routing_profile`, `task_package`, or `user_request`;
+- natural language or range source values are normalized to the canonical profile vocabulary, with `profile_source_value`, `profile_options`, and `normalization_reason` populated when needed;
+- `selector_enforcement` is reported truthfully as `tool_enforced`, `prompt_preference`, `unavailable`, or `unknown`;
+- `evidence_layer` matches the enforcement claim;
+- the profile is not weaker than the risk, review, or validation expectation in the task shape.
+
+It fails or becomes `insufficient_evidence` when:
+
+- a high-risk, public API, migration, security, privacy, data-correctness, clean-review, or release-adjacent claim uses a fast or weak profile as final authority;
+- dispatch claims `tool_enforced` without runtime adapter or tool evidence;
+- source profile ranges are collapsed without preserving candidate options or explaining the normalized choice;
+- a concrete model is treated as permanent runtime truth instead of evidence-bound mapping;
+- `reasoning_effort` is treated as captured model reasoning content rather than selector preference.
 
 ---
 
@@ -1223,11 +1398,13 @@ It must not be committed.
 
 Default live trace output must be content-minimized:
 
-- store prompt summaries, hashes, and decision evidence instead of full prompts;
-- store final summaries and hashes instead of full assistant messages;
+- store deterministic prompt metadata, hashes, and decision evidence instead of full prompts;
+- store deterministic final metadata and hashes instead of full assistant messages;
 - store path-only changed-file snapshots by default;
 - keep raw prompt, raw final text, raw command output, and raw tool responses disabled unless the maintainer explicitly enables raw capture for a local debugging session;
 - record raw-capture status and retention expectations in the trace metadata.
+
+`prompt-metadata.json` and `final-metadata.json` are deterministic minimized metadata files, not LLM-generated summaries.
 
 ### 14.2 Promotion Boundary
 
@@ -1252,7 +1429,7 @@ Promoted artifacts must not include:
 - private URLs unless explicitly approved;
 - raw browser logs;
 - production payloads;
-- unredacted command output with sensitive paths or payloads.
+- unredacted command output with sensitive paths or payloads;
 - unredacted raw prompt or raw final text from live sessions.
 
 ### 14.4 Evidence Boundary
@@ -1268,19 +1445,21 @@ Hook traces with `decision_mode=guided_hint_trial` are behavior-shaping trial ev
 ### 15.1 Live Observability Metrics
 
 - Percentage of Groundwork-relevant turns with `router-decision.json`.
-- Percentage of non-opted-in project hook runs that produced no artifacts because the hook no-opped.
 - Percentage of scored turns with `router-score.json`.
 - Percentage of scored turns with `actual_route != unknown`.
+- Percentage of dispatch-involved turns with `dispatch-decision.json`.
+- Percentage of dispatch-involved turns with complete execution profile fields.
 - Percentage of scored turns with `score_eligibility=baseline_eligible`.
 - Percentage of scored turns with `score_eligibility=insufficient_evidence`.
-- Percentage of events with `tool_coverage_status=partial | unsupported | unknown`.
+- Percentage of events with `coverage_status=unsupported | unknown`.
 - Percentage of non-pass turns with `failure_type` and `fix_locus` populated.
 - Median hook overhead per event.
 - Count of hook failures by event type.
-- Count of hook no-op runs by project and reason.
 - Count of traces blocked from promotion by redaction policy.
 - Count of traces that enabled raw prompt or raw final capture.
 - Count of guided hint trials excluded from passive baseline metrics.
+
+No-op behavior for non-opted-in projects is verified by fixture and unit tests. Live non-opted-in projects must not produce per-project no-op metrics by default. Optional global hook diagnostics may count aggregate no-op events only when explicitly enabled, and must not include project path, project name, prompt text, or final text unless that project separately opts in.
 
 ### 15.2 Routing Metrics
 
@@ -1292,6 +1471,9 @@ Reuse existing routing summary metrics:
 - `invalid_host_preemption`;
 - `route_pair_confusion`;
 - `verdict_dimension_counts`;
+- `execution_profile_verdict_counts`;
+- `selector_enforcement_counts`;
+- `selector_mismatch_reason_counts`;
 - `failure_type_counts`;
 - `unclassified_nonpass`.
 
@@ -1311,6 +1493,8 @@ Reuse existing routing summary metrics:
 - Zero raw prompt/final capture in default mode.
 - Zero route-hint injection in default `observe_only` mode.
 - Zero passive-baseline scores from guided hint trials.
+- Zero automatic model or reasoning-effort changes.
+- Zero `tool_enforced` selector claims without runtime adapter or tool evidence.
 - Zero automatic skill mutations.
 - Zero automatic tracker/PR/remote mutations.
 - Zero release readiness claims without runtime/cache evidence.
@@ -1332,6 +1516,7 @@ docs/prd-router-observability-and-self-improvement.md
 Acceptance criteria:
 
 - PRD explains why this is observability around existing routers, not a new public router.
+- PRD covers public skill entry route, dispatch runtime route, and dispatch execution profile observability.
 - PRD assigns harness roles to hooks, `codex exec`, GitHub Action, and Automation.
 - PRD defines data artifacts and redaction boundary.
 - PRD contains enough detail for issue slicing.
@@ -1361,6 +1546,7 @@ Acceptance criteria:
 - Runner behavior remains backward compatible.
 - Existing routing-reliability suite validates.
 - Shared modules expose pure functions usable by hooks.
+- Shared schemas cover route/verdict fields and dispatch execution profile fields.
 - No Codex runtime invocation is needed for unit tests.
 
 Verification:
@@ -1385,6 +1571,8 @@ Acceptance criteria:
 - Documents hook install/config pattern.
 - Documents that v0 is a personal maintainer cross-project trial with plugin-bundled dormant entrypoints.
 - Documents project opt-in config, no-op behavior when absent, and how to disable tracking for one project.
+- Documents that plugin install/update uses an existing local install or supported update path and does not create marketplace release packaging.
+- Documents that `SessionStart` is deferred unless session-level metadata is accepted as necessary.
 - Documents scratch layout and redaction boundary.
 - Documents default `observe_only`, optional `guided_hint_trial`, and raw-capture opt-in.
 - Documents how to disable hooks.
@@ -1444,6 +1632,7 @@ Acceptance criteria:
 - No-ops when project opt-in is absent.
 - Records command class, risk markers, and evidence markers.
 - Records coverage status and limitations.
+- Uses `observed_supported | unsupported | unknown` for event coverage status.
 - Avoids raw output by default.
 - Handles missing fields gracefully.
 
@@ -1471,7 +1660,11 @@ Acceptance criteria:
 - No-ops when project opt-in is absent.
 - Produces `router-score.json` and `router-card.md`.
 - Uses shared route/verdict model.
-- Records `expected_route_source`, `actual_route_source`, `skill_hit_source`, `tool_coverage_status`, and `score_eligibility`.
+- Records `expected_route_source`, `actual_route_source`, `skill_hit_source`, `tool_coverage_status`, `execution_profile_source`, `selector_enforcement`, and `score_eligibility`.
+- Scores `execution_profile_verdict` separately from route and runtime verdicts.
+- Refuses to claim selector application without runtime adapter or tool evidence.
+- Applies the Live Score Authority Gate before marking a live score `baseline_eligible`.
+- Emits `checker_results` with deterministic evidence when raw final text is not stored.
 - Refuses to mark insufficient live evidence as baseline-pass.
 - Does not auto-continue by default.
 - Has fixture coverage for pass, route miss, forbidden route, evidence failure, and output contract failure.
@@ -1599,11 +1792,15 @@ Trial evidence must record:
 - source branch;
 - local checkout path;
 - plugin root or source root that provided hook entrypoints;
+- installed plugin version or source commit;
+- hook definition trust state observed by Codex;
 - hook config used;
 - deployment target: personal maintainer cross-project trial;
 - project opt-in source;
 - decision mode;
 - raw-capture status;
+- execution profile fields when dispatch is involved;
+- selector enforcement status and evidence layer when model or reasoning selectors are material;
 - trace scratch path;
 - tool coverage limitations;
 - whether raw traces were promoted;
@@ -1728,11 +1925,15 @@ This PRD is accepted when maintainers agree that the next workstream should:
 1. keep existing Groundwork routers;
 2. target personal maintainer cross-project trial first;
 3. bundle dormant hook entrypoints so the maintainer can opt selected projects into tracking;
-4. require project opt-in before any trace write or model-visible hook output;
-5. add Hook-first live observability in default `observe_only` mode for opted-in projects;
-6. keep route hints opt-in and excluded from passive baseline metrics;
-7. reuse the existing route/verdict model with explicit source-strength and coverage fields;
-8. keep traces local, content-minimized, and redacted by default;
-9. replay reviewed failures through `codex exec --json` and eval rows;
-10. generate self-improvement proposals without auto-applying them;
-11. defer Automation, CI, general-user activation, and release claims until live trace and replay evidence exist.
+4. require review/trust of the current hook definitions for the installed plugin version when Codex requires it;
+5. require project opt-in before any trace write or model-visible hook output;
+6. add Hook-first live observability in default `observe_only` mode for opted-in projects;
+7. keep route hints opt-in and excluded from passive baseline metrics;
+8. reuse the existing route/verdict model with explicit source-strength and coverage fields;
+9. observe dispatch execution profile recommendations for model profile, reasoning effort, and cost-latency bias without mutating selectors;
+10. keep selector enforcement evidence separate from prompt/package preference;
+11. apply the Live Score Authority Gate before counting passive routing metrics;
+12. keep traces local, content-minimized, and redacted by default;
+13. replay reviewed failures through `codex exec --json` and eval rows;
+14. generate self-improvement proposals without auto-applying them;
+15. defer Automation, CI, general-user activation, and release claims until live trace and replay evidence exist.
