@@ -1,0 +1,350 @@
+"""Codex hook helpers for Groundwork router observability v0."""
+
+import hashlib
+import json
+import os
+import re
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from evals.route_detection import (  # noqa: E402
+    classify_command,
+    entry_decision_from_prompt,
+    evidence_markers,
+    risk_markers,
+)
+from evals.verdict_model import dispatch_decision_from_entry, render_router_card, score_turn  # noqa: E402
+
+
+SECRET_PATTERNS = (
+    re.compile(r"(Authorization:\s*Bearer\s+)[^\s,;]+", re.I),
+    re.compile(r"(token=)[^\s,;]+", re.I),
+    re.compile(r"(api[_-]?key=)[^\s,;]+", re.I),
+    re.compile(r"(cookie:\s*)[^\n]+", re.I),
+    re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----", re.S),
+)
+
+DEFAULT_CONFIG = {
+    "enabled": False,
+    "mode": "observe_only",
+    "raw_capture": False,
+}
+
+
+def utc_now():
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def load_stdin_event():
+    raw = sys.stdin.read()
+    if not raw.strip():
+        return {}
+    return json.loads(raw)
+
+
+def redacted_snippet(text, limit=120):
+    value = str(text or "")
+    for pattern in SECRET_PATTERNS:
+        if pattern.groups:
+            value = pattern.sub(r"\1[REDACTED]", value)
+        else:
+            value = pattern.sub("[REDACTED_PRIVATE_KEY]", value)
+    value = " ".join(value.split())
+    return value[:limit]
+
+
+def stable_hash(text):
+    return hashlib.sha256(str(text or "").encode("utf-8")).hexdigest()
+
+
+def cwd_from_event(event):
+    value = event.get("cwd") or event.get("working_dir") or event.get("workspace_dir") or os.getcwd()
+    return Path(value).resolve()
+
+
+def config_path(cwd):
+    return cwd / ".groundwork" / "harness" / "router-observability" / "config.json"
+
+
+def load_config(cwd):
+    if os.environ.get("GROUNDWORK_ROUTER_OBSERVABILITY_DISABLED"):
+        return None, "env_disabled"
+    config = dict(DEFAULT_CONFIG)
+    path = config_path(cwd)
+    if path.exists():
+        try:
+            loaded = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return None, "invalid_config"
+        if isinstance(loaded, dict):
+            config.update(loaded)
+            return config, str(path.relative_to(cwd))
+    if os.environ.get("GROUNDWORK_ROUTER_OBSERVABILITY") == "1":
+        config["enabled"] = True
+        config["mode"] = os.environ.get("GROUNDWORK_ROUTER_OBSERVABILITY_MODE", "observe_only")
+        return config, "env"
+    return None, "absent"
+
+
+def is_enabled(config):
+    return bool(config and config.get("enabled"))
+
+
+def ids_from_event(event):
+    session_id = str(
+        event.get("session_id")
+        or event.get("conversation_id")
+        or event.get("thread_id")
+        or "session-unknown"
+    )
+    turn_id = str(
+        event.get("turn_id")
+        or event.get("event_id")
+        or event.get("request_id")
+        or stable_hash(json.dumps(event, sort_keys=True))[:12]
+    )
+    return session_id, turn_id
+
+
+def turn_dir(cwd, event):
+    session_id, turn_id = ids_from_event(event)
+    return cwd / ".groundwork" / "harness" / "router-observability" / session_id / turn_id
+
+
+def write_json(path, value):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def append_jsonl(path, value):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(value, ensure_ascii=False, sort_keys=True) + "\n")
+
+
+def read_json(path):
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return None
+
+
+def read_jsonl(path):
+    rows = []
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except FileNotFoundError:
+        return rows
+    for line in lines:
+        if not line.strip():
+            continue
+        try:
+            value = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(value, dict):
+            rows.append(value)
+    return rows
+
+
+def prompt_from_event(event):
+    return (
+        event.get("prompt")
+        or event.get("user_prompt")
+        or event.get("input")
+        or event.get("message")
+        or ""
+    )
+
+
+def final_message_from_event(event):
+    return (
+        event.get("final_response")
+        or event.get("assistant_response")
+        or event.get("message")
+        or event.get("final_message")
+        or ""
+    )
+
+
+def tool_name_from_event(event):
+    return str(event.get("tool_name") or event.get("tool") or event.get("name") or "unknown")
+
+
+def command_from_event(event):
+    tool_input = event.get("tool_input") or event.get("input") or {}
+    if isinstance(tool_input, dict):
+        return (
+            tool_input.get("command")
+            or tool_input.get("cmd")
+            or tool_input.get("patch")
+            or tool_input.get("arguments")
+            or ""
+        )
+    return str(tool_input or event.get("command") or "")
+
+
+def handle_user_prompt_submit(event):
+    cwd = cwd_from_event(event)
+    config, source = load_config(cwd)
+    if not is_enabled(config):
+        return None
+    session_id, turn_id = ids_from_event(event)
+    mode = str(config.get("mode") or "observe_only")
+    raw_capture = bool(config.get("raw_capture"))
+    prompt = prompt_from_event(event)
+    decision = entry_decision_from_prompt(prompt)
+    router_hint_emitted = mode == "guided_hint_trial"
+    out_dir = turn_dir(cwd, event)
+    prompt_metadata = {
+        "schema_version": "router_observability.prompt_metadata.v0",
+        "session_id": session_id,
+        "turn_id": turn_id,
+        "created_at": utc_now(),
+        "prompt_sha256": stable_hash(prompt),
+        "prompt_length": len(str(prompt or "")),
+        "prompt_snippet": redacted_snippet(prompt),
+        "raw_prompt_storage": "enabled" if raw_capture else "disabled",
+    }
+    router_decision = {
+        "schema_version": "router_observability.v0",
+        "session_id": session_id,
+        "turn_id": turn_id,
+        "created_at": utc_now(),
+        "cwd": str(cwd),
+        "deployment_target": "personal_maintainer_cross_project_trial",
+        "hook_packaging": "plugin_bundled",
+        "project_opt_in": True,
+        "activation_source": source,
+        "decision_mode": mode,
+        "router_hint_emitted": router_hint_emitted,
+        "raw_prompt_storage": "enabled" if raw_capture else "disabled",
+        "entry_decision": decision,
+        "decision_evidence": [{"kind": "prompt_hash", "value": prompt_metadata["prompt_sha256"]}],
+        "decision_source": "heuristic",
+        "confidence": "medium" if decision["expected_best"] != "unknown" else "low",
+        "limitations": ["heuristic live candidate; fixture-backed replay required for route truth"],
+    }
+    write_json(out_dir / "prompt-metadata.json", prompt_metadata)
+    write_json(out_dir / "router-decision.json", router_decision)
+    dispatch_decision = dispatch_decision_from_entry(
+        {
+            **router_decision,
+            "prompt_snippet": prompt_metadata["prompt_snippet"],
+        }
+    )
+    if dispatch_decision:
+        write_json(out_dir / "dispatch-decision.json", dispatch_decision)
+    if raw_capture:
+        write_json(out_dir / "prompt.raw.json", {"prompt": prompt, "redaction": {"status": "not_reviewed", "notes": []}})
+    if router_hint_emitted:
+        hint = (
+            f"Groundwork route hint: expected first route {decision['expected_best']}; "
+            "keep scope, evidence, verification, and stop-condition boundaries explicit."
+        )
+        return {"hookSpecificOutput": {"additionalContext": hint}}
+    return None
+
+
+def handle_tool_event(event, hook_event_name):
+    cwd = cwd_from_event(event)
+    config, _ = load_config(cwd)
+    if not is_enabled(config):
+        return None
+    out_dir = turn_dir(cwd, event)
+    tool_name = tool_name_from_event(event)
+    command = command_from_event(event)
+    event_row = {
+        "schema_version": "router_observability.tool_event.v0",
+        "session_id": ids_from_event(event)[0],
+        "turn_id": ids_from_event(event)[1],
+        "event_index": len(read_jsonl(out_dir / "tool-events.jsonl")) + 1,
+        "hook_event_name": hook_event_name,
+        "tool_name": tool_name,
+        "command_class": classify_command(command, tool_name),
+        "coverage_status": "observed_supported" if tool_name in {"Bash", "apply_patch"} or tool_name.startswith("mcp__") else "unsupported",
+        "coverage_limitations": ["hooks do not prove complete shell, WebSearch, non-shell, or non-MCP coverage"],
+        "risk_markers": risk_markers(command, tool_name),
+        "evidence_markers": evidence_markers(command),
+        "status": str(event.get("status") or "unknown"),
+        "redaction": {"status": "not_reviewed", "notes": []},
+    }
+    append_jsonl(out_dir / "tool-events.jsonl", event_row)
+    return None
+
+
+def handle_permission_event(event):
+    cwd = cwd_from_event(event)
+    config, _ = load_config(cwd)
+    if not is_enabled(config):
+        return None
+    out_dir = turn_dir(cwd, event)
+    row = {
+        "schema_version": "router_observability.permission_event.v0",
+        "session_id": ids_from_event(event)[0],
+        "turn_id": ids_from_event(event)[1],
+        "event_index": len(read_jsonl(out_dir / "permission-events.jsonl")) + 1,
+        "hook_event_name": "PermissionRequest",
+        "permission": str(event.get("permission") or event.get("action") or "unknown"),
+        "command_class": classify_command(command_from_event(event), tool_name_from_event(event)),
+        "coverage_status": "observed_supported",
+        "coverage_limitations": ["permission hooks do not prove complete tool or shell coverage"],
+        "risk_markers": risk_markers(command_from_event(event), tool_name_from_event(event)),
+        "evidence_markers": evidence_markers(command_from_event(event)),
+        "status": str(event.get("status") or "unknown"),
+        "redaction": {"status": "not_reviewed", "notes": []},
+    }
+    append_jsonl(out_dir / "permission-events.jsonl", row)
+    return None
+
+
+def handle_stop(event):
+    cwd = cwd_from_event(event)
+    config, _ = load_config(cwd)
+    if not is_enabled(config):
+        return None
+    out_dir = turn_dir(cwd, event)
+    decision = read_json(out_dir / "router-decision.json")
+    if not isinstance(decision, dict):
+        return None
+    final_message = final_message_from_event(event)
+    final_metadata = {
+        "schema_version": "router_observability.final_metadata.v0",
+        "session_id": decision.get("session_id", "unknown"),
+        "turn_id": decision.get("turn_id", "unknown"),
+        "created_at": utc_now(),
+        "final_sha256": stable_hash(final_message),
+        "final_length": len(str(final_message or "")),
+        "final_snippet": redacted_snippet(final_message),
+        "raw_final_storage": "enabled" if config.get("raw_capture") else "disabled",
+    }
+    write_json(out_dir / "final-metadata.json", final_metadata)
+    if config.get("raw_capture"):
+        (out_dir / "final.raw.txt").write_text(str(final_message or ""), encoding="utf-8")
+    events = read_jsonl(out_dir / "tool-events.jsonl") + read_jsonl(out_dir / "permission-events.jsonl")
+    dispatch_decision = read_json(out_dir / "dispatch-decision.json")
+    score = score_turn({**decision, "final_sha256": final_metadata["final_sha256"]}, final_message, events, dispatch_decision)
+    write_json(out_dir / "router-score.json", score)
+    (out_dir / "router-card.md").write_text(
+        render_router_card(score, decision, dispatch_decision),
+        encoding="utf-8",
+    )
+    return None
+
+
+def run_handler(handler, event_name=None):
+    try:
+        event = load_stdin_event()
+        output = handler(event) if event_name is None else handler(event, event_name)
+    except Exception as exc:  # Hooks must not break normal Codex use.
+        output = None
+        if os.environ.get("GROUNDWORK_ROUTER_OBSERVABILITY_DEBUG"):
+            print(f"Groundwork router observability hook failed: {exc}", file=sys.stderr)
+    if output is not None:
+        print(json.dumps(output, ensure_ascii=False, sort_keys=True))
+    return 0

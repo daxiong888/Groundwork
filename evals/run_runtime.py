@@ -23,6 +23,16 @@ from checks.verify_checks import (
     QA_FAILURE_FIELDS,
     VERIFY_SCOPE_FIELDS,
 )
+try:
+    from routing_summary import (
+        routing_outcome as shared_routing_outcome,
+        summarize_routing_results as shared_summarize_routing_results,
+    )
+except ImportError:  # pragma: no cover - package import path
+    from evals.routing_summary import (
+        routing_outcome as shared_routing_outcome,
+        summarize_routing_results as shared_summarize_routing_results,
+    )
 
 REPO = Path(os.environ.get("GROUNDWORK_REPO", Path(__file__).resolve().parents[1]))
 ROOT = Path(os.environ.get("GROUNDWORK_RUNTIME_ROOT", "/private/tmp/groundwork-runtime-v03"))
@@ -2267,15 +2277,7 @@ def routing_result_present(result):
 
 
 def routing_outcome(expected, actual, acceptable_routes, forbidden_routes):
-    if not actual or actual == "unknown":
-        return "missing"
-    if actual == expected:
-        return "best"
-    if actual in forbidden_routes:
-        return "forbidden"
-    if actual in acceptable_routes:
-        return "acceptable"
-    return "unexpected"
+    return shared_routing_outcome(expected, actual, acceptable_routes, forbidden_routes)
 
 
 def verdict_status(result):
@@ -2288,110 +2290,7 @@ def verdict_status(result):
 
 
 def summarize_routing_results(results):
-    routing_results = [result for result in results if routing_result_present(result)]
-    if not routing_results:
-        return None
-
-    total = len(routing_results)
-    best_hits = 0
-    acceptable_hits = 0
-    forbidden_hits = 0
-    invalid_host_preemptions = 0
-    outcome_counts = {}
-    route_pair_counts = {}
-    expected_route_counts = {}
-    actual_route_counts = {}
-    boundary_counts = {}
-    verdict_dimension_counts = {
-        "routing_verdict": {},
-        "host_preemption_verdict": {},
-        "output_contract_verdict": {},
-        "evidence_verdict": {},
-        "behavior_verdict": {},
-        "overall_verdict": {},
-    }
-    failure_type_counts = {}
-    unclassified_nonpass_ids = []
-
-    for result in routing_results:
-        expected = str(result.get("expected_route") or result.get("expected") or "").strip() or "unknown"
-        actual = str(result.get("actual_route") or result.get("actual") or "").strip() or "unknown"
-        acceptable_routes = as_list(result.get("acceptable_routes"))
-        if not acceptable_routes and expected != "unknown":
-            acceptable_routes = [expected]
-        forbidden_routes = as_list(result.get("forbidden_routes"))
-        boundary = str(result.get("route_boundary") or NOT_APPLICABLE).strip() or NOT_APPLICABLE
-        overall = str(result.get("overall_verdict") or result.get("verdict") or "unknown")
-        failure_type = str(result.get("failure_type") or "").strip()
-
-        if actual == expected:
-            best_hits += 1
-        if actual in acceptable_routes:
-            acceptable_hits += 1
-        if actual in forbidden_routes or failure_type == "forbidden_route":
-            forbidden_hits += 1
-        if result.get("host_preemption_verdict") == "fail" or failure_type == "invalid_host_preemption":
-            invalid_host_preemptions += 1
-
-        outcome = routing_outcome(expected, actual, acceptable_routes, forbidden_routes)
-        increment(outcome_counts, outcome)
-        increment(route_pair_counts, f"{expected} -> {actual}")
-        increment(expected_route_counts, expected)
-        increment(actual_route_counts, actual)
-        if failure_type:
-            increment(failure_type_counts, failure_type)
-
-        if boundary not in boundary_counts:
-            boundary_counts[boundary] = {"count": 0, "pass": 0, "fail": 0, "blocking": 0}
-        status = verdict_status(result)
-        boundary_counts[boundary]["count"] += 1
-        boundary_counts[boundary][status] += 1
-        if status != "blocking" and str(result.get("blocking_level") or "").strip():
-            boundary_counts[boundary]["blocking"] += 1
-
-        for dimension in verdict_dimension_counts:
-            if dimension == "overall_verdict":
-                value = str(result.get(dimension) or overall)
-            else:
-                value = str(result.get(dimension) or NOT_APPLICABLE)
-            increment(verdict_dimension_counts[dimension], value)
-
-        if is_nonpass(result) and not failure_type:
-            unclassified_nonpass_ids.append(str(result.get("id") or "unknown"))
-
-    return {
-        "rows": total,
-        "best_route_hit_at_1": rate_summary(best_hits, total),
-        "acceptable_route_coverage": rate_summary(acceptable_hits, total),
-        "forbidden_route_hits": rate_summary(forbidden_hits, total),
-        "invalid_host_preemption": rate_summary(invalid_host_preemptions, total),
-        "routing_outcomes": sorted_counts(outcome_counts),
-        "route_boundaries": {key: boundary_counts[key] for key in sorted(boundary_counts)},
-        "per_route_counts": {
-            "expected": sorted_counts(expected_route_counts),
-            "actual": sorted_counts(actual_route_counts),
-        },
-        "route_pair_confusion": sorted_counts(route_pair_counts),
-        "verdict_dimension_counts": {
-            dimension: sorted_counts(counts)
-            for dimension, counts in verdict_dimension_counts.items()
-        },
-        "route_vs_execution_separability": {
-            "routing": "routing_verdict",
-            "execution": [
-                "host_preemption_verdict",
-                "output_contract_verdict",
-                "evidence_verdict",
-                "behavior_verdict",
-                "overall_verdict",
-            ],
-        },
-        "failure_type_counts": sorted_counts(failure_type_counts),
-        "unclassified_nonpass": {
-            "count": len(unclassified_nonpass_ids),
-            "ids": sorted(unclassified_nonpass_ids),
-        },
-    }
+    return shared_summarize_routing_results(results)
 
 
 def run_parallel_rows(rows, jobs, retry_timeouts=0):

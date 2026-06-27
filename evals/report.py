@@ -66,6 +66,29 @@ def load_score_artifacts(score_dir):
     return artifacts, warnings
 
 
+def load_router_observability_scores(run_dir):
+    artifacts = []
+    warnings = []
+    candidates = []
+    router_dir = run_dir / "router-observability"
+    if router_dir.exists():
+        candidates.extend(router_dir.glob("**/router-score.json"))
+    candidates.extend(path for path in run_dir.glob("**/router-score.json") if path not in candidates)
+
+    for path in sorted(candidates):
+        if ".groundwork" in path.parts:
+            continue
+        score = load_json(path)
+        if isinstance(score, dict) and "__parse_error__" in score:
+            warnings.append(score["__parse_error__"])
+            continue
+        if isinstance(score, dict):
+            artifacts.append((path, score))
+        else:
+            warnings.append(f"{path}: router score artifact is not a JSON object")
+    return artifacts, warnings
+
+
 def verdict_for_result(result):
     return str(result.get("overall_verdict") or result.get("verdict") or "unknown")
 
@@ -173,14 +196,20 @@ def deterministic_failures(results, scores):
     return failures
 
 
+def counts_from_scores(scores, field):
+    counter = Counter(str(score.get(field) or "unknown") for _, score in scores)
+    return sorted_counts(counter)
+
+
 def render_report(run_dir):
     run_dir = Path(run_dir)
     summary = load_json(run_dir / "summary.json")
     results, result_warnings = load_jsonl(run_dir / "results.jsonl")
     scores, score_warnings = load_score_artifacts(run_dir / "score")
+    router_scores, router_warnings = load_router_observability_scores(run_dir)
     diagnostics = load_json(run_dir / "diagnostics.json")
     patch_suggestions = load_json(run_dir / "patch-suggestions.json")
-    warnings = result_warnings + score_warnings
+    warnings = result_warnings + score_warnings + router_warnings
 
     if isinstance(summary, dict) and "__parse_error__" in summary:
         warnings.append(summary["__parse_error__"])
@@ -280,6 +309,29 @@ def render_report(run_dir):
     else:
         lines.append("- Score artifacts missing or empty.")
         lines.append("- Score validation: not_applicable.")
+
+    lines.extend(["", "## Router Observability"])
+    if router_scores:
+        lines.append(f"- Router score artifact count: {len(router_scores)}")
+        execution_counts = counts_from_scores(router_scores, "execution_profile_verdict")
+        selector_counts = counts_from_scores(router_scores, "selector_enforcement")
+        eligibility_counts = counts_from_scores(router_scores, "score_eligibility")
+        lines.append("- Score eligibility counts:")
+        for key, count in eligibility_counts.items():
+            lines.append(f"  - {key}: {count}")
+        lines.append("- Execution profile verdict counts:")
+        for key, count in execution_counts.items():
+            lines.append(f"  - {key}: {count}")
+        lines.append("- Selector enforcement counts:")
+        for key, count in selector_counts.items():
+            lines.append(f"  - {key}: {count}")
+        for path, score in router_scores:
+            lines.append(
+                f"- `{path.relative_to(run_dir)}`: expected `{score.get('expected_route', 'unknown')}`, "
+                f"actual `{score.get('actual_route', 'unknown')}`, overall `{score.get('overall_verdict', 'unknown')}`"
+            )
+    else:
+        lines.append("- Router observability artifacts missing or empty.")
 
     lines.extend(["", "## Deterministic Failures"])
     if deterministic:
