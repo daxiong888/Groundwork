@@ -58,6 +58,8 @@ Use `skills/_shared/ROLE-SEPARATION.md` for material changes. `implement` may pr
 
 Use `skills/_shared/RUNTIME-CAPABILITY.md` when the implementation request or final report references runtime/model selection, selector enforcement, child-thread/worktree execution, subagents, runtime cache, marketplace, or installed-plugin behavior. `implement` may report source-validation checks it ran, but must not claim runtime execution, cache refresh, model execution, or selector enforcement without runtime/tool evidence.
 
+Use `skills/_shared/LLM-WIKI.md` when a project wiki is present or the user cites wiki pages. Wiki context may identify likely files, concepts, prior decisions, or stale-risk areas, but implementation must inspect source, contracts, tests, or authoritative artifacts before changing code. Do not create backend fields, APIs, states, permissions, migrations, owners, metrics, tests, release claims, marketplace claims, installed-plugin claims, or cache-refresh claims from wiki synthesis, page-level source lists, uncited claims, stale pages, implementation summaries, or graph/search/index output alone. If implementation reveals durable reusable architecture, contract, procedure, or error-book knowledge, emit a `Wiki Update Candidate` or recommend the `wiki` route instead of updating wiki pages unless the user explicitly requested wiki maintenance.
+
 Use `skills/_shared/COGNITIVE-BUDGET.md` when recommending a model profile. Recommend `model_profile` before any concrete model, and do not use Spark or any fast profile as final clean reviewer, final verifier, public skill approver, release/UAT authority, or customer authority.
 
 For read-only implementation conformance review, do not force a fix plan. Inspect the task/PRD, source, tests, and git boundary when available; report whether the implementation satisfies acceptance, what evidence was checked, what gaps remain, and explicitly avoid UAT/release/readiness verdicts unless the user asks for them.
@@ -118,18 +120,20 @@ If using a subagent for review, use `skills/_shared/SUBAGENT-DELEGATION.md`. The
    - PR-bound implementation, push, PR, or issue closeout: run the git topology and remote-write gates first, then continue only when branch/worktree and approval requirements are satisfied.
    - Ordinary scoped implementation: continue with the lightweight plan and focused edit path.
 4. Inspect relevant code and tests before editing.
-5. For edit paths, write the `Implementation Mini-Plan` from `LIGHTWEIGHT-PLAN.md`.
-6. Use TDD-lite where feasible: RED, GREEN, REFACTOR.
-7. Make minimal focused changes.
-8. Run the fastest relevant checks, including the original failing check when one exists.
-9. Add or update a focused regression test/check when feasible and proportional to risk.
-10. If fixing a verify failure, confirm the original failure was re-QA'd or explain why it remains unverified.
-11. If runtime/model selection is material, include `capability_status`, `selector_enforcement`, evidence layer, and Runtime mismatch status; use `unknown`, `unavailable`, or `prompt_preference` rather than silent substitution when runtime/tool evidence is absent.
-12. For runtime/cache claims, name installed plugin root, source root, cache/source refresh or equivalence evidence, run scope, commands/trials, and limitations; otherwise state that runtime evidence was not refreshed and is not claimed.
-13. In the final report, include `Scope`, `Acceptance Map`, `Evidence Inspected`, `Findings P0/P1/P2`, `Non-Readiness Boundary`, `Gaps`, and `Next Action` when the task touches implementation conformance, gated implementation, or reviewable delivery evidence.
-14. Run self-review from `SELF-REVIEW.md`.
-15. Report local evidence and remaining gaps, but do not claim final readiness.
-16. Recommend `verify` for readiness.
+5. If wiki context is available, treat it as orientation and follow cited source paths before the `Implementation Mini-Plan`.
+6. For edit paths, write the `Implementation Mini-Plan` from `LIGHTWEIGHT-PLAN.md`.
+7. Use TDD-lite where feasible: RED, GREEN, REFACTOR.
+8. Make minimal focused changes.
+9. Run the fastest relevant checks, including the original failing check when one exists.
+10. Add or update a focused regression test/check when feasible and proportional to risk.
+11. If fixing a verify failure, confirm the original failure was re-QA'd or explain why it remains unverified.
+12. If runtime/model selection is material, include `capability_status`, `selector_enforcement`, evidence layer, and Runtime mismatch status; use `unknown`, `unavailable`, or `prompt_preference` rather than silent substitution when runtime/tool evidence is absent.
+13. For runtime/cache claims, name installed plugin root, source root, cache/source refresh or equivalence evidence, run scope, commands/trials, and limitations; otherwise state that runtime evidence was not refreshed and is not claimed.
+14. Include a `Wiki Update Candidate` only when the implementation produced durable reusable project knowledge and the current request did not already authorize wiki maintenance.
+15. In the final report, include `Scope`, `Acceptance Map`, `Evidence Inspected`, `Findings P0/P1/P2`, `Non-Readiness Boundary`, `Gaps`, and `Next Action` when the task touches implementation conformance, gated implementation, or reviewable delivery evidence.
+16. Run self-review from `SELF-REVIEW.md`.
+17. Report local evidence and remaining gaps, but do not claim final readiness.
+18. Recommend `verify` for readiness.
 
 ## CHECKPOINTS
 
@@ -154,6 +158,7 @@ If using a subagent for review, use `skills/_shared/SUBAGENT-DELEGATION.md`. The
 - Do not claim done, fixed, tested, or ready without naming the checks actually run and their results.
 - Do not expand scope beyond the accepted task, original failure, or user-approved fix boundary.
 - Do not invent APIs, schemas, fields, lifecycle states, or runtime behavior that were not inspected or provided.
+- Do not implement from wiki synthesis alone, including page-level source inventories, stale wiki pages, uncited claims, implementation summaries, or external graph/search/index output.
 - Do not force small scoped tasks into a full `write-plan` flow when the inline lightweight plan is sufficient.
 
 ## Output Shape

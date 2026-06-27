@@ -39,6 +39,8 @@ A new public skill may be merged only when all of these are true:
 9. Route-conflict negatives prove the skill does not steal direct answers, accepted implementation work, verification, handoff, or another public skill's route.
 10. A separate clean review or skill-quality review checks the candidate before merge; the author or implementer self-check is not final approval.
 
+For project-knowledge candidates such as `wiki`, hard negatives must also prove that compiled notes, page-level source lists, search/index/graph output, stale pages, uncited claims, and missing wiki roots are not upgraded into source truth, contract truth, implementation authority, verification evidence, release evidence, UAT evidence, customer readiness, marketplace evidence, installed-plugin evidence, or cache-refresh evidence.
+
 ## Required Skill-audit Lens
 
 Public skill additions and material skill changes must use `skills/_shared/SKILL-AUDIT.md` as the shared audit workflow/reference before they can be accepted.
@@ -58,6 +60,7 @@ Every public skill candidate must include hard negatives that fail when:
 - hard-negative eval expectations are omitted;
 - a public skill addition skips trigger, should-not-trigger, or hard-negative eval review;
 - the shared `skill-audit` reference is treated as a public skill before accepted public exposure and maintainer acceptance;
+- a public project-knowledge skill treats wiki synthesis, page-level source lists, stale pages, uncited claims, missing wiki roots, or derived search/index/graph output as source truth, contract truth, implementation authority, verification evidence, release evidence, UAT evidence, customer readiness, marketplace evidence, installed-plugin evidence, or cache-refresh evidence;
 - prompt text alone is treated as runtime, selector, browser, UAT, release, customer, marketplace, or installed-plugin cache evidence;
 - the author or same-session implementer approves their own material skill-quality change as final.
 

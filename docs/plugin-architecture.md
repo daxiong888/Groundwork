@@ -14,7 +14,7 @@ It should also not become a blind Superpowers + mattpocock bundle. The borrowed 
 
 ## Current Stage
 
-Current `main` contains v0.4.0 native worktree handoff alignment. Groundwork remains a small Codex-native R&D base: it governs route, policy, evidence, handoff, and closeout contracts while Codex App/runtime adapters own actual worktree creation, Handoff execution, runtime execution, and cleanup operations.
+Current `main` contains the v0.5.2 source-validation public surface. Groundwork remains a small Codex-native R&D base: it governs route, policy, evidence, project wiki knowledge artifacts, handoff, dispatch, and closeout contracts while Codex App/runtime adapters own actual worktree creation, Handoff execution, runtime execution, cache refresh, marketplace state, and cleanup operations.
 
 Current contents:
 
@@ -22,7 +22,7 @@ Current contents:
 - `docs/` product and architecture docs
 - `evals/` prompt fixtures, structured smoke, safety, and reliability fixtures, scenario fixtures, fixture repos, baselines, and runtime trial checklist
 - `research/` source research and scenario analysis
-- `skills/` nine public skills, including `dispatch`, plus required shared guardrails and adapter contracts
+- `skills/` ten public skills, including `dispatch` and `wiki`, plus required shared guardrails and adapter contracts
 - `scripts/` optional future scripts directory, currently empty except `.gitkeep`
 
 The repository includes runtime and eval evidence accumulated across v0.1 through v0.4.0, including plugin discovery, representative workflow trials, fixture validation, Codex App runtime-safety follow-up, dispatch routing coverage, managed-worktree lifecycle contract coverage, governance baseline hardening, and native worktree handoff alignment evidence. The v0.4.0 line does not add task tools, hooks, MCP servers, marketplace publishing flow, or task CRUD.
@@ -47,6 +47,8 @@ This means the first release should expose action-named skills rather than abstr
 | `implement` | Execute or review code changes against PRD/task/plan/source/diff/tests. | Coding is a high-frequency daily workflow and must not depend on peer runtimes. |
 | `verify` | Check tests, runtime behavior, UAT/SIT readiness, and release acceptance. | Separates code pass, data readiness, environment readiness, and customer validation. |
 | `handoff` | Preserve compact state for long-running R&D work. | Prevents repeated rediscovery after context transitions. |
+| `dispatch` | Route accepted, ready tasks to the lightest appropriate runtime by producing package-only dispatch instructions. | Keeps runtime selection and execution packaging separate from implementation and verification. |
+| `wiki` | Create, ingest, query, audit, update, deprecate/archive, and repair project-level LLM Wiki knowledge. | Preserves reusable project knowledge as source-cited orientation and claim inventory without turning it into source truth or readiness evidence. |
 
 Supporting behaviors should be embedded in these skills before becoming standalone skills:
 
@@ -96,6 +98,8 @@ When a prompt could match multiple skills, choose the lightest skill that answer
 - answer visual, interaction, state, or business-rule uncertainty with a throwaway artifact -> `prototype`
 - check readiness, evidence, UAT/SIT, runtime behavior, or release confidence -> `verify`
 - preserve compact continuity across sessions -> `handoff`
+- route accepted, ready work into package-only runtime instructions -> `dispatch`
+- create, ingest, query, audit, update, deprecate/archive, or repair project-level LLM Wiki knowledge -> `wiki`
 - small, one-off, low-risk, obvious work -> direct fallback
 
 ## Proposed Skill Layout
@@ -121,6 +125,11 @@ skills/
     SKILL.md
   handoff/
     SKILL.md
+  dispatch/
+    SKILL.md
+  wiki/
+    SKILL.md
+    templates/
 ```
 
 `OUT-OF-SCOPE.md`, templates, examples, scripts, hooks, `.mcp.json`, `.app.json`, and assets are deferred unless real usage proves they are needed. Add supporting examples only after the first real task validates the workflow:

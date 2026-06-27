@@ -68,7 +68,10 @@ Domain Language / Term Conflict: none material.
 - `verify`: tests term claims only inside a declared verification scope and marks glossary-only, PRD-only, prototype-only, or summary-only terms insufficient for readiness claims that require stronger evidence.
 - `implement`: does not implement from glossary-only or unknown terms when acceptance, contract, source, or runtime truth is required.
 - `handoff`: may use artifact-local canonical terms, but must preserve the evidence layer and promotion blocker.
+- `wiki`: may store aliases, homonyms, and term pages as long-lived project orientation, but term pages remain claim inventory. `wiki` must not promote glossary-only, stale, contested, uncited, or unknown terms into PRD truth, contract truth, source truth, runtime evidence, verification evidence, release evidence, UAT evidence, or customer readiness.
 
 ## Public Surface Boundary
 
 Do not create `skills/domain-language/SKILL.md` for this behavior in v0.5.1. A standalone glossary route would be easy to confuse with PRD/spec or contract truth and is out of scope.
+
+The v0.5.2 public `wiki` route may maintain term pages as part of a broader project-level LLM Wiki lifecycle, but this does not change the evidence-layer promotion rules above.

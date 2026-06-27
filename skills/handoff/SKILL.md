@@ -95,6 +95,8 @@ Use `skills/_shared/ROLE-SEPARATION.md` when preserving material continuation st
 
 Use `skills/_shared/VISUAL-HANDOFF-PACKET.md` when handoff cites or carries a visual handoff packet, HTML packet, screenshot set, generated visual artifact, prototype output, or frontend/backend review packet. Treat it as a communication artifact, not readiness evidence; put unsupported API/schema/source, browser, runtime, UAT, release, and customer-readiness claims under `Do-Not-Assume` unless separate qualifying evidence is named.
 
+Use `skills/_shared/LLM-WIKI.md` when continuation state includes reusable project knowledge or cites a project wiki. Handoff may reference wiki pages as orientation and may emit a `Wiki Update Candidate` for durable reusable knowledge, but it must not turn every handoff into a wiki diary, update wiki pages without explicit wiki-maintenance scope, or present wiki synthesis as source truth, clean review evidence, independent verification evidence, runtime evidence, UAT evidence, release evidence, marketplace evidence, installed-plugin evidence, or cache-refresh evidence.
+
 Small, low-risk continuation notes should remain compact. Do not force a full separation package when no separation threshold applies and a concise handoff can safely identify source truth, current state, gaps, and next action.
 
 Use `skills/_shared/LIFECYCLE-STATE.md` when the user asks to pause, resume, switch sessions, save state, continue later, or otherwise preserve workstream recovery state.
@@ -135,8 +137,9 @@ When freshness is `stale` or `unknown`, keep the handoff actionable:
 8. Preserve visual packet boundaries when present: require state/flow, UI surface, API contract mapping, Mock vs Confirmed fields, open questions, `Do Not Implement / Do Not Assume`, and evidence boundary, or record the missing packet sections as continuation gaps.
 9. Include `native_handoff_package` when continuation crosses Local and Worktree. Keep Codex-native thread/worktree fields as explicit availability-marked context, not inferred runtime claims.
 10. Include audience, goal, current decision, source artifacts, evidence, open risks, next skill, do-not-assume, git boundary, and redaction note when producing a review package.
-11. Include only enough detail to resume safely; default to a one-screen continuation summary when no durable handoff file is needed.
-12. Recommend the next skill or direct action.
+11. Add a `Wiki Update Candidate` only when the handoff reveals durable reusable project knowledge; otherwise keep wiki out of the handoff.
+12. Include only enough detail to resume safely; default to a one-screen continuation summary when no durable handoff file is needed.
+13. Recommend the next skill or direct action.
 
 ## CHECKPOINTS
 
@@ -162,6 +165,7 @@ When freshness is `stale` or `unknown`, keep the handoff actionable:
 ## Do Not
 
 - Do not turn the handoff into a diary, transcript, or chronological status log.
+- Do not use handoff as an auto-wiki writer or treat wiki pages as continuation source truth without separately named source evidence.
 - Do not claim Groundwork performs official Codex Handoff, creates native Codex worktrees, moves code between Local and Worktree, or owns native Handoff Git operations.
 - Do not copy long diffs, full PRDs, issue bodies, plans, commits, lifecycle state, raw logs, or transcripts.
 - Do not hide unverified claims; label them as open gaps, risks, or `Do-Not-Assume`.

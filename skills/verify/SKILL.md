@@ -112,6 +112,8 @@ Use `skills/_shared/ROLE-SEPARATION.md` for material readiness claims. `verify` 
 
 Use `skills/_shared/RUNTIME-CAPABILITY.md` when verifying model/runtime execution, selector enforcement, subagent or child-thread/worktree routing, runtime cache, installed plugin, marketplace, release, UAT, or customer claims. If only prompt text, package text, source diff, or implementation summary is available, mark runtime/tool and selector claims `unverified` or `not applicable`; do not claim `tool_enforced`.
 
+Use `skills/_shared/LLM-WIKI.md` when a readiness, source-truth, contract, runtime, marketplace, installed-plugin, cache-refresh, or release claim cites a project wiki. Wiki pages are claim inventory and orientation only. Verification must inspect the cited source, authoritative artifact, test output, runtime/browser evidence, cache/source refresh evidence, or release evidence that is specific to the claim. If the wiki claim is stale, contested, uncited, page-level-source-only, glossary-only, or source-inaccessible, mark the claim `unverified`, `insufficient`, `stale_suspected`, or `blocked` and report the required next evidence.
+
 Use `skills/_shared/COGNITIVE-BUDGET.md` when a readiness claim depends on model profile choice. Verify profile fit separately from concrete model execution, and block or mark unverified any Spark or fast-profile final-authority claim.
 
 Use specialized references when they apply:
@@ -200,6 +202,7 @@ Never place task-state recommendations before the required `Verification Scope` 
 
 - Do not use a user summary, implementation summary, changelog, issue comment, or old handoff as evidence unless it is explicitly labeled as the claim being checked.
 - Do not treat a diff summary, old test run, or stale runtime note as current readiness evidence.
+- Do not treat wiki synthesis, wiki audits, wiki page-level source lists, stale wiki claims, uncited wiki claims, or external graph/search/index output as source truth, verification pass evidence, release evidence, UAT evidence, marketplace evidence, installed-plugin evidence, or cache-refresh evidence.
 - Do not issue a review verdict before declaring scope, coverage, and evidence sources.
 - Do not hide source/doc-only or no-command boundaries in prose after the verdict.
 - Do not treat visual handoff packets, screenshots, generated images, HTML packets, or prototype output as browser evidence, runtime evidence, UAT evidence, release evidence, or confirmed API/schema/source truth by themselves.
