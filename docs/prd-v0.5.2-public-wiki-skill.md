@@ -2,16 +2,16 @@
 
 Target Reader: Groundwork maintainers, skill authors, implementers, clean reviewers, verifiers, handoff authors, and workflow designers planning project-level long-lived knowledge support.
 Reader Action Needed: Review this PRD as the proposed v0.5.2 planning source of truth for adding a public `wiki` skill backed by a shared LLM Wiki artifact contract, templates, route boundaries, and hard-negative evals.
-Decision Supported: Whether Groundwork should plan `wiki` as a tenth public skill candidate for creating, maintaining, querying, auditing, updating, deprecating, and archiving project-level LLM Wiki artifacts while preserving source-truth and verification boundaries.
+Decision Supported: Whether Groundwork should accept `wiki` as a tenth public skill source-validation release for creating, maintaining, querying, auditing, updating, deprecating, and archiving project-level LLM Wiki artifacts while preserving source-truth and verification boundaries.
 Artifact Type: PRD.
 Source of Truth: Maintainer discussion on integrating LLM Wiki into Groundwork; the accepted v0.5 public skill expansion policy; the v0.5.1 domain-language and Socratic grilling evidence-layer rules; current `skills/_shared/SKILL-QUALITY.md`, `skills/_shared/ROLE-SEPARATION.md`, and `skills/_shared/DOMAIN-LANGUAGE.md` guidance.
-Scope: v0.5.2 planning for a public `wiki` skill, shared `LLM-WIKI.md` contract, project wiki templates, integration docs, focused route/evidence evals, and updates to existing public skills only where they must read, write, or hand off wiki update candidates safely.
-Out of Scope: Bundling CodeGraph, Understand Anything, Synto, OpenClerk, OKF Harness, Smriti, or any external wiki/memory runtime; adding MCP servers, hooks, auto-memory, daily diaries, vector databases, graph generation, installed-plugin runtime claims, marketplace publishing, release packaging, UAT, customer readiness, browser evidence, or plugin metadata changes in this PRD-only branch.
+Scope: v0.5.2 planning and source-validation implementation for a public `wiki` skill, shared `LLM-WIKI.md` contract, project wiki templates, integration docs, focused route/evidence evals, existing public skill touchpoints, artifact directory policy alignment, and repository-visible source metadata.
+Out of Scope: Bundling CodeGraph, Understand Anything, Synto, OpenClerk, OKF Harness, Smriti, or any external wiki/memory runtime; adding MCP servers, hooks, auto-memory, daily diaries, vector databases, graph generation, installed-plugin runtime claims, marketplace publishing, release packaging, UAT, customer readiness, browser evidence, installed-plugin cache refresh, or marketplace release evidence.
 Evidence Level: Planning and source-validation scope only. This PRD does not provide installed-plugin runtime evidence, marketplace evidence, release evidence, UAT evidence, customer evidence, browser evidence, selector-enforcement evidence, external-tool execution evidence, or cache/source-refresh evidence.
 Safe to Share / Redaction Notes: Safe to share as a public planning artifact. It contains no secrets, credentials, private URLs, browser cookies, PII, production payloads, raw traces, or sensitive logs.
-Status: Draft PRD with maintainer-authorized source implementation for V052-001, V052-002, V052-003, V052-004, V052-005, and V052-006.
-Public Surface State: source_implemented_for_review; final public acceptance remains blocked until integration clean review, eval evidence, and V052-007 release metadata follow-up.
-Version Track: v0.5.2 candidate.
+Status: Draft PRD with maintainer-authorized source implementation for V052-001 through V052-007.
+Public Surface State: source_implemented_for_review; repository-visible public skill surface and source metadata are aligned for review, while installed-plugin runtime, marketplace, cache-refresh, release, UAT, browser, and customer readiness remain unverified.
+Version Track: v0.5.2 source-validation release candidate.
 Last Updated: 2026-06-26.
 Branch: `prd/v0.5.2-public-wiki-skill`.
 
@@ -23,10 +23,10 @@ Intent: product capability expansion for project-level long-lived knowledge.
 Suggested Workflow Mode: to-prd.
 Locale: durable artifact in English; user-facing reports in Chinese.
 Source of Truth: maintainer direction plus current Groundwork v0.5.1 repository policy. V052-000 source-scan artifact is explicitly skipped by maintainer direction for this implementation pass.
-Requirement State: implementation authorized for V052-001, V052-002, V052-003, V052-004, V052-005, and V052-006 by maintainer directive; V052-000 is skipped.
+Requirement State: implementation authorized for V052-001 through V052-007 by maintainer directive; V052-000 is skipped.
 Artifact Promotion: required; this document is intended to become the canonical v0.5.2 planning source if accepted.
 Execution Topology: branch-local planning document only.
-Risk Gate: source-validation implementation in this pass touches `skills/wiki`, `skills/_shared`, `templates/llm-wiki`, `docs/integrations`, existing skill touchpoints, and eval prompt fixtures. Release metadata, marketplace state, remotes, issues, worktrees, runtime state, and plugin cache remain follow-up or out of scope.
+Risk Gate: source-validation implementation in this pass touches `skills/wiki`, `skills/_shared`, `skills/wiki/templates`, `docs/integrations`, existing skill touchpoints, eval prompt fixtures, README/CHANGELOG/plugin architecture docs, and `.codex-plugin/plugin.json`. Marketplace state, remotes, issues, worktrees, runtime state, installed plugin cache, UAT, browser, release execution, and customer readiness remain out of scope.
 Verification Strategy: source diff review, stale-state search, Markdown consistency, route/evidence boundary review, CSV parse checks after eval fixtures are added, forbidden external-tool dependency checks, and independent skill-quality review before final public skill acceptance.
 Lifecycle State: not needed for this bounded PRD pass.
 Stop Condition: public `wiki` scope, non-goals, route boundaries, artifact contract, issue slices, and acceptance criteria are coherent enough for maintainer review.
@@ -35,7 +35,7 @@ Stop Condition: public `wiki` scope, non-goals, route boundaries, artifact contr
 
 ## 2. Executive Summary
 
-Groundwork should implement `wiki` as a public skill candidate for v0.5.2 under maintainer direction, with final public acceptance blocked until the candidate passes shared skill-quality, routing, existing-skill integration, maintainer-guide, eval, and release-metadata gates.
+Groundwork should implement `wiki` as a public skill candidate for v0.5.2 under maintainer direction, with repository-visible source metadata aligned in the same review branch. Installed-plugin runtime, marketplace, cache-refresh, release, UAT, browser, and customer readiness remain separate evidence claims.
 
 The reason is not that LLM Wiki is fashionable. The reason is that project-level wiki work has a distinct invocation moment and a durable artifact lifecycle that no existing public skill naturally owns:
 
@@ -64,7 +64,7 @@ MVP should include:
 
 1. `skills/wiki/SKILL.md` as the public user-facing invocation contract.
 2. `skills/_shared/LLM-WIKI.md` as the reusable artifact, evidence, and stale-state contract.
-3. `templates/llm-wiki/` with starter files and page templates.
+3. `skills/wiki/templates/` with starter files and page templates.
 4. `docs/integrations/llm-wiki.md` for maintainer-facing setup and usage guidance.
 5. Focused eval fixtures for positive wiki workflows, route-conflict negatives, and hard negatives.
 6. Minimal integration touchpoints in existing public skills so they use wiki safely without route theft.
@@ -171,14 +171,13 @@ v0.5.2 must not:
 - modify raw source truth during wiki cleanup;
 - copy repo source wholesale into `wiki/raw/`;
 - create broad external-tool adapters before the core contract, templates, and hard-negative evals exist;
-- change plugin metadata, version, release packaging, marketplace state, remotes, issues, worktrees, or runtime state in this PRD-only branch;
-- claim installed-plugin, marketplace, release, UAT, or customer readiness from source edits alone.
+- claim marketplace publishing, installed-plugin runtime, cache refresh, release execution, UAT, browser, or customer readiness from source edits alone.
 
 ---
 
 ## 8. Public Skill Decision
 
-`wiki` is a justified public skill candidate because it passes the public-surface test when scoped correctly.
+`wiki` is a justified public skill because it passes the public-surface test when scoped correctly.
 
 ### 8.1 Distinct Invocation Moment
 
@@ -243,7 +242,7 @@ external graph/search truth
 
 | SKILL-QUALITY gate | v0.5.2 `wiki` fit | Evidence / planned coverage |
 | --- | --- | --- |
-| Accepted scope | This PRD proposes public `wiki`; implementation remains blocked until maintainer acceptance. | FR-700, AC-A. |
+| Accepted scope | This PRD authorizes public `wiki` as a source-validation release candidate under maintainer review. | FR-700, AC-A. |
 | Distinct invocation moment | User asks to create, ingest, query, audit, update, deprecate, archive, or repair a project wiki. | Section 8.1. |
 | Not a synonym | `wiki` is not `to-prd`, `implement`, `verify`, `handoff`, or `dispatch`; it owns project knowledge artifact lifecycle. | Section 8.3. |
 | Cannot be safely shared-only | Shared `LLM-WIKI.md` can define rules, but cannot own direct user requests like init, ingest, query, audit, update, deprecate, archive, and repair. | Sections 9 and 10. |
@@ -749,7 +748,7 @@ Route Conflict
 ### Artifact Contract
 
 - FR-710: Groundwork must add `skills/_shared/LLM-WIKI.md` as the shared wiki artifact and evidence contract.
-- FR-711: Groundwork must provide templates for `SCHEMA.md`, `index.md`, `log.md`, `error-book.md`, and typed wiki pages.
+- FR-711: Groundwork must provide templates under `skills/wiki/templates/` for `SCHEMA.md`, `index.md`, `log.md`, `error-book.md`, and typed wiki pages.
 - FR-712: Wiki pages must carry type, status, default evidence layer, source inventory, last updated date, stale risk, confidence, aliases, supersession, and contested fields.
 - FR-713: Material claims must be source-cited or marked as unknown/contested/insufficient.
 - FR-714: Repo source files must not be copied wholesale into `wiki/raw/`.
@@ -805,7 +804,7 @@ Route Conflict
 ### AC-C: Wiki Artifact Contract Planned
 
 - AC-C1: The implementation plan includes `skills/_shared/LLM-WIKI.md`.
-- AC-C2: The implementation plan includes `templates/llm-wiki/` starter files.
+- AC-C2: The implementation plan includes `skills/wiki/templates/` starter files.
 - AC-C3: Page frontmatter includes type, status, default evidence layer, confidence, sources, last updated, stale risk, aliases, supersedes/superseded_by, and contested fields, while material claims carry claim-level evidence layers.
 - AC-C4: The artifact contract requires claim-level citations for material claims.
 - AC-C5: The artifact contract distinguishes raw external sources from repo source references.
@@ -848,6 +847,8 @@ docs/research/v0.5.2-llm-wiki-source-scan.md
 
 Decision: Skipped by maintainer directive. The wiki MVP relies on Groundwork source policy and the PRD contract instead of a separate external-pattern source scan.
 
+Rationale: The MVP intentionally adopts only Groundwork-native boundaries already captured in this PRD and shared contracts. External LLM Wiki products remain deferred comparison inputs, not acceptance sources, until a later adapter or interoperability slice needs them.
+
 ### V052-001: Public Wiki Skill Contract
 
 Goal: Add public `wiki` with clear invocation, should-not-trigger cases, modes, completion criteria, and evidence boundaries.
@@ -871,6 +872,7 @@ Primary files:
 skills/_shared/LLM-WIKI.md
 skills/_shared/DOMAIN-LANGUAGE.md
 skills/_shared/SKILL-QUALITY.md
+skills/_shared/ARTIFACT-DIRECTORY-POLICY.md
 evals/prompts/v0.5.2-wiki.csv
 ```
 
@@ -883,17 +885,17 @@ Goal: Add starter wiki files and typed page templates.
 Primary files:
 
 ```text
-templates/llm-wiki/SCHEMA.md
-templates/llm-wiki/index.md
-templates/llm-wiki/log.md
-templates/llm-wiki/error-book.md
-templates/llm-wiki/page-concept.md
-templates/llm-wiki/page-decision.md
-templates/llm-wiki/page-contract.md
-templates/llm-wiki/page-procedure.md
-templates/llm-wiki/page-summary.md
-templates/llm-wiki/page-query.md
-templates/llm-wiki/page-term.md
+skills/wiki/templates/SCHEMA.md
+skills/wiki/templates/index.md
+skills/wiki/templates/log.md
+skills/wiki/templates/error-book.md
+skills/wiki/templates/page-concept.md
+skills/wiki/templates/page-decision.md
+skills/wiki/templates/page-contract.md
+skills/wiki/templates/page-procedure.md
+skills/wiki/templates/page-summary.md
+skills/wiki/templates/page-query.md
+skills/wiki/templates/page-term.md
 ```
 
 Dependencies: V052-002.
@@ -943,9 +945,9 @@ evals/prompts/prototype.csv
 
 Dependencies: V052-001 through V052-005 for the source-validation suite included in this implementation pass.
 
-### V052-007: Source-validation Release Metadata Boundary
+### V052-007: Source-visible Public Surface Metadata
 
-Goal: Update repository-visible public-skill surface documentation and plugin metadata only after the public `wiki` skill, shared contract, templates, integration docs, and eval fixtures are accepted.
+Goal: Update repository-visible public-skill surface documentation and plugin metadata so the source tree consistently represents v0.5.2 and the ten-skill public surface.
 
 Primary files:
 
@@ -953,12 +955,13 @@ Primary files:
 .codex-plugin/plugin.json
 README.md
 CHANGELOG.md
+docs/plugin-architecture.md
 evals/prompts/v0.5.2-wiki.csv
 ```
 
-Dependencies: V052-001 through V052-006 and maintainer release acceptance.
+Dependencies: V052-001 through V052-006 and maintainer source-implementation acceptance.
 
-Evidence Boundary: This slice may support source-visible version metadata only. Installed-plugin runtime, marketplace, cache/source equivalence, UAT, customer, and release-readiness claims still require separate named evidence.
+Evidence Boundary: This slice supports source-visible version metadata and public-surface documentation only. Installed-plugin runtime, marketplace, cache/source equivalence, UAT, customer, and release-readiness claims still require separate named evidence.
 
 ### V052-008: External Tool Interop Notes (Optional / Later)
 
@@ -1044,7 +1047,7 @@ Deferred to later accepted scope:
 5. Whether project wiki should later expose MCP tools.
 6. Whether runtime/browser/UAT workflows should create wiki update candidates automatically after explicit user acceptance.
 
-None of these are v0.5.2 MVP blockers.
+None of these are v0.5.2 source-validation blockers.
 
 ---
 
@@ -1070,6 +1073,6 @@ Any future runtime/release claim must name installed plugin root, source root, c
 
 ## 20. Next Action
 
-For this implementation pass, execute V052-001, V052-002, V052-003, V052-004, V052-005, and V052-006. V052-000 is skipped. V052-007 remains a separate follow-up slice.
+For this implementation pass, execute V052-001 through V052-007. V052-000 is skipped.
 
 Do not add external tool integration slices to MVP. Do not let `wiki` implementation proceed without route-conflict negatives and hard-negative eval expectations for source-truth, stale, verification, release, and missing-wiki overclaims.

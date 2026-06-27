@@ -38,17 +38,19 @@ See [`docs/maintainer-workflows.md`](docs/maintainer-workflows.md) and [`example
 
 ## Current Stage
 
-Current `main` contains the hardened public skill surface defined by `docs/prd.md`. The dispatch runtime router work adds `dispatch` as the ninth public skill, scoped by `docs/prd-dispatch-runtime-router.md`, so Groundwork can package accepted work for the lightest appropriate runtime without executing that runtime itself.
+The current repository contains the hardened public skill surface defined by `docs/prd.md` and later source-validation releases. The dispatch runtime router work introduced `dispatch` as a package-only public skill, scoped by `docs/prd-dispatch-runtime-router.md`, so Groundwork can package accepted work for the lightest appropriate runtime without executing that runtime itself.
 
 The v0.3.3 contract layer hardens managed worktree lifecycle handling behind `dispatch` without adding public skills. It adds package-only contracts for runtime identity, Goal Mode evidence, clean review fan-out, merge-back, archive readiness, branch cleanup, and serial dispatch barriers. Runtime adapters still own execution evidence; Groundwork dispatch remains a package generator, not an executor.
 
-The v0.3.4 governance baseline hardens the current nine public skills without adding another skill or runtime. It moves repository-level rules into `AGENTS.md`, expands audience-first artifact headers, strengthens to-prd/prototype/implement/verify/handoff guardrails, and keeps `dispatch` package-only while inheriting the shared done definition and smoke coverage.
+The v0.3.4 governance baseline hardened the then-current nine public skills without adding another skill or runtime. It moved repository-level rules into `AGENTS.md`, expanded audience-first artifact headers, strengthened to-prd/prototype/implement/verify/handoff guardrails, and kept `dispatch` package-only while inheriting the shared done definition and smoke coverage.
 
 The v0.4.0 native worktree handoff alignment shrinks Groundwork back toward route, policy, evidence, handoff, and closeout governance around Codex-native worktrees. It adds native handoff and closeout package contracts, `.worktreeinclude` safety guidance, release-evidence claim boundaries, and eval coverage while keeping Codex App/runtime adapters responsible for actual worktree creation, Handoff execution, runtime execution, and cleanup operations.
 
 The v0.4.x trace-first eval platform work adds a source-validation layer for schema-backed score objects, deterministic checker ids, trace artifact policy, trace diagnostics, eval reports, proposal-only patch suggestions, schema/source CI, optional runtime eval guidance, and release evidence claim templates. Its current evidence status is `source_validation`: local schemas, fixtures, unit tests, source checks, reports, and patch suggestions support implementation review, but they are not runtime, cache, release, UAT, customer, marketplace, or package-readiness evidence.
 
 The v0.5 public skill expansion policy shifts Groundwork from a fixed public-skill-count rule to quality-gated expansion. New public skills require accepted scope plus the shared [`skills/_shared/SKILL-QUALITY.md`](skills/_shared/SKILL-QUALITY.md) checklist, routing review, and positive, negative, and hard-negative eval expectations before merge. Behaviors that do not pass that bar should stay as shared references, branch/workflow lenses, router behavior, or one-off guides.
+
+The v0.5.2 public wiki skill adds project-level LLM Wiki lifecycle support for init, ingest, query, audit, update, deprecate/archive, and repair. Wiki remains source-validation context and claim inventory only; it is not source truth, implementation authority, verification pass evidence, runtime evidence, release evidence, UAT evidence, marketplace evidence, installed-plugin evidence, or cache-refresh evidence.
 
 This repository currently contains:
 
@@ -58,7 +60,7 @@ This repository currently contains:
 - maintainer workflow documentation
 - real maintenance case studies
 - Codex plugin manifest
-- nine public skills, including `dispatch`
+- ten public skills, including `dispatch` and `wiki`
 - native Codex worktree/handoff governance contracts for v0.4.0
 - v0.4.x trace-first eval platform source-validation docs, schemas, helpers, checker modules, reports, patch suggestions, CI workflow, and release evidence claim template
 - v0.5 public skill expansion policy and shared skill-quality gate
@@ -169,5 +171,5 @@ PRD/spec -> task -> plan -> prototype/contract/design as needed -> implementatio
 - `docs/plugin-architecture.md` - staged Codex plugin architecture
 - `examples/` - real Groundwork maintenance case studies and draft previews
 - `.codex-plugin/plugin.json` - Codex plugin manifest
-- `skills/` - public skills, including `dispatch`
+- `skills/` - public skills, including `dispatch` and `wiki`
 - `evals/` - prompt fixtures, scenario fixtures, fixture repo, baselines, and runtime trial checklist

@@ -4,6 +4,29 @@ All notable changes to Groundwork are documented in this file.
 
 ## Unreleased
 
+## v0.5.2 - 2026-06-27
+
+### Added
+
+- Added public `wiki` skill for project-level LLM Wiki lifecycle work.
+- Added `skills/_shared/LLM-WIKI.md` as the shared wiki artifact, evidence, and stale-state contract.
+- Added `skills/wiki/templates/` starter files for wiki schemas, index, log, error book, and typed pages.
+- Added `docs/integrations/llm-wiki.md` for maintainer-facing wiki setup, storage, skill interaction, claim boundary, and retirement guidance.
+- Added `evals/prompts/v0.5.2-wiki.csv` and default-suite coverage for positive wiki flows, route-conflict negatives, and hard-negative overclaims.
+
+### Changed
+
+- Bumped plugin metadata to `0.5.2` for the public wiki skill source-validation release.
+- Updated existing public skills to treat wiki as orientation, claim inventory, or advisory `Wiki Update Candidate` only.
+- Updated skill-quality, artifact-directory, domain-language, and runtime-route boundaries for project-knowledge skills.
+- Updated public-surface documentation from nine public skills to ten public skills including `wiki`.
+
+### Notes
+
+- This release is source-validation focused. Local source checks, CSV parsing, PRD/doc review, and clean review do not prove installed-plugin runtime behavior, selector enforcement, browser behavior, UAT readiness, release readiness, customer readiness, marketplace publishing, or cache-refresh behavior by themselves.
+- Runtime/cache/release claims still require a named installed plugin root, source root, refresh or source/cache equivalence method, run scope, commands/trials, limitations, and missing evidence.
+- Wiki content remains orientation and claim inventory only; it is not source truth, implementation authority, verification pass evidence, runtime evidence, release evidence, UAT evidence, marketplace evidence, installed-plugin evidence, or cache-refresh evidence.
+
 ## v0.5.1 - 2026-06-25
 
 ### Added

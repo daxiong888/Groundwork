@@ -313,7 +313,7 @@ Route Conflict
 
 ## Template Set
 
-The starter template set lives under `templates/llm-wiki/`:
+The starter template set lives under `skills/wiki/templates/`:
 
 - `SCHEMA.md`
 - `index.md`

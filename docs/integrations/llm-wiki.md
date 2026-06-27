@@ -2,7 +2,7 @@ Target Reader: Groundwork maintainers, skill authors, and project leads deciding
 Reader Action Needed: Use this guide to decide wiki placement, creation timing, skill interaction, evidence boundaries, and page retirement rules before authoring or reviewing wiki artifacts.
 Decision Supported: Whether a project should maintain an LLM Wiki, where the wiki should live, how public skills may use it, what evidence claims it can support, and how to deprecate or archive pages safely.
 Artifact Type: maintainer integration guide.
-Source of Truth: `docs/prd-v0.5.2-public-wiki-skill.md`, `skills/wiki/SKILL.md`, `skills/_shared/LLM-WIKI.md`, and `templates/llm-wiki/`.
+Source of Truth: `docs/prd-v0.5.2-public-wiki-skill.md`, `skills/wiki/SKILL.md`, `skills/_shared/LLM-WIKI.md`, and `skills/wiki/templates/`.
 Scope: Source-validation guidance for project wiki creation, storage modes, skill integration, claim boundaries, maintenance, deprecation, archive, and review.
 Out of Scope: Runtime execution, installed-plugin behavior, marketplace publishing, release readiness, UAT readiness, customer acceptance, browser evidence, cache/source refresh, selector enforcement, MCP servers, hooks, graph/vector stores, or external wiki tools.
 Evidence Level: Source-validation guidance only. This guide does not prove runtime, marketplace, installed-plugin, cache-refresh, browser, UAT, release, selector, or customer readiness.
@@ -48,7 +48,7 @@ Default to `wiki/` only after the user asks for durable project wiki creation or
 
 ## Starter Files
 
-Use `templates/llm-wiki/` as the starter set:
+Use `skills/wiki/templates/` as the starter set:
 
 - `SCHEMA.md`
 - `index.md`
@@ -157,4 +157,4 @@ Before accepting a wiki change:
 - `skills/_shared/DOMAIN-LANGUAGE.md`
 - `skills/_shared/ROLE-SEPARATION.md`
 - `skills/_shared/RUNTIME-CAPABILITY.md`
-- `templates/llm-wiki/`
+- `skills/wiki/templates/`
