@@ -33,6 +33,7 @@ DEFAULT_CONFIG = {
     "enabled": False,
     "mode": "observe_only",
     "raw_capture": False,
+    "snippet_capture": False,
 }
 
 
@@ -164,10 +165,11 @@ def prompt_from_event(event):
 
 def final_message_from_event(event):
     return (
-        event.get("final_response")
+        event.get("last_assistant_message")
+        or event.get("final_response")
         or event.get("assistant_response")
-        or event.get("message")
         or event.get("final_message")
+        or event.get("message")
         or ""
     )
 
@@ -197,6 +199,7 @@ def handle_user_prompt_submit(event):
     session_id, turn_id = ids_from_event(event)
     mode = str(config.get("mode") or "observe_only")
     raw_capture = bool(config.get("raw_capture"))
+    snippet_capture = bool(config.get("snippet_capture"))
     prompt = prompt_from_event(event)
     decision = entry_decision_from_prompt(prompt)
     router_hint_emitted = mode == "guided_hint_trial"
@@ -208,7 +211,8 @@ def handle_user_prompt_submit(event):
         "created_at": utc_now(),
         "prompt_sha256": stable_hash(prompt),
         "prompt_length": len(str(prompt or "")),
-        "prompt_snippet": redacted_snippet(prompt),
+        "prompt_snippet": redacted_snippet(prompt) if snippet_capture else "",
+        "snippet_capture": "enabled" if snippet_capture else "disabled",
         "raw_prompt_storage": "enabled" if raw_capture else "disabled",
     }
     router_decision = {
@@ -224,11 +228,15 @@ def handle_user_prompt_submit(event):
         "decision_mode": mode,
         "router_hint_emitted": router_hint_emitted,
         "raw_prompt_storage": "enabled" if raw_capture else "disabled",
+        "snippet_capture": "enabled" if snippet_capture else "disabled",
         "entry_decision": decision,
         "decision_evidence": [{"kind": "prompt_hash", "value": prompt_metadata["prompt_sha256"]}],
         "decision_source": "heuristic",
         "confidence": "medium" if decision["expected_best"] != "unknown" else "low",
-        "limitations": ["heuristic live candidate; fixture-backed replay required for route truth"],
+        "limitations": [
+            "heuristic live candidate; fixture-backed replay required for route truth",
+            "prompt and final snippets are disabled by default unless snippet_capture is explicitly enabled",
+        ],
     }
     write_json(out_dir / "prompt-metadata.json", prompt_metadata)
     write_json(out_dir / "router-decision.json", router_decision)
@@ -236,6 +244,7 @@ def handle_user_prompt_submit(event):
         {
             **router_decision,
             "prompt_snippet": prompt_metadata["prompt_snippet"],
+            "prompt_text_for_detection": prompt,
         }
     )
     if dispatch_decision:
@@ -247,7 +256,7 @@ def handle_user_prompt_submit(event):
             f"Groundwork route hint: expected first route {decision['expected_best']}; "
             "keep scope, evidence, verification, and stop-condition boundaries explicit."
         )
-        return {"hookSpecificOutput": {"additionalContext": hint}}
+        return {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": hint}}
     return None
 
 
@@ -313,6 +322,7 @@ def handle_stop(event):
     if not isinstance(decision, dict):
         return None
     final_message = final_message_from_event(event)
+    snippet_capture = bool(config.get("snippet_capture"))
     final_metadata = {
         "schema_version": "router_observability.final_metadata.v0",
         "session_id": decision.get("session_id", "unknown"),
@@ -320,7 +330,8 @@ def handle_stop(event):
         "created_at": utc_now(),
         "final_sha256": stable_hash(final_message),
         "final_length": len(str(final_message or "")),
-        "final_snippet": redacted_snippet(final_message),
+        "final_snippet": redacted_snippet(final_message) if snippet_capture else "",
+        "snippet_capture": "enabled" if snippet_capture else "disabled",
         "raw_final_storage": "enabled" if config.get("raw_capture") else "disabled",
     }
     write_json(out_dir / "final-metadata.json", final_metadata)

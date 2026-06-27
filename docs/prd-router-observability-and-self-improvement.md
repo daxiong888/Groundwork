@@ -399,12 +399,12 @@ Why:
 - No-file-change evidence was required.
 ```
 
-### 8.4 Runtime Decision Card
+### 8.4 Runtime Candidate Card
 
-When `dispatch` is involved, the card must also expose the runtime decision without claiming execution:
+When `dispatch` is involved, the card must expose the runtime candidate without claiming execution:
 
 ```text
-Dispatch Runtime Decision
+Dispatch Candidate
 
 Task: RR-007
 Task type: write_implementation
@@ -689,8 +689,9 @@ Rules:
 - This directory is ignored local scratch.
 - Raw traces are not committed.
 - Raw prompt and raw final text are disabled by default.
-- Prompt/final metadata should use deterministic, minimized fields such as stable non-sensitive markers, short snippets, hashes, checker inputs, and decision evidence. It is not LLM summarization.
-- Raw prompt/final capture requires an explicit maintainer opt-in and must record retention and redaction status.
+- Prompt/final metadata should use deterministic, minimized fields such as stable non-sensitive markers, hashes, lengths, checker inputs, capture-status fields, and decision evidence. It is not LLM summarization.
+- Short prompt/final snippets are disabled by default and require explicit `snippet_capture=true`.
+- Raw prompt/final capture requires a separate explicit maintainer opt-in and must record retention and redaction status.
 - Raw command output, browser logs, private payloads, cookies, and secrets must not be promoted.
 - Promoted artifacts must follow `docs/eval-trace-artifacts.md`.
 
@@ -954,7 +955,7 @@ Route Metrics
 Route Pair Confusion
 Forbidden Route Hits
 Output/Evidence/Behavior Failures
-Dispatch Runtime Decisions
+Dispatch Candidates
 Trace Diagnostics
 Top Regressions
 Patch Suggestions
@@ -1093,7 +1094,7 @@ Acceptance criteria:
 
 ### 11.2 `dispatch-decision.json`
 
-Created only when `dispatch` is selected, mentioned, or produces a package recommendation.
+Created only when `dispatch` is selected, mentioned, or produces a package recommendation. In v0 hook output this file is a heuristic dispatch candidate unless actual dispatch output is separately observed.
 
 ```json
 {
@@ -1105,6 +1106,10 @@ Created only when `dispatch` is selected, mentioned, or produces a package recom
   "task_type": "write_implementation | read_only_review | planning_only | hybrid | diagnosis | verification | direct",
   "runtime_id": "codex_app_managed_worktree_thread | codex_subagent | main_thread_direct | main_thread_readonly | clean_reviewer",
   "route_decision": "local_direct | local_with_artifact | worktree_isolated | worktree_review_only | automation_candidate",
+  "decision_source": "heuristic_dispatch_candidate | dispatch_output | runtime_adapter",
+  "actual_dispatch_output_observed": false,
+  "score_eligibility": "insufficient_evidence | baseline_eligible",
+  "evidence_boundary": "heuristic dispatch candidate only; not actual dispatch skill output or runtime adapter evidence",
   "execution_profile": {
     "model_profile": "fast_scan | balanced_work | strong_reasoning | exhaustive_review | spark_iteration | unknown",
     "reasoning_effort": "low | medium | high | xhigh | unknown",
@@ -1217,7 +1222,7 @@ Expected Route Source
 Actual Route
 Actual Route Source
 Tool Coverage
-Dispatch Runtime Decision, if applicable
+Dispatch Candidate, if applicable
 Execution Profile Decision, if applicable
 Selector Enforcement Evidence, if applicable
 Verdicts
@@ -1574,7 +1579,7 @@ Acceptance criteria:
 - Documents that plugin install/update uses an existing local install or supported update path and does not create marketplace release packaging.
 - Documents that `SessionStart` is deferred unless session-level metadata is accepted as necessary.
 - Documents scratch layout and redaction boundary.
-- Documents default `observe_only`, optional `guided_hint_trial`, and raw-capture opt-in.
+- Documents default `observe_only`, optional `guided_hint_trial`, raw-capture opt-in, and snippet-capture opt-in.
 - Documents how to disable hooks.
 - Does not require global Codex config mutation in repo tests.
 

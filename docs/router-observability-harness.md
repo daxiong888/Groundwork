@@ -49,7 +49,8 @@ Hooks no-op unless the current project has opt-in config:
 {
   "enabled": true,
   "mode": "observe_only",
-  "raw_capture": false
+  "raw_capture": false,
+  "snippet_capture": false
 }
 ```
 
@@ -98,13 +99,16 @@ Opted-in projects write per-turn scratch under:
   router-card.md
 ```
 
-`prompt-metadata.json` and `final-metadata.json` are deterministic minimized metadata, not LLM summaries. They use hashes, lengths, short redacted snippets, and source-strength fields instead of full content.
+`prompt-metadata.json` and `final-metadata.json` are deterministic minimized metadata, not LLM summaries. By default they use hashes, lengths, capture-status fields, and source-strength fields instead of full content. Short redacted snippets are disabled by default and require explicit `snippet_capture=true`; raw prompt/final capture remains a separate `raw_capture=true` opt-in.
 
 ## Dispatch And Selector Boundary
 
-When dispatch is selected or mentioned, `dispatch-decision.json` records runtime route and execution profile recommendation fields:
+When dispatch is selected or mentioned, `dispatch-decision.json` records a heuristic dispatch candidate and execution profile recommendation fields:
 
 ```text
+decision_source
+actual_dispatch_output_observed
+score_eligibility
 model_profile
 reasoning_effort
 cost_latency_bias
@@ -113,7 +117,7 @@ evidence_layer
 execution_claim
 ```
 
-These fields describe dispatch intent unless a runtime adapter or tool reports selector application for the specific run. `tool_enforced` must not be claimed from a prompt, dispatch package, routing profile, model-menu seed, or hook score alone.
+These fields describe dispatch intent unless a runtime adapter or tool reports selector application for the specific run. v0 hook output must keep `actual_dispatch_output_observed=false` and `score_eligibility=insufficient_evidence` for the heuristic candidate. `tool_enforced` must not be claimed from a prompt, dispatch package, routing profile, model-menu seed, or hook score alone.
 
 ## Backfill
 

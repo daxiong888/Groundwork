@@ -97,7 +97,7 @@ def normalize_execution_profile(source_value="", *, task_shape="", selector_enfo
 def dispatch_decision_from_entry(decision):
     entry = decision.get("entry_decision") or {}
     expected = str(entry.get("expected_best") or "")
-    prompt_source = str(decision.get("prompt_snippet") or "")
+    prompt_source = str(decision.get("prompt_text_for_detection") or decision.get("prompt_snippet") or "")
     if expected != "dispatch" and "dispatch" not in prompt_source.lower():
         return None
     task_shape = "clean review" if "clean review" in prompt_source.lower() else "dispatch"
@@ -116,6 +116,10 @@ def dispatch_decision_from_entry(decision):
         "task_type": "hybrid",
         "runtime_id": "main_thread_readonly",
         "route_decision": "local_with_artifact",
+        "decision_source": "heuristic_dispatch_candidate",
+        "actual_dispatch_output_observed": False,
+        "score_eligibility": "insufficient_evidence",
+        "evidence_boundary": "heuristic dispatch candidate only; not actual dispatch skill output or runtime adapter evidence",
         "execution_profile": profile,
         "expected_result_package": "review_package",
         "execution_claim": "not_executed_by_dispatch",
@@ -362,9 +366,11 @@ def render_router_card(score, decision=None, dispatch_decision=None):
         lines.extend(
             [
                 "",
-                "## Dispatch Runtime Decision",
+                "## Dispatch Candidate",
                 f"- Runtime: `{dispatch_decision.get('runtime_id', 'unknown')}`",
                 f"- Route decision: `{dispatch_decision.get('route_decision', 'unknown')}`",
+                f"- Decision source: `{dispatch_decision.get('decision_source', 'unknown')}`",
+                f"- Actual dispatch output observed: `{dispatch_decision.get('actual_dispatch_output_observed', 'unknown')}`",
                 f"- Execution claim: `{dispatch_decision.get('execution_claim', 'unknown')}`",
                 "",
                 "## Execution Profile Decision",

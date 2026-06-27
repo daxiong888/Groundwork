@@ -9,7 +9,7 @@ from pathlib import Path
 from evals.router_observability import backfill_row
 from evals import report
 from evals.routing_summary import summarize_routing_results
-from evals.verdict_model import normalize_execution_profile, score_turn
+from evals.verdict_model import normalize_execution_profile, render_router_card, score_turn
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,11 +29,30 @@ def run_hook(script, event, cwd):
 
 
 class RouterObservabilityTests(unittest.TestCase):
+    def test_hooks_manifest_uses_official_command_handler_shape(self):
+        manifest = json.loads((ROOT / "hooks" / "hooks.json").read_text(encoding="utf-8"))
+
+        self.assertIsInstance(manifest.get("hooks"), dict)
+        for event_name, matcher_groups in manifest["hooks"].items():
+            self.assertIsInstance(event_name, str)
+            self.assertIsInstance(matcher_groups, list)
+            self.assertTrue(matcher_groups)
+            for group in matcher_groups:
+                self.assertIn("hooks", group)
+                self.assertNotIn("command", group)
+                self.assertIsInstance(group["hooks"], list)
+                self.assertTrue(group["hooks"])
+                for handler in group["hooks"]:
+                    self.assertEqual(handler.get("type"), "command")
+                    self.assertIsInstance(handler.get("command"), str)
+                    self.assertTrue(handler["command"])
+
     def write_config(self, root, **overrides):
         config = {
             "enabled": True,
             "mode": "observe_only",
             "raw_capture": False,
+            "snippet_capture": False,
         }
         config.update(overrides)
         path = root / ".groundwork" / "harness" / "router-observability" / "config.json"
@@ -63,7 +82,12 @@ class RouterObservabilityTests(unittest.TestCase):
 
             result = run_hook(
                 "user_prompt_submit_groundwork_entry.py",
-                {"cwd": str(root), "session_id": "s1", "turn_id": "t1", "prompt": "按 PRD 实施 docs/foo.md"},
+                {
+                    "cwd": str(root),
+                    "session_id": "s1",
+                    "turn_id": "t1",
+                    "prompt": "按 PRD 实施 docs/foo.md token=secret-123",
+                },
                 root,
             )
 
@@ -75,6 +99,10 @@ class RouterObservabilityTests(unittest.TestCase):
             self.assertFalse(decision["router_hint_emitted"])
             self.assertEqual(decision["entry_decision"]["expected_best"], "implement")
             self.assertEqual(prompt_metadata["raw_prompt_storage"], "disabled")
+            self.assertEqual(prompt_metadata["snippet_capture"], "disabled")
+            self.assertEqual(prompt_metadata["prompt_snippet"], "")
+            self.assertNotIn("secret-123", json.dumps(prompt_metadata))
+            self.assertNotIn("secret-123", json.dumps(decision))
             self.assertFalse((self.turn_dir(root) / "prompt.raw.json").exists())
 
     def test_guided_hint_mode_emits_context_and_excludes_baseline(self):
@@ -89,8 +117,10 @@ class RouterObservabilityTests(unittest.TestCase):
             )
 
             output = json.loads(result.stdout)
+            self.assertEqual(output["hookSpecificOutput"]["hookEventName"], "UserPromptSubmit")
             self.assertIn("additionalContext", output["hookSpecificOutput"])
             decision = json.loads((self.turn_dir(root) / "router-decision.json").read_text(encoding="utf-8"))
+            self.assertEqual(decision["entry_decision"]["expected_best"], "write-plan")
             score = score_turn(decision, "Implementation Mini-Plan", [])
             self.assertEqual(score["score_eligibility"], "guided_hint_excluded")
 
@@ -111,15 +141,19 @@ class RouterObservabilityTests(unittest.TestCase):
             )
             result = run_hook(
                 "stop_groundwork_score.py",
-                {**base_event, "final_response": "Implementation Summary\nFiles Changed\nChecks Run"},
+                {**base_event, "last_assistant_message": "Implementation Summary\nFiles Changed\nChecks Run token=secret-456"},
                 root,
             )
 
             self.assertEqual(result.stdout, "")
             score = json.loads((self.turn_dir(root) / "router-score.json").read_text(encoding="utf-8"))
+            final_metadata = json.loads((self.turn_dir(root) / "final-metadata.json").read_text(encoding="utf-8"))
             card = (self.turn_dir(root) / "router-card.md").read_text(encoding="utf-8")
             self.assertEqual(score["expected_route"], "implement")
             self.assertEqual(score["actual_route"], "implement")
+            self.assertEqual(final_metadata["snippet_capture"], "disabled")
+            self.assertEqual(final_metadata["final_snippet"], "")
+            self.assertNotIn("secret-456", json.dumps(final_metadata))
             self.assertEqual(score["score_eligibility"], "insufficient_evidence")
             self.assertIn("expected_route_source", score["notes"])
             self.assertTrue(score["checker_results"])
@@ -253,7 +287,13 @@ class RouterObservabilityTests(unittest.TestCase):
 
             dispatch_decision = json.loads((self.turn_dir(root) / "dispatch-decision.json").read_text(encoding="utf-8"))
             profile = dispatch_decision["execution_profile"]
+            self.assertEqual(dispatch_decision["decision_source"], "heuristic_dispatch_candidate")
+            self.assertFalse(dispatch_decision["actual_dispatch_output_observed"])
+            self.assertEqual(dispatch_decision["score_eligibility"], "insufficient_evidence")
             self.assertEqual(dispatch_decision["execution_claim"], "not_executed_by_dispatch")
+            card = render_router_card({"session_id": "s1", "turn_id": "t1"}, {}, dispatch_decision)
+            self.assertIn("## Dispatch Candidate", card)
+            self.assertIn("Actual dispatch output observed: `False`", card)
             self.assertEqual(profile["model_profile"], "exhaustive_review")
             self.assertEqual(profile["reasoning_effort"], "high")
             self.assertEqual(profile["cost_latency_bias"], "quality")

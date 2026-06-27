@@ -2,29 +2,54 @@
   "hooks": {
     "UserPromptSubmit": [
       {
-        "command": "python3 \"$PLUGIN_ROOT/scripts/codex-hooks/user_prompt_submit_groundwork_entry.py\""
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$PLUGIN_ROOT/scripts/codex-hooks/user_prompt_submit_groundwork_entry.py\""
+          }
+        ]
       }
     ],
     "PreToolUse": [
       {
         "matcher": "Bash|apply_patch|mcp__.*",
-        "command": "python3 \"$PLUGIN_ROOT/scripts/codex-hooks/pre_tool_use_groundwork_trace.py\""
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$PLUGIN_ROOT/scripts/codex-hooks/pre_tool_use_groundwork_trace.py\""
+          }
+        ]
       }
     ],
     "PermissionRequest": [
       {
-        "command": "python3 \"$PLUGIN_ROOT/scripts/codex-hooks/permission_request_groundwork_trace.py\""
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$PLUGIN_ROOT/scripts/codex-hooks/permission_request_groundwork_trace.py\""
+          }
+        ]
       }
     ],
     "PostToolUse": [
       {
         "matcher": "Bash|apply_patch|mcp__.*",
-        "command": "python3 \"$PLUGIN_ROOT/scripts/codex-hooks/post_tool_use_groundwork_trace.py\""
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$PLUGIN_ROOT/scripts/codex-hooks/post_tool_use_groundwork_trace.py\""
+          }
+        ]
       }
     ],
     "Stop": [
       {
-        "command": "python3 \"$PLUGIN_ROOT/scripts/codex-hooks/stop_groundwork_score.py\""
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$PLUGIN_ROOT/scripts/codex-hooks/stop_groundwork_score.py\""
+          }
+        ]
       }
     ]
   }

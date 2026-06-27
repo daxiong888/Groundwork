@@ -9,7 +9,7 @@ except ImportError:  # pragma: no cover - package import path
 
 
 ROUTE_MARKERS = [
-    ("dispatch", re.compile(r"\bDispatch Package\b|\bResult Package\b|Dispatch Runtime Decision", re.I)),
+    ("dispatch", re.compile(r"\bDispatch Package\b|\bResult Package\b|Dispatch Runtime Decision|Dispatch Candidate", re.I)),
     ("verify", re.compile(r"^Verification Scope\b|^验证范围\b", re.I | re.M)),
     ("implement", re.compile(r"^Implementation Summary\b|^实现摘要\b|Files Changed|Checks Run", re.I | re.M)),
     ("write-plan", re.compile(r"Implementation Mini-Plan|实现计划|计划[:：]", re.I)),
@@ -24,8 +24,8 @@ ROUTE_MARKERS = [
 PROMPT_ROUTE_MARKERS = [
     ("dispatch", re.compile(r"\bdispatch\b|分派|运行时路由", re.I)),
     ("verify", re.compile(r"\bverify\b|验证|ready|就绪|UAT|release|发布", re.I)),
-    ("implement", re.compile(r"\bimplement\b|实施|实现|修复|改代码|按 PRD 实施", re.I)),
     ("write-plan", re.compile(r"\bplan\b|计划|实现计划|先别写代码|不要编辑文件", re.I)),
+    ("implement", re.compile(r"\bimplement\b|实施|实现|修复|改代码|按 PRD 实施", re.I)),
     ("to-issues", re.compile(r"拆\s*issues?|拆任务|issue-map|任务切片", re.I)),
     ("to-prd", re.compile(r"\bPRD\b|需求|产品方案|新需求", re.I)),
     ("handoff", re.compile(r"handoff|交接|续上|保存状态", re.I)),
