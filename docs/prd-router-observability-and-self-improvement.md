@@ -175,7 +175,8 @@ The opt-in should be project-local and reviewable, for example:
 {
   "enabled": true,
   "mode": "observe_only",
-  "raw_capture": false
+  "raw_capture": false,
+  "snippet_capture": false
 }
 ```
 
@@ -677,9 +678,10 @@ Add a policy target for live router observability scratch output:
   file-snapshot-after.json        # optional / path-only by default
   final-metadata.json
   final.raw.txt                   # optional / explicit opt-in only
+  final.raw.meta.json             # optional / explicit raw-capture metadata
   router-score.json
   router-card.md
-  coverage.json
+  coverage.json                   # optional / future diagnostic aggregate
   diagnostics.json                # optional
 ```
 
@@ -822,6 +824,7 @@ Outputs:
 
 - `final-metadata.json`;
 - `final.raw.txt` only when explicit raw capture is enabled;
+- `final.raw.meta.json` with redaction metadata when explicit raw capture is enabled;
 - `router-score.json`;
 - `router-card.md`;
 - optional `systemMessage` only when an explicit warning mode is enabled.

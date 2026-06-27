@@ -95,11 +95,13 @@ Opted-in projects write per-turn scratch under:
   permission-events.jsonl
   final-metadata.json
   final.raw.txt                   # optional, raw_capture only
+  final.raw.meta.json             # optional, raw_capture only
   router-score.json
   router-card.md
+  coverage.json                   # optional, future diagnostic aggregate
 ```
 
-`prompt-metadata.json` and `final-metadata.json` are deterministic minimized metadata, not LLM summaries. By default they use hashes, lengths, capture-status fields, and source-strength fields instead of full content. Short redacted snippets are disabled by default and require explicit `snippet_capture=true`; raw prompt/final capture remains a separate `raw_capture=true` opt-in.
+`prompt-metadata.json` and `final-metadata.json` are deterministic minimized metadata, not LLM summaries. By default they use hashes, lengths, capture-status fields, and source-strength fields instead of full content. Short redacted snippets are disabled by default and require explicit `snippet_capture=true`; raw prompt/final capture remains a separate `raw_capture=true` opt-in. When raw final capture is enabled, `final.raw.meta.json` records redaction status for the raw final text. Coverage is available from `tool-events.jsonl`, `permission-events.jsonl`, and `router-score.json`; a separate `coverage.json` is reserved for future diagnostics.
 
 ## Dispatch And Selector Boundary
 

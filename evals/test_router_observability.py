@@ -159,6 +159,32 @@ class RouterObservabilityTests(unittest.TestCase):
             self.assertTrue(score["checker_results"])
             self.assertIn("Groundwork Router Decision", card)
 
+    def test_raw_capture_writes_final_raw_metadata_with_redaction_status(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.write_config(root, raw_capture=True)
+            base_event = {"cwd": str(root), "session_id": "s1", "turn_id": "t1"}
+            run_hook(
+                "user_prompt_submit_groundwork_entry.py",
+                {**base_event, "prompt": "按 PRD 实施 docs/foo.md"},
+                root,
+            )
+            run_hook(
+                "stop_groundwork_score.py",
+                {**base_event, "last_assistant_message": "Implementation Summary\nFiles Changed\nChecks Run"},
+                root,
+            )
+
+            out_dir = self.turn_dir(root)
+            prompt_raw = json.loads((out_dir / "prompt.raw.json").read_text(encoding="utf-8"))
+            final_metadata = json.loads((out_dir / "final-metadata.json").read_text(encoding="utf-8"))
+            final_raw_metadata = json.loads((out_dir / "final.raw.meta.json").read_text(encoding="utf-8"))
+            self.assertEqual(prompt_raw["redaction"]["status"], "not_reviewed")
+            self.assertTrue((out_dir / "final.raw.txt").exists())
+            self.assertEqual(final_metadata["raw_final_storage"], "enabled")
+            self.assertEqual(final_raw_metadata["redaction"]["status"], "not_reviewed")
+            self.assertEqual(final_raw_metadata["final_sha256"], final_metadata["final_sha256"])
+
     def test_tool_permission_and_stop_hooks_noop_without_opt_in(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

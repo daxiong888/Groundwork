@@ -337,6 +337,18 @@ def handle_stop(event):
     write_json(out_dir / "final-metadata.json", final_metadata)
     if config.get("raw_capture"):
         (out_dir / "final.raw.txt").write_text(str(final_message or ""), encoding="utf-8")
+        write_json(
+            out_dir / "final.raw.meta.json",
+            {
+                "schema_version": "router_observability.final_raw_metadata.v0",
+                "session_id": final_metadata["session_id"],
+                "turn_id": final_metadata["turn_id"],
+                "created_at": utc_now(),
+                "final_sha256": final_metadata["final_sha256"],
+                "final_length": final_metadata["final_length"],
+                "redaction": {"status": "not_reviewed", "notes": []},
+            },
+        )
     events = read_jsonl(out_dir / "tool-events.jsonl") + read_jsonl(out_dir / "permission-events.jsonl")
     dispatch_decision = read_json(out_dir / "dispatch-decision.json")
     score = score_turn({**decision, "final_sha256": final_metadata["final_sha256"]}, final_message, events, dispatch_decision)
