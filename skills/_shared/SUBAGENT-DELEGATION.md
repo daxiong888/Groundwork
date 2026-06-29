@@ -47,6 +47,8 @@ Review dimensions may include:
 Rules:
 
 - Use a fresh context package. Do not rely on parent session history.
+- When runtime tooling exposes parent-context fork controls, clean review delegation must disable full-history forks (`fork_context=false` or equivalent).
+- A reviewer spawned from the parent thread's full history cannot produce Clean Review Evidence for that parent thread. Mark the evidence `unverified` or `blocked` and rerun with a self-contained fresh-context package.
 - Include only the artifacts and evidence needed for the delegated review.
 - State that the subagent must not spawn more agents unless the user explicitly delegates that.
 - State that the subagent cannot expand scope.
@@ -65,8 +67,9 @@ Clean review subagent packages must state:
 
 - the reviewer receives fresh context only;
 - parent session memory and hidden context are not allowed;
+- parent thread history forks are not allowed, and runtime fork controls must disable them when available;
 - file edits are not allowed;
-- spawning more agents is not allowed;
+- spawning more agents or child threads is not allowed without separate explicit delegation;
 - findings must cite supplied package sections, paths, commands, or observations;
 - missing evidence must be `unverified` or `blocked`;
 - child implementation self-review does not count as clean review.
