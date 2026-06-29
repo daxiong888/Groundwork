@@ -83,6 +83,7 @@ clean_review_package:
 - Do not edit files. If a fix is needed, recommend `dispatch_write_task`.
 - Do not spawn more agents unless a separate explicit delegation approves it.
 - If unapproved nested agents or child threads were spawned, disclose that topology and return `unverified` or `blocked` for clean-review authority.
+- A human decision may accept the risk of proceeding without Clean Review Evidence, but it must not convert forked or nested reviewer output into a clean-review `pass`.
 - Mark absent validation, redacted-but-needed diff detail, missing source truth, or unclear acceptance mapping as `unverified` or `blocked`.
 - Cite package sections, file paths, commands, or supplied observations for each finding.
 - Report coverage explicitly. `covered` must name the package areas actually reviewed; `not_covered` must name missing, redacted, unavailable, or intentionally skipped areas.

@@ -11,7 +11,7 @@ Evidence Level: Derived from PRD v0.3.3 FR-7 and Issue 6, plus existing dispatch
 
 Clean review is an independent, fresh-context review of a completed result or review package. It is not the child implementation thread's self-review, and it is not a coordinator skimming the parent conversation.
 
-A reviewer spawned from the parent thread's full history is not a fresh-context clean reviewer, even if it is a different agent. If the attempted reviewer used a full parent-history fork or unapproved nested delegation, the coordinator must disclose the topology and treat Clean Review Evidence as `unverified` or `blocked` until a self-contained fresh-context review is rerun or a human decision accepts the boundary.
+A reviewer spawned from the parent thread's full history is not a fresh-context clean reviewer, even if it is a different agent. If the attempted reviewer used a full parent-history fork or unapproved nested delegation, the coordinator must disclose the topology and treat Clean Review Evidence as `unverified` or `blocked` until a self-contained fresh-context review is rerun. A human decision may explicitly accept the risk of proceeding without Clean Review Evidence, but it must not relabel forked or nested reviewer output as a clean-review pass.
 
 The coordinator may perform low-cost intake to decide whether the package is complete enough to route. Deep review must fan out when size, risk, volume, missing evidence, or context freshness makes coordinator review unreliable.
 

@@ -136,3 +136,102 @@ def check_low_risk_cleanup_claim(text):
             notes=["low-risk exception claimed archive or branch cleanup readiness"],
         )
     return checker_result(LOW_RISK_CLEANUP_CHECKER_ID, "pass")
+
+
+def has_clean_review_parent_context_fork_disclosure(text):
+    lowered = text.lower()
+    markers = [
+        "fork_context",
+        "parent-context fork",
+        "parent_context_fork",
+        "parent history fork",
+        "parent-history fork",
+        "parent thread history",
+        "parent thread's full history",
+        "full-history fork",
+        "full history fork",
+        "inherited-context",
+        "inherited context",
+        "父线程历史",
+        "父线程完整历史",
+        "完整历史",
+        "继承上下文",
+    ]
+    return any(marker in lowered for marker in markers)
+
+
+def has_clean_review_nested_delegation_disclosure(text):
+    lowered = text.lower()
+    markers = [
+        "nested delegation",
+        "nested agent",
+        "nested agents",
+        "child thread",
+        "child threads",
+        "child agent",
+        "child agents",
+        "spawn_more_agents",
+        "spawned child",
+        "子线程",
+        "子代理",
+        "嵌套",
+        "再启动",
+        "再次委派",
+    ]
+    return any(marker in lowered for marker in markers)
+
+
+def has_clean_review_blocked_or_unverified_boundary(text):
+    lowered = text.lower()
+    markers = [
+        "unverified",
+        "blocked",
+        "not clean review evidence",
+        "does not count as clean review",
+        "cannot count as clean review",
+        "must not count as clean review",
+        "not count as clean review",
+        "clean review evidence is missing",
+        "clean review evidence missing",
+        "未验证",
+        "阻塞",
+        "不能算",
+        "不算",
+        "不得算",
+        "缺失",
+        "无效",
+    ]
+    return any(marker in lowered for marker in markers)
+
+
+def has_clean_review_pass_claim(text):
+    clean_review_marker = re.compile(
+        r"(clean review|clean-review|clean_review|clean review evidence|干净评审|独立评审)",
+        re.IGNORECASE,
+    )
+    negation_or_boundary = re.compile(
+        r"\b(not|no|cannot|can't|must not|should not|does not|do not|is not|isn't|"
+        r"invalid|unverified|blocked|missing)\b|"
+        r"(不|未|不能|不可|不算|不得|缺失|无效|阻塞|未验证)",
+        re.IGNORECASE,
+    )
+    positive = re.compile(
+        r"\b(pass|passed|valid|satisfied|approved|counts as)\b|"
+        r"(通过|有效|成立|认可|算作|算是)",
+        re.IGNORECASE,
+    )
+    labeled_positive = re.compile(
+        r"\b(clean review evidence|clean review|clean_review(?:\.status)?)\b\s*[:：=-]?\s*"
+        r"(pass|passed|valid|satisfied|approved)",
+        re.IGNORECASE,
+    )
+
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or not clean_review_marker.search(stripped):
+            continue
+        if negation_or_boundary.search(stripped):
+            continue
+        if labeled_positive.search(stripped) or positive.search(stripped):
+            return True
+    return False
