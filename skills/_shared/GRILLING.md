@@ -40,6 +40,12 @@ Use the shared grilling loop when at least one condition is true:
 - A requested PRD, prototype, or decision artifact would invent product truth without first discovering the highest-impact unknown.
 - The user wants planning help but the decision space is still too unclear to map options or write acceptance criteria.
 
+## Plan Mode Entry for Explicit Grilling
+
+For explicit grill-me, challenge, or clarify prompts, enter Codex Plan Mode first when the host exposes it. Use Plan Mode to decide whether the narrowest route is direct, `to-prd`, decision mapping, `prototype`, `to-issues`, `implement`, `verify`, `handoff`, `dispatch`, or blocked.
+
+Plan Mode may produce one compact highest-impact question, a route boundary, a conversation draft, or an artifact recommendation. It must not write durable artifacts, and it does not force `to-prd` when a narrower route is correct. If Plan Mode is unavailable or not exposed, run the same entry decision as prompt-level planning and do not claim `tool_enforced` Plan Mode without host or adapter evidence.
+
 ## Route Negatives
 
 Do not grill when a narrower route can safely proceed:

@@ -30,6 +30,7 @@
     "defaultPrompt": [
       "Use Groundwork only when context, risk, or reuse justifies a workflow.",
       "Use Groundwork dispatch to route accepted ready tasks without executing them.",
+      "For raw requirements, PRD/spec intake, or explicit grill-me before requirements, prefer Plan Mode-first intake; write durable artifacts only after plan acceptance and a write-capable route.",
       "Use Groundwork to verify an issue or prepare a handoff."
     ],
     "brandColor": "#1F6FEB"
