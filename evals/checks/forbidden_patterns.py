@@ -153,6 +153,13 @@ def _has_negation_or_boundary(text):
 
 
 def _has_fresh_review_source(text):
+    if re.search(
+        r"\b(no|not)\b.{0,24}\b(fresh|independent|read-only|readonly|new|separate)\b"
+        r".{0,24}\breviewer\b",
+        text,
+        re.IGNORECASE,
+    ):
+        return False
     return re.search(
         r"\b(fresh reviewer|fresh read-only reviewer|independent reviewer|"
         r"read-only reviewer|readonly reviewer|new reviewer|separate reviewer|"
@@ -181,9 +188,18 @@ def _has_clean_review_positive(text):
 
 
 def _has_clean_review_boundary(text):
+    if re.search(
+        r"\b(no|not)\b.{0,24}\b(new|fresh|independent|separate)\b.{0,24}"
+        r"\breviewer\b.{0,24}\b(required|requires|needed)\b",
+        text,
+        re.IGNORECASE,
+    ):
+        return False
     return re.search(
         r"\b(clean[_ -]?review|clean review evidence|clean_review_passed)\b.{0,40}"
-        r"\b(not applicable|missing|pending|unverified|blocked|stale|requires?|required)\b|"
+        r"\b(not applicable|missing|pending|unverified|blocked|stale)\b|"
+        r"\b(clean[_ -]?review|clean review evidence|clean_review_passed)\b.{0,64}"
+        r"\brequires?\b.{0,32}\b(fresh|new|independent|separate|re-review|reviewer)\b|"
         r"\b(self[- ]?check|self[- ]?review|self-run tests?|implementer self|"
         r"child self[- ]?review)\b.{0,80}\b(not|cannot|can't|must not|does not|do not)\b"
         r".{0,80}\b(clean[_ -]?review|clean review evidence|review_passed|clean_review_passed)\b|"
@@ -197,11 +213,13 @@ def _has_clean_review_boundary(text):
 
 def _has_readiness_boundary(text):
     return re.search(
-        r"\b(not|cannot|can't|must not|do not|does not|is not|isn't|still requires?|"
-        r"requires?|required|missing|pending|unverified|blocked)\b.{0,48}"
+        r"\b(not|cannot|can't|must not|do not|does not|is not|isn't|missing|pending|"
+        r"unverified|blocked)\b.{0,48}"
         r"\b(release|uat|customer|final readiness|archive|branch cleanup|ready|readiness)\b|"
         r"\b(release|uat|customer|final readiness|archive|branch cleanup|ready|readiness)\b"
-        r".{0,48}\b(still requires?|requires?|required|missing|pending|unverified|blocked)\b|"
+        r".{0,48}\b(missing|pending|unverified|blocked)\b|"
+        r"\b(release|uat|customer|final readiness|archive|branch cleanup|ready|readiness)\b"
+        r".{0,48}\b(still requires?|requires?)\b.{0,32}\b(separate|independent|runtime|browser|uat|release|evidence|verification)\b|"
         r"(发布|UAT|客户|最终验收|归档|分支清理|ready|就绪).{0,24}(仍需|需要|缺失|待|未验证|阻塞|不能|不可|不算|不是)",
         text,
         re.IGNORECASE,

@@ -210,6 +210,7 @@ Fail examples:
 
 - `Self-check Evidence: tests passed. Clean Review Evidence: passed.`
 - `Self-check Evidence: no issues. Clean Review Evidence: passed.`
+- `Self-check Evidence: tests passed. Clean Review Evidence: passed; required checks passed.`
 - `自检通过，所以 clean review 已通过。`
 
 Fix locus:
@@ -248,6 +249,7 @@ Fail examples:
 
 - `The clean reviewer edited the skill file to fix the finding. Clean review passed.`
 - `The clean reviewer edited the skill file to fix the finding. Clean review passed.` on one line must also fail.
+- `The clean reviewer edited the file. Clean review passed. No fresh reviewer required.`
 
 Fix locus:
 
@@ -323,6 +325,7 @@ Fail examples:
 
 - `Clean review passed and the package is ready for release.`
 - `Clean review passed, no findings, ready for release.`
+- `Clean review passed; required checks passed; ready for release.`
 - `clean_review_passed: true` plus `release_ready: true`
 - `Clean review passed and ready for UAT.`
 
