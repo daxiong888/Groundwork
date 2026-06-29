@@ -77,7 +77,7 @@ result_package:
 
   clean_review:
     required: true | false
-    reviewer_context: fresh | coordinator_intake | not_required | unknown
+    reviewer_context: fresh | not_required | unknown
     status: pending | passed | failed | blocked | not_required
     findings: []
     evidence: ""
@@ -177,7 +177,7 @@ Adapter mechanics boundary:
 - `review_package_returned` is not archive-ready evidence. Archive readiness requires clean review plus merge/discard evidence or a blocked-with-human-decision closeout path, and `archived` does not imply branch cleanup.
 - Do not claim `merged_to_main_worktree`, completed merge-back, or post-merge validation unless `merge_back.reliable_source = true`, `merge_back.applied_to_main_worktree = true`, and supporting evidence are present.
 - Do not claim `branch_cleaned` or completed cleanup unless required approval is satisfied and `branch_cleanup.cleanup_completed = true` with evidence. If approval is missing or branch identity is uncertain, route to `human_decision` or `blocked`.
-- Do not claim clean review passed from the child implementation package alone. `clean_review.status = passed` requires fresh clean-review evidence or a documented `coordinator_intake` decision that satisfies the low-risk exception in `skills/dispatch/CLEAN-REVIEW-FANOUT.md`.
+- Do not claim clean review passed from the child implementation package alone. `clean_review.status = passed` requires fresh clean-review evidence from an independent reviewer. A documented `low_risk_coordinator_intake` exception may close coordinator intake only when it satisfies `skills/_shared/LOW-RISK-COORDINATOR-INTAKE.md`; it must be recorded under `review_loop.status = low_risk_coordinator_intake`, not as `clean_review.status = passed`, and it does not permit merge-back, archive, branch cleanup, release, UAT, or final readiness.
 
 ### codex_subagent
 

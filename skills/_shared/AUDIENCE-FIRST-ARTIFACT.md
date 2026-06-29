@@ -1,6 +1,28 @@
 # Audience-First Artifact Contract
 
+Target Reader: Groundwork skill authors, artifact authors, maintainers, implementers, reviewers, verifiers, and coordinators.
+Reader Action Needed: Decide which durable artifacts must carry audience-first header fields and which native formats are exempt.
+Decision Supported: Whether a new or materially updated artifact has enough reader, action, source, evidence, scope, and redaction context to be reused safely.
+Artifact Type: shared guardrail
+Source of Truth: Groundwork artifact hygiene policy and shared documentation conventions.
+Scope: Audience-first header applicability, required exact field names, durable artifact exceptions, and redaction reminders.
+Out of Scope: Public skill trigger design, machine-readable schema design, runtime execution, release approval, UAT approval, or customer readiness.
+Evidence Level: Source-validation policy only. This contract does not prove runtime, browser, UAT, release, marketplace, installed-plugin, cache-refresh, or customer readiness.
+Safe to Share / Redaction Notes: Safe to share as-is; contains no secrets, credentials, PII, private logs, or production payloads.
+
 Use this contract whenever a skill creates or materially updates a durable artifact.
+
+## Applicability
+
+This contract applies to:
+
+- user-facing durable artifacts produced by Groundwork skills;
+- maintainer-facing durable docs under `docs/`, `artifacts/`, and `skills/_shared/`;
+- contract notes, verification reports, handoffs, lifecycle state, baselines, issue maps, PRDs, maintainer guides, and other reviewable files that are meant to be reused after the current conversation.
+
+This contract does not by itself require every public `skills/<public-skill>/SKILL.md` source file to carry the artifact header. Public skill source contracts are governed by `skills/_shared/SKILL-QUALITY.md` and `skills/_shared/SKILL-AUDIT.md`; they must follow this audience-first header only when a maintainer explicitly classifies the skill source file or a material update to it as a durable artifact requiring the header.
+
+Helper indexes, templates, examples, generated fixtures, and machine-readable schemas may use their native shape when adding the header would reduce machine readability. In those cases, the owning maintainer doc or adjacent shared contract must state the audience, source truth, evidence level, and redaction boundary.
 
 ## Required Header Fields (exact)
 

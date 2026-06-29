@@ -73,6 +73,7 @@ Use `skills/_shared/LLM-WIKI.md` when accepted work has relevant project wiki co
 - emit the v0.4.0 dispatch surface under `dispatch_native_alignment`: route decision, policy, source package, handoff expectation, closeout expectation, verification expectation, approval requirements, and runtime evidence ownership
 - assign isolation level, execution profile, validation expectation, and expected Result Package
 - identify parallelization eligibility and conflict/dependency groups when enough evidence exists
+- preserve the distinction between `runtime_policy.max_parallel_units` as the package-wide concurrency ceiling and `tasks[].parallelization.max_parallel_group_size` as the group-level ceiling; effective concurrency must not exceed either value
 - route read-only and planning-only tasks away from `worktree_isolated` and managed worktree runtimes
 - split hybrid work before any write worktree package is generated
 - default write implementation tasks to managed worktree only when readiness, Goal Contract, `dispatch_native_alignment.source_package`, `dispatch_native_alignment.verification_expectation`, and a concrete `worktree_isolated` route justification are present

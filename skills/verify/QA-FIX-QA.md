@@ -3,9 +3,12 @@
 Target Reader: Codex running `verify` or `implement` after a verification failure.
 Reader Action Needed: Turn a failed check into a scoped fix loop without broadening the task.
 Decision Supported: Whether the failure is understood enough to fix and what must be rechecked.
+Artifact Type: shared workflow reference
+Source of Truth: Groundwork issue #8 acceptance criteria, `skills/verify/SCOPE-EVIDENCE-TEMPLATE.md`, `skills/_shared/SEVERITY.md`, and existing verify/implement contracts.
 Scope: Verification failure reporting, minimal diagnosis, scoped fix planning, regression check, and re-QA.
 Out of Scope: Broad refactors, speculative fixes, release approval, or unrelated bug sweeps.
 Evidence Level: Groundwork issue #8 acceptance criteria and existing verify/implement contracts.
+Safe to Share / Redaction Notes: Safe to share as-is; contains no secrets, credentials, PII, private logs, or production payloads.
 
 ## Verify Failure Report
 
@@ -33,6 +36,7 @@ Rules:
 - Do not skip `Expected`, `Actual`, or `Reproduction` for behavior failures.
 - If the prompt does not provide concrete failure details, inspect the available fixture/checks when allowed. If details still cannot be confirmed, keep the field and write `not provided` or `unverified`; do not replace the report with a generic QA process.
 - Do not hide severity in prose.
+- Use `skills/_shared/SEVERITY.md`. `none` is invalid in `QA Failure` because this block is emitted only for failed or blocked verification. If no material failure remains, omit the `QA Failure` block and use a normal verification verdict instead.
 - Re-QA must name the original failing check or manual reproduction that has to be rerun.
 - Gap closure plan must name the minimum scoped change or evidence update needed before verdict can change.
 - Regression note must state the smallest adjacent behavior that should be rechecked, or `not identified` when there is no evidence yet.

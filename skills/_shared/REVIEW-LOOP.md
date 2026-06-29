@@ -29,7 +29,7 @@ The loop is stable evidence handling, not automatic runtime execution. A package
 
 - `Self-check Evidence` comes from the implementer or child implementation thread. It may include tests, checks, diff inspection, and implementation conformance notes.
 - `Self-check Evidence` must not be relabeled as `Clean Review Evidence`, `Independent Verification Evidence`, readiness, UAT evidence, release evidence, archive evidence, or branch cleanup evidence.
-- `Clean Review Evidence` requires a fresh-context reviewer or documented low-risk coordinator intake that satisfies `skills/dispatch/CLEAN-REVIEW-FANOUT.md`.
+- `Clean Review Evidence` requires a fresh-context reviewer. A documented `low_risk_coordinator_intake` exception may close coordinator intake only when it satisfies `skills/_shared/LOW-RISK-COORDINATOR-INTAKE.md`; it is not `clean_review_passed` and must be labeled separately.
 - Clean reviewers are read-only. If a clean reviewer edits files, applies a patch, or directly fixes a finding, that reviewer becomes an implementer for the changed material. A new independent clean review is required before `clean_review_passed`.
 - Any material fix after clean review makes the previous clean review stale for the latest diff. Record `previous_review_stale_reason` and require re-review.
 - A clean review pass is implementation-conformance evidence only. It is not final readiness, UAT, release, runtime, browser, merge-back, archive, branch cleanup, commit, push, PR, or customer approval.
@@ -59,7 +59,7 @@ human_decision
 low_risk_coordinator_intake
 ```
 
-`low_risk_coordinator_intake` is allowed only for small, single-package, low-risk returns with clear current validation evidence and no fan-out trigger. It still does not approve archive, branch cleanup, release, UAT, or final readiness.
+`low_risk_coordinator_intake` is allowed only when `skills/_shared/LOW-RISK-COORDINATOR-INTAKE.md` eligibility is fully recorded: one small self-contained package, low-risk file class, clear current validation evidence or a specific not-applicable reason, and no fan-out trigger. It is not `clean_review_passed` and still does not approve archive, branch cleanup, merge, commit, push, PR, release, UAT, runtime, browser, or final readiness.
 
 ## Required Package Fields
 
@@ -97,6 +97,8 @@ Hard failures:
 - implementer self-review or self-run tests are described as clean review passed;
 - a clean reviewer fixes its own finding and declares clean review passed for the fixed change;
 - a package claims a previous clean review still covers a later material fix;
+- `low_risk_coordinator_intake` is used without the required eligibility record or with any disqualifier from `skills/_shared/LOW-RISK-COORDINATOR-INTAKE.md`;
+- `low_risk_coordinator_intake` is serialized as `clean_review_passed` or used as release, UAT, runtime, browser, archive, branch cleanup, merge, commit, push, PR, or final readiness evidence;
 - clean review pass is used as release, UAT, runtime, browser, archive, branch cleanup, commit, push, PR, or final readiness evidence;
 - a review package omits covered/not-covered scope and still claims pass;
 - a package claims subagent, child-thread, runtime, cache, or selector execution from prompt preference alone.

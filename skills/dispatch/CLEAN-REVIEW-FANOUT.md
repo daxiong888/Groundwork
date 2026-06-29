@@ -3,9 +3,12 @@
 Target Reader: Groundwork coordinators, dispatch package authors, clean reviewers, and read-only review subagents.
 Reader Action Needed: Decide when coordinator intake is enough, when completed implementation packages must fan out to clean review, and what the reviewer may do.
 Decision Supported: Whether a completed child result package can remain in coordinator intake or must be routed to `clean_reviewer` / read-only `codex_subagent` before verify, triage, remediation, or closeout.
+Artifact Type: shared guardrail
+Source of Truth: PRD v0.3.3 FR-7 and Issue 6, dispatch runtime adapter profiles, `skills/_shared/REVIEW-LOOP.md`, and `skills/_shared/LOW-RISK-COORDINATOR-INTAKE.md`.
 Scope: Clean review routing thresholds, package-only reviewer context, read-only reviewer actions, coordinator boundaries, and future eval hooks for managed worktree lifecycle hardening.
 Out of Scope: Public skill creation, runtime execution, file edits by reviewers, automatic subagent spawning, child implementation self-approval, final readiness, remote writes, commits, pushes, PRs, archive, or branch cleanup.
 Evidence Level: Derived from PRD v0.3.3 FR-7 and Issue 6, plus existing dispatch runtime adapter profiles.
+Safe to Share / Redaction Notes: Safe to share as-is; contains no secrets, credentials, PII, private logs, or production payloads.
 
 ## Core Rule
 
@@ -51,7 +54,7 @@ Route to `clean_reviewer` or read-only `codex_subagent` when any condition is tr
 - coordinator context has compacted, is stale, or is managing multiple concurrent returns;
 - the package's own completeness, redaction, or evidence boundary is uncertain.
 
-Small, single-package, low-risk returns may stay in coordinator intake when the package is self-contained, validation evidence is clear, and no fan-out trigger applies.
+Small, single-package, low-risk returns may stay in coordinator intake only when the package satisfies `skills/_shared/LOW-RISK-COORDINATOR-INTAKE.md`. The coordinator must record the eligibility shape, validation evidence or not-applicable reason, decision reason, evidence refs, and remaining risks. This exception is not `clean_review_passed` and must not be used for archive, branch cleanup, merge, release, UAT, runtime, browser, or final readiness.
 
 ## Runtime Choice
 
@@ -139,7 +142,9 @@ Later eval coverage should include:
 
 - main thread performs intake only, then routes multiple child packages to `clean_reviewer`;
 - large package or public-interface change routes to `clean_reviewer` or read-only `codex_subagent`;
-- low-cost coordinator intake remains allowed for small, low-risk, complete packages;
+- low-cost coordinator intake remains allowed for small, low-risk, complete packages only when the shared low-risk eligibility shape is recorded;
+- low-cost coordinator intake is rejected for multiple packages, P0/P1 findings, public interfaces, schema, migrations, shared fixtures, state machines, shared config, adapter contracts, package templates, customer-visible/security/privacy/data-write/release/UAT risk, skipped/failed/partial validation, validation-fix iterations, stale coordinator context, or user-requested independent review;
+- low-cost coordinator intake is rejected when it is relabeled as `clean_review_passed` or used for release, UAT, archive, branch cleanup, merge, commit, push, PR, runtime, browser, or final readiness;
 - child implementation self-review is rejected as clean review;
 - clean reviewer output that edits files is rejected;
 - clean reviewer output that relies on hidden parent context is rejected;

@@ -3,9 +3,12 @@
 Target Reader: Codex running the Groundwork `verify` skill.
 Reader Action Needed: Start every verification report with explicit scope and evidence coverage.
 Decision Supported: Whether a claim is supported, partial, failed, blocked, or still unverified.
+Artifact Type: shared verification template
+Source of Truth: Groundwork issue #5 acceptance criteria and `docs/prd.md` verification contract.
 Scope: Scope-first verification reports, claim-to-evidence mapping, and missing-evidence handling.
 Out of Scope: Running checks, implementing fixes, or creating customer-facing summaries as the primary output.
 Evidence Level: Groundwork issue #5 acceptance criteria and `docs/prd.md` verification contract.
+Safe to Share / Redaction Notes: Safe to share as-is; contains no secrets, credentials, PII, private logs, or production payloads.
 
 ## Required Report Opening
 
@@ -47,13 +50,7 @@ Use this matrix for nontrivial verification:
 | ... | ... | pass / partial / fail / blocked / unverified | ... | P0 / P1 / P2 / P3 / none |
 ```
 
-Severity guide:
-
-- `P0`: blocks release, unsafe action, data loss, security/privacy issue, or clearly broken primary workflow.
-- `P1`: blocks the stated acceptance criteria or a required handoff/UAT path.
-- `P2`: important gap with workaround or limited blast radius.
-- `P3`: low-risk polish, evidence hygiene, or follow-up improvement.
-- `none`: claim is supported and no material gap remains.
+Severity uses the shared enum in `skills/_shared/SEVERITY.md`. In `verify`, severity describes the evidence, claim, and acceptance-criterion gap for the user-visible claim being verified.
 
 ## Evidence Source Types
 
