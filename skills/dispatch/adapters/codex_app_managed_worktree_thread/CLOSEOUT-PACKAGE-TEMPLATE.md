@@ -28,6 +28,15 @@ native_closeout_package:
 
   evidence_summary: []
 
+  init_resolution_status:
+    status: not_applicable | pending | resolved | failed | blocked | human_decision
+    pending_worktree_id: ""
+    child_thread_identifier: ""
+    worktree_path: ""
+    parent_thread_implementation_attempted: true | false
+    manual_fallback_attempted: true | false
+    fallback_approval_evidence: []
+
   git_boundary_status:
     status_checked: true | false
     intended_files: []
@@ -67,6 +76,9 @@ native_closeout_package:
 ## Merge Decision Rules
 
 - `merge_decision.recommendation: merge` requires non-empty `evidence_summary`.
+- `merge_decision.recommendation: merge` requires `init_resolution_status.status: resolved` or `not_applicable`.
+- `merge_decision.recommendation: merge` is blocked when `init_resolution_status.status` is `pending`, `failed`, `blocked`, or `human_decision`.
+- `merge_decision.recommendation: merge` is blocked when `parent_thread_implementation_attempted` or `manual_fallback_attempted` is true and `fallback_approval_evidence` is empty.
 - `merge_decision.recommendation: merge` requires `git_boundary_status.status_checked: true`.
 - `merge_decision.recommendation: merge` requires `git_boundary_status.safe_to_stage_or_merge: true`.
 - `merge_decision.recommendation: merge` requires `review_findings_status: passed`.
@@ -81,6 +93,8 @@ native_closeout_package:
 ## Cleanup Decision Rules
 
 - Cleanup decisions are separate from merge decisions. Thread archive, worktree retention, Codex-managed cleanup, and branch cleanup must never appear as merge recommendations.
+- A pending Codex App worktree request is not cleanup evidence. If only `pendingWorktreeId` exists, set `init_resolution_status.status: pending`, retain or block cleanup recommendations, and route to wait/poll/resolve, `blocked`, or `human_decision`.
+- A manual git worktree fallback is not Codex-managed worktree evidence. If it was attempted accidentally, the closeout package must disclose it, exclude its changes from merge evidence, and route to `human_decision` unless explicit user approval accepts the topology change.
 - `cleanup_decision.thread_action: archive_thread` is a recommended next action, not evidence that the thread was archived. A completed archive claim requires separate Codex runtime or user-supplied evidence.
 - `cleanup_decision.worktree_action: allow_codex_managed_cleanup` is permission to let native Codex retention/cleanup semantics apply, not evidence that a worktree was deleted.
 - `cleanup_decision.worktree_action: retain_worktree` means the worktree should remain available for review, remediation, merge-back, audit, or human inspection.
@@ -131,3 +145,4 @@ Native closeout evals should reject:
 - packages that put archive, worktree retention, Codex-managed cleanup, or branch cleanup under merge decision fields;
 - packages that claim archive, worktree cleanup, branch deletion, runtime execution, cache refresh, release readiness, or UAT readiness without separate evidence;
 - native packages that retain `merge_recommendation` or `cleanup_action` without marking those fields legacy/deprecated.
+- native packages that treat `pendingWorktreeId` as resolved execution, omit pending resolution status, merge parent-thread work for the same task while pending, or use a manual fallback worktree without explicit approval.

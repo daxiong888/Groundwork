@@ -151,7 +151,10 @@ Rules:
 - Use `starting_state = existing-branch` only when no dirty base inheritance is required and `branch_name` already resolves before the tool call.
 - Do not treat `startingState.branchName` as a request to create a new branch. If the named branch does not resolve, block before child thread creation or route to `needs_remediation`.
 - Detached HEAD in a Codex-managed worktree is acceptable. Child implementation threads must not create a branch only to continue work.
-- A `pendingWorktreeId` is not child-thread evidence. The lifecycle may enter `child_thread_created` only after the pending worktree resolves to a child thread identifier and a worktree path.
+- A `pendingWorktreeId` is not success evidence and not child-thread evidence. The lifecycle may enter `child_thread_created` only after the pending worktree resolves to both a child thread identifier and a worktree path.
+- While `init_status = pending`, the coordinator must wait, poll, resolve, or stop with `blocked`/`human_decision` evidence. It must not implement the same task in the parent thread.
+- A corrected retry is legal only after the prior pending request has resolved, failed, or been explicitly abandoned through `blocked`/`human_decision` evidence. It must use the same approved Codex App managed-worktree topology and must not create a parallel implementation path.
+- A manual git worktree fallback is forbidden while a Codex-managed worktree request for the same task is pending. Any fallback that changes filesystem isolation, thread ownership, or runtime topology requires explicit user approval before execution and must be reported as a topology change, not as managed-worktree evidence.
 - If initialization fails, report `init_status = failed`, preserve the failure evidence, and route to `blocked`, `needs_remediation`, or a corrected preflight retry. Do not keep treating a failed worktree as pending.
 
 ## Admissibility Checklist
@@ -177,6 +180,7 @@ All checks must pass before creating a child thread:
 - explicit execution approval is present; package-level `approval.required = false` is not enough to create a child thread
 - required Codex App thread capabilities are available
 - worktree initialization preflight passed
+- no unresolved `pendingWorktreeId` exists for the same runtime correlation id unless it has resolved to both `child_thread_identifier` and `worktree_path`
 - remote writes are `false` or separately approved
 - destructive actions are `false` or separately approved
 - conflicts are absent, already serialized by dependency group and merge-order hint, or explicitly approved

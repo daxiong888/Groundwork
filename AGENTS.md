@@ -76,6 +76,12 @@ Groundwork work is locally done only when all applicable items are true:
 - Do not commit `.groundwork`, `.trellis`, temporary tests, runtime logs, ignored files, unrelated docs, secrets, or production data.
 - Prefer small PRs and focused commits. Do not mix unrelated issue checkpoints.
 
+## Codex App Managed Worktree Threads
+
+- When the user explicitly requests a child thread plus Codex-managed worktree, the parent or coordinator must treat that child thread/worktree as the only implementation source for that task.
+- If Codex App returns `pendingWorktreeId` without a resolved child thread id and worktree path, wait/poll/resolve the pending worktree or report `blocked`/`human_decision`; do not implement the same task in the parent thread and do not create a backup manual git worktree.
+- Any fallback that changes the requested thread/worktree topology requires explicit user approval. If an accidental fallback already exists, disclose it, exclude its changes from the delivery evidence, and keep it out of merge/closeout unless the user explicitly accepts that topology change.
+
 ## Artifacts
 
 - Durable artifacts must have the exact audience-first fields required by `skills/_shared/AUDIENCE-FIRST-ARTIFACT.md`.
