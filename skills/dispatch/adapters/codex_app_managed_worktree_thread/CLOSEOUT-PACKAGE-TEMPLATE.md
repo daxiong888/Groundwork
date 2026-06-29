@@ -30,6 +30,7 @@ native_closeout_package:
 
   init_resolution_status:
     status: not_applicable | pending | resolved | failed | blocked | human_decision
+    resolution_source: not_applicable | codex_managed_worktree | approved_topology_change
     pending_worktree_id: ""
     child_thread_identifier: ""
     worktree_path: ""
@@ -77,8 +78,10 @@ native_closeout_package:
 
 - `merge_decision.recommendation: merge` requires non-empty `evidence_summary`.
 - `merge_decision.recommendation: merge` requires `init_resolution_status.status: resolved` or `not_applicable`.
+- `merge_decision.recommendation: merge` requires `init_resolution_status.resolution_source: codex_managed_worktree` when a Codex App managed worktree resolved normally, or `approved_topology_change` when the user explicitly accepted a fallback topology.
 - `merge_decision.recommendation: merge` is blocked when `init_resolution_status.status` is `pending`, `failed`, `blocked`, or `human_decision`.
 - `merge_decision.recommendation: merge` is blocked when `parent_thread_implementation_attempted` or `manual_fallback_attempted` is true and `fallback_approval_evidence` is empty.
+- `merge_decision.recommendation: merge` is blocked when `init_resolution_status.resolution_source: approved_topology_change` and either `fallback_approval_evidence` or `merge_decision.source_evidence` is empty.
 - `merge_decision.recommendation: merge` requires `git_boundary_status.status_checked: true`.
 - `merge_decision.recommendation: merge` requires `git_boundary_status.safe_to_stage_or_merge: true`.
 - `merge_decision.recommendation: merge` requires `review_findings_status: passed`.
@@ -95,6 +98,7 @@ native_closeout_package:
 - Cleanup decisions are separate from merge decisions. Thread archive, worktree retention, Codex-managed cleanup, and branch cleanup must never appear as merge recommendations.
 - A pending Codex App worktree request is not cleanup evidence. If only `pendingWorktreeId` exists, set `init_resolution_status.status: pending`, retain or block cleanup recommendations, and route to wait/poll/resolve, `blocked`, or `human_decision`.
 - A manual git worktree fallback is not Codex-managed worktree evidence. If it was attempted accidentally, the closeout package must disclose it, exclude its changes from merge evidence, and route to `human_decision` unless explicit user approval accepts the topology change.
+- `human_decision` means a decision is still needed. If the user has already accepted the fallback topology, represent it as `init_resolution_status.status: resolved` with `resolution_source: approved_topology_change`, preserve `fallback_approval_evidence`, and cite the approved merge source evidence.
 - `cleanup_decision.thread_action: archive_thread` is a recommended next action, not evidence that the thread was archived. A completed archive claim requires separate Codex runtime or user-supplied evidence.
 - `cleanup_decision.worktree_action: allow_codex_managed_cleanup` is permission to let native Codex retention/cleanup semantics apply, not evidence that a worktree was deleted.
 - `cleanup_decision.worktree_action: retain_worktree` means the worktree should remain available for review, remediation, merge-back, audit, or human inspection.
@@ -131,6 +135,19 @@ Before recommending merge or cleanup, the package must state:
 - cleanup evidence for thread, worktree, and branch actions separately;
 - blockers, open risks, and next route;
 - why any missing evidence does not block the selected non-merge cleanup action, or the blocker that prevents cleanup.
+
+## Runtime Init To Closeout Mapping
+
+Map Result Package runtime initialization evidence into closeout state as follows:
+
+| Result Package `runtime.init_status` | Closeout `init_resolution_status.status` | Closeout `resolution_source` | Rule |
+| --- | --- | --- | --- |
+| `not_started` | `not_applicable` or `blocked` | `not_applicable` | Use `not_applicable` only when no managed worktree was required; otherwise block for missing initialization evidence. |
+| `pending` | `pending` | `not_applicable` | Pending ids are wait/poll/resolve evidence only. They are not merge or cleanup evidence. |
+| `child_thread_created` | `resolved` | `codex_managed_worktree` | Requires both child thread identifier and worktree path. |
+| `failed` | `failed`, `blocked`, or `human_decision` | `not_applicable` | Use the status that matches the retained failure evidence and next decision need. |
+| `blocked` | `blocked` or `human_decision` | `not_applicable` | Use `human_decision` only when a human choice is still required. |
+| approved fallback topology | `resolved` | `approved_topology_change` | Requires explicit user approval plus merge source evidence; this is not Codex-managed worktree evidence. |
 
 ## Eval Hooks
 

@@ -269,6 +269,7 @@ skills/dispatch/adapters/codex_app_managed_worktree_thread/THREAD-LIFECYCLE.md
 
 ```text
 package_admitted
+worktree_init_pending
 child_thread_created
 prompt_delivered
 running
@@ -294,6 +295,8 @@ closed
 - A child thread must not archive itself.
 - A child thread must not delete branches.
 - A child thread must not stage, commit, push, open PRs, close issues, mutate trackers, or change remote state unless separately approved.
+- `worktree_init_pending` represents a Codex App managed worktree request that has returned `pendingWorktreeId` but has not resolved to both child thread identifier and worktree path.
+- `worktree_init_pending` is not success evidence, is not `child_thread_created`, and does not satisfy the recoverable registry record needed for `running` or later active work.
 - `archive_ready` is allowed only after one of:
   - `merged_to_main_worktree` with evidence;
   - `discarded` with reason;
@@ -309,6 +312,7 @@ closed
 - AC-1.2: Review/result templates expose lifecycle status.
 - AC-1.3: A managed worktree result cannot recommend archive before merge/discard/blocked-with-decision.
 - AC-1.4: Evals reject child prompts or results that ask the child to archive itself.
+- AC-1.5: Pending initialization state is represented separately from created/running states and cannot be used as parent-thread implementation or manual fallback permission.
 
 ---
 
