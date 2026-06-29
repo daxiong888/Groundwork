@@ -8,7 +8,11 @@ except ImportError:  # pragma: no cover - package import path
 
 NOT_APPLICABLE = "not_applicable"
 PASS_VERDICTS = {"pass", "flake"}
-TRACE_READY_SUITES = {"routing-reliability.csv", "trace-first-verify-review.csv"}
+TRACE_READY_SUITES = {
+    "routing-reliability.csv",
+    "trace-first-verify-review.csv",
+    "clean-review-fanout.csv",
+}
 
 
 def routing_outcome(expected, actual, acceptable_routes, forbidden_routes):

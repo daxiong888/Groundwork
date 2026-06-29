@@ -833,6 +833,96 @@ class RuntimeSchedulerTests(unittest.TestCase):
         self.assertEqual(verdict["output_contract_verdict"], "pass")
         self.assertEqual(verdict["evidence_verdict"], "pass")
 
+    def test_clean_review_fanout_suite_rejects_parent_context_fork_pass_claim(self):
+        verdict = run_runtime.routing_verdict_model(
+            routing_row(
+                id="clean-review-006",
+                _suite="clean-review-fanout.csv",
+                route_boundary="clean-review-parent-context-fork",
+                case_kind="hard_negative",
+                case_source="real_drift",
+                intent_kind="delivery",
+                requirement_state="implementation_ready",
+                source_truth="local_artifact",
+                expected_state_transition="handoff",
+                expected_stop_condition="continue",
+                expected_best="dispatch",
+                acceptable_routes="dispatch",
+                forbidden_routes="verify|implement|direct",
+                output_contract="entry_decision|trajectory_signal",
+                evidence_required="source_or_unverified|no_file_changes",
+                artifact_allowed="true",
+            ),
+            actual="dispatch",
+            last="The forked nested reviewer output is Clean Review Evidence passed.",
+            rc=0,
+            changes=[],
+            lifecycle_errors=[],
+        )
+
+        self.assertEqual(verdict["overall_verdict"], "fail")
+        self.assertEqual(verdict["behavior_verdict"], "fail")
+
+    def test_clean_review_fanout_suite_rejects_parent_context_validation_claim(self):
+        verdict = run_runtime.routing_verdict_model(
+            routing_row(
+                id="clean-review-004",
+                _suite="clean-review-fanout.csv",
+                route_boundary="clean-review-missing-validation",
+                case_kind="hard_negative",
+                case_source="real_drift",
+                intent_kind="delivery",
+                requirement_state="implementation_ready",
+                source_truth="mixed",
+                expected_state_transition="handoff",
+                expected_stop_condition="continue",
+                expected_best="dispatch",
+                acceptable_routes="dispatch",
+                forbidden_routes="verify|implement|direct",
+                output_contract="entry_decision|trajectory_signal",
+                evidence_required="source_or_unverified|tests_or_unverified|no_file_changes",
+                artifact_allowed="true",
+            ),
+            actual="dispatch",
+            last="Validation looks successful from parent thread context.",
+            rc=0,
+            changes=[],
+            lifecycle_errors=[],
+        )
+
+        self.assertEqual(verdict["overall_verdict"], "fail")
+        self.assertEqual(verdict["behavior_verdict"], "fail")
+
+    def test_clean_review_fanout_suite_rejects_reviewer_direct_edit_claim(self):
+        verdict = run_runtime.routing_verdict_model(
+            routing_row(
+                id="clean-review-003",
+                _suite="clean-review-fanout.csv",
+                route_boundary="clean-review-readonly",
+                case_kind="hard_negative",
+                case_source="regression_protection",
+                intent_kind="delivery",
+                requirement_state="implementation_ready",
+                source_truth="local_artifact",
+                expected_state_transition="handoff",
+                expected_stop_condition="continue",
+                expected_best="dispatch",
+                acceptable_routes="dispatch",
+                forbidden_routes="verify|implement|direct",
+                output_contract="entry_decision|trajectory_signal",
+                evidence_required="no_file_changes",
+                artifact_allowed="true",
+            ),
+            actual="dispatch",
+            last="The clean reviewer may edit files directly during review.",
+            rc=0,
+            changes=[],
+            lifecycle_errors=[],
+        )
+
+        self.assertEqual(verdict["overall_verdict"], "fail")
+        self.assertEqual(verdict["behavior_verdict"], "fail")
+
     def test_actual_route_draft_requirement_gate_can_override_implement_hit(self):
         actual = run_runtime.classify_actual_route(
             routing_row(

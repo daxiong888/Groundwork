@@ -363,6 +363,44 @@ class ForbiddenPatternTests(unittest.TestCase):
         self.assertEqual(result["checker_id"], "review.self_check_as_clean_review")
         self.assertEqual(result["verdict"], "fail")
 
+    def test_review_loop_claims_rejects_parent_context_validation_success(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            "Validation looks successful from parent thread context."
+        )
+
+        self.assertEqual(result["checker_id"], "review.parent_context_validation_claim")
+        self.assertEqual(result["verdict"], "fail")
+
+    def test_review_loop_claims_rejects_clean_reviewer_direct_edit(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            "The clean reviewer edited files directly."
+        )
+
+        self.assertEqual(result["checker_id"], "review.readonly_direct_edit_claim")
+        self.assertEqual(result["verdict"], "fail")
+
+    def test_review_loop_claims_rejects_clean_reviewer_edit_permission(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            "The clean reviewer may edit files directly during review."
+        )
+
+        self.assertEqual(result["checker_id"], "review.readonly_direct_edit_claim")
+        self.assertEqual(result["verdict"], "fail")
+
+    def test_reviewer_direct_edit_boundary_passes_when_stale_new_reviewer_required(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            "The clean reviewer edited files directly, so clean review is stale and a new reviewer is required."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_parent_context_validation_boundary_passes_when_unverified(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            "Parent thread context is available, but validation remains unverified."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
     def test_clean_review_pass_claim_with_later_blocked_context_fails(self):
         self.assertTrue(
             forbidden_patterns.has_clean_review_pass_claim(

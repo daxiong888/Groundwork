@@ -48,7 +48,7 @@ result_package:
     worktree_path: ""
     artifact_path: ""
     owner_skill: "dispatch"
-    current_status: "created | active | review-ready | blocked | merge-ready | merged | archived | abandoned"
+    current_status: "created | active | review-ready | blocked | merge-ready | merged | archive-ready | archived | branch-cleanup-pending | branch-cleaned | branch-retained | closed | abandoned"
     state_event_ref: ""
     created_at: ""
     last_checked_at: ""

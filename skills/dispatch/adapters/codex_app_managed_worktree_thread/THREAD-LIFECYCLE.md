@@ -77,7 +77,7 @@ worktree_thread_registry:
   worktree_path: ""
   artifact_path: ""
   owner_skill: "dispatch"
-  current_status: created | active | review-ready | blocked | merge-ready | merged | archived | abandoned
+  current_status: created | active | review-ready | blocked | merge-ready | merged | archive-ready | archived | branch-cleanup-pending | branch-cleaned | branch-retained | closed | abandoned
   created_at: ""
   last_checked_at: ""
 ```
@@ -94,7 +94,12 @@ Status mapping:
 | `blocked` | `needs_remediation`, `blocked`, `discard_pending` |
 | `merge-ready` | `merge_pending` |
 | `merged` | `merged_to_main_worktree` |
-| `archived` | `archive_ready`, `archived`, `branch_cleanup_pending`, `branch_cleaned`, `branch_retained_with_reason`, `closed` |
+| `archive-ready` | `archive_ready` |
+| `archived` | `archived` |
+| `branch-cleanup-pending` | `branch_cleanup_pending` |
+| `branch-cleaned` | `branch_cleaned` |
+| `branch-retained` | `branch_retained_with_reason` |
+| `closed` | `closed` |
 | `abandoned` | `discarded`, `blocked` with human decision, or retained evidence that the child work is intentionally not continued |
 
 `worktree_init_pending` may be recorded as an initialization trace with `pendingWorktreeId`, but it does not satisfy the recoverable registry record required for `running` or later active work because the child thread identifier and worktree path are still missing.

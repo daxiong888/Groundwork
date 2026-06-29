@@ -327,39 +327,66 @@ skills/dispatch/adapters/codex_app_managed_worktree_thread/CLOSEOUT-PACKAGE-TEMP
 ### Required Shape
 
 ```yaml
-closeout_package:
+native_closeout_package:
   runtime_correlation_id: ""
   task_id: ""
   runtime_id: "codex_app_managed_worktree_thread"
+  owner_skill: "dispatch"
 
-  lifecycle:
-    current_state: ""
-    closeout_decision: archive | retain | discard | blocked | human_decision
-    closeout_reason: ""
-    archive_ready: true | false
-    archive_blockers: []
-    preserved_evidence:
-      review_package: present | absent | incomplete
-      result_package: present | absent | incomplete
-      clean_review: passed | failed | not_run | not_applicable
-      merge_back: completed | not_attempted | failed | not_applicable
+  task_verdict: done | partial | blocked | abandoned
+  verdict_reason: ""
+  evidence_summary: []
 
-  runtime:
-    thread_identifier: ""
-    initial_thread_title: ""
-    current_thread_title: ""
-    worktree_type: Codex-managed | none | unknown
+  init_resolution_status:
+    status: not_applicable | pending | resolved | failed | blocked | human_decision
+    resolution_source: not_applicable | codex_managed_worktree | approved_topology_change
+    pending_worktree_id: ""
+    child_thread_identifier: ""
     worktree_path: ""
+    parent_thread_implementation_attempted: true | false
+    manual_fallback_attempted: true | false
+    fallback_approval_evidence: []
 
-  approval:
-    archive_approval_required: true | false
-    archive_approval_status: approved | not_requested | rejected | not_required
+  git_boundary_status:
+    status_checked: true | false
+    intended_files: []
+    unrelated_dirty_files: []
+    staged_files: []
+    explicit_denylist: []
+    safe_to_stage_or_merge: true | false
+
+  review_findings_status: passed | findings_open | not_run | not_required
+
+  same_base_serialization:
+    base_ref: ""
+    base_commit: ""
+    same_base_closeout_in_progress: true | false | unknown
+    queue_or_lock_required: true | false
+    queue_or_lock_evidence: []
+    serialized_or_blocked: true | false
+
+  merge_decision:
+    recommendation: merge | do_not_merge | hold | not_applicable | human_decision
     reason: ""
+    merge_source: patch_bundle | visible_branch | codex_handoff | pathspec_checkout | none | unknown
+    source_evidence: []
 
-  next:
-    branch_cleanup_required: true | false | unknown
-    recommended_next_route: branch_cleanup | triage | verify | done | human_decision
+  cleanup_decision:
+    thread_action: archive_thread | retain_thread | human_decision | not_applicable
+    thread_evidence: []
+    worktree_action: retain_worktree | allow_codex_managed_cleanup | human_decision | not_applicable
+    worktree_evidence: []
+    branch_action: delete_local_branch | retain_branch | human_decision | not_applicable
+    branch_evidence: []
+
+  blockers: []
+  next_route: verify | triage | handoff | done | human_decision
 ```
+
+Legacy v0.3.3 `closeout_package`, `archive_ready`, and `branch_cleanup_required`
+fields are read-only compatibility evidence. New closeout packages must use the
+native shape above and split merge, thread cleanup, worktree cleanup, and branch
+cleanup decisions.
 
 ### Rules
 
@@ -1091,7 +1118,7 @@ The v0.3.3 closeout pass is not a feature expansion. It narrows the managed work
 
 ### Closeout Functional Requirements
 
-- FR-331 Worktree Thread Registry: every managed worktree child task records task id, runtime correlation id, branch, base ref, worktree path, artifact path, owner skill, current status, created timestamp, and last checked timestamp. Status values are `created`, `active`, `review-ready`, `blocked`, `merge-ready`, `merged`, `archived`, and `abandoned`. Each status change must preserve a registry event in artifacts or adapter-visible trace logs.
+- FR-331 Worktree Thread Registry: every managed worktree child task records task id, runtime correlation id, branch, base ref, worktree path, artifact path, owner skill, current status, created timestamp, and last checked timestamp. Status values are `created`, `active`, `review-ready`, `blocked`, `merge-ready`, `merged`, `archive-ready`, `archived`, `branch-cleanup-pending`, `branch-cleaned`, `branch-retained`, `closed`, and `abandoned`. Each status change must preserve a registry event in artifacts or adapter-visible trace logs.
 - FR-332 Review Fan-out MVP: review fan-out is allowed only for review-ready packages. Review output must order findings by `P0`, `P1`, `P2`, and `P3`, and must declare `covered` and `not_covered` scope.
 - FR-333 Merge-back And Serial Closeout: before merge-back, the package must include explainable git status, intended file allowlist, verify/validation evidence or explicit unverified marker, and handoff/closeout package evidence. Same-base closeouts are serialized. Failure preserves recovery instructions.
 - FR-334 Archive And Branch Cleanup: archive evidence includes diff summary, evidence, open risks, and reason. Branch cleanup can proceed only after merged, archived, or retained/abandoned evidence, and unconfirmed worktrees are never silently deleted.
