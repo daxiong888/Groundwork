@@ -41,6 +41,8 @@ clean_review_package:
   context_rules:
     fresh_context_required: true
     parent_memory_allowed: false
+    parent_thread_history_allowed: false
+    parent_context_fork_allowed: false
     hidden_context_allowed: false
     supplied_artifacts_only: true
     cite_paths_or_package_sections: true
@@ -49,12 +51,15 @@ clean_review_package:
     read_only: true
     file_edits_allowed: false
     spawn_more_agents_allowed: false
+    nested_delegation_allowed: false
     runtime_execution_allowed: false
     remote_writes_allowed: false
     destructive_actions_allowed: false
 
   disallowed_claims:
     child_self_review_counts_as_clean_review: false
+    forked_parent_context_counts_as_clean_review: false
+    nested_delegation_counts_as_clean_review: false
     final_readiness_approval: false
     uat_or_release_approval: false
     merge_back_completed_without_evidence: false
@@ -83,8 +88,11 @@ clean_review_package:
 
 - Treat the package as the complete review context.
 - Do not rely on parent thread memory, unstated prior decisions, or hidden local context.
+- If the reviewer was spawned from a full parent-thread history fork, such as `fork_context=true` or an equivalent inherited-context mode, return `unverified` or `blocked`; do not report a clean review `pass`.
 - Do not edit files. If a fix is needed, recommend `dispatch_write_task`.
 - Do not spawn more agents unless a separate explicit delegation approves it.
+- If unapproved nested agents or child threads were spawned, disclose that topology and return `unverified` or `blocked` for clean-review authority.
+- A human decision may accept the risk of proceeding without Clean Review Evidence, but it must not convert forked or nested reviewer output into a clean-review `pass`.
 - Mark absent validation, redacted-but-needed diff detail, missing source truth, or unclear acceptance mapping as `unverified` or `blocked`.
 - Treat `review_loop.previous_review_stale_reason` as a blocker for clean-review pass unless the package also includes fresh review evidence for the latest material change.
 - If remediation is needed, return findings and route writes separately; do not perform the fix inside clean review.
@@ -104,7 +112,9 @@ Before reviewing substance, mark the package incomplete when any required item i
 - result package or review package;
 - changed file list or explicit no-change statement;
 - validation evidence or checks-not-run explanation;
+- explicit fresh-context rules forbidding parent thread history forks;
 - read-only allowed actions;
+- explicit nested-delegation prohibition;
 - output requirements.
 
 Incomplete packages should return `blocked` or `unverified`, not `pass`.

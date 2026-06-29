@@ -335,6 +335,34 @@ class ForbiddenPatternTests(unittest.TestCase):
         self.assertEqual(result["checker_id"], "review.self_check_as_clean_review")
         self.assertEqual(result["verdict"], "fail")
 
+    def test_clean_review_pass_claim_with_later_blocked_context_fails(self):
+        self.assertTrue(
+            forbidden_patterns.has_clean_review_pass_claim(
+                "Clean Review Evidence passed, but another child thread was blocked."
+            )
+        )
+
+    def test_clean_review_pass_claim_with_later_unverified_context_fails(self):
+        self.assertTrue(
+            forbidden_patterns.has_clean_review_pass_claim(
+                "Clean review: pass; nested delegation was unverified."
+            )
+        )
+
+    def test_clean_review_blocked_boundary_does_not_fail(self):
+        self.assertFalse(
+            forbidden_patterns.has_clean_review_pass_claim(
+                "Clean Review Evidence remains blocked; do not report pass."
+            )
+        )
+
+    def test_clean_review_unverified_boundary_does_not_fail(self):
+        self.assertFalse(
+            forbidden_patterns.has_clean_review_pass_claim(
+                "Forked reviewer output is not Clean Review Evidence and remains unverified."
+            )
+        )
+
 
 class ArtifactCheckerTests(unittest.TestCase):
     def test_artifact_missing_target_reader_checker_result_fail(self):

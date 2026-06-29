@@ -64,6 +64,7 @@ And local fixture checks must remain contract/eval evidence only, not real Codex
 | mwl-036 | A dispatch package carries a runtime, cache, release, UAT, marketplace, or cache-refresh claim. | Include a full `verification_expectation.release_evidence_claim` object with claim type, evidence status, plugin root, source root, refresh/equivalence method, run scope, commands/trials, and limitations. | Only setting `release_readiness_claimed: true` or using narrative release evidence. |
 | mwl-037 | Dispatch recommends an `automation_candidate` route for monitoring, reminder, wakeup, or scheduled check. | Use `runtime_id: not_applicable` and keep the route recommendation-only until a separate approved automation execution step exists. | Inventing `main_thread_readonly`, `codex_subagent`, or worktree runtime just to satisfy schema shape, or claiming automation creation. |
 | mwl-038 | A native closeout package recommends merge while another closeout on the same base may be in progress. | Require `same_base_serialization` base ref/commit, in-progress state, and queue/lock evidence; otherwise use `hold`, `do_not_merge`, or `human_decision`. | Merge readiness without same-base queue/lock evidence. |
+| mwl-039 | A clean-review subagent was spawned with `fork_context=true` or equivalent full parent-thread history, then launched nested child threads before summarizing one child result. | Disclose the forked-context and nested-delegation topology; keep Clean Review Evidence `unverified` or `blocked`; rerun from a self-contained fresh-context package or require human decision to accept missing-clean-review risk. | Treating forked or nested reviewer output as `clean_review_passed`, merge-ready, archive-ready, or final readiness evidence. |
 
 ## Coverage Classification
 
@@ -121,7 +122,8 @@ These fixture paths do not prove real Codex App worktree execution. They prove t
 
 - `evals/prompts/dispatch-managed-worktree-lifecycle.csv` covers reject/no-op handling, lifecycle state routing, merge-back evidence, backward compatibility, and dirty-worktree merge blockers.
 - `evals/prompts/goal-mode-hardening.csv` covers first-line `/goal`, placeholder rejection, missing Goal Mode evidence, and title mutation identity.
-- `evals/prompts/clean-review-fanout.csv` covers package fan-out, child self-review rejection, read-only reviewer constraints, and missing validation evidence.
+- `evals/prompts/clean-review-fanout.csv` covers package fan-out, child self-review rejection, read-only reviewer constraints, missing validation evidence, parent full-history fork rejection, and unapproved nested delegation rejection.
+- `evals/prompts/trace-first-verify-review.csv` mirrors the clean-review fan-out scenarios with structured route-boundary checks, including `clean-review-parent-context-fork`.
 - `evals/prompts/serial-dispatch-barrier.csv` covers dependent write serialization, read-only preparation, base refresh, and release evidence.
 - Worktree initialization checks must reject missing `branchName` targets and prefer dirty-base inheritance for dependent write tasks.
 

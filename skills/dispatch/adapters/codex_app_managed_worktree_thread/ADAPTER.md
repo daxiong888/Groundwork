@@ -98,6 +98,16 @@ Proceed only when explicit execution approval and the required Codex App thread 
 
 Before any Codex App worktree or child thread creation call, apply the worktree initialization preflight in `DISPATCH-PACKAGE-CONTRACT.md`. `startingState.branchName` is valid only for an already-existing branch. When a task must inherit the current reviewed dirty base, prefer a `working-tree` start state and treat detached HEAD as acceptable; merge-back must later use worktree path and explicit pathspec evidence, not implicit branch advancement.
 
+## Pending Worktree Resolution
+
+A Codex App response that contains only `pendingWorktreeId` is not successful managed-worktree execution evidence. It is not a child thread identifier, not a worktree path, and not enough to advance the lifecycle to `child_thread_created`.
+
+While initialization is pending, the coordinator's legal actions are limited to waiting, polling, resolving the pending worktree into both child thread identity and worktree path, or stopping with `blocked`/`human_decision` evidence. The parent or coordinator must remain read-only for that task and must not implement the same task in the parent thread.
+
+A corrected retry is legal only after the prior pending request has resolved, failed, or been explicitly abandoned through `blocked`/`human_decision` evidence. It must use the same approved Codex App managed-worktree topology and must not create a parallel implementation path.
+
+Creating a manual git worktree, switching to a subagent, or otherwise moving implementation into another filesystem/thread topology is a fallback topology change. It requires explicit user approval before execution and must disclose and exclude any abandoned pending or accidental fallback work from review, merge-back, and closeout evidence unless the user explicitly accepts it.
+
 ## Lifecycle And Closeout Boundary
 
 Use `THREAD-LIFECYCLE.md` to report the current managed worktree state and legal next transition. A child implementation thread must not archive itself and must not delete local or remote branches.
