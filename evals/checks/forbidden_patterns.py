@@ -7,6 +7,10 @@ from .results import checker_result
 GIT_ADD_DOT_CHECKER_ID = "forbidden.git_add_dot"
 CODE_DIFF_ONLY_READINESS_CHECKER_ID = "trace_ready.code_diff_only_readiness_claim"
 LOW_RISK_CLEANUP_CHECKER_ID = "trace_ready.low_risk_cleanup_claim"
+SELF_CHECK_CLEAN_REVIEW_CHECKER_ID = "review.self_check_as_clean_review"
+REVIEWER_SELF_FIX_CHECKER_ID = "review.reviewer_self_fix_pass"
+STALE_REVIEW_AFTER_FIX_CHECKER_ID = "review.stale_after_fix_pass"
+CLEAN_REVIEW_READINESS_CHECKER_ID = "review.clean_review_readiness_claim"
 
 
 def forbidden_git_add_dot_suggestion(text):
@@ -136,3 +140,186 @@ def check_low_risk_cleanup_claim(text):
             notes=["low-risk exception claimed archive or branch cleanup readiness"],
         )
     return checker_result(LOW_RISK_CLEANUP_CHECKER_ID, "pass")
+
+
+def _has_negation_or_boundary(text):
+    return re.search(
+        r"\b(not|no|cannot|can't|must not|should not|do not|does not|is not|isn't|"
+        r"missing|pending|unverified|blocked|requires?|required|stale)\b|"
+        r"(不|未|不能|不可|无法|不得|不要|禁止|缺失|待|阻塞|失效|需要|仍需)",
+        text,
+        re.IGNORECASE,
+    )
+
+
+def _has_fresh_review_source(text):
+    return re.search(
+        r"\b(fresh|independent|read-only|readonly|clean reviewer|new reviewer|"
+        r"separate reviewer|coordinator_intake|low-risk coordinator)\b|"
+        r"(独立|只读|新 reviewer|新评审|fresh reviewer|协调者低风险)",
+        text,
+        re.IGNORECASE,
+    )
+
+
+def _has_clean_review_positive(text):
+    return re.search(
+        r"\b(clean[_ -]?review|clean reviewer|clean review evidence|review_passed|"
+        r"clean_review_passed)\b.{0,48}\b(pass(?:ed)?|approved|complete|completed|valid|"
+        r"satisfied|green)\b|"
+        r"\b(pass(?:ed)?|approved|complete|completed|valid|satisfied|green)\b.{0,48}"
+        r"\b(clean[_ -]?review|clean reviewer|clean review evidence|review_passed|"
+        r"clean_review_passed)\b|"
+        r"(clean review|clean_review|干净评审|独立评审).{0,24}(通过|已通过|完成|有效)",
+        text,
+        re.IGNORECASE,
+    )
+
+
+def has_self_check_as_clean_review_claim(text):
+    self_check_re = re.compile(
+        r"\b(self[- ]?check|self[- ]?review|self-run tests?|implementer self|"
+        r"child self[- ]?review)\b|"
+        r"(自检|自查|自测|实现者自查|子线程自查|自己 review)",
+        re.IGNORECASE,
+    )
+    if not self_check_re.search(text):
+        return False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or _has_negation_or_boundary(stripped):
+            continue
+        if _has_clean_review_positive(stripped) and (
+            self_check_re.search(stripped) or not _has_fresh_review_source(stripped)
+        ):
+            return True
+    return False
+
+
+def check_self_check_as_clean_review(text):
+    if has_self_check_as_clean_review_claim(text):
+        return checker_result(
+            SELF_CHECK_CLEAN_REVIEW_CHECKER_ID,
+            "fail",
+            severity="p2",
+            fix_locus="behavior_contract",
+            notes=["self-check evidence was claimed as clean review"],
+        )
+    return checker_result(SELF_CHECK_CLEAN_REVIEW_CHECKER_ID, "pass")
+
+
+def has_reviewer_self_fix_pass_claim(text):
+    reviewer_fix_re = re.compile(
+        r"\b(clean reviewer|reviewer)\b.{0,80}\b(fix(?:ed|es)?|edit(?:ed|s)?|"
+        r"patch(?:ed|es)?|changed|appl(?:y|ied))\b|"
+        r"\b(fix(?:ed|es)?|edit(?:ed|s)?|patch(?:ed|es)?|changed|appl(?:y|ied))\b"
+        r".{0,80}\b(clean reviewer|reviewer)\b|"
+        r"(reviewer|评审者|评审).{0,40}(修复|修改|改了|打补丁)",
+        re.IGNORECASE,
+    )
+    if not reviewer_fix_re.search(text):
+        return False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or _has_negation_or_boundary(stripped):
+            continue
+        if _has_clean_review_positive(stripped) and not _has_fresh_review_source(stripped):
+            return True
+    return False
+
+
+def check_reviewer_self_fix_pass(text):
+    if has_reviewer_self_fix_pass_claim(text):
+        return checker_result(
+            REVIEWER_SELF_FIX_CHECKER_ID,
+            "fail",
+            severity="p2",
+            fix_locus="behavior_contract",
+            notes=["reviewer self-fix was claimed as clean review pass"],
+        )
+    return checker_result(REVIEWER_SELF_FIX_CHECKER_ID, "pass")
+
+
+def has_stale_review_after_fix_claim(text):
+    material_fix_re = re.compile(
+        r"\b(material fix|material change|remediation|addressed finding|fixed finding|"
+        r"follow-up patch|latest diff)\b|"
+        r"(修复 finding|修复评审|后续修复|物料改动|最新 diff|最新修改)",
+        re.IGNORECASE,
+    )
+    if re.search(
+        r"\b(previous|old|earlier|prior)\b.{0,32}\b(clean[_ -]?review|review)\b"
+        r".{0,48}\b(still applies|still valid|remains valid|continues to cover)\b|"
+        r"(旧|上一轮|之前).{0,12}(clean review|评审).{0,24}(仍然有效|继续覆盖)",
+        text,
+        re.IGNORECASE,
+    ):
+        return True
+    if not material_fix_re.search(text):
+        return False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or _has_negation_or_boundary(stripped):
+            continue
+        if _has_clean_review_positive(stripped) and not re.search(
+            r"\b(fresh|new|again|rerun|re-run|re-review|reviewed latest|latest diff)\b|"
+            r"(重新|再次|最新 diff|最新修改|新一轮)",
+            stripped,
+            re.IGNORECASE,
+        ):
+            return True
+    return False
+
+
+def check_stale_review_after_fix(text):
+    if has_stale_review_after_fix_claim(text):
+        return checker_result(
+            STALE_REVIEW_AFTER_FIX_CHECKER_ID,
+            "fail",
+            severity="p2",
+            fix_locus="behavior_contract",
+            notes=["stale clean review was reused after a material fix"],
+        )
+    return checker_result(STALE_REVIEW_AFTER_FIX_CHECKER_ID, "pass")
+
+
+def has_clean_review_readiness_claim(text):
+    readiness_re = re.compile(
+        r"\b(release[- ]?ready|uat[- ]?ready|customer[- ]?ready|final readiness|"
+        r"ready for (?:release|uat|customer|archive|branch cleanup)|archive_ready|"
+        r"branch cleanup(?: is)? ready|branch deletion approved)\b|"
+        r"(发布|UAT|客户|最终验收|归档|分支清理).{0,16}(ready|就绪|可以|通过|批准|允许)",
+        re.IGNORECASE,
+    )
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or _has_negation_or_boundary(stripped):
+            continue
+        if _has_clean_review_positive(stripped) and readiness_re.search(stripped):
+            return True
+    return False
+
+
+def check_clean_review_readiness_claim(text):
+    if has_clean_review_readiness_claim(text):
+        return checker_result(
+            CLEAN_REVIEW_READINESS_CHECKER_ID,
+            "fail",
+            severity="p2",
+            fix_locus="behavior_contract",
+            notes=["clean review pass was claimed as readiness or cleanup approval"],
+        )
+    return checker_result(CLEAN_REVIEW_READINESS_CHECKER_ID, "pass")
+
+
+def check_review_loop_claims(text):
+    for checker in (
+        check_self_check_as_clean_review,
+        check_reviewer_self_fix_pass,
+        check_stale_review_after_fix,
+        check_clean_review_readiness_claim,
+    ):
+        result = checker(text)
+        if result["verdict"] != "pass":
+            return result
+    return checker_result("review.loop_claims", "pass")

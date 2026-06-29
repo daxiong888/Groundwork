@@ -93,6 +93,14 @@ result_package:
     findings: []
     evidence: ""
 
+  review_loop:
+    status: "self_check_complete | clean_review_pending | clean_review_passed | needs_remediation | remediation_in_progress | remediation_self_check_complete | blocked | human_decision | low_risk_coordinator_intake"
+    latest_material_change_id: ""
+    previous_review_stale_reason: ""
+    findings_addressed: []
+    next_review_required: "true | false"
+    next_route: "clean_reviewer | dispatch_write_task | verify | triage | human_decision | done"
+
   task:
     title: ""
     task_type: ""
@@ -162,6 +170,8 @@ When Goal Mode is required, `goal_mode.goal_command_first_line` and `goal_mode.l
 `branch_cleanup.cleanup_completed = true`, `lifecycle.current_state = branch_cleaned`, or any equivalent cleanup claim requires branch identity, required approval, and cleanup evidence. Missing approval or uncertain branch identity must route to `human_decision` or `blocked`, not `done`.
 
 `clean_review.status = passed` requires fresh clean-review evidence or a documented `coordinator_intake` decision that satisfies the low-risk exception in `skills/dispatch/CLEAN-REVIEW-FANOUT.md`. A child result package, `review_package_returned`, or self-review cannot make the package archive-ready.
+
+`review_loop.status` must reflect the latest material change, not the oldest returned package state. If a clean-review finding was fixed after review, set `previous_review_stale_reason` and `next_review_required = true` until the latest diff receives fresh clean review or a valid low-risk coordinator-intake exception. `findings_addressed` lists only cited findings or accepted gap-closure items that were actually fixed and rechecked.
 
 Older v0.3.2 packages without `runtime_identity`, `goal_mode`, `lifecycle`, `merge_back`, `branch_cleanup`, or `clean_review` remain readable. If lifecycle closeout requires any missing v0.3.3 field, use `needs_remediation`, `blocked`, or `human_decision` rather than inferring identity, Goal Mode, merge-back, cleanup, or clean-review evidence.
 

@@ -175,6 +175,103 @@ class ForbiddenPatternTests(unittest.TestCase):
 
         self.assertEqual(result["verdict"], "pass")
 
+    def test_review_self_check_as_clean_review_fails(self):
+        result = forbidden_patterns.check_self_check_as_clean_review(
+            "Self-check Evidence: tests passed.\nClean Review Evidence: passed."
+        )
+
+        self.assertEqual(result["checker_id"], "review.self_check_as_clean_review")
+        self.assertEqual(result["verdict"], "fail")
+        self.assertEqual(result["severity"], "p2")
+        self.assertEqual(result["fix_locus"], "behavior_contract")
+        self.assertEqual(result["notes"], ["self-check evidence was claimed as clean review"])
+
+    def test_review_self_check_clean_review_missing_passes(self):
+        result = forbidden_patterns.check_self_check_as_clean_review(
+            "Self-check Evidence: tests passed.\nClean Review Evidence: missing."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_review_self_check_fresh_reviewer_passes(self):
+        result = forbidden_patterns.check_self_check_as_clean_review(
+            "Self-check Evidence: tests passed.\nClean Review Evidence: fresh read-only reviewer passed."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_review_reviewer_self_fix_pass_fails(self):
+        result = forbidden_patterns.check_reviewer_self_fix_pass(
+            "The clean reviewer edited the skill file to fix the finding.\nClean review passed."
+        )
+
+        self.assertEqual(result["checker_id"], "review.reviewer_self_fix_pass")
+        self.assertEqual(result["verdict"], "fail")
+        self.assertEqual(result["severity"], "p2")
+        self.assertEqual(result["fix_locus"], "behavior_contract")
+        self.assertEqual(result["notes"], ["reviewer self-fix was claimed as clean review pass"])
+
+    def test_review_reviewer_self_fix_requires_new_reviewer_passes(self):
+        result = forbidden_patterns.check_reviewer_self_fix_pass(
+            "The reviewer edited the finding, so clean review is stale and a new reviewer is required."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_review_stale_after_fix_pass_fails(self):
+        result = forbidden_patterns.check_stale_review_after_fix(
+            "After the material fix, clean review passed."
+        )
+
+        self.assertEqual(result["checker_id"], "review.stale_after_fix_pass")
+        self.assertEqual(result["verdict"], "fail")
+        self.assertEqual(result["severity"], "p2")
+        self.assertEqual(result["fix_locus"], "behavior_contract")
+        self.assertEqual(result["notes"], ["stale clean review was reused after a material fix"])
+
+    def test_review_previous_review_still_valid_fails(self):
+        result = forbidden_patterns.check_stale_review_after_fix(
+            "The previous clean review still applies after the follow-up patch."
+        )
+
+        self.assertEqual(result["verdict"], "fail")
+
+    def test_review_stale_after_fresh_rereview_passes(self):
+        result = forbidden_patterns.check_stale_review_after_fix(
+            "After the material fix, a fresh reviewer reviewed latest diff and clean review passed."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_review_clean_review_release_ready_fails(self):
+        result = forbidden_patterns.check_clean_review_readiness_claim(
+            "Clean review passed and the package is ready for release."
+        )
+
+        self.assertEqual(result["checker_id"], "review.clean_review_readiness_claim")
+        self.assertEqual(result["verdict"], "fail")
+        self.assertEqual(result["severity"], "p2")
+        self.assertEqual(result["fix_locus"], "behavior_contract")
+        self.assertEqual(
+            result["notes"],
+            ["clean review pass was claimed as readiness or cleanup approval"],
+        )
+
+    def test_review_clean_review_not_release_ready_passes(self):
+        result = forbidden_patterns.check_clean_review_readiness_claim(
+            "Clean review passed but release readiness still requires separate evidence."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_review_loop_claims_returns_first_failure(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            "自检通过，所以 clean review 已通过。"
+        )
+
+        self.assertEqual(result["checker_id"], "review.self_check_as_clean_review")
+        self.assertEqual(result["verdict"], "fail")
+
 
 class ArtifactCheckerTests(unittest.TestCase):
     def test_artifact_missing_target_reader_checker_result_fail(self):
@@ -208,6 +305,18 @@ class CheckerResultShapeTests(unittest.TestCase):
             forbidden_patterns.check_git_add_dot("git add ."),
             forbidden_patterns.check_code_diff_only_readiness("Status: ready for UAT"),
             forbidden_patterns.check_low_risk_cleanup_claim("delete branch may proceed"),
+            forbidden_patterns.check_self_check_as_clean_review(
+                "Self-check Evidence: tests passed.\nClean Review Evidence: passed."
+            ),
+            forbidden_patterns.check_reviewer_self_fix_pass(
+                "The reviewer edited the file.\nClean review passed."
+            ),
+            forbidden_patterns.check_stale_review_after_fix(
+                "After the material fix, clean review passed."
+            ),
+            forbidden_patterns.check_clean_review_readiness_claim(
+                "Clean review passed and ready for UAT."
+            ),
             artifact_checks.check_missing_target_reader("Reader Action Needed: review."),
         ]
 

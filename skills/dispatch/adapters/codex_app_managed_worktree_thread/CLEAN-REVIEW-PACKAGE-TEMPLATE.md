@@ -21,6 +21,13 @@ clean_review_package:
     acceptance_criteria: ""
     result_package: ""
     review_package: ""
+    review_loop:
+      status: "self_check_complete | clean_review_pending | clean_review_passed | needs_remediation | remediation_in_progress | remediation_self_check_complete | blocked | human_decision | low_risk_coordinator_intake"
+      latest_material_change_id: ""
+      previous_review_stale_reason: ""
+      findings_addressed: []
+      next_review_required: "true | false"
+      next_route: "clean_reviewer | dispatch_write_task | verify | triage | human_decision | done"
     changed_files: []
     diff_or_findings_completeness: "complete | redacted_complete | redacted_partial | not_applicable"
     redacted_diff_or_detail: ""
@@ -77,6 +84,8 @@ clean_review_package:
 - Do not edit files. If a fix is needed, recommend `dispatch_write_task`.
 - Do not spawn more agents unless a separate explicit delegation approves it.
 - Mark absent validation, redacted-but-needed diff detail, missing source truth, or unclear acceptance mapping as `unverified` or `blocked`.
+- Treat `review_loop.previous_review_stale_reason` as a blocker for clean-review pass unless the package also includes fresh review evidence for the latest material change.
+- If remediation is needed, return findings and route writes separately; do not perform the fix inside clean review.
 - Cite package sections, file paths, commands, or supplied observations for each finding.
 - Report coverage explicitly. `covered` must name the package areas actually reviewed; `not_covered` must name missing, redacted, unavailable, or intentionally skipped areas.
 - Do not treat the child implementation self-review as clean review evidence.

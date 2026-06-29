@@ -56,6 +56,8 @@ Use `LIGHTWEIGHT-PLAN.md` before editing: What, Why, Files, Test, Risk. Map acce
 
 Use `skills/_shared/ROLE-SEPARATION.md` for material changes. `implement` may provide `Self-check Evidence` from its own inspection and checks, but must not label that evidence as `Clean Review Evidence` or `Independent Verification Evidence`. For material changes, the final report must include `Role`, `Design Source`, `Self-check Evidence`, `Clean Review Evidence`, `Independent Verification Evidence`, `Runtime Evidence`, `Browser Evidence`, `UAT Evidence`, `Release Evidence`, `Readiness Boundary`, and `Required Next Independent Role`.
 
+Use `skills/_shared/REVIEW-LOOP.md` when implementation is performed in a child thread, managed worktree, subagent, or other reviewable execution package. The implementer owns self-check evidence and the reviewable result package only. Set `Clean Review Evidence` to `pending`, `missing`, or `not applicable`; do not claim clean review passed from implementer self-review. If the implementation fixes a clean-review finding, mark any prior clean review stale for the latest diff and route the package back to fresh clean review unless a documented low-risk coordinator-intake exception applies.
+
 Use `skills/_shared/RUNTIME-CAPABILITY.md` when the implementation request or final report references runtime/model selection, selector enforcement, child-thread/worktree execution, subagents, runtime cache, marketplace, or installed-plugin behavior. `implement` may report source-validation checks it ran, but must not claim runtime execution, cache refresh, model execution, or selector enforcement without runtime/tool evidence.
 
 Use `skills/_shared/LLM-WIKI.md` when a project wiki is present or the user cites wiki pages. Wiki context may identify likely files, concepts, prior decisions, or stale-risk areas, but implementation must inspect source, contracts, tests, or authoritative artifacts before changing code. Do not create backend fields, APIs, states, permissions, migrations, owners, metrics, tests, release claims, marketplace claims, installed-plugin claims, or cache-refresh claims from wiki synthesis, page-level source lists, uncited claims, stale pages, implementation summaries, or graph/search/index output alone. If implementation reveals durable reusable architecture, contract, procedure, or error-book knowledge, emit a `Wiki Update Candidate` or recommend the `wiki` route instead of updating wiki pages unless the user explicitly requested wiki maintenance.
@@ -126,14 +128,15 @@ If using a subagent for review, use `skills/_shared/SUBAGENT-DELEGATION.md`. The
 8. Make minimal focused changes.
 9. Run the fastest relevant checks, including the original failing check when one exists.
 10. Add or update a focused regression test/check when feasible and proportional to risk.
-11. If fixing a verify failure, confirm the original failure was re-QA'd or explain why it remains unverified.
+11. If fixing a verify or clean-review failure, confirm the original failed check or cited finding was re-QA'd, list `findings_addressed`, and explain unresolved gaps.
 12. If runtime/model selection is material, include `capability_status`, `selector_enforcement`, evidence layer, and Runtime mismatch status; use `unknown`, `unavailable`, or `prompt_preference` rather than silent substitution when runtime/tool evidence is absent.
 13. For runtime/cache claims, name installed plugin root, source root, cache/source refresh or equivalence evidence, run scope, commands/trials, and limitations; otherwise state that runtime evidence was not refreshed and is not claimed.
 14. Include a `Wiki Update Candidate` only when the implementation produced durable reusable project knowledge and the current request did not already authorize wiki maintenance.
-15. In the final report, include `Scope`, `Acceptance Map`, `Evidence Inspected`, `Findings P0/P1/P2`, `Non-Readiness Boundary`, `Gaps`, and `Next Action` when the task touches implementation conformance, gated implementation, or reviewable delivery evidence.
-16. Run self-review from `SELF-REVIEW.md`.
-17. Report local evidence and remaining gaps, but do not claim final readiness.
-18. Recommend `verify` for readiness.
+15. For child-thread, managed-worktree, subagent, or package-returning implementation, include a `Review Loop` status with `status`, `previous_review_stale_reason`, `findings_addressed`, `next_review_required`, and `next_route`.
+16. In the final report, include `Scope`, `Acceptance Map`, `Evidence Inspected`, `Findings P0/P1/P2`, `Non-Readiness Boundary`, `Gaps`, and `Next Action` when the task touches implementation conformance, gated implementation, or reviewable delivery evidence.
+17. Run self-review from `SELF-REVIEW.md`.
+18. Report local evidence and remaining gaps, but do not claim final readiness.
+19. Recommend clean review for reviewable implementation packages, then `verify` only when a readiness or evidence-sufficiency claim is in scope.
 
 ## CHECKPOINTS
 
@@ -186,6 +189,12 @@ Runtime Capability:
 - Runtime mismatch:
 - Fallback proposed:
 - User approval required:
+Review Loop:
+- status:
+- previous_review_stale_reason:
+- findings_addressed:
+- next_review_required:
+- next_route:
 Role:
 Design Source:
 Self-check Evidence:
