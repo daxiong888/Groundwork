@@ -34,11 +34,14 @@ Derived from PRD v0.3.3 FR-1, Dispatch Package v2, managed worktree review/resul
 - `needs_remediation` is not enough for `archive_ready` unless remediation is explicitly moved to a new task and the current child worktree is intentionally discarded.
 - `archived` does not imply `branch_cleaned`.
 - Branch cleanup is a separate lifecycle path with separate evidence and approval requirements.
+- `pendingWorktreeId` is not success evidence. It may only represent pending initialization until it resolves to both a child thread identifier and a worktree path.
+- While initialization is pending, the coordinator must wait/poll/resolve or route to `blocked`/`human_decision`. It must not implement the same task in the parent thread and must not create a manual git worktree fallback without explicit user approval for the topology change.
 
 ## Lifecycle States
 
 ```text
 package_admitted
+worktree_init_pending
 child_thread_created
 prompt_delivered
 running
@@ -85,7 +88,7 @@ Status mapping:
 
 | Registry status | Lifecycle states |
 |---|---|
-| `created` | `package_admitted`, `child_thread_created`, `prompt_delivered` |
+| `created` | `package_admitted`, `worktree_init_pending`, `child_thread_created`, `prompt_delivered` |
 | `active` | `running` |
 | `review-ready` | `review_package_returned`, `clean_review_pending`, `clean_review_passed` |
 | `blocked` | `needs_remediation`, `blocked`, `discard_pending` |
@@ -93,6 +96,8 @@ Status mapping:
 | `merged` | `merged_to_main_worktree` |
 | `archived` | `archive_ready`, `archived`, `branch_cleanup_pending`, `branch_cleaned`, `branch_retained_with_reason`, `closed` |
 | `abandoned` | `discarded`, `blocked` with human decision, or retained evidence that the child work is intentionally not continued |
+
+`worktree_init_pending` may be recorded as an initialization trace with `pendingWorktreeId`, but it does not satisfy the recoverable registry record required for `running` or later active work because the child thread identifier and worktree path are still missing.
 
 ## Registry Event Rule
 
@@ -117,6 +122,7 @@ If no artifact path or trace log is available, route to `blocked` or `human_deci
 | State | Meaning | Required Evidence |
 |---|---|---|
 | `package_admitted` | Adapter admissibility checks passed and execution approval/capability gates may be evaluated. | Dispatch Package v2 identity, admissibility result, execution gate status. |
+| `worktree_init_pending` | Codex App returned a pending worktree request that has not resolved to an executable child thread/worktree. | `pendingWorktreeId`, intended runtime correlation id, wait/poll plan or blocker, and evidence that no parent implementation or manual fallback is being used. |
 | `child_thread_created` | Runtime created a Codex App child thread. | Thread identifier and runtime evidence. |
 | `prompt_delivered` | Adapter delivered the child prompt to the child thread. | Delivered prompt identity, task ID, and runtime evidence. |
 | `running` | Child thread is executing or has not returned a terminal package. | Last observed status or runtime timestamp when available. |
@@ -140,7 +146,12 @@ If no artifact path or trace log is available, route to `blocked` or `human_deci
 
 ```text
 package_admitted
+  -> worktree_init_pending
   -> child_thread_created
+  -> blocked
+
+worktree_init_pending
+  -> child_thread_created only after both child thread identifier and worktree path are known
   -> blocked
 
 child_thread_created
@@ -243,6 +254,8 @@ Use a later branch cleanup checklist when branch state is known or unknown. Unkn
 Future lifecycle evals should reject:
 
 - child prompts or results that tell the child to archive itself;
+- `pendingWorktreeId -> child_thread_created` without resolved child thread identifier and worktree path;
+- pending initialization that continues implementation in the parent/coordinator thread or creates a manual git worktree fallback without explicit user approval;
 - `review_package_returned -> archive_ready` without merge, discard, or blocked-with-human-decision evidence;
 - `clean_review_pending -> archive_ready`;
 - `archived -> closed` when branch state is known to require cleanup;

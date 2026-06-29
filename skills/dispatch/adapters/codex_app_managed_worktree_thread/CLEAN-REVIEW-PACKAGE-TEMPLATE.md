@@ -9,6 +9,8 @@ Evidence Level: Derived from PRD v0.3.3 FR-7 and managed worktree review/result 
 
 Use this template when coordinator intake decides a completed managed worktree result or review package needs fresh-context clean review.
 
+`source.review_loop` is the reviewed implementation package's current review-loop state. It is not the clean review package's own output status and must not be treated as clean-review evidence unless the supplied package also contains fresh clean-review evidence for the latest material change.
+
 ```yaml
 clean_review_package:
   package_version: 1
@@ -21,6 +23,13 @@ clean_review_package:
     acceptance_criteria: ""
     result_package: ""
     review_package: ""
+    review_loop:
+      status: "self_check_complete | clean_review_pending | clean_review_passed | needs_remediation | remediation_in_progress | remediation_self_check_complete | blocked | human_decision | low_risk_coordinator_intake"
+      latest_material_change_id: ""
+      previous_review_stale_reason: ""
+      findings_addressed: []
+      next_review_required: "true | false"
+      next_route: "clean_reviewer | dispatch_write_task | verify | triage | human_decision | done"
     changed_files: []
     diff_or_findings_completeness: "complete | redacted_complete | redacted_partial | not_applicable"
     redacted_diff_or_detail: ""
@@ -32,6 +41,8 @@ clean_review_package:
   context_rules:
     fresh_context_required: true
     parent_memory_allowed: false
+    parent_thread_history_allowed: false
+    parent_context_fork_allowed: false
     hidden_context_allowed: false
     supplied_artifacts_only: true
     cite_paths_or_package_sections: true
@@ -40,12 +51,15 @@ clean_review_package:
     read_only: true
     file_edits_allowed: false
     spawn_more_agents_allowed: false
+    nested_delegation_allowed: false
     runtime_execution_allowed: false
     remote_writes_allowed: false
     destructive_actions_allowed: false
 
   disallowed_claims:
     child_self_review_counts_as_clean_review: false
+    forked_parent_context_counts_as_clean_review: false
+    nested_delegation_counts_as_clean_review: false
     final_readiness_approval: false
     uat_or_release_approval: false
     merge_back_completed_without_evidence: false
@@ -74,9 +88,14 @@ clean_review_package:
 
 - Treat the package as the complete review context.
 - Do not rely on parent thread memory, unstated prior decisions, or hidden local context.
+- If the reviewer was spawned from a full parent-thread history fork, such as `fork_context=true` or an equivalent inherited-context mode, return `unverified` or `blocked`; do not report a clean review `pass`.
 - Do not edit files. If a fix is needed, recommend `dispatch_write_task`.
 - Do not spawn more agents unless a separate explicit delegation approves it.
+- If unapproved nested agents or child threads were spawned, disclose that topology and return `unverified` or `blocked` for clean-review authority.
+- A human decision may accept the risk of proceeding without Clean Review Evidence, but it must not convert forked or nested reviewer output into a clean-review `pass`.
 - Mark absent validation, redacted-but-needed diff detail, missing source truth, or unclear acceptance mapping as `unverified` or `blocked`.
+- Treat `review_loop.previous_review_stale_reason` as evidence that earlier review output cannot be reused. It is not itself a blocker to performing this fresh review; this reviewer may return `pass` only after independently reviewing the latest material change in the supplied package and citing that fresh evidence.
+- If remediation is needed, return findings and route writes separately; do not perform the fix inside clean review.
 - Cite package sections, file paths, commands, or supplied observations for each finding.
 - Report coverage explicitly. `covered` must name the package areas actually reviewed; `not_covered` must name missing, redacted, unavailable, or intentionally skipped areas.
 - Do not treat the child implementation self-review as clean review evidence.
@@ -93,7 +112,9 @@ Before reviewing substance, mark the package incomplete when any required item i
 - result package or review package;
 - changed file list or explicit no-change statement;
 - validation evidence or checks-not-run explanation;
+- explicit fresh-context rules forbidding parent thread history forks;
 - read-only allowed actions;
+- explicit nested-delegation prohibition;
 - output requirements.
 
 Incomplete packages should return `blocked` or `unverified`, not `pass`.

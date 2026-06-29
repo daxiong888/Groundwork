@@ -62,7 +62,7 @@ result_package:
     failure_action: "none | corrective_resend | blocked | needs_remediation"
 
   lifecycle:
-    current_state: "package_admitted | child_thread_created | prompt_delivered | running | review_package_returned | clean_review_pending | clean_review_passed | needs_remediation | blocked | merge_pending | discard_pending | merged_to_main_worktree | discarded | archive_ready | archived | branch_cleanup_pending | branch_cleaned | branch_retained_with_reason | closed"
+    current_state: "package_admitted | worktree_init_pending | child_thread_created | prompt_delivered | running | review_package_returned | clean_review_pending | clean_review_passed | needs_remediation | blocked | merge_pending | discard_pending | merged_to_main_worktree | discarded | archive_ready | archived | branch_cleanup_pending | branch_cleaned | branch_retained_with_reason | closed"
     archive_ready: "true | false | unknown"
     archive_blockers: []
     closeout_decision: "archive | retain | discard | blocked | human_decision | not_applicable"
@@ -93,6 +93,14 @@ result_package:
     findings: []
     evidence: ""
 
+  review_loop:
+    status: "self_check_complete | clean_review_pending | clean_review_passed | needs_remediation | remediation_in_progress | remediation_self_check_complete | blocked | human_decision | low_risk_coordinator_intake"
+    latest_material_change_id: ""
+    previous_review_stale_reason: ""
+    findings_addressed: []
+    next_review_required: "true | false"
+    next_route: "clean_reviewer | dispatch_write_task | verify | triage | human_decision | done"
+
   task:
     title: ""
     task_type: ""
@@ -103,6 +111,8 @@ result_package:
 
   runtime:
     adapter: "codex_app_managed_worktree_thread"
+    init_status: "not_started | pending | child_thread_created | failed | blocked"
+    pending_worktree_id: ""
     thread_identifier: ""
     thread_title_display_label: ""
     worktree_type: "Codex-managed | none"
@@ -155,6 +165,10 @@ When Goal Mode is required, `goal_mode.goal_command_first_line` and `goal_mode.l
 
 `registry.current_status` must map to `THREAD-LIFECYCLE.md` and `registry.state_event_ref` must point to the artifact/log event for the latest status transition. If the adapter cannot name base ref, artifact path, or event evidence, use `blocked` or `needs_remediation` for lifecycle closeout decisions.
 
+When Codex App returns `pendingWorktreeId` but no child thread identifier or worktree path, set `runtime.init_status = pending`, set `runtime.pending_worktree_id`, set `lifecycle.current_state = worktree_init_pending`, keep `changes.changed_files` empty, and route the result to wait/poll/resolve, `blocked`, or `human_decision`. Do not report `child_thread_created`, `ready_for_review`, merge-back, archive readiness, or parent-thread implementation evidence from a pending id alone.
+
+For closeout, map `runtime.init_status = child_thread_created` to `init_resolution_status.status = resolved` with `resolution_source = codex_managed_worktree`. Map `runtime.init_status = pending` to `init_resolution_status.status = pending`; it must stay non-mergeable until resolved, failed, blocked, or routed to human decision. If a user explicitly accepts a fallback topology, the closeout package must use `resolution_source = approved_topology_change` and preserve approval plus merge source evidence.
+
 `lifecycle.current_state` must reflect the adapter-visible lifecycle evidence for the result package. `review_package_returned` is not enough for `archive_ready`; archive readiness requires clean review plus merge/discard evidence or a blocked-with-human-decision closeout path, and `archived` does not imply branch cleanup.
 
 `merge_back.applied_to_main_worktree = true`, `lifecycle.current_state = merged_to_main_worktree`, or any equivalent merge-back claim requires `merge_back.reliable_source = true`, a source path/patch/branch or head that the coordinator can inspect, and merge evidence. Missing or unreliable source evidence must route to `needs_remediation`, `blocked`, or `human_decision`.
@@ -162,6 +176,8 @@ When Goal Mode is required, `goal_mode.goal_command_first_line` and `goal_mode.l
 `branch_cleanup.cleanup_completed = true`, `lifecycle.current_state = branch_cleaned`, or any equivalent cleanup claim requires branch identity, required approval, and cleanup evidence. Missing approval or uncertain branch identity must route to `human_decision` or `blocked`, not `done`.
 
 `clean_review.status = passed` requires fresh clean-review evidence or a documented `coordinator_intake` decision that satisfies the low-risk exception in `skills/dispatch/CLEAN-REVIEW-FANOUT.md`. A child result package, `review_package_returned`, or self-review cannot make the package archive-ready.
+
+`review_loop.status` must reflect the latest material change, not the oldest returned package state. If a clean-review finding was fixed after review, set `previous_review_stale_reason` and `next_review_required = true` until the latest diff receives fresh clean review or a valid low-risk coordinator-intake exception. `findings_addressed` lists only cited findings or accepted gap-closure items that were actually fixed and rechecked.
 
 Older v0.3.2 packages without `runtime_identity`, `goal_mode`, `lifecycle`, `merge_back`, `branch_cleanup`, or `clean_review` remain readable. If lifecycle closeout requires any missing v0.3.3 field, use `needs_remediation`, `blocked`, or `human_decision` rather than inferring identity, Goal Mode, merge-back, cleanup, or clean-review evidence.
 

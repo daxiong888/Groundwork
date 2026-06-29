@@ -11,7 +11,11 @@ Evidence Level: Derived from PRD v0.3.3 FR-7 and Issue 6, plus existing dispatch
 
 Clean review is an independent, fresh-context review of a completed result or review package. It is not the child implementation thread's self-review, and it is not a coordinator skimming the parent conversation.
 
+A reviewer spawned from the parent thread's full history is not a fresh-context clean reviewer, even if it is a different agent. If the attempted reviewer used a full parent-history fork or unapproved nested delegation, the coordinator must disclose the topology and treat Clean Review Evidence as `unverified` or `blocked` until a self-contained fresh-context review is rerun. A human decision may explicitly accept the risk of proceeding without Clean Review Evidence, but it must not relabel forked or nested reviewer output as a clean-review pass.
+
 The coordinator may perform low-cost intake to decide whether the package is complete enough to route. Deep review must fan out when size, risk, volume, missing evidence, or context freshness makes coordinator review unreliable.
+
+Use `skills/_shared/REVIEW-LOOP.md` for the stable post-implementation loop. A clean-review package may pass, block, or find remediation work, but it must not mutate files. When remediation changes material files, the previous clean-review result is stale for the latest diff and the coordinator must route the new package through clean review again unless the low-risk coordinator-intake exception is explicitly recorded.
 
 ## Coordinator Intake Boundary
 
@@ -27,6 +31,8 @@ Coordinator intake must not:
 
 - act as the only deep diff review for large, multiple, or high-risk packages;
 - treat child implementation self-review as clean review;
+- treat a full parent-context forked reviewer as clean review;
+- treat unapproved nested reviewer agents or child threads as clean review evidence;
 - infer missing facts from parent memory or hidden conversation context;
 - approve closeout, archive, or final readiness solely from a child self-check;
 - edit files as part of clean review.
@@ -84,6 +90,8 @@ Reviewers are read-only by default:
 - `read_only` must be `true`;
 - `file_edits_allowed` must be `false`;
 - `spawn_more_agents_allowed` must be `false`;
+- runtime invocation must disable parent thread history forks (`fork_context=false` or equivalent) when that control is available;
+- reviewer output from `fork_context=true`, equivalent full-history fork, or unapproved nested delegation must be `unverified` or `blocked`, not `pass`;
 - reviewer output must be findings, not patches;
 - reviewer must cite supplied package sections, paths, commands, or evidence;
 - missing evidence must be `unverified` or `blocked`, not guessed;
@@ -112,6 +120,19 @@ review_findings
 
 `coverage.covered` and `coverage.not_covered` are mandatory. A clean review that does not declare what was and was not covered must route to `unverified` or `blocked`, not `pass`, because closeout cannot infer review scope from findings alone.
 
+## Remediation Loop
+
+When clean review returns `needs_remediation`:
+
+- route writes to `dispatch_write_task`, the original child implementation route, or `implement`; do not let the clean reviewer edit files;
+- keep remediation scoped to cited findings, accepted gap-closure items, and required checks;
+- require the implementer to return updated `Self-check Evidence`, `findings_addressed`, checks run, checks not run, and remaining risks;
+- set `review_loop.previous_review_stale_reason` when material files changed after the prior clean review;
+- set `review_loop.next_review_required = true` unless a documented low-risk coordinator-intake exception applies;
+- route the updated package back to `clean_reviewer` or read-only `codex_subagent` before verify, merge-back, archive, branch cleanup, or closeout claims.
+
+Loop exits are limited to `clean_review_passed`, `blocked`, `human_decision`, or documented `low_risk_coordinator_intake`. These exits still do not prove runtime, browser, UAT, release, archive, branch cleanup, commit, push, PR, remote mutation, or final readiness.
+
 ## Expected Eval Hooks
 
 Later eval coverage should include:
@@ -122,6 +143,9 @@ Later eval coverage should include:
 - child implementation self-review is rejected as clean review;
 - clean reviewer output that edits files is rejected;
 - clean reviewer output that relies on hidden parent context is rejected;
+- clean reviewer output from `fork_context=true` or equivalent full parent-history fork is rejected;
+- clean reviewer output routed through unapproved nested agents or child threads is rejected or marked `unverified` or `blocked`;
 - missing validation evidence is reported as `unverified` or `blocked`;
 - clean review output declares `covered` and `not_covered` review scope;
 - clean review pass does not claim final readiness, archive, merge-back, branch cleanup, commit, push, PR, or remote mutation.
+- clean-review findings route to scoped remediation, then stale prior review evidence triggers a new clean-review pass before downstream closeout.

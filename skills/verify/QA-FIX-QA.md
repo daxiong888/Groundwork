@@ -50,3 +50,13 @@ When `implement` receives a verify failure:
 5. Report any unresolved gap back to `verify`.
 
 Do not turn one failed check into broad cleanup or unrelated behavior changes.
+
+## Clean Review Staleness
+
+When the failed verification or QA finding follows a clean review:
+
+- use `skills/_shared/REVIEW-LOOP.md` to preserve the review-loop state;
+- if the fix changes material reviewed files, set the previous clean review to stale for the latest diff;
+- report `findings_addressed`, the original failing check or reproduction rerun, and any checks not run;
+- route back to fresh clean review before claiming `Clean Review Evidence: passed` for the fixed change;
+- do not use the old clean-review pass as proof for verify/readiness after remediation.

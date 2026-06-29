@@ -50,6 +50,9 @@ Do not create a managed worktree child thread for:
 - local or remote branch deletion requested while staged changes, unstaged dirty changes, untracked files, or stash entries are unknown or may belong to the branch
 - remote branch deletion requested without explicit approval
 - force branch deletion requested without explicit human decision
+- unresolved `pendingWorktreeId` for the same task or runtime correlation id without both a child thread id and worktree path
+- parent/coordinator implementation requested or started for the same task while the managed worktree request is still pending
+- manual git worktree fallback requested to bypass a pending Codex App managed worktree without explicit user approval for the topology change
 
 ## Branch Cleanup No-op And Block Rules
 
@@ -72,6 +75,6 @@ Never silently coerce a branch cleanup package into managed worktree execution o
 - Use `blocked` when source truth, approval, required tools, conflict resolution, or required package fields are missing.
 - Use `needs_remediation` when the package is close but must be corrected before execution.
 - Use `no_execution_needed` when the package intentionally required no runtime execution.
-- Use `human_decision` when branch cleanup risk requires explicit approval or human retention/deletion choice.
+- Use `human_decision` when branch cleanup risk requires explicit approval, human retention/deletion choice, or a proposed fallback would change the requested managed-worktree/thread topology.
 
 Never silently coerce a rejected package into managed worktree execution.

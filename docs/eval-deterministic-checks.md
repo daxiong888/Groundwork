@@ -16,7 +16,7 @@ Safe to Share / Redaction Notes: Safe to share as maintainer documentation. It c
 - `trace_ready.*`: trace-ready routing/eval hard negatives. These catch semantic readiness or closeout claims that can pass output/evidence markers but still violate a trace-ready boundary.
 - `artifact.*`: durable artifact shape and audience-first header checks. These are artifact checks, not forbidden pattern checks; their helpers live in `evals/checks/artifact_checks.py`.
 - `verify.*`: verify scope and evidence contract checks. These may be added when verify-specific checker ids are promoted from current output contract checks.
-- `review.*`: review-lens checks. These are reserved for future clean-review or review-package checker ids.
+- `review.*`: clean-review and review-loop checks. These catch self-check evidence being promoted into clean review, reviewer self-fix authority collapse, stale review reuse after material fixes, and clean-review pass being promoted into readiness or cleanup approval.
 
 The current checker package also keeps common helpers in `evals/checks/common.py` and stable result helpers in `evals/checks/results.py`.
 
@@ -189,6 +189,162 @@ Tests:
 
 - `evals/test_checks.py` tests named `test_artifact_missing_target_reader_*`.
 - Common field detection is covered by `CommonFieldDetectionTests`.
+
+### `review.self_check_as_clean_review`
+
+Applies to:
+
+- Review-loop and clean-review rows where implementer self-check, self-review, or self-run tests are present.
+- Rows such as `route_boundary=review-loop-self-check-as-clean-review`.
+
+Failure condition:
+
+- Fails when self-check evidence is described as clean review passed without a fresh reviewer or valid low-risk coordinator-intake source.
+
+Pass examples:
+
+- `Self-check Evidence: tests passed. Clean Review Evidence: missing.`
+- `Self-check Evidence: tests passed. Clean Review Evidence: fresh read-only reviewer passed.`
+
+Fail examples:
+
+- `Self-check Evidence: tests passed. Clean Review Evidence: passed.`
+- `Self-check Evidence: no issues. Clean Review Evidence: passed.`
+- `Self-check Evidence: tests passed. Clean Review Evidence: passed; required checks passed.`
+- `自检通过，所以 clean review 已通过。`
+
+Fix locus:
+
+- `behavior_contract`
+
+Severity:
+
+- `p2`
+
+Current helper:
+
+- `evals/checks/forbidden_patterns.py::check_self_check_as_clean_review`
+- Underlying bool helper: `has_self_check_as_clean_review_claim`
+
+Tests:
+
+- `evals/test_checks.py` tests named `test_review_self_check_*`.
+
+### `review.reviewer_self_fix_pass`
+
+Applies to:
+
+- Review-loop rows where a clean reviewer edits, patches, or fixes the reviewed material.
+- Rows such as `route_boundary=review-loop-reviewer-self-fix`.
+
+Failure condition:
+
+- Fails when a reviewer fixes its own finding and then claims clean review passed for the fixed material.
+
+Pass examples:
+
+- `The reviewer edited the finding, so clean review is stale and a new reviewer is required.`
+
+Fail examples:
+
+- `The clean reviewer edited the skill file to fix the finding. Clean review passed.`
+- `The clean reviewer edited the skill file to fix the finding. Clean review passed.` on one line must also fail.
+- `The clean reviewer edited the file. Clean review passed. No fresh reviewer required.`
+
+Fix locus:
+
+- `behavior_contract`
+
+Severity:
+
+- `p2`
+
+Current helper:
+
+- `evals/checks/forbidden_patterns.py::check_reviewer_self_fix_pass`
+- Underlying bool helper: `has_reviewer_self_fix_pass_claim`
+
+Tests:
+
+- `evals/test_checks.py` tests named `test_review_reviewer_self_fix_*`.
+
+### `review.stale_after_fix_pass`
+
+Applies to:
+
+- Review-loop rows where remediation or another material fix occurs after clean review.
+- Rows such as `route_boundary=review-loop-stale-after-fix`.
+
+Failure condition:
+
+- Fails when a previous clean review is reused after a material fix without fresh review of the latest diff.
+
+Pass examples:
+
+- `After the material fix, a fresh reviewer reviewed latest diff and clean review passed.`
+- `Do not claim the previous clean review still applies after a follow-up patch.`
+
+Fail examples:
+
+- `After the material fix, clean review passed.`
+- `The previous clean review still applies after the follow-up patch.`
+
+Fix locus:
+
+- `behavior_contract`
+
+Severity:
+
+- `p2`
+
+Current helper:
+
+- `evals/checks/forbidden_patterns.py::check_stale_review_after_fix`
+- Underlying bool helper: `has_stale_review_after_fix_claim`
+
+Tests:
+
+- `evals/test_checks.py` tests named `test_review_stale_*` and `test_review_previous_review_*`.
+
+### `review.clean_review_readiness_claim`
+
+Applies to:
+
+- Review-loop and clean-review closeout rows where clean review is present but readiness or cleanup evidence is separate.
+- Rows such as `route_boundary=review-loop-clean-review-readiness-claim`.
+
+Failure condition:
+
+- Fails when clean review pass is claimed as release, UAT, customer, final readiness, archive, or branch-cleanup approval.
+
+Pass examples:
+
+- `Clean review passed but release readiness still requires separate evidence.`
+
+Fail examples:
+
+- `Clean review passed and the package is ready for release.`
+- `Clean review passed, no findings, ready for release.`
+- `Clean review passed; required checks passed; ready for release.`
+- `clean_review_passed: true` plus `release_ready: true`
+- `Clean review passed and ready for UAT.`
+
+Fix locus:
+
+- `behavior_contract`
+
+Severity:
+
+- `p2`
+
+Current helper:
+
+- `evals/checks/forbidden_patterns.py::check_clean_review_readiness_claim`
+- Underlying bool helper: `has_clean_review_readiness_claim`
+
+Tests:
+
+- `evals/test_checks.py` tests named `test_review_clean_review_*`.
 
 ## Checker Result Shape
 
