@@ -209,10 +209,10 @@ def has_clean_review_pass_claim(text):
         r"(clean review|clean-review|clean_review|clean review evidence|干净评审|独立评审)",
         re.IGNORECASE,
     )
-    negation_or_boundary = re.compile(
+    local_negation_or_boundary = re.compile(
         r"\b(not|no|cannot|can't|must not|should not|does not|do not|is not|isn't|"
-        r"invalid|unverified|blocked|missing)\b|"
-        r"(不|未|不能|不可|不算|不得|缺失|无效|阻塞|未验证)",
+        r"invalid|unverified|blocked|missing|remain(?:s|ed)?|do not report)\b|"
+        r"(不|未|不能|不可|不算|不得|缺失|无效|阻塞|未验证|不要报告)",
         re.IGNORECASE,
     )
     positive = re.compile(
@@ -220,9 +220,12 @@ def has_clean_review_pass_claim(text):
         r"(通过|有效|成立|认可|算作|算是)",
         re.IGNORECASE,
     )
-    labeled_positive = re.compile(
-        r"\b(clean review evidence|clean review|clean_review(?:\.status)?)\b\s*[:：=-]?\s*"
-        r"(pass|passed|valid|satisfied|approved)",
+    anchored_positive = re.compile(
+        r"\b(clean review evidence|clean review|clean_review(?:\.status)?)\b\s*"
+        r"(?:[:：=-]\s*)?"
+        r"(?:(?:is|was|has|counts as|counted as|status)\s+)?"
+        r"(pass|passed|valid|satisfied|approved)\b|"
+        r"(干净评审|独立评审).{0,8}(通过|有效|成立|认可)",
         re.IGNORECASE,
     )
 
@@ -230,8 +233,11 @@ def has_clean_review_pass_claim(text):
         stripped = line.strip()
         if not stripped or not clean_review_marker.search(stripped):
             continue
-        if negation_or_boundary.search(stripped):
-            continue
-        if labeled_positive.search(stripped) or positive.search(stripped):
+        if anchored_positive.search(stripped):
+            return True
+        for match in positive.finditer(stripped):
+            prefix = stripped[max(0, match.start() - 64):match.start()]
+            if local_negation_or_boundary.search(prefix):
+                continue
             return True
     return False
