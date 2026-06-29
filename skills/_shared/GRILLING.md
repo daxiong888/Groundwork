@@ -4,9 +4,9 @@ Target Reader: Groundwork skill authors, routers, implementers, clean reviewers,
 Reader Action Needed: Use this reference to run the shared grilling loop only when material ambiguity blocks a safe next route.
 Decision Supported: Whether to ask a single clarification question, answer directly, route to `to-prd`, route to decision mapping, route to `prototype`, or stop before implementation readiness claims.
 Artifact Type: shared workflow reference.
-Source of Truth: `docs/prd-v0.5-prototype-first-skill-expansion.md` FR-540, AC-A3, AC-D1, V050-003A in `artifacts/v0.5-prototype-first-skill-expansion/issue-map.md`, and `docs/prd-v0.5.1-socratic-grilling-expansion.md`.
-Scope: Shared grilling behavior, Socratic question taxonomy, question-quality gate, compact interactive output, route-after-answer behavior, route boundaries, route negatives, and evidence boundaries.
-Out of Scope: Creating a public `grill` skill, accepting PRDs, approving implementation readiness, replacing decision mapping, replacing prototype exploration, or claiming runtime/browser/UAT/release evidence.
+Source of Truth: `docs/prd-v0.5-prototype-first-skill-expansion.md` FR-540, AC-A3, AC-D1, V050-003A in `artifacts/v0.5-prototype-first-skill-expansion/issue-map.md`, `docs/prd-v0.5.1-socratic-grilling-expansion.md`, and maintainer direction to use Codex Plan Mode before PRD / grill-me handling.
+Scope: Shared grilling behavior, Socratic question taxonomy, Codex Plan Mode entry for raw requirement / PRD / explicit grilling requests, question-quality gate, compact interactive output, route-after-answer behavior, route boundaries, route negatives, and evidence boundaries.
+Out of Scope: Creating a public `grill` skill, accepting PRDs, approving implementation readiness, replacing decision mapping, replacing prototype exploration, executing Codex Plan Mode when the host does not expose it, or claiming runtime/browser/UAT/release evidence.
 Evidence Level: Source-validation policy. This file is local shared guidance only until separately reviewed and verified.
 Safe to Share / Redaction Notes: Safe to share as-is; contains no secrets, credentials, private payloads, or personal data.
 
@@ -39,6 +39,24 @@ Use the shared grilling loop when at least one condition is true:
 - Raw product, workflow, skill-selection, runtime, marketplace, plugin, prototype, or implementation intent has material ambiguity and the missing unknowns are not yet enumerable.
 - A requested PRD, prototype, or decision artifact would invent product truth without first discovering the highest-impact unknown.
 - The user wants planning help but the decision space is still too unclear to map options or write acceptance criteria.
+
+## Codex Plan Mode Entry
+
+For explicit `grill me` / challenge / clarify requests, raw requirement intake, and PRD/spec drafting requests, enter Codex Plan Mode first when the host exposes it. Plan Mode is the pre-output harness for deciding the narrowest safe route before drafting, asking, comparing, prototyping, or implementing.
+
+Use Plan Mode to run this Groundwork entry decision before user-visible output:
+
+1. Decide `direct fallback` versus `workflow-needed`.
+2. Identify the first owning workflow: `to-prd`, decision mapping, `prototype`, `to-issues`, `write-plan`, `implement`, `verify`, `handoff`, `dispatch`, or blocked.
+3. Inspect available user context, repo docs, source, tickets, artifacts, or wiki orientation before asking when they can answer the material unknown.
+4. Apply the question-quality gate if the next safe route depends on one clarification.
+5. Decide whether the user should see a compact grilling question, a draft PRD/spec boundary, a direct answer, or a stop condition.
+
+Plan Mode does not override route negatives. Tiny direct tasks, repo-doc-answerable questions, accepted implementation work, concrete prototype requests, enumerable decision comparisons, or verification asks still route to the narrower workflow.
+
+Do not print the full Plan Mode reasoning or the full question-quality gate during normal interaction. Keep the visible output compact unless the user asks for audit/debug detail or a durable review artifact.
+
+If the host does not expose a Plan Mode tool or visible mode switch, run the same entry decision as prompt-level planning and state the boundary only when it materially affects trust, for example: `Plan Mode: prompt-level fallback; no tool-enforced plan-mode evidence available.` Do not claim `tool_enforced`, runtime execution, selector enforcement, cache refresh, installed-plugin behavior, or Codex host behavior from prompt text alone.
 
 ## Route Negatives
 
@@ -193,6 +211,7 @@ Impact / Next route:
 
 For audit/debug output or durable review artifacts, the fuller output may state:
 
+- Plan Mode boundary: host Plan Mode used, prompt-level fallback, unavailable, or unknown, without claiming tool enforcement unless the host/adapter proves it.
 - Known facts inspected.
 - Material ambiguity blocking the next route.
 - The single clarification question.
@@ -213,4 +232,4 @@ Do not ask:
 
 Grilling output is Self-check or clarification evidence only. It may prepare PRD, prototype, decision mapping, issue slicing, implementation planning, or verification routes, but it cannot mark any downstream artifact accepted or ready.
 
-Do not claim clean review, independent verification, runtime evidence, browser evidence, UAT evidence, release evidence, customer readiness, marketplace behavior, installed-plugin cache behavior, or selector enforcement from grilling.
+Do not claim clean review, independent verification, runtime evidence, browser evidence, UAT evidence, release evidence, customer readiness, marketplace behavior, installed-plugin cache behavior, selector enforcement, or tool-enforced Plan Mode from grilling.
