@@ -29,6 +29,8 @@
     ],
     "defaultPrompt": [
       "Use Groundwork only when context, risk, or reuse justifies a workflow.",
+      "For raw requirements, PRD/spec drafting, or explicit grill-me/challenge/clarify requests, enter Codex Plan Mode first when the host exposes it.",
+      "Use Plan Mode to run the Groundwork entry decision, lifecycle preflight, shared grilling gate, and PRD scope before drafting or asking; if Plan Mode is unavailable, state the prompt-level planning fallback without claiming tool-enforced plan-mode evidence.",
       "Use Groundwork dispatch to route accepted ready tasks without executing them.",
       "Use Groundwork to verify an issue or prepare a handoff."
     ],
