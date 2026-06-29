@@ -236,8 +236,10 @@ def has_self_check_as_clean_review_claim(text):
         stripped = line.strip()
         if not stripped or _has_clean_review_boundary(stripped):
             continue
-        if _has_clean_review_positive(stripped) and (
-            self_check_re.search(stripped) or not _has_fresh_review_source(stripped)
+        if (
+            _has_clean_review_positive(stripped)
+            and not _has_fresh_review_source(stripped)
+            and (self_check_re.search(stripped) or "clean review" in stripped.lower())
         ):
             return True
     return False

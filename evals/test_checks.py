@@ -200,6 +200,13 @@ class ForbiddenPatternTests(unittest.TestCase):
 
         self.assertEqual(result["verdict"], "pass")
 
+    def test_review_self_check_same_line_fresh_reviewer_passes(self):
+        result = forbidden_patterns.check_self_check_as_clean_review(
+            "Self-check Evidence: tests passed. Clean Review Evidence: fresh read-only reviewer passed."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
     def test_review_self_check_no_issues_still_fails_when_clean_review_passed(self):
         result = forbidden_patterns.check_self_check_as_clean_review(
             "Self-check Evidence: no issues. Clean Review Evidence: passed."
