@@ -200,6 +200,14 @@ class ForbiddenPatternTests(unittest.TestCase):
 
         self.assertEqual(result["verdict"], "pass")
 
+    def test_review_self_check_invalid_clean_review_claim_boundary_passes(self):
+        result = forbidden_patterns.check_self_check_as_clean_review(
+            "Self-check Evidence: tests passed.\n"
+            "Decision: invalid clean-review pass claim; Clean Review Evidence remains missing."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
     def test_review_self_check_same_line_fresh_reviewer_passes(self):
         result = forbidden_patterns.check_self_check_as_clean_review(
             "Self-check Evidence: tests passed. Clean Review Evidence: fresh read-only reviewer passed."
@@ -253,6 +261,22 @@ class ForbiddenPatternTests(unittest.TestCase):
 
         self.assertEqual(result["verdict"], "pass")
 
+    def test_review_reviewer_requested_edit_package_boundary_passes(self):
+        result = forbidden_patterns.check_reviewer_self_fix_pass(
+            "issue_body: Clean reviewer package asks to edit files directly while reviewing.\n"
+            "Clean Review Evidence: fresh pass required after remediation if material."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_review_reviewer_authority_spent_boundary_passes(self):
+        result = forbidden_patterns.check_reviewer_self_fix_pass(
+            "Reason: clean reviewer authority is spent if the reviewer edits the reviewed change.\n"
+            "Clean Review Evidence: fresh pass required after remediation if material."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
     def test_review_reviewer_self_fix_no_fresh_reviewer_required_fails(self):
         result = forbidden_patterns.check_reviewer_self_fix_pass(
             "The clean reviewer edited the file. Clean review passed. No fresh reviewer required."
@@ -288,6 +312,29 @@ class ForbiddenPatternTests(unittest.TestCase):
     def test_review_stale_after_fresh_rereview_passes(self):
         result = forbidden_patterns.check_stale_review_after_fix(
             "After the material fix, a fresh reviewer reviewed latest diff and clean review passed."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_review_needs_remediation_boundary_not_stale_fix(self):
+        result = forbidden_patterns.check_stale_review_after_fix(
+            "Decision: clean_review_passed is rejected as unverified / needs_remediation."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_review_role_separation_material_change_boundary_not_stale_fix(self):
+        result = forbidden_patterns.check_stale_review_after_fix(
+            "A clean reviewer that edits becomes an implementer and loses clean-review authority for that material change.\n"
+            "Clean Review Evidence: required from this read-only reviewer."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_review_completed_worktree_result_boundary_not_clean_review_pass(self):
+        result = forbidden_patterns.check_stale_review_after_fix(
+            "Clean review completed managed worktree result.\n"
+            "routing_reason: Independent clean review of completed material work."
         )
 
         self.assertEqual(result["verdict"], "pass")
@@ -387,6 +434,100 @@ class ForbiddenPatternTests(unittest.TestCase):
         self.assertEqual(result["checker_id"], "review.readonly_direct_edit_claim")
         self.assertEqual(result["verdict"], "fail")
 
+    def test_reviewer_direct_edit_task_description_boundary_passes(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            "- Task: clean reviewer directly edits files while reviewing\n"
+            "- Reason: violates role separation. A clean reviewer that edits loses clean-review authority."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_reviewer_direct_edit_requested_runtime_boundary_passes(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            'requested_runtime: "clean reviewer with direct edits"'
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_reviewer_direct_edit_readiness_source_boundary_passes(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            'readiness_source: "User-supplied coordinator intake: clean reviewer package '
+            'asks to edit files directly while reviewing a completed managed worktree result."'
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_reviewer_direct_edit_next_role_boundary_passes(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            'Required Next Independent Role: "write implementer for accepted fixes, '
+            'then a new clean reviewer if fixes are made"'
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_reviewer_direct_edit_block_reason_boundary_passes(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            'block_reason: "package currently grants edit authority to clean reviewer"'
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_reviewer_direct_edit_readonly_authority_boundary_passes(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            "Reason: clean reviewer must remain read-only. If the reviewer edits files, "
+            "clean-review authority for that material change is spent and a new independent "
+            "clean reviewer is required."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_reviewer_direct_edit_collapse_authority_boundary_passes(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            'runtime_reason: "Clean review requires a fresh read-only role. '
+            'Direct edits would collapse reviewer and implementer authority."'
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_reviewer_direct_edit_separate_remediation_boundary_passes(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            "If that reviewer finds issues, dispatch a separate remediation write task "
+            "to an implementer, followed by a fresh clean review."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_reviewer_direct_edit_prohibit_boundary_passes(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            "Explicitly prohibit reviewer file edits."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_reviewer_direct_edit_remove_instruction_boundary_passes(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            "Remove any instruction that asks the reviewer to edit files. "
+            "If the review finds issues, dispatch a separate write task."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_reviewer_direct_edit_required_fixes_reroute_boundary_passes(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            "Any required fixes must be routed as a separate remediation/write task, "
+            "then reviewed again by a fresh independent clean reviewer."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_reviewer_direct_edit_invalidates_authority_boundary_passes(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            'runtime_reason: "The package asks the reviewer to edit files directly, '
+            'which invalidates clean-review authority."'
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
     def test_reviewer_direct_edit_boundary_passes_when_stale_new_reviewer_required(self):
         result = forbidden_patterns.check_review_loop_claims(
             "The clean reviewer edited files directly, so clean review is stale and a new reviewer is required."
@@ -397,6 +538,94 @@ class ForbiddenPatternTests(unittest.TestCase):
     def test_parent_context_validation_boundary_passes_when_unverified(self):
         result = forbidden_patterns.check_review_loop_claims(
             "Parent thread context is available, but validation remains unverified."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_parent_context_validation_boundary_passes_when_not_admissible(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            "Do not accept hidden parent memory as validation evidence; explicit validation evidence is required."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_parent_context_validation_boundary_passes_when_missing_evidence(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            "Reason: package omits required validation evidence and asks reviewer to infer success from parent-thread memory."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_parent_context_validation_future_signal_boundary_passes(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            'fastest_signal: "Package contains explicit validation evidence and no hidden-context dependency."'
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_parent_context_validation_remediation_instruction_boundary_passes(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            "Remediate the intake package: include explicit validation evidence and remove any instruction "
+            "that the clean reviewer should rely on parent-thread memory."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_parent_context_validation_not_via_parent_memory_boundary_passes(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            "Provide source/diff/test/runtime references directly, not via parent memory."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_parent_context_validation_without_parent_memory_boundary_passes(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            "Return the package with direct validation evidence for a fresh clean reviewer "
+            "to inspect without parent-thread memory. No current clean-review pass should be claimed."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_parent_context_validation_no_parent_context_boundary_passes(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            "Evidence Level: prompt/intake evidence only; no parent context, hidden context, "
+            "source files, diff, tests, runtime, or UAT evidence used"
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_parent_context_validation_parent_memory_not_acceptable_boundary_passes(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            'required_evidence: "Validation evidence must be in the package or in accessible '
+            'linked artifacts; parent memory is not acceptable."'
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_parent_context_validation_current_pass_claim_relies_boundary_passes(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            'block_reason: "Current pass claim relies on inherited context and incomplete nested child evidence."'
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_parent_context_validation_instead_of_relying_boundary_passes(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            "Include explicit validation evidence instead of relying on parent-thread memory."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_parent_context_validation_instead_of_parent_memory_boundary_passes(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            "Supply explicit validation evidence instead of parent-thread memory."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_parent_context_validation_not_inherited_summary_boundary_passes(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            "direct source/diff/test evidence, not inherited summary"
         )
 
         self.assertEqual(result["verdict"], "pass")
@@ -426,6 +655,133 @@ class ForbiddenPatternTests(unittest.TestCase):
         self.assertFalse(
             forbidden_patterns.has_clean_review_pass_claim(
                 "Forked reviewer output is not Clean Review Evidence and remains unverified."
+            )
+        )
+
+    def test_clean_review_claim_description_does_not_fail_as_pass_claim(self):
+        self.assertFalse(
+            forbidden_patterns.has_clean_review_pass_claim(
+                "Source package says the coordinator claimed clean review passed because a nested child completed."
+            )
+        )
+
+    def test_clean_review_blocked_until_future_condition_does_not_fail(self):
+        self.assertFalse(
+            forbidden_patterns.has_clean_review_pass_claim(
+                "blocked_until:\n"
+                "  result_package_status: ready_for_review\n"
+                "  clean_review: passed\n"
+                "  verification: partial_allowed\n"
+            )
+        )
+
+    def test_clean_review_top_level_passed_field_still_fails(self):
+        self.assertTrue(
+            forbidden_patterns.has_clean_review_pass_claim(
+                "clean_review: passed"
+            )
+        )
+
+    def test_clean_review_invalid_execution_package_boundary_does_not_fail(self):
+        self.assertFalse(
+            forbidden_patterns.has_clean_review_pass_claim(
+                "The intake package is not valid as a clean-review execution package because it asks "
+                "the clean reviewer to edit files directly. Clean review must stay read-only."
+            )
+        )
+
+    def test_clean_review_only_valid_action_blocked_boundary_does_not_fail(self):
+        self.assertFalse(
+            forbidden_patterns.has_clean_review_pass_claim(
+                'reason: "The only valid action is coordinator-side routing classification; '
+                'clean-review execution is blocked."'
+            )
+        )
+
+    def test_clean_review_pass_attempt_boundary_does_not_fail(self):
+        self.assertFalse(
+            forbidden_patterns.has_clean_review_pass_claim(
+                "Fallback proposed: remediation package before any clean-review pass attempt"
+            )
+        )
+
+    def test_clean_review_no_current_pass_boundary_does_not_fail(self):
+        self.assertFalse(
+            forbidden_patterns.has_clean_review_pass_claim(
+                "No current clean-review pass should be claimed."
+            )
+        )
+
+    def test_clean_review_ensure_no_pass_field_boundary_does_not_fail(self):
+        self.assertFalse(
+            forbidden_patterns.has_clean_review_pass_claim(
+                "ensure no `clean_review: passed` field is emitted"
+            )
+        )
+
+    def test_clean_review_cannot_upgrade_boundary_does_not_fail(self):
+        self.assertFalse(
+            forbidden_patterns.has_clean_review_pass_claim(
+                "Summarizing one completed child cannot upgrade the overall state to `clean_review: passed`."
+            )
+        )
+
+    def test_clean_review_fresh_pass_required_boundary_does_not_fail(self):
+        self.assertFalse(
+            forbidden_patterns.has_clean_review_pass_claim(
+                'Clean Review Evidence: "fresh pass required; not yet provided"'
+            )
+        )
+
+    def test_clean_review_reject_inherited_pass_task_id_boundary_does_not_fail(self):
+        self.assertFalse(
+            forbidden_patterns.has_clean_review_pass_claim(
+                '- task_id: "reject-inherited-clean-review-pass"'
+            )
+        )
+
+    def test_clean_review_completed_worktree_task_id_boundary_does_not_fail(self):
+        self.assertFalse(
+            forbidden_patterns.has_clean_review_pass_claim(
+                '- task_id: "clean-review-completed-managed-worktree-result"'
+            )
+        )
+
+    def test_clean_review_do_not_close_passed_boundary_does_not_fail(self):
+        self.assertFalse(
+            forbidden_patterns.has_clean_review_pass_claim(
+                "Do not close this as passed. Prepare a fresh clean-review package."
+            )
+        )
+
+    def test_clean_review_pass_fail_future_boundary_does_not_fail(self):
+        self.assertFalse(
+            forbidden_patterns.has_clean_review_pass_claim(
+                "Re-review after remediation | blocked until remediation result exists | "
+                "independent clean review pass/fail"
+            )
+        )
+
+    def test_clean_review_cannot_be_accepted_boundary_does_not_fail(self):
+        self.assertFalse(
+            forbidden_patterns.has_clean_review_pass_claim(
+                'block_reason: "Existing clean-review pass cannot be accepted."'
+            )
+        )
+
+    def test_clean_review_required_evidence_result_package_boundary_does_not_fail(self):
+        self.assertFalse(
+            forbidden_patterns.has_clean_review_pass_claim(
+                'required_evidence: "clean reviewer result package; stuck child resolved '
+                'or explicitly excluded by human-approved scope"'
+            )
+        )
+
+    def test_clean_review_cannot_support_pass_boundary_does_not_fail(self):
+        self.assertFalse(
+            forbidden_patterns.has_clean_review_pass_claim(
+                "Missing validation evidence; package relies on parent-thread memory. "
+                "This cannot support `clean_review: passed`, `ready`, or reviewer success inference."
             )
         )
 

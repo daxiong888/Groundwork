@@ -35,6 +35,11 @@ Use this skill when the user asks to:
 - plan multi-perspective review without creating worktrees
 - decide whether tasks can run in parallel
 - prepare runtime-specific child prompts or package-only handoffs
+- route managed-worktree closeout cleanup decisions, including archived thread with remaining temp branch, remote branch cleanup approval, and unmerged or uncertain branch retention
+- decide branch cleanup state without deleting local or remote branches
+- route clean-review coordinator intake packages, including fanout to `clean_reviewer` or read-only `codex_subagent`
+- reject clean-review direct-edit requests and route required writes as a separate dispatch write task
+- classify missing validation evidence, hidden parent context, parent full-history fork, or nested reviewer topology as `blocked`, `unverified`, `needs_remediation`, or `human_decision`
 
 Do not use this skill when:
 
@@ -82,6 +87,7 @@ Use `skills/_shared/LLM-WIKI.md` when accepted work has relevant project wiki co
 - keep wiki pages, wiki summaries, wiki audits, and external graph/search/index output as orientation or claim inventory only unless separately backed by source, contract, test, runtime, or release evidence
 - apply `skills/_shared/ROLE-SEPARATION.md` when routing material work: separate designer/planner, implementer, clean reviewer, verifier, and coordinator roles; do not route a same-session implementer as clean reviewer or final verifier for its own material change
 - include role-separation closeout expectations for material tasks using `Role`, `Design Source`, `Self-check Evidence`, `Clean Review Evidence`, `Independent Verification Evidence`, `Runtime Evidence`, `Browser Evidence`, `UAT Evidence`, `Release Evidence`, `Readiness Boundary`, and `Required Next Independent Role`
+- when a clean-review claim is blocked, unverified, invalid, inherited from parent context, or requires a future fresh reviewer, do not emit current-state fields such as `clean_review: passed`, `clean_review_passed: true`, or `Clean Review Evidence: passed`; use explicit missing/required/fresh-pass-required wording instead
 
 ## Hard Stop Before Execution
 
@@ -111,6 +117,8 @@ Proceed only after explicit approval and tool availability are both confirmed.
 ## Output Shape
 
 ````text
+Dispatch Runtime Decision
+
 Dispatch Summary
 
 Source Truth
@@ -338,14 +346,14 @@ tasks:
       conflict_group: ""
       dependency_group: ""
       merge_order_hint: ""
-    dependency_barrier:
-      depends_on_task_ids: []
-      blocked_until:
-        result_package_status: ready_for_review | not_required
-        clean_review: passed | not_required
-        merge_back: completed | not_required
-        verification: pass | partial_allowed | not_required
-        base_refresh: completed | not_required
+      dependency_barrier:
+        depends_on_task_ids: []
+        blocked_until:
+          result_package_status: ready_for_review | not_required
+          clean_review: fresh_pass_required | not_required
+          merge_back: completed | not_required
+          verification: pass | partial_allowed | not_required
+          base_refresh: completed | not_required
       required_base:
         branch: ""
         commit_after_merge: ""

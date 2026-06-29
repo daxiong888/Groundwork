@@ -938,6 +938,20 @@ def parse_actual_skill(text, last, expected):
     return "direct", []
 
 
+def route_evidence_source(parsed_actual, skill_hits, actual, final_response):
+    if skill_hits:
+        return "skill_hit"
+    if parsed_actual != DIRECT_ROUTE:
+        return "route_detector"
+    if actual == "dispatch" and has_dispatch_route_marker(final_response):
+        return "output_marker"
+    if actual == HOST_PREEMPTION_ROUTE:
+        return "host_preemption_shape"
+    if actual != DIRECT_ROUTE:
+        return "response_shape"
+    return "final_message_marker"
+
+
 def has_host_preemption_intent(row):
     risk_gate = str(row.get("risk_gate") or "").strip()
     intent_kind = str(row.get("intent_kind") or "").strip()
@@ -1041,6 +1055,18 @@ def has_gate_fields_or_direct_runtime_equivalent(row, actual, text):
     )
 
 
+def has_dispatch_route_marker(text):
+    first = first_nonempty_line(text)
+    lowered = text.lower()
+    if first in {"Dispatch Runtime Decision", "Dispatch Summary"}:
+        return True
+    return "dispatch summary" in lowered and (
+        "runtime packages" in lowered
+        or "expected result package" in lowered
+        or "dispatch_version: 2" in lowered
+    )
+
+
 def has_blocked_implementation_conformance(text):
     lowered = text.lower()
     blocked_markers = [
@@ -1135,6 +1161,12 @@ def classify_actual_route(row, parsed_actual, skill_hits, final_response, change
         return HOST_PREEMPTION_ROUTE
     if has_requirement_state_gate_response_shape(row, final_response, changes):
         return "to-prd"
+    if (
+        parsed_actual == DIRECT_ROUTE
+        and expected_skill_for_row(row) == "dispatch"
+        and has_dispatch_route_marker(final_response)
+    ):
+        return "dispatch"
 
     if skill_hits or parsed_actual != DIRECT_ROUTE:
         return parsed_actual
@@ -1725,6 +1757,7 @@ def host_preemption_verdict_details(row, actual, final_response, changes):
 FAILURE_PRIORITY = [
     "codex_timeout",
     "codex_exit",
+    "read_only_sandbox_violation",
     "premature_implementation",
     "forbidden_route",
     "route_miss",
@@ -1764,7 +1797,7 @@ def runtime_failed_without_final_response(rc, final_response):
     return rc != 0 and not final_response.strip()
 
 
-def routing_verdict_model(row, actual, last, rc, changes, lifecycle_errors, stdout=""):
+def routing_verdict_model(row, actual, last, rc, changes, lifecycle_errors, stdout="", sandbox="unknown"):
     schema = routing_schema_for_row(row)
     notes = []
     failures = []
@@ -1799,11 +1832,21 @@ def routing_verdict_model(row, actual, last, rc, changes, lifecycle_errors, stdo
         append_failure(failures, notes, "codex_timeout", "runtime_environment", "codex exec timeout")
     elif rc != 0:
         append_failure(failures, notes, "codex_exit", "runtime_environment", f"codex exec exit {rc}")
+    if sandbox == "read-only" and changes:
+        append_failure(
+            failures,
+            notes,
+            "read_only_sandbox_violation",
+            "runtime_environment",
+            "read-only sandbox changed files: " + "; ".join(changes[:5]),
+        )
 
     overall = combine_overall_verdict(
         rc,
         [routing_verdict, host_verdict, output_verdict, evidence_status, behavior_status],
     )
+    if failures and overall == "pass":
+        overall = "fail"
     failure_type, fix_locus = select_failure(failures)
 
     return {
@@ -2148,7 +2191,16 @@ def run_row(row, timeout_s=None, attempt=1):
     warnings = ["multi_skill_hit"] if multi_skill_hit else []
     lifecycle_state_files, lifecycle_artifact_errors = validate_lifecycle_state_artifacts(cwd, after, changes)
     legacy_verdict, legacy_notes = quick_verdict(row, actual, last, rc, changes, lifecycle_artifact_errors, stdout)
-    verdict_model = routing_verdict_model(row, actual, last, rc, changes, lifecycle_artifact_errors, stdout)
+    verdict_model = routing_verdict_model(
+        row,
+        actual,
+        last,
+        rc,
+        changes,
+        lifecycle_artifact_errors,
+        stdout,
+        sandbox=sandbox,
+    )
     if should_apply_legacy_override(row, legacy_verdict, verdict_model):
         verdict_model["overall_verdict"] = legacy_verdict
         verdict_model["failure_type"] = "legacy_runtime_check"
@@ -2167,6 +2219,7 @@ def run_row(row, timeout_s=None, attempt=1):
         "skill_hits": skill_hits,
         "multi_skill_hit": multi_skill_hit,
         "warnings": warnings,
+        "route_evidence_source": route_evidence_source(parsed_actual, skill_hits, actual, last),
         "verdict": verdict_model["overall_verdict"],
         "notes": verdict_model["notes"],
         "parallel_safe": metadata["parallel_safe"],

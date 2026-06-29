@@ -429,6 +429,61 @@ class RuntimeSchedulerTests(unittest.TestCase):
                 run_runtime.FAILURES = old_failures
                 run_runtime.CASES = old_cases
 
+    def test_dispatch_output_marker_can_classify_dispatch_route(self):
+        case = routing_row(
+            id="dispatch-marker",
+            expected_best="dispatch",
+            acceptable_routes="dispatch",
+            forbidden_routes="implement|direct",
+            output_contract="entry_decision|trajectory_signal",
+            skill_load_required="true",
+        )
+        final_response = (
+            "Dispatch Runtime Decision\n\n"
+            "Dispatch Summary\n"
+            "Runtime Packages\n"
+            "```yaml\n"
+            "dispatch_version: 2\n"
+            "```\n"
+        )
+
+        actual = run_runtime.classify_actual_route(
+            case,
+            run_runtime.DIRECT_ROUTE,
+            [],
+            final_response,
+            [],
+        )
+
+        self.assertEqual(actual, "dispatch")
+        self.assertEqual(
+            run_runtime.route_evidence_source(run_runtime.DIRECT_ROUTE, [], actual, final_response),
+            "output_marker",
+        )
+
+    def test_read_only_sandbox_file_changes_are_specific_failure(self):
+        verdict = run_runtime.routing_verdict_model(
+            routing_row(
+                id="clean-review-004",
+                expected_best="dispatch",
+                acceptable_routes="dispatch",
+                forbidden_routes="verify|implement|direct",
+                output_contract="entry_decision|trajectory_signal",
+                evidence_required="no_file_changes",
+                skill_load_required="true",
+            ),
+            actual="implement",
+            last="Updated managed-worktree-lifecycle.md",
+            rc=0,
+            changes=["M managed-worktree-lifecycle.md"],
+            lifecycle_errors=[],
+            sandbox="read-only",
+        )
+
+        self.assertEqual(verdict["overall_verdict"], "fail")
+        self.assertEqual(verdict["failure_type"], "read_only_sandbox_violation")
+        self.assertIn("read-only sandbox changed files", verdict["notes"])
+
     def test_parallel_wrapper_aggregation_consumes_serial_verdict_fields(self):
         serial_results = [
             {

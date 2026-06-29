@@ -88,7 +88,7 @@ Use `skills/_shared/DECISION-MAPPING.md` when the options are already enumerable
 | User terminology conflicts with repo/source/API/UI terminology | Add a material `Domain Language / Term Conflict` only if correctness is affected; otherwise keep normal output compact. | Use `glossary_only`, `PRD_truth`, `contract_truth`, `source_truth`, `runtime_evidence`, `user_confirmed`, or `unknown` and name the promotion blocker. |
 | User asks for a PRD file but facts are incomplete | Produce a draft with blocking gaps or stop for clarification. | Do not present the artifact as accepted or issue-ready. |
 | Plan Mode is unavailable or not exposed | Run the same entry decision as prompt-level planning. | State the fallback only when material to trust, and do not claim tool-enforced Plan Mode. |
-| Durable PRD artifact is requested while in Plan Mode, read-only, or chat-only | Produce a conversation draft, artifact recommendation, approval request, or write-capable-route boundary. | Do not create or update files, and do not claim the durable artifact was written. |
+| Durable PRD artifact is requested while in Plan Mode, read-only, or chat-only | Produce a conversation draft, artifact recommendation, approval request, or write-capable-route boundary. | Do not create or update files, do not claim the durable artifact was written, and include the Plan Mode durable artifact promotion gate fields. |
 | User asks for a PRD artifact from sensitive source material | Redact secret values, private URLs, credentials, PII, sensitive logs, screenshots, requests, and database rows before drafting or writing. | Preserve only stable non-secret identifiers, source types, and decisions needed for review. |
 | User asks to split issues from raw intent | Stop before `to-issues`. | State that PRD/spec acceptance is required first. |
 | User gives a raw solution idea or vague urgency as if it were implementation-ready | Keep ownership in `to-prd`. | State that urgency or a proposed solution is not an explicit PRD bypass, then shape the requirement or ask the highest-impact clarification question. |
@@ -113,6 +113,18 @@ Use `skills/_shared/DECISION-MAPPING.md` when the options are already enumerable
 ## Output Shape
 
 Use `GRILL-BEFORE-WRITE.md` and `PRD-TEMPLATE.md` as the default structure. `Domain Language / Term Conflict` is conditional: omit it in normal conversation output when no material term conflict exists, and omit it or mark `none material` in durable PRDs.
+
+When a durable PRD artifact is requested while the current context is Plan Mode, read-only, or chat-only, stop before file creation and include this exact gate shape:
+
+```text
+Plan Mode Durable Artifact Promotion Gate
+
+Proposed Action:
+Target:
+Risk:
+Rollback/Undo:
+Approval Needed:
+```
 
 ```text
 Target Reader
