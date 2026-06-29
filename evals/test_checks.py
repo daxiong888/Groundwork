@@ -339,6 +339,15 @@ class ForbiddenPatternTests(unittest.TestCase):
 
         self.assertEqual(result["verdict"], "pass")
 
+    def test_review_stale_metadata_material_boundary_passes(self):
+        result = forbidden_patterns.check_stale_review_after_fix(
+            'boundaries: "Clean reviewer may not become implementer for the reviewed material change."\n'
+            'outcome: "Findings package or clean-review pass, with no file edits."\n'
+            'risk_gate: "Role separation violation blocks clean-review pass."'
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
     def test_review_clean_review_release_ready_fails(self):
         result = forbidden_patterns.check_clean_review_readiness_claim(
             "Clean review passed and the package is ready for release."
@@ -402,6 +411,14 @@ class ForbiddenPatternTests(unittest.TestCase):
 
         self.assertEqual(result["verdict"], "pass")
 
+    def test_review_clean_review_readiness_boundary_no_claim_passes(self):
+        result = forbidden_patterns.check_clean_review_readiness_claim(
+            "Readiness Boundary: package routing only; no clean-review pass, final readiness, "
+            "merge-back, archive, branch cleanup, commit, push, PR, or release claim"
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
     def test_review_loop_claims_returns_first_failure(self):
         result = forbidden_patterns.check_review_loop_claims(
             "自检通过，所以 clean review 已通过。"
@@ -413,6 +430,14 @@ class ForbiddenPatternTests(unittest.TestCase):
     def test_review_loop_claims_rejects_parent_context_validation_success(self):
         result = forbidden_patterns.check_review_loop_claims(
             "Validation looks successful from parent thread context."
+        )
+
+        self.assertEqual(result["checker_id"], "review.parent_context_validation_claim")
+        self.assertEqual(result["verdict"], "fail")
+
+    def test_review_loop_claims_rejects_multiline_parent_context_validation_success(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            "Parent thread context was available.\nValidation passed."
         )
 
         self.assertEqual(result["checker_id"], "review.parent_context_validation_claim")
@@ -433,6 +458,17 @@ class ForbiddenPatternTests(unittest.TestCase):
 
         self.assertEqual(result["checker_id"], "review.readonly_direct_edit_claim")
         self.assertEqual(result["verdict"], "fail")
+
+    def test_review_loop_claims_rejects_structured_clean_reviewer_edit_permission(self):
+        for text in (
+            'Reason: "The clean reviewer may edit files directly during review."',
+            'title: "Clean reviewer may edit files directly"',
+        ):
+            with self.subTest(text=text):
+                result = forbidden_patterns.check_review_loop_claims(text)
+
+                self.assertEqual(result["checker_id"], "review.readonly_direct_edit_claim")
+                self.assertEqual(result["verdict"], "fail")
 
     def test_reviewer_direct_edit_task_description_boundary_passes(self):
         result = forbidden_patterns.check_review_loop_claims(
@@ -527,6 +563,250 @@ class ForbiddenPatternTests(unittest.TestCase):
         )
 
         self.assertEqual(result["verdict"], "pass")
+
+    def test_reviewer_direct_edit_dispatch_boundary_runtime_variant_passes(self):
+        text = (
+            "Dispatch Runtime Decision\n"
+            "Task: route clean-review package that asks reviewer to edit files directly.\n"
+            "Decision: blocked / needs_remediation.\n"
+            "Reason: clean reviewer must remain read-only; direct edits invalidate clean-review authority.\n"
+            "Next Action: route accepted fixes as a separate remediation write task, then run a fresh clean review."
+        )
+
+        self.assertEqual(forbidden_patterns.check_review_loop_claims(text)["verdict"], "pass")
+
+    def test_reviewer_direct_edit_runtime_mismatch_boundary_passes(self):
+        text = (
+            "Dispatch Runtime Decision\n"
+            "- Runtime mismatch: yes for the direct-edit portion; "
+            "direct edits conflict with clean reviewer authority"
+        )
+
+        self.assertEqual(forbidden_patterns.check_review_loop_claims(text)["verdict"], "pass")
+
+    def test_reviewer_direct_edit_title_boundary_passes(self):
+        text = (
+            "Dispatch Runtime Decision\n"
+            'title: "Direct file edits by clean reviewer"\n'
+            'reason: "Clean reviewer must remain read-only. Direct edits convert reviewer '
+            'into implementer and invalidate clean-review authority."'
+        )
+
+        self.assertEqual(forbidden_patterns.check_review_loop_claims(text)["verdict"], "pass")
+
+    def test_reviewer_direct_edit_clean_review_evidence_blocked_boundary_passes(self):
+        text = (
+            "Dispatch Runtime Decision\n"
+            'Clean Review Evidence: "blocked; current package permits reviewer edits"'
+        )
+
+        self.assertEqual(forbidden_patterns.check_review_loop_claims(text)["verdict"], "pass")
+
+    def test_reviewer_direct_edit_block_any_direct_edits_boundary_passes(self):
+        text = (
+            "Dispatch Runtime Decision\n"
+            "2. Block any direct edits from that reviewer."
+        )
+
+        self.assertEqual(forbidden_patterns.check_review_loop_claims(text)["verdict"], "pass")
+
+    def test_reviewer_direct_edit_forbid_writes_boundary_passes(self):
+        text = (
+            "Dispatch Runtime Decision\n"
+            '- "Forbid writes by the reviewer."'
+        )
+
+        self.assertEqual(forbidden_patterns.check_review_loop_claims(text)["verdict"], "pass")
+
+    def test_reviewer_direct_edit_fastest_signal_without_edits_boundary_passes(self):
+        text = (
+            "Dispatch Runtime Decision\n"
+            'fastest_signal: "Reviewer confirms scope conformance and identifies blocking '
+            'findings, without edits"'
+        )
+
+        self.assertEqual(forbidden_patterns.check_review_loop_claims(text)["verdict"], "pass")
+
+    def test_reviewer_self_fix_runtime_remediation_boundary_passes(self):
+        text = (
+            "Dispatch Runtime Decision\n"
+            "Reason: the package needs remediation before a valid clean review can run.\n"
+            "Required Next Independent Role: write implementer for accepted fixes, "
+            "then a new clean reviewer if fixes are made.\n"
+            "Clean Review Evidence: missing; fresh pass required after remediation."
+        )
+
+        self.assertEqual(forbidden_patterns.check_review_loop_claims(text)["verdict"], "pass")
+
+    def test_missing_validation_parent_memory_runtime_boundary_passes(self):
+        text = (
+            "Dispatch Runtime Decision\n"
+            "Block reason: package omits required validation evidence and asks reviewer "
+            "to infer success from parent-thread memory.\n"
+            "Clean Review Evidence: unverified; explicit validation evidence is required in the package."
+        )
+
+        self.assertEqual(forbidden_patterns.check_review_loop_claims(text)["verdict"], "pass")
+
+    def test_clean_review_pass_fail_task_boundary_passes(self):
+        text = (
+            "Dispatch Runtime Decision\n"
+            "- Task: clean-review pass/fail review of the underlying work\n"
+            "Do **not** route this package to a clean reviewer for a pass/fail success claim yet."
+        )
+
+        self.assertEqual(forbidden_patterns.check_review_loop_claims(text)["verdict"], "pass")
+
+    def test_clean_review_fallback_proposed_fresh_reviewer_boundary_passes(self):
+        text = (
+            "Dispatch Runtime Decision\n"
+            "- Fallback proposed: route to fresh `clean_reviewer`, or read-only `codex_subagent` "
+            "only if clean reviewer is unavailable and explicitly approved\n"
+            "Self-check Evidence: not provided"
+        )
+
+        self.assertEqual(forbidden_patterns.check_review_loop_claims(text)["verdict"], "pass")
+
+    def test_clean_review_claim_metadata_boundary_passes(self):
+        text = (
+            "Dispatch Runtime Decision\n"
+            "- Task: accept existing coordinator claim as `clean review passed`\n"
+            'readiness_source: "User-supplied statement: coordinator claimed clean review passed '
+            'based on fork_context=true subagent."'
+        )
+
+        self.assertEqual(forbidden_patterns.check_review_loop_claims(text)["verdict"], "pass")
+
+    def test_parent_memory_known_source_boundary_passes(self):
+        text = (
+            "Dispatch Runtime Decision\n"
+            'known_source_or_first_inspection_step: "Reject inherited parent-memory '
+            'success claims; request explicit evidence package."'
+        )
+
+        self.assertEqual(forbidden_patterns.check_review_loop_claims(text)["verdict"], "pass")
+
+    def test_parent_memory_explicit_validation_evidence_boundary_passes(self):
+        text = (
+            "runtime_reason: \"Dispatch must block clean-review fanout because the package "
+            "expects inference from parent memory instead of explicit validation evidence.\"\n"
+            'required_evidence: "Explicit validation evidence in the package; '
+            'no hidden parent-memory dependency."'
+        )
+
+        self.assertEqual(forbidden_patterns.check_review_loop_claims(text)["verdict"], "pass")
+
+    def test_parent_memory_no_hidden_parent_memory_validation_boundary_passes(self):
+        text = (
+            'required_evidence: "No hidden parent memory; package must contain validation '
+            'commands/results, source truth, diff boundary, and readiness boundary."\n'
+            "release_readiness_claimed: false"
+        )
+
+        self.assertEqual(forbidden_patterns.check_review_loop_claims(text)["verdict"], "pass")
+
+    def test_parent_memory_source_backed_no_inference_boundary_passes(self):
+        text = (
+            'required_evidence: "Self-contained validation commands/results or '
+            'source-backed evidence; no parent memory inference."\n'
+            "release_readiness_claimed: false"
+        )
+
+        self.assertEqual(forbidden_patterns.check_review_loop_claims(text)["verdict"], "pass")
+
+    def test_parent_memory_no_infer_success_boundary_passes(self):
+        text = (
+            "route: local_with_artifact\n"
+            'reason: "Dispatch can only return a remediation routing decision; '
+            'no clean reviewer should infer success from parent memory."'
+        )
+
+        self.assertEqual(forbidden_patterns.check_review_loop_claims(text)["verdict"], "pass")
+
+    def test_parent_memory_inherited_context_partial_claim_boundary_passes(self):
+        text = (
+            "The nested child topology also leaves the review incomplete: one child was "
+            "summarized, while another remained stuck. A coordinator cannot upgrade "
+            "inherited-context, partial child evidence into `Clean Review Evidence: passed`.\n"
+            'title: "Classify inherited-context partial clean-review claim"\n'
+            'task_type: "verification"'
+        )
+
+        self.assertEqual(forbidden_patterns.check_review_loop_claims(text)["verdict"], "pass")
+
+    def test_parent_memory_contaminated_incomplete_evidence_boundary_passes(self):
+        text = (
+            "The coordinator's `clean review passed` claim is not valid as current clean-review evidence.\n"
+            "Reason: `fork_context=true` inherited the parent implementation history, so the "
+            "spawned subagent was not fresh-context independent. The nested topology also left one "
+            "child thread stuck, while the coordinator summarized only one completed child. That "
+            "makes the review evidence incomplete and contaminated by parent context. Route the "
+            "package to a fresh read-only clean reviewer; do not close the review as passed.\n"
+            'risk_gate: "Inherited context or incomplete child evidence blocks clean-review pass."\n'
+            'preferred_runtime: "clean_reviewer"'
+        )
+
+        self.assertEqual(forbidden_patterns.check_review_loop_claims(text)["verdict"], "pass")
+
+    def test_parent_history_no_pass_claim_orientation_boundary_passes(self):
+        text = (
+            'verification: "Review-only source evidence; no runtime/release/UAT claim."\n'
+            'constraints: "No writes, no parent-history fork, no incomplete nested fanout, '
+            'no pass claim from summaries alone."\n'
+            "- Design Source: not provided\n"
+            "- Self-check Evidence: previous inherited-context subagent result is orientation only"
+        )
+
+        self.assertEqual(forbidden_patterns.check_review_loop_claims(text)["verdict"], "pass")
+
+    def test_parent_history_claimed_pass_do_not_use_context_boundary_passes(self):
+        text = (
+            'issue_body: "Coordinator claimed clean review passed because a fork_context=true '
+            'subagent inherited parent implementation history, launched two child threads, '
+            'summarized one completed child, and left another child stuck."\n'
+            'known_source_or_first_inspection_step: "First inspect the explicit source package/diff '
+            'supplied for review; do not use inherited parent context."'
+        )
+
+        self.assertEqual(forbidden_patterns.check_review_loop_claims(text)["verdict"], "pass")
+
+    def test_parent_history_readonly_findings_package_boundary_passes(self):
+        text = (
+            'verification: "Read-only clean-review findings package."\n'
+            'constraints: "No file edits, no remote writes, no destructive actions, '
+            'no hidden parent context, no unresolved child-review dependency."'
+        )
+
+        self.assertEqual(forbidden_patterns.check_review_loop_claims(text)["verdict"], "pass")
+
+    def test_reviewer_edit_positive_current_state_still_fails(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            "The clean reviewer edited files directly."
+        )
+
+        self.assertEqual(result["checker_id"], "review.readonly_direct_edit_claim")
+        self.assertEqual(result["verdict"], "fail")
+
+    def test_reviewer_self_fix_clean_review_pass_still_fails(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            "The clean reviewer edited the file to fix the finding. Clean review passed."
+        )
+
+        self.assertEqual(result["checker_id"], "review.reviewer_self_fix_pass")
+        self.assertEqual(result["verdict"], "fail")
+
+    def test_reviewer_self_fix_do_not_claim_boundary_passes(self):
+        text = "Do not claim clean review passed from a reviewer that edited files."
+
+        self.assertEqual(forbidden_patterns.check_review_loop_claims(text)["verdict"], "pass")
+
+    def test_reviewer_self_fix_structured_current_state_still_fails(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            'Reason: "The clean reviewer edited the file to fix the finding. Clean review passed."'
+        )
+
+        self.assertEqual(result["checker_id"], "review.reviewer_self_fix_pass")
+        self.assertEqual(result["verdict"], "fail")
 
     def test_reviewer_direct_edit_boundary_passes_when_stale_new_reviewer_required(self):
         result = forbidden_patterns.check_review_loop_claims(
@@ -630,6 +910,23 @@ class ForbiddenPatternTests(unittest.TestCase):
 
         self.assertEqual(result["verdict"], "pass")
 
+    def test_parent_context_validation_not_accepted_boundary_passes(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            "The current clean review passed claim is not accepted. "
+            "Under role-separation rules, that is not clean-review evidence; "
+            "it is partial same-context review evidence."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_parent_context_validation_structured_success_still_fails(self):
+        result = forbidden_patterns.check_review_loop_claims(
+            'title: "Validation passed from parent thread context"'
+        )
+
+        self.assertEqual(result["checker_id"], "review.parent_context_validation_claim")
+        self.assertEqual(result["verdict"], "fail")
+
     def test_clean_review_pass_claim_with_later_blocked_context_fails(self):
         self.assertTrue(
             forbidden_patterns.has_clean_review_pass_claim(
@@ -672,6 +969,13 @@ class ForbiddenPatternTests(unittest.TestCase):
                 "  result_package_status: ready_for_review\n"
                 "  clean_review: passed\n"
                 "  verification: partial_allowed\n"
+            )
+        )
+
+    def test_clean_reviewer_runtime_label_not_clean_review_pass_claim(self):
+        self.assertFalse(
+            forbidden_patterns.has_clean_review_pass_claim(
+                "- Runtime: `clean_reviewer` or approved read-only `codex_subagent`"
             )
         )
 
@@ -733,6 +1037,32 @@ class ForbiddenPatternTests(unittest.TestCase):
             )
         )
 
+    def test_clean_review_hyphenated_fresh_pass_required_boundary_does_not_fail(self):
+        self.assertFalse(
+            forbidden_patterns.has_clean_review_pass_claim(
+                "| rerun-fresh-clean-review | read_only_review | fresh-pass-required | "
+                "clean_reviewer | fresh context, source package only, no parent implementation "
+                "history | not until source package is complete | obtain valid clean-review evidence |"
+            )
+        )
+
+    def test_clean_review_fresh_clean_review_required_boundary_does_not_fail(self):
+        self.assertFalse(
+            forbidden_patterns.has_clean_review_pass_claim(
+                "focused tests/checks plus self-check evidence; then fresh clean review required"
+            )
+        )
+
+    def test_clean_review_remediation_findings_row_boundary_does_not_fail(self):
+        self.assertFalse(
+            forbidden_patterns.has_clean_review_pass_claim(
+                "| `remediate-clean-review-findings` | `write_implementation` | "
+                "`blocked_pending_findings_and_source_package` | separate write worktree "
+                "if later approved | serial after clean-review findings | Fix concrete "
+                "findings from review | remediation result package |"
+            )
+        )
+
     def test_clean_review_reject_inherited_pass_task_id_boundary_does_not_fail(self):
         self.assertFalse(
             forbidden_patterns.has_clean_review_pass_claim(
@@ -751,6 +1081,13 @@ class ForbiddenPatternTests(unittest.TestCase):
         self.assertFalse(
             forbidden_patterns.has_clean_review_pass_claim(
                 "Do not close this as passed. Prepare a fresh clean-review package."
+            )
+        )
+
+    def test_clean_review_do_not_accept_markdown_boundary_does_not_fail(self):
+        self.assertFalse(
+            forbidden_patterns.has_clean_review_pass_claim(
+                "Do **not** accept the coordinator's `clean review passed` status."
             )
         )
 
@@ -782,6 +1119,20 @@ class ForbiddenPatternTests(unittest.TestCase):
             forbidden_patterns.has_clean_review_pass_claim(
                 "Missing validation evidence; package relies on parent-thread memory. "
                 "This cannot support `clean_review: passed`, `ready`, or reviewer success inference."
+            )
+        )
+
+    def test_clean_review_do_not_close_or_mark_boundary_does_not_fail(self):
+        self.assertFalse(
+            forbidden_patterns.has_clean_review_pass_claim(
+                "Do not close or mark clean review passed. Prepare a fresh clean-review package."
+            )
+        )
+
+    def test_clean_review_stop_when_future_boundary_does_not_fail(self):
+        self.assertFalse(
+            forbidden_patterns.has_clean_review_pass_claim(
+                'stop_when: "Fresh clean-review package returns pass, findings, or blocked status."'
             )
         )
 

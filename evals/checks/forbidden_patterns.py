@@ -197,7 +197,10 @@ def _has_clean_review_boundary(text):
         r"incomplete|contaminated|completed managed worktree result|completed material work|"
         r"clean-review-completed-managed-worktree-result|task:|accept coordinator claim|"
         r"do not fan out|pass/fail clean review yet|fresh pass required|not yet provided|"
-        r"cannot upgrade|do not emit|do not close this as passed|prepare a fresh clean-review package|"
+        r"pass/fail|success claim yet|do\s*\W{0,8}\s*not\s+route|"
+        r"cannot upgrade|do not emit|do not close|do not close this as passed|"
+        r"do\W*not\W*accept|"
+        r"prepare a fresh clean-review package|"
         r"no clean_review pass|no clean-review pass may be claimed)\b",
         text,
         re.IGNORECASE,
@@ -238,6 +241,9 @@ def _has_readiness_boundary(text):
         r"\b(not|cannot|can't|must not|do not|does not|is not|isn't|missing|pending|"
         r"unverified|blocked)\b.{0,48}"
         r"\b(release|uat|customer|final readiness|archive|branch cleanup|ready|readiness)\b|"
+        r"\breadiness boundary\b|"
+        r"\bno\b.{0,96}\b(final readiness|merge-back|archive|branch cleanup|commit|push|pr|release)\b"
+        r".{0,32}\bclaim\b|"
         r"\b(release|uat|customer|final readiness|archive|branch cleanup|ready|readiness)\b"
         r".{0,48}\b(missing|pending|unverified|blocked)\b|"
         r"\b(release|uat|customer|final readiness|archive|branch cleanup|ready|readiness)\b"
@@ -263,6 +269,58 @@ def _has_stale_reuse_boundary(text):
     )
 
 
+DISPATCH_METADATA_FIELD_RE = re.compile(
+    r"^\s*[-*]?\s*("
+    r"task|reason|runtime_reason|issue_body|readiness_source|source_package|"
+    r"block_reason|required_evidence|setup_requirements|"
+    r"title|outcome|risk_gate|boundaries|non_goals|routing_reason|stop_when|"
+    r"clean review evidence|fallback proposed|"
+    r"required next independent role|next action|recommended_next_route|"
+    r"dispatch_native_alignment|verification_expectation|runtime mismatch|"
+    r"known_source_or_first_inspection_step"
+    r")\s*[:：]",
+    re.IGNORECASE,
+)
+
+FUTURE_OR_BOUNDARY_RE = re.compile(
+    r"\b(if|when|after|then|required|requires?|must|should|fresh|new|separate|"
+    r"remediation|write task|dispatch write task|not|no|cannot|can't|do not|"
+        r"must not|forbid|forbidden|prohibit|invalid|blocked|unverified|missing|stale|"
+    r"not yet|future|block|reject(?:ed)?|claim(?:ed)?|remove)\b|"
+    r"(如果|若|之后|然后|需要|必须|不得|不能|不要|禁止|单独|另派|"
+    r"未验证|阻塞|缺失|失效|重新|新一轮)",
+    re.IGNORECASE,
+)
+
+CURRENT_STATE_ASSERTION_RE = re.compile(
+    r"\b(is|was|has|have|now|currently|already|completed|performed|edited|"
+    r"modified|patched|fixed|wrote|committed|passed|approved)\b|"
+    r"(已经|已|当前|现在|完成|通过|批准|修改了|修复了|提交了)",
+    re.IGNORECASE,
+)
+
+
+def _is_dispatch_metadata_or_boundary(fragment):
+    stripped = fragment.strip()
+    if not stripped:
+        return True
+    if DISPATCH_METADATA_FIELD_RE.search(stripped):
+        if (
+            re.match(r"^\s*[-*]?\s*clean review evidence\s*[:：]", stripped, re.IGNORECASE)
+            and _has_clean_review_positive(stripped)
+            and not _has_clean_review_boundary(stripped)
+        ):
+            return False
+        if (
+            CURRENT_STATE_ASSERTION_RE.search(stripped)
+            and not FUTURE_OR_BOUNDARY_RE.search(stripped)
+            and not _has_clean_review_boundary(stripped)
+        ):
+            return False
+        return True
+    return bool(FUTURE_OR_BOUNDARY_RE.search(stripped) and not CURRENT_STATE_ASSERTION_RE.search(stripped))
+
+
 def has_self_check_as_clean_review_claim(text):
     self_check_re = re.compile(
         r"\b(self[- ]?check|self[- ]?review|self-run tests?|implementer self|"
@@ -274,7 +332,7 @@ def has_self_check_as_clean_review_claim(text):
         return False
     for line in text.splitlines():
         stripped = line.strip()
-        if not stripped or _has_clean_review_boundary(stripped):
+        if not stripped or _is_dispatch_metadata_or_boundary(stripped) or _has_clean_review_boundary(stripped):
             continue
         if (
             _has_clean_review_positive(stripped)
@@ -312,26 +370,28 @@ def has_reviewer_self_fix_pass_claim(text):
         r"\b(read-only|read only)\b.{0,48}"
         r"\b(reviewer|clean reviewer)\b|"
         r"\b(invalid|requested runtime|requested_runtime|issue_body|authority is spent|"
-        r"no file edits|direct edits|do not allow|asks? .{0,32}edit)\b|"
+        r"no file edits|direct edits|do not allow|do not claim|asks? .{0,32}edit)\b|"
         r"(未|没有|不|不得|不能|不可).{0,16}(修复|修改|改|打补丁)|"
         r"(只读|read-only|read only).{0,16}(评审|reviewer)",
         re.IGNORECASE,
     )
-    has_reviewer_fix = False
-    for fragment in re.split(r"[\n.;。；]+", text):
-        stripped_fragment = fragment.strip()
-        if not stripped_fragment:
+    fragments = [
+        fragment.strip()
+        for fragment in re.split(r"[\n.;。；]+", text)
+        if fragment.strip()
+    ]
+    for index, fragment in enumerate(fragments):
+        if _is_dispatch_metadata_or_boundary(fragment):
             continue
-        if reviewer_fix_re.search(stripped_fragment) and not reviewer_fix_negation_re.search(stripped_fragment):
-            has_reviewer_fix = True
-            break
-    if not has_reviewer_fix:
-        return False
-    for line in text.splitlines():
-        stripped = line.strip()
-        if not stripped or _has_clean_review_boundary(stripped):
+        if not reviewer_fix_re.search(fragment):
             continue
-        if _has_clean_review_positive(stripped) and not _has_fresh_review_source(stripped):
+        if reviewer_fix_negation_re.search(fragment):
+            continue
+
+        window = " ".join(fragments[index:index + 2])
+        if _is_dispatch_metadata_or_boundary(window):
+            continue
+        if _has_clean_review_positive(window) and not _has_fresh_review_source(window):
             return True
     return False
 
@@ -358,24 +418,36 @@ def has_reviewer_direct_edit_claim(text):
         r"(评审者|评审).{0,40}(直接)?(修改|编辑|改动|写入|提交)",
         re.IGNORECASE,
     )
+    reviewer_edit_permission_re = re.compile(
+        r"\b(clean reviewer|reviewer)\b.{0,80}\bmay\b.{0,24}"
+        r"\b(edit|modify|change|patch|write|commit)\b",
+        re.IGNORECASE,
+    )
     boundary_re = re.compile(
         r"\b(did not|didn't|does not|do not|not|never|no|cannot|can't|must not|"
-        r"should not|invalid|unverified|blocked|stale|requires?|require|rerun|"
+        r"should not|invalid|unverified|blocked|block|stale|requires?|require|rerun|"
         r"new reviewer|separate write|separate dispatch|read-only|read only|"
         r"requested runtime|requested_runtime|runtime_reason|issue_body|source_package|"
         r"readiness_source|"
+        r"fastest_signal|without edits|"
         r"required next independent role|block_reason|accepted fixes|if files are edited|"
         r"if that reviewer finds issues|separate remediation write task|"
-        r"separate write task|prohibit|forbidden|remove any instruction|"
+        r"separate write task|forbid|prohibit|forbidden|remove any instruction|"
         r"if any edits occur|if the review finds issues|required fixes|"
         r"remediation/write task|reviewed again|"
         r"followed by a fresh clean review|"
         r"must remain read-only|would collapse|do not execute the direct-edit request|"
         r"asks? .{0,48}reviewer.{0,48}edit|invalidates clean-review authority|"
-        r"violates|loses clean-review authority|clean-review authority.*spent)\b|"
-        r"\b(task|reason)\s*:|"
+        r"current package permits reviewer edits|"
+        r"direct edits convert reviewer into implementer|convert reviewer into implementer|"
+        r"conflict with clean reviewer authority|violates|loses clean-review authority|"
+        r"clean-review authority.*spent)\b|"
         r"(未|没有|不|不得|不能|不可|无效|未验证|阻塞|失效|需要|重新|新评审|"
         r"单独写任务|单独派发|只读)",
+        re.IGNORECASE,
+    )
+    source_metadata_re = re.compile(
+        r"^\s*[-*]?\s*(task|requested_runtime|runtime_reason|issue_body|source_package|readiness_source)\s*[:：]",
         re.IGNORECASE,
     )
 
@@ -383,7 +455,11 @@ def has_reviewer_direct_edit_claim(text):
         stripped = fragment.strip()
         if not stripped:
             continue
-        if re.match(r"^[-*]?\s*(task|reason)\s*:", stripped, re.IGNORECASE):
+        if reviewer_edit_permission_re.search(stripped) and not boundary_re.search(stripped):
+            return True
+        if source_metadata_re.search(stripped):
+            continue
+        if _is_dispatch_metadata_or_boundary(stripped):
             continue
         if reviewer_edit_re.search(stripped) and not boundary_re.search(stripped):
             return True
@@ -419,6 +495,7 @@ def has_stale_review_after_fix_claim(text):
         return True
     has_material_fix = any(
         material_fix_re.search(fragment)
+        and not _is_dispatch_metadata_or_boundary(fragment)
         and not re.search(
             r"\b(role separation|violates|loses clean-review authority|loses clean review authority)\b",
             fragment,
@@ -430,7 +507,7 @@ def has_stale_review_after_fix_claim(text):
         return False
     for line in text.splitlines():
         stripped = line.strip()
-        if not stripped or _has_clean_review_boundary(stripped):
+        if not stripped or _is_dispatch_metadata_or_boundary(stripped) or _has_clean_review_boundary(stripped):
             continue
         if _has_clean_review_positive(stripped) and not re.search(
             r"\b(fresh|new|again|rerun|re-run|re-review|reviewed latest|latest diff)\b|"
@@ -539,18 +616,27 @@ def has_parent_context_validation_claim(text):
         re.IGNORECASE,
     )
     boundary_re = re.compile(
-        r"(unverified|not verified|cannot verify|can't verify|blocked|missing|"
+        r"(unverified|not verified|cannot|can't|block(?:ed|s)?|missing|reject(?:ed)?|classify|"
         r"must not infer|do not infer|cannot infer|does not prove|not evidence|"
         r"does not include|not ready|not admissible|remove any requirement|"
         r"remove any instruction|do not accept|boundaries|absent|required evidence|invalid|"
-        r"required validation evidence|asks reviewer to infer|fastest_signal|"
+        r"not accepted|not valid|not clean-review evidence|not clean review evidence|partial same-context|"
+        r"coordinator claimed clean review passed|"
+        r"required validation evidence|explicit validation evidence|explicit evidence package|"
+        r"must contain validation|source-backed evidence|no hidden parent memory|"
+        r"no parent memory inference|"
+        r"asks reviewer to infer|fastest_signal|"
         r"fresh read-only context|no parent implementation history|not eligible|"
         r"no parent context|no hidden context|relies on parent-thread memory|"
         r"instead of relying on parent-thread memory|instead of parent-thread memory|"
         r"not inherited summary|no parent history|"
         r"not via parent memory|without parent-thread memory|without parent memory|"
+        r"do not use inherited parent context|"
         r"parent memory is not acceptable|hidden context|inferred success|"
-        r"current pass claim relies|incomplete nested child evidence|"
+        r"infer success from parent memory|"
+        r"current pass claim relies|incomplete nested child evidence|review incomplete|"
+        r"remained stuck|contaminated|no parent-history fork|no pass claim|orientation only|"
+        r"read-only clean-review findings package|no unresolved child-review dependency|"
         r"no current clean-review pass|no valid fresh clean-review pass|"
         r"未验证|不能验证|不可验证|阻塞|缺失|不能推断|不得推断|不能证明|不是证据)",
         re.IGNORECASE,
@@ -558,16 +644,20 @@ def has_parent_context_validation_claim(text):
 
     for line in text.splitlines():
         stripped = line.strip()
-        if not stripped or boundary_re.search(stripped):
+        if not stripped or _is_dispatch_metadata_or_boundary(stripped) or boundary_re.search(stripped):
             continue
         if parent_context_re.search(stripped) and validation_re.search(stripped):
             return True
 
-    return bool(
-        parent_context_re.search(lowered)
-        and validation_re.search(lowered)
-        and not boundary_re.search(lowered)
-    )
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    for index in range(len(lines) - 1):
+        window = " ".join(lines[index:index + 2])
+        if boundary_re.search(window):
+            continue
+        if parent_context_re.search(window) and validation_re.search(window):
+            return True
+
+    return False
 
 
 def check_parent_context_validation_claim(text):
@@ -653,7 +743,7 @@ def has_clean_review_blocked_or_unverified_boundary(text):
 
 def has_clean_review_pass_claim(text):
     clean_review_marker = re.compile(
-        r"(clean review|clean-review|clean_review|clean review evidence|干净评审|独立评审)",
+        r"(clean review|clean-review|clean_review(?!er)|clean review evidence|干净评审|独立评审)",
         re.IGNORECASE,
     )
     local_negation_or_boundary = re.compile(
@@ -692,6 +782,8 @@ def has_clean_review_pass_claim(text):
             in_blocked_until = False
         if not clean_review_marker.search(stripped):
             continue
+        if _is_dispatch_metadata_or_boundary(stripped):
+            continue
         if in_blocked_until and re.match(r"clean_review\s*:", stripped, re.IGNORECASE):
             continue
         if re.match(r"^[-*]?\s*task\s*:", stripped, re.IGNORECASE):
@@ -705,8 +797,11 @@ def has_clean_review_pass_claim(text):
             r"clean-review execution is blocked|fallback proposed|pass attempt|not a clean-review pass|"
             r"ensure no|cannot upgrade|claimed clean-review pass|reject-inherited-clean-review-pass|"
             r"ready_after_current_claim_rejected|completed managed worktree result|do not emit|"
-            r"no clean_review pass|fresh pass required|not yet provided|stuck child resolved|"
+            r"do not close|do\W*not\W*accept|mark clean review passed|"
+            r"no clean_review pass|fresh[-_ ]pass[-_ ]required|not yet provided|stuck child resolved|"
             r"human-approved scope|current pass claim relies|cannot support|cannot be accepted|"
+            r"fresh clean review required|"
+            r"blocked_pending_findings|serial after clean-review findings|remediation result package|"
             r"next valid step|pass/fail|blocked until remediation|re-review after remediation|"
             r"no current clean-review pass|no valid fresh clean-review pass)\b",
             stripped,
