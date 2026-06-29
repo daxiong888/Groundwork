@@ -59,6 +59,8 @@ Use conflict and dependency evidence to choose the safest worktree start state:
 - When a package requests an `existing-branch` start state, confirm the branch already exists and that no dirty coordinator base must be inherited.
 - If a requested branch is missing, unknown, stale, or used to bypass dirty-base inheritance, choose `blocked`, `needs_remediation`, or `human_decision` before child thread creation.
 - Do not create a dependent child thread merely because a worktree request is queued. `pendingWorktreeId` is not release evidence.
+- Do not treat `pendingWorktreeId` as permission to continue the same write task in the parent/coordinator thread. Until it resolves to a child thread id and worktree path, the coordinator must wait/poll/resolve or choose `blocked`/`human_decision`.
+- Do not create a manual git worktree fallback to bypass a pending Codex App managed worktree. Such a fallback changes execution topology and requires explicit user approval before any implementation starts.
 
 ## Overlap Signals
 
@@ -70,6 +72,7 @@ Treat these as conflict or serialization signals:
 - dependency on a prior task's changed source, tests, docs contract, result package shape, or merge-back protocol;
 - same `conflict_group` without an explicit merge-order hint;
 - unknown base, unknown merge-back state, unknown clean-review state, or unknown base-refresh state.
+- unresolved `pendingWorktreeId` for the same task or runtime correlation id.
 
 ## Release Rules
 

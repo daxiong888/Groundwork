@@ -62,7 +62,7 @@ result_package:
     failure_action: "none | corrective_resend | blocked | needs_remediation"
 
   lifecycle:
-    current_state: "package_admitted | child_thread_created | prompt_delivered | running | review_package_returned | clean_review_pending | clean_review_passed | needs_remediation | blocked | merge_pending | discard_pending | merged_to_main_worktree | discarded | archive_ready | archived | branch_cleanup_pending | branch_cleaned | branch_retained_with_reason | closed"
+    current_state: "package_admitted | worktree_init_pending | child_thread_created | prompt_delivered | running | review_package_returned | clean_review_pending | clean_review_passed | needs_remediation | blocked | merge_pending | discard_pending | merged_to_main_worktree | discarded | archive_ready | archived | branch_cleanup_pending | branch_cleaned | branch_retained_with_reason | closed"
     archive_ready: "true | false | unknown"
     archive_blockers: []
     closeout_decision: "archive | retain | discard | blocked | human_decision | not_applicable"
@@ -103,6 +103,8 @@ result_package:
 
   runtime:
     adapter: "codex_app_managed_worktree_thread"
+    init_status: "not_started | pending | child_thread_created | failed | blocked"
+    pending_worktree_id: ""
     thread_identifier: ""
     thread_title_display_label: ""
     worktree_type: "Codex-managed | none"
@@ -154,6 +156,10 @@ When Goal Mode is required, `goal_mode.goal_command_first_line` and `goal_mode.l
 `runtime_identity.runtime_correlation_id` must be echoed from the dispatch package for managed worktree results. Thread title fields are display-only labels and must not be used as source-of-truth identity. If the visible title changed, preserve the same `runtime_correlation_id`, report the observed current title when available, and set `title_mutation_detected` to `true`.
 
 `registry.current_status` must map to `THREAD-LIFECYCLE.md` and `registry.state_event_ref` must point to the artifact/log event for the latest status transition. If the adapter cannot name base ref, artifact path, or event evidence, use `blocked` or `needs_remediation` for lifecycle closeout decisions.
+
+When Codex App returns `pendingWorktreeId` but no child thread identifier or worktree path, set `runtime.init_status = pending`, set `runtime.pending_worktree_id`, set `lifecycle.current_state = worktree_init_pending`, keep `changes.changed_files` empty, and route the result to wait/poll/resolve, `blocked`, or `human_decision`. Do not report `child_thread_created`, `ready_for_review`, merge-back, archive readiness, or parent-thread implementation evidence from a pending id alone.
+
+For closeout, map `runtime.init_status = child_thread_created` to `init_resolution_status.status = resolved` with `resolution_source = codex_managed_worktree`. Map `runtime.init_status = pending` to `init_resolution_status.status = pending`; it must stay non-mergeable until resolved, failed, blocked, or routed to human decision. If a user explicitly accepts a fallback topology, the closeout package must use `resolution_source = approved_topology_change` and preserve approval plus merge source evidence.
 
 `lifecycle.current_state` must reflect the adapter-visible lifecycle evidence for the result package. `review_package_returned` is not enough for `archive_ready`; archive readiness requires clean review plus merge/discard evidence or a blocked-with-human-decision closeout path, and `archived` does not imply branch cleanup.
 
