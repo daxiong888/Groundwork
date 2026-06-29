@@ -14,6 +14,7 @@ from pathlib import Path
 
 from checks.common import has_required_field, missing_required_fields
 from checks.forbidden_patterns import (
+    check_review_loop_claims,
     forbidden_git_add_dot_suggestion,
     has_archive_or_branch_cleanup_ready_claim,
     has_clean_review_blocked_or_unverified_boundary,
@@ -1570,6 +1571,18 @@ def behavior_verdict(row, schema, actual, final_response, changes, lifecycle_err
             "behavior_contract",
             "low-risk exception claimed archive or branch cleanup readiness",
         )
+
+    if route_boundary.startswith(("clean-review", "review-loop")):
+        review_loop_result = check_review_loop_claims(final_response)
+        if review_loop_result["verdict"] != "pass":
+            append_failure(
+                failures,
+                notes,
+                "forbidden_behavior",
+                review_loop_result.get("fix_locus", "behavior_contract"),
+                f"{review_loop_result['checker_id']}: "
+                + "; ".join(review_loop_result.get("notes") or []),
+            )
 
     if route_boundary == "clean-review-parent-context-fork":
         if not has_clean_review_parent_context_fork_disclosure(final_response):

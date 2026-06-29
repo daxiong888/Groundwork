@@ -15,6 +15,8 @@ A reviewer spawned from the parent thread's full history is not a fresh-context 
 
 The coordinator may perform low-cost intake to decide whether the package is complete enough to route. Deep review must fan out when size, risk, volume, missing evidence, or context freshness makes coordinator review unreliable.
 
+Use `skills/_shared/REVIEW-LOOP.md` for the stable post-implementation loop. A clean-review package may pass, block, or find remediation work, but it must not mutate files. When remediation changes material files, the previous clean-review result is stale for the latest diff and the coordinator must route the new package through clean review again unless the low-risk coordinator-intake exception is explicitly recorded.
+
 ## Coordinator Intake Boundary
 
 Coordinator intake may:
@@ -118,6 +120,19 @@ review_findings
 
 `coverage.covered` and `coverage.not_covered` are mandatory. A clean review that does not declare what was and was not covered must route to `unverified` or `blocked`, not `pass`, because closeout cannot infer review scope from findings alone.
 
+## Remediation Loop
+
+When clean review returns `needs_remediation`:
+
+- route writes to `dispatch_write_task`, the original child implementation route, or `implement`; do not let the clean reviewer edit files;
+- keep remediation scoped to cited findings, accepted gap-closure items, and required checks;
+- require the implementer to return updated `Self-check Evidence`, `findings_addressed`, checks run, checks not run, and remaining risks;
+- set `review_loop.previous_review_stale_reason` when material files changed after the prior clean review;
+- set `review_loop.next_review_required = true` unless a documented low-risk coordinator-intake exception applies;
+- route the updated package back to `clean_reviewer` or read-only `codex_subagent` before verify, merge-back, archive, branch cleanup, or closeout claims.
+
+Loop exits are limited to `clean_review_passed`, `blocked`, `human_decision`, or documented `low_risk_coordinator_intake`. These exits still do not prove runtime, browser, UAT, release, archive, branch cleanup, commit, push, PR, remote mutation, or final readiness.
+
 ## Expected Eval Hooks
 
 Later eval coverage should include:
@@ -133,3 +148,4 @@ Later eval coverage should include:
 - missing validation evidence is reported as `unverified` or `blocked`;
 - clean review output declares `covered` and `not_covered` review scope;
 - clean review pass does not claim final readiness, archive, merge-back, branch cleanup, commit, push, PR, or remote mutation.
+- clean-review findings route to scoped remediation, then stale prior review evidence triggers a new clean-review pass before downstream closeout.
