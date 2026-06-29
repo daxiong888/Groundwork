@@ -276,7 +276,6 @@ def check_self_check_as_clean_review(text):
 
 
 def has_reviewer_self_fix_pass_claim(text):
-    normalized = " ".join(text.splitlines())
     reviewer_fix_re = re.compile(
         r"\b(clean reviewer|reviewer)\b.{0,80}\b(fix(?:ed|es)?|edit(?:ed|s)?|"
         r"patch(?:ed|es)?|changed|appl(?:y|ied))\b|"
@@ -285,7 +284,24 @@ def has_reviewer_self_fix_pass_claim(text):
         r"(reviewer|评审者|评审).{0,40}(修复|修改|改了|打补丁)",
         re.IGNORECASE,
     )
-    if not reviewer_fix_re.search(normalized):
+    reviewer_fix_negation_re = re.compile(
+        r"\b(did not|didn't|does not|do not|not|never|no)\b.{0,32}"
+        r"\b(fix(?:ed|es)?|edit(?:ed|s)?|patch(?:ed|es)?|changed|appl(?:y|ied))\b|"
+        r"\b(read-only|read only)\b.{0,48}"
+        r"\b(reviewer|clean reviewer)\b|"
+        r"(未|没有|不|不得|不能|不可).{0,16}(修复|修改|改|打补丁)|"
+        r"(只读|read-only|read only).{0,16}(评审|reviewer)",
+        re.IGNORECASE,
+    )
+    has_reviewer_fix = False
+    for fragment in re.split(r"[\n.;。；]+", text):
+        stripped_fragment = fragment.strip()
+        if not stripped_fragment:
+            continue
+        if reviewer_fix_re.search(stripped_fragment) and not reviewer_fix_negation_re.search(stripped_fragment):
+            has_reviewer_fix = True
+            break
+    if not has_reviewer_fix:
         return False
     for line in text.splitlines():
         stripped = line.strip()
@@ -359,12 +375,31 @@ def has_clean_review_readiness_claim(text):
         r"(发布|UAT|客户|最终验收|归档|分支清理).{0,16}(ready|就绪|可以|通过|批准|允许)",
         re.IGNORECASE,
     )
+    evidence_field_re = re.compile(
+        r"\b(release|uat|customer|archive|branch cleanup|branch deletion)"
+        r"\s+evidence\s*[:：-]\s*(ready|approved|passed|pass|complete|completed)\b|"
+        r"\b(final readiness|release readiness|uat readiness|customer readiness|"
+        r"archive readiness|branch cleanup readiness)\s*[:：-]\s*"
+        r"(ready|approved|passed|pass|complete|completed)\b|"
+        r"(发布|UAT|客户|归档|分支清理).{0,8}证据\s*[:：-]\s*(ready|就绪|批准|通过|完成)",
+        re.IGNORECASE,
+    )
     for line in text.splitlines():
         stripped = line.strip()
         if not stripped or _has_readiness_boundary(stripped):
             continue
         if _has_clean_review_positive(stripped) and readiness_re.search(stripped):
             return True
+    has_clean_review_pass = any(
+        _has_clean_review_positive(line.strip()) and not _has_clean_review_boundary(line.strip())
+        for line in text.splitlines()
+    )
+    has_readiness_field = any(
+        evidence_field_re.search(line.strip()) and not _has_readiness_boundary(line.strip())
+        for line in text.splitlines()
+    )
+    if has_clean_review_pass and has_readiness_field:
+        return True
     if (
         _has_clean_review_positive(text)
         and readiness_re.search(text)

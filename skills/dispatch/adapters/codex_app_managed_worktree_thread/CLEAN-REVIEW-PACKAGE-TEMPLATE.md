@@ -94,7 +94,7 @@ clean_review_package:
 - If unapproved nested agents or child threads were spawned, disclose that topology and return `unverified` or `blocked` for clean-review authority.
 - A human decision may accept the risk of proceeding without Clean Review Evidence, but it must not convert forked or nested reviewer output into a clean-review `pass`.
 - Mark absent validation, redacted-but-needed diff detail, missing source truth, or unclear acceptance mapping as `unverified` or `blocked`.
-- Treat `review_loop.previous_review_stale_reason` as a blocker for clean-review pass unless the package also includes fresh review evidence for the latest material change.
+- Treat `review_loop.previous_review_stale_reason` as evidence that earlier review output cannot be reused. It is not itself a blocker to performing this fresh review; this reviewer may return `pass` only after independently reviewing the latest material change in the supplied package and citing that fresh evidence.
 - If remediation is needed, return findings and route writes separately; do not perform the fix inside clean review.
 - Cite package sections, file paths, commands, or supplied observations for each finding.
 - Report coverage explicitly. `covered` must name the package areas actually reviewed; `not_covered` must name missing, redacted, unavailable, or intentionally skipped areas.

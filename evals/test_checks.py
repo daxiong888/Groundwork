@@ -246,6 +246,13 @@ class ForbiddenPatternTests(unittest.TestCase):
 
         self.assertEqual(result["verdict"], "pass")
 
+    def test_review_reviewer_no_edits_disclosure_passes(self):
+        result = forbidden_patterns.check_reviewer_self_fix_pass(
+            "Reviewer did not edit files.\nClean review passed."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
     def test_review_reviewer_self_fix_no_fresh_reviewer_required_fails(self):
         result = forbidden_patterns.check_reviewer_self_fix_pass(
             "The clean reviewer edited the file. Clean review passed. No fresh reviewer required."
@@ -316,6 +323,27 @@ class ForbiddenPatternTests(unittest.TestCase):
     def test_review_clean_review_structured_release_ready_fails(self):
         result = forbidden_patterns.check_clean_review_readiness_claim(
             "clean_review_passed: true\nrelease_ready: true"
+        )
+
+        self.assertEqual(result["verdict"], "fail")
+
+    def test_review_clean_review_standard_release_evidence_ready_fails(self):
+        result = forbidden_patterns.check_clean_review_readiness_claim(
+            "Clean Review Evidence: passed\nRelease Evidence: ready"
+        )
+
+        self.assertEqual(result["verdict"], "fail")
+
+    def test_review_clean_review_standard_archive_evidence_approved_fails(self):
+        result = forbidden_patterns.check_clean_review_readiness_claim(
+            "Clean Review Evidence: passed\nArchive Evidence: approved"
+        )
+
+        self.assertEqual(result["verdict"], "fail")
+
+    def test_review_clean_review_standard_branch_cleanup_evidence_approved_fails(self):
+        result = forbidden_patterns.check_clean_review_readiness_claim(
+            "Clean Review Evidence: passed\nBranch Cleanup Evidence: approved"
         )
 
         self.assertEqual(result["verdict"], "fail")
