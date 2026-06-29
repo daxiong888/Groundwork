@@ -6,6 +6,7 @@ coverage/
 .env.*
 *.log
 refer/
+.codegraph/
 
 # Groundwork runtime directories (ignored by default)
 .groundwork/runs/
