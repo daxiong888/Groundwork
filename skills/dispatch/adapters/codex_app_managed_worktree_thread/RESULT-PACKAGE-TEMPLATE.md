@@ -88,7 +88,7 @@ result_package:
 
   clean_review:
     required: "true | false"
-    reviewer_context: "fresh | coordinator_intake | not_required | unknown"
+    reviewer_context: "fresh | not_required | unknown"
     status: "pending | passed | failed | blocked | not_required"
     findings: []
     evidence: ""
@@ -175,7 +175,7 @@ For closeout, map `runtime.init_status = child_thread_created` to `init_resoluti
 
 `branch_cleanup.cleanup_completed = true`, `lifecycle.current_state = branch_cleaned`, or any equivalent cleanup claim requires branch identity, required approval, and cleanup evidence. Missing approval or uncertain branch identity must route to `human_decision` or `blocked`, not `done`.
 
-`clean_review.status = passed` requires fresh clean-review evidence or a documented `coordinator_intake` decision that satisfies the low-risk exception in `skills/dispatch/CLEAN-REVIEW-FANOUT.md`. A child result package, `review_package_returned`, or self-review cannot make the package archive-ready.
+`clean_review.status = passed` requires fresh clean-review evidence from an independent reviewer. A documented `low_risk_coordinator_intake` exception may close coordinator intake only when it satisfies `skills/_shared/LOW-RISK-COORDINATOR-INTAKE.md`; it must be recorded under `review_loop.status = low_risk_coordinator_intake`, not as `clean_review.status = passed`. A child result package, `review_package_returned`, self-review, or low-risk coordinator intake cannot make the package merge-ready or archive-ready.
 
 `review_loop.status` must reflect the latest material change, not the oldest returned package state. If a clean-review finding was fixed after review, set `previous_review_stale_reason` and `next_review_required = true` until the latest diff receives fresh clean review or a valid low-risk coordinator-intake exception. `findings_addressed` lists only cited findings or accepted gap-closure items that were actually fixed and rechecked.
 

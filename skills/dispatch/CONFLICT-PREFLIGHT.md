@@ -12,6 +12,14 @@ Use this preflight before parallelizing dispatched tasks, especially write tasks
 
 Whether tasks can run in parallel, must be serialized, need approval, or must split into diagnosis and write subtasks before routing.
 
+## Artifact Type
+
+shared dispatch preflight reference
+
+## Source of Truth
+
+Dispatch Package v2 schema, managed-worktree routing contracts, and Groundwork conflict-isolation policy.
+
 ## Scope
 
 This document defines conflict grouping and default parallelization rules for dispatch. It does not inspect a repository automatically, execute tasks, merge work, or resolve conflicts.
@@ -23,6 +31,14 @@ This document defines conflict grouping and default parallelization rules for di
 - Worktree creation.
 - Remote writes.
 - Product truth invention when source evidence is missing.
+
+## Evidence Level
+
+Source-validation policy only. This preflight does not prove runtime execution, worktree creation, merge safety, release readiness, UAT readiness, or customer readiness.
+
+## Safe to Share / Redaction Notes
+
+Safe to share as-is; contains no secrets, credentials, PII, private logs, or production payloads.
 
 ## Conflict Inputs
 
@@ -73,6 +89,8 @@ Use stable conflict group names when evidence points to one of these categories.
 - Dispatch should prefer fewer parallel write tasks when source evidence is weak.
 
 ## Parallelization Field Rules
+
+`runtime_policy.max_parallel_units` is the package-wide total concurrency ceiling. `parallelization.max_parallel_group_size` is the per-conflict-or-dependency-group ceiling for the task. Effective concurrency must satisfy both.
 
 Each dispatched task must include:
 

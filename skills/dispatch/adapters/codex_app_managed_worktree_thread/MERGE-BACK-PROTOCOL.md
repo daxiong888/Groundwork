@@ -60,13 +60,13 @@ merge_back:
 
 ## Clean Review Gate
 
-Merge-back may start only after clean-review evidence is recorded and the merge-back package records `clean_review_passed: true` with `clean_review_evidence`.
+Merge-back may start only after fresh clean-review evidence is recorded and the merge-back package records `clean_review_passed: true` with `clean_review_evidence`.
 
 - `review_package_returned` is only an intake state and does not permit merge-back.
 - Child self-review does not permit merge-back.
 - Fresh clean review is the default evidence source.
-- Coordinator intake may satisfy the clean-review gate only for a small, single-package, low-risk return that is self-contained, has clear validation evidence, has no fan-out trigger under `skills/dispatch/CLEAN-REVIEW-FANOUT.md`, and records an explicit `coordinator_intake` clean-review decision.
-- Coordinator intake without the low-risk exception evidence does not permit merge-back.
+- `low_risk_coordinator_intake` is not clean-review evidence and does not permit merge-back. It may close coordinator intake only when it satisfies `skills/_shared/LOW-RISK-COORDINATOR-INTAKE.md`; it must not set `clean_review_passed: true`.
+- Coordinator intake without fresh clean-review evidence does not permit merge-back.
 - A child implementation thread must not output or claim `review_passed`; only the coordinator or clean reviewer may record clean-review pass evidence before the merge barrier.
 - If clean review fails or is missing, set `result.attempted: false`, `result.applied: not_attempted`, preserve the original child thread and child worktree, and route to `remediation_original_child_thread` when the fix remains in scope. Route to `blocked` or `human_decision` only when remediation cannot proceed without missing source truth, approval, or a human merge decision.
 

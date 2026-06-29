@@ -91,7 +91,7 @@ Branch cleanup evidence:
 
 Clean review handoff:
 - Clean review required: yes | no
-- Suggested reviewer context: fresh | coordinator_intake | not_required | unknown
+- Suggested reviewer context: fresh | not_required | unknown
 - Clean review status: pending | not_required
 - Clean review evidence:
 
@@ -172,7 +172,7 @@ Do not claim merge-back completed, main-worktree application, or post-merge vali
 
 Do not claim branch cleanup completed unless the branch identity, required approval, and cleanup evidence are present. If branch identity or approval is uncertain, recommend `human_decision` or `blocked`.
 
-Child implementation threads must not mark clean review as passed. Use `pending` unless a separate clean reviewer or documented `coordinator_intake` decision supplies low-risk exception evidence.
+Child implementation threads must not mark clean review as passed. Use `pending` unless a separate fresh clean reviewer has already supplied clean-review evidence. A valid `low_risk_coordinator_intake` exception belongs under `review_loop.status = low_risk_coordinator_intake`; it is not clean-review evidence and must not set clean review to passed.
 
 Child implementation packages must not recommend `merge_back`, `branch_cleanup`, or `retain` as direct lifecycle actions. Those are coordinator-only downstream decisions after clean-review evidence and lifecycle closeout evidence exist.
 

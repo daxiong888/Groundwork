@@ -303,7 +303,7 @@ Lifecycle State Update
 - State Freshness Risk:
 ```
 
-Omit the `QA Failure` block only when there is no failed verification and the user did not ask for QA -> fix -> QA handling. When it appears, keep every field; write `not provided` for missing prompt details and `unverified` for details that were not checked.
+Omit the `QA Failure` block only when there is no failed verification and the user did not ask for QA -> fix -> QA handling. When it appears, keep every field; write `not provided` for missing prompt details and `unverified` for details that were not checked. Use `skills/_shared/SEVERITY.md`; `none` is invalid inside `QA Failure` because the block exists only for failed or blocked verification.
 
 Keep `Task State Recommendation` after the verification body. Omit it only when the user requested a specialized payload that cannot include task-state guidance without expanding scope; in that case, put the task-state gap in `Next Action`.
 

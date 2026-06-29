@@ -42,7 +42,9 @@ Use the shared grilling loop when at least one condition is true:
 
 ## Plan Mode Entry for Explicit Grilling
 
-For explicit grill-me, challenge, or clarify prompts, enter Codex Plan Mode first when the host exposes it. Use Plan Mode to decide whether the narrowest route is direct, `to-prd`, decision mapping, `prototype`, `to-issues`, `implement`, `verify`, `handoff`, `dispatch`, or blocked.
+For explicit grill-me, challenge, or clarify prompts, enter Codex Plan Mode first when the host exposes it. Use Plan Mode to decide whether the narrowest route is direct, `to-prd`, decision mapping, `prototype`, `to-issues`, `implement`, `verify`, `handoff`, `dispatch`, `wiki`, or blocked.
+
+Use `skills/_shared/MODE-HARNESS.md` for host-mode evidence and fallback behavior.
 
 Plan Mode may produce one compact highest-impact question, a route boundary, a conversation draft, or an artifact recommendation. It must not write durable artifacts, and it does not force `to-prd` when a narrower route is correct. If Plan Mode is unavailable or not exposed, run the same entry decision as prompt-level planning and do not claim `tool_enforced` Plan Mode without host or adapter evidence.
 
@@ -57,6 +59,25 @@ Do not grill when a narrower route can safely proceed:
 - `prototype`: use `prototype` when a concrete throwaway UI, state, interaction, visual, or business-rule artifact can answer the question faster than more clarification.
 - `implement`: do not use grilling to bypass accepted PRD, scoped issue, implementation-ready source truth, git gates, or verification gates.
 - `verify`: use `verify` for readiness or evidence sufficiency claims; grilling cannot decide readiness.
+
+## Clarification Modes
+
+Use these modes to resolve the apparent "one question" versus "up to five questions" boundary:
+
+```yaml
+clarification_mode:
+  interactive:
+    max_questions_visible: 1
+    rule: ask the single highest-impact question; ask another only after the answer exposes a new blocker
+  non_interactive_gap_list:
+    max_questions_visible: 5
+    allowed_only_when:
+      - user explicitly asks for a questionnaire, checklist, gap list, or non-interactive PRD questions
+      - the request is to produce a written artifact rather than run an iterative conversation
+    rule: each question must include impact and recommended default when evidence supports it
+```
+
+Without an explicit questionnaire, checklist, gap-list, or non-interactive question trigger, use `interactive`.
 
 ## One-question-at-a-time Loop
 
@@ -180,6 +201,8 @@ A question fails the gate when:
 - it does not change the next route, acceptance, contract, artifact boundary, or evidence requirement;
 - it asks for facts available in local docs/source/tickets/artifacts without inspection;
 - it asks several questions at once during interactive work;
+- it asks more than five questions in `non_interactive_gap_list` mode;
+- it uses `non_interactive_gap_list` without an explicit questionnaire, checklist, gap-list, or non-interactive question trigger;
 - it is philosophical, motivational, or generic rather than workflow-relevant;
 - it tries to get user confirmation for an invented backend field, state, API, metric, permission, owner, timeline, or acceptance detail;
 - it claims readiness, acceptance, clean review, independent verification, runtime evidence, browser evidence, UAT evidence, release evidence, customer readiness, marketplace behavior, installed-plugin behavior, cache refresh, or selector enforcement.

@@ -289,6 +289,21 @@ tasks:
 - `dispatch_native_alignment.handoff_expected.package_ref` must reference `native_handoff_package` when a Local to Worktree or Worktree to Local transfer is expected; package generation must not claim that Handoff was executed.
 - `legacy_compatibility` fields exist only to read or downgrade v0.3.3 managed-worktree packages. They are not Codex-native execution state and must not be used as proof of worktree creation, child-thread identity, archive, cleanup, runtime success, cache refresh, release readiness, or UAT readiness.
 
+## Parallelization Field Glossary
+
+The two parallelization fields are intentionally different levels:
+
+- `runtime_policy.max_parallel_units`: package-wide total concurrency ceiling across all tasks in the dispatch package.
+- `tasks[].parallelization.max_parallel_group_size`: group-level ceiling for tasks sharing a conflict or dependency group.
+
+Effective concurrency must not exceed both the package-wide ceiling and the applicable group-level ceiling.
+
+Schema hard negatives:
+
+- `runtime_policy.max_parallel_group_size` is invalid; use `runtime_policy.max_parallel_units`.
+- `tasks[].parallelization.max_parallel_units` is invalid; use `tasks[].parallelization.max_parallel_group_size`.
+- A package that defines both fields without this relationship or without conflict/dependency group context is incomplete for parallel write routing.
+
 ## Route Policy Rules
 
 Route decisions choose the lightest safe topology before selecting an implementation runtime:

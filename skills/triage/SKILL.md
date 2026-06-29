@@ -34,13 +34,7 @@ Inspect the task source, PRD/spec, current conversation, previous state when kno
 
 When maintaining the Groundwork repository itself, apply the repo-local `AGENTS.md` Done Definition before reporting the work complete.
 
-Every verdict must include `Severity` and `State Transition Reason`. Severity describes the current blocker or gap impact, **not overall product priority**:
-
-- `P0`: production-critical, destructive, security/privacy, or release-stopping gap.
-- `P1`: major acceptance, data, UAT/release, or cross-layer gap.
-- `P2`: important gap with workaround or limited blast radius.
-- `P3`: minor wording, hygiene, or follow-up gap.
-- `none`: no material blocker or gap remains.
+Every verdict must include `Severity` and `State Transition Reason`. Use `skills/_shared/SEVERITY.md` as the shared enum. In `triage`, severity describes the current blocker or gap impact, **not overall product priority**.
 
 AFK/HITL is a local execution-routing decision, not a quality score:
 

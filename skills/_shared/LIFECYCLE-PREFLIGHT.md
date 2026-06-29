@@ -3,9 +3,12 @@
 Target Reader: Groundwork skills that need to decide the next action before writing files, creating artifacts, mutating git state, or running verification.
 Reader Action Needed: Classify the current request, choose the workflow mode, and apply the right gate before acting.
 Decision Supported: Whether the next step is direct work, PRD/grill, issue splitting, implementation, verification, handoff, artifact promotion, git topology handling, or a stop condition.
+Artifact Type: shared guardrail
+Source of Truth: v0.3 lifecycle-state contract, task-state spine, routing reliability fixtures, and shared mode-harness policy.
 Scope: Transient pre-action routing, source-of-truth checks, locale inheritance, artifact promotion checks, git topology checks, verification strategy, and lifecycle-state promotion decisions.
 Out of Scope: Public skills, task CRUD, tracker APIs, project task databases, `.planning`, `.gsd`, automatic state mutation, automatic commits, and replacing `artifacts/<workstream-slug>/STATE.md`.
 Evidence Level: Derived from the v0.3 lifecycle-state contract, the task-state spine, and regression evidence from real Groundwork sessions.
+Safe to Share / Redaction Notes: Safe to share as-is; contains no secrets, credentials, PII, private logs, or production payloads.
 Related Issues: #28, #29, #30, #31, #33.
 
 ## Core Rule
@@ -45,6 +48,7 @@ Run lifecycle preflight before any non-trivial Groundwork action when at least o
 - the work would create or promote a durable artifact;
 - the work may mutate git, a remote tracker, data, customer-visible state, runtime state, or shared project files;
 - the prompt language could conflict with skill-template language;
+- the host mode may be Plan Mode, read-only, chat-only, write-capable, or unknown and could affect durable writes, runtime claims, or remote mutation;
 - the task might need `STATE.md` or `ROADMAP.md` under the lifecycle-state thresholds.
 
 Skip preflight for small direct answers, trivial rewrites, simple explanations, and one-off edits where no artifact, git action, verification claim, or remote mutation is involved.
@@ -58,6 +62,7 @@ Use this transient shape. It may be reasoned about silently, but high-risk field
 
 Intent:
 Suggested Workflow Mode:
+Host Mode:
 Locale:
 Source of Truth:
 Requirement State:
@@ -120,6 +125,8 @@ prototype
 implement
 verify
 handoff
+dispatch
+wiki
 blocked
 ```
 
@@ -133,6 +140,29 @@ Route examples:
 - scoped code change -> `implement`, after git topology gate;
 - tests/runtime/UAT/release/customer-safe evidence -> `verify`;
 - pause/resume/cross-session transfer -> `handoff`.
+- accepted ready-task runtime routing or package-only execution matrix -> `dispatch`;
+- durable project wiki query, ingest, audit, repair, or update request -> `wiki`.
+
+### `Host Mode`
+
+Use `skills/_shared/MODE-HARNESS.md` when host mode affects trust, durable writes, runtime execution, reviewer closeout, or artifact promotion.
+
+Allowed values:
+
+```text
+plan_mode
+read_only
+write_capable
+chat_only
+unknown
+```
+
+Rules:
+
+- Plan Mode can shape route, scope, evidence, artifact boundary, conversation drafts, and highest-impact questions, but must not write durable files or claim write completion.
+- Read-only and chat-only contexts may produce reports, packages, route decisions, and recommendations, but must not claim file edits, runtime execution, git mutation, or remote mutation.
+- Write-capable context still requires source truth, artifact promotion, git topology, and risk gates before edits.
+- Unknown host mode takes the safer branch for durable writes and runtime claims.
 
 ### `Locale`
 

@@ -133,7 +133,7 @@ If no artifact path or trace log is available, route to `blocked` or `human_deci
 | `running` | Child thread is executing or has not returned a terminal package. | Last observed status or runtime timestamp when available. |
 | `review_package_returned` | Child returned a managed worktree review package. | Review package presence and completeness status. |
 | `clean_review_pending` | Returned package needs fresh-context review before merge/discard/archive decision. | Intake decision and clean-review route. |
-| `clean_review_passed` | Clean reviewer found no blocking implementation-conformance issue. | Review findings package or coordinator-accepted clean-review evidence. |
+| `clean_review_passed` | Fresh clean reviewer found no blocking implementation-conformance issue. | Fresh review findings package and clean-review evidence. |
 | `needs_remediation` | Evidence shows a scoped fix is still needed. | Failed check, unmet acceptance criterion, or review finding with remediation path. |
 | `blocked` | Progress cannot continue without missing source truth, tool, permission, approval, environment, or human decision. | Blocker list and next-route recommendation. |
 | `merge_pending` | Clean review passed and changes are eligible to apply into the main worktree, but merge-back is not complete. | Merge-back source and git-boundary preconditions. |

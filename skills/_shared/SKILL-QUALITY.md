@@ -63,6 +63,8 @@ Every public skill candidate must include hard negatives that fail when:
 - a public project-knowledge skill treats wiki synthesis, page-level source lists, stale pages, uncited claims, missing wiki roots, or derived search/index/graph output as source truth, contract truth, implementation authority, verification evidence, release evidence, UAT evidence, customer readiness, marketplace evidence, installed-plugin evidence, or cache-refresh evidence;
 - prompt text alone is treated as runtime, selector, browser, UAT, release, customer, marketplace, or installed-plugin cache evidence;
 - the author or same-session implementer approves their own material skill-quality change as final.
+- `low_risk_coordinator_intake` is used to bypass clean-review fan-out for material public skill, shared guardrail, adapter contract, package template, schema, shared fixture, state-machine, or shared-config changes;
+- `low_risk_coordinator_intake` is relabeled as clean review passed or used as public skill approval, release/UAT/customer readiness, archive, branch cleanup, merge, commit, push, PR, runtime, browser, marketplace, installed-plugin, or cache-refresh evidence.
 
 ## Evidence Boundary
 
