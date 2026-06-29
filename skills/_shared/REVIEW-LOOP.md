@@ -63,7 +63,7 @@ low_risk_coordinator_intake
 
 ## Required Package Fields
 
-Result and review packages that participate in this loop must carry a `review_loop` object:
+Result and review packages that participate in this loop must carry a `review_loop` object. Managed worktree result packages place it at `result_package.review_loop`. Clean-review input packages place the reviewed implementation's loop state at `clean_review_package.source.review_loop`; that field is source context for the reviewer, not proof that clean review has already passed.
 
 ```yaml
 review_loop:

@@ -154,9 +154,12 @@ def _has_negation_or_boundary(text):
 
 def _has_fresh_review_source(text):
     return re.search(
-        r"\b(fresh|independent|read-only|readonly|clean reviewer|new reviewer|"
-        r"separate reviewer|coordinator_intake|low-risk coordinator)\b|"
-        r"(独立|只读|新 reviewer|新评审|fresh reviewer|协调者低风险)",
+        r"\b(fresh reviewer|fresh read-only reviewer|independent reviewer|"
+        r"read-only reviewer|readonly reviewer|new reviewer|separate reviewer|"
+        r"fresh clean review|independent clean review|coordinator_intake|"
+        r"low-risk coordinator intake|low-risk coordinator)\b|"
+        r"(独立 reviewer|独立评审者|只读 reviewer|只读评审者|新 reviewer|新评审|"
+        r"fresh reviewer|fresh clean review|协调者低风险)",
         text,
         re.IGNORECASE,
     )
@@ -164,6 +167,7 @@ def _has_fresh_review_source(text):
 
 def _has_clean_review_positive(text):
     return re.search(
+        r"\b(clean_review_passed|review_passed|clean[_ -]?review)\b\s*[:=]\s*(true|yes|passed|pass)\b|"
         r"\b(clean[_ -]?review|clean reviewer|clean review evidence|review_passed|"
         r"clean_review_passed)\b.{0,48}\b(pass(?:ed)?|approved|complete|completed|valid|"
         r"satisfied|green)\b|"
@@ -171,6 +175,49 @@ def _has_clean_review_positive(text):
         r"\b(clean[_ -]?review|clean reviewer|clean review evidence|review_passed|"
         r"clean_review_passed)\b|"
         r"(clean review|clean_review|干净评审|独立评审).{0,24}(通过|已通过|完成|有效)",
+        text,
+        re.IGNORECASE,
+    )
+
+
+def _has_clean_review_boundary(text):
+    return re.search(
+        r"\b(clean[_ -]?review|clean review evidence|clean_review_passed)\b.{0,40}"
+        r"\b(not applicable|missing|pending|unverified|blocked|stale|requires?|required)\b|"
+        r"\b(self[- ]?check|self[- ]?review|self-run tests?|implementer self|"
+        r"child self[- ]?review)\b.{0,80}\b(not|cannot|can't|must not|does not|do not)\b"
+        r".{0,80}\b(clean[_ -]?review|clean review evidence|review_passed|clean_review_passed)\b|"
+        r"\b(new|fresh|independent|separate)\b.{0,32}\breviewer\b.{0,48}\b(required|requires|needed)\b|"
+        r"(clean review|clean_review|干净评审|独立评审).{0,24}(缺失|待|未验证|阻塞|失效|需要)|"
+        r"(自检|自查|自测).{0,40}(不是|不能|不算).{0,24}(clean review|干净评审|独立评审)",
+        text,
+        re.IGNORECASE,
+    )
+
+
+def _has_readiness_boundary(text):
+    return re.search(
+        r"\b(not|cannot|can't|must not|do not|does not|is not|isn't|still requires?|"
+        r"requires?|required|missing|pending|unverified|blocked)\b.{0,48}"
+        r"\b(release|uat|customer|final readiness|archive|branch cleanup|ready|readiness)\b|"
+        r"\b(release|uat|customer|final readiness|archive|branch cleanup|ready|readiness)\b"
+        r".{0,48}\b(still requires?|requires?|required|missing|pending|unverified|blocked)\b|"
+        r"(发布|UAT|客户|最终验收|归档|分支清理|ready|就绪).{0,24}(仍需|需要|缺失|待|未验证|阻塞|不能|不可|不算|不是)",
+        text,
+        re.IGNORECASE,
+    )
+
+
+def _has_stale_reuse_boundary(text):
+    return re.search(
+        r"\b(do not|don't|must not|should not|cannot|can't|not)\b.{0,64}"
+        r"\b(previous|old|earlier|prior)\b.{0,48}\b(clean[_ -]?review|review)\b"
+        r".{0,48}\b(still applies|still valid|remains valid|continues to cover)\b|"
+        r"\b(previous|old|earlier|prior)\b.{0,48}\b(clean[_ -]?review|review)\b"
+        r".{0,80}\b(stale|requires? re-review|requires? fresh review|must be re-reviewed)\b|"
+        r"(不要|不能|不得|不可).{0,32}(旧|上一轮|之前).{0,24}(clean review|评审)"
+        r".{0,24}(仍然有效|继续覆盖)|"
+        r"(旧|上一轮|之前).{0,12}(clean review|评审).{0,40}(失效|需要重新|需要 fresh|需要再次)",
         text,
         re.IGNORECASE,
     )
@@ -187,7 +234,7 @@ def has_self_check_as_clean_review_claim(text):
         return False
     for line in text.splitlines():
         stripped = line.strip()
-        if not stripped or _has_negation_or_boundary(stripped):
+        if not stripped or _has_clean_review_boundary(stripped):
             continue
         if _has_clean_review_positive(stripped) and (
             self_check_re.search(stripped) or not _has_fresh_review_source(stripped)
@@ -209,6 +256,7 @@ def check_self_check_as_clean_review(text):
 
 
 def has_reviewer_self_fix_pass_claim(text):
+    normalized = " ".join(text.splitlines())
     reviewer_fix_re = re.compile(
         r"\b(clean reviewer|reviewer)\b.{0,80}\b(fix(?:ed|es)?|edit(?:ed|s)?|"
         r"patch(?:ed|es)?|changed|appl(?:y|ied))\b|"
@@ -217,11 +265,11 @@ def has_reviewer_self_fix_pass_claim(text):
         r"(reviewer|评审者|评审).{0,40}(修复|修改|改了|打补丁)",
         re.IGNORECASE,
     )
-    if not reviewer_fix_re.search(text):
+    if not reviewer_fix_re.search(normalized):
         return False
     for line in text.splitlines():
         stripped = line.strip()
-        if not stripped or _has_negation_or_boundary(stripped):
+        if not stripped or _has_clean_review_boundary(stripped):
             continue
         if _has_clean_review_positive(stripped) and not _has_fresh_review_source(stripped):
             return True
@@ -253,13 +301,13 @@ def has_stale_review_after_fix_claim(text):
         r"(旧|上一轮|之前).{0,12}(clean review|评审).{0,24}(仍然有效|继续覆盖)",
         text,
         re.IGNORECASE,
-    ):
+    ) and not _has_stale_reuse_boundary(text):
         return True
     if not material_fix_re.search(text):
         return False
     for line in text.splitlines():
         stripped = line.strip()
-        if not stripped or _has_negation_or_boundary(stripped):
+        if not stripped or _has_clean_review_boundary(stripped):
             continue
         if _has_clean_review_positive(stripped) and not re.search(
             r"\b(fresh|new|again|rerun|re-run|re-review|reviewed latest|latest diff)\b|"
@@ -285,7 +333,7 @@ def check_stale_review_after_fix(text):
 
 def has_clean_review_readiness_claim(text):
     readiness_re = re.compile(
-        r"\b(release[- ]?ready|uat[- ]?ready|customer[- ]?ready|final readiness|"
+        r"\b(release[-_ ]?ready|uat[-_ ]?ready|customer[-_ ]?ready|final readiness|"
         r"ready for (?:release|uat|customer|archive|branch cleanup)|archive_ready|"
         r"branch cleanup(?: is)? ready|branch deletion approved)\b|"
         r"(发布|UAT|客户|最终验收|归档|分支清理).{0,16}(ready|就绪|可以|通过|批准|允许)",
@@ -293,10 +341,16 @@ def has_clean_review_readiness_claim(text):
     )
     for line in text.splitlines():
         stripped = line.strip()
-        if not stripped or _has_negation_or_boundary(stripped):
+        if not stripped or _has_readiness_boundary(stripped):
             continue
         if _has_clean_review_positive(stripped) and readiness_re.search(stripped):
             return True
+    if (
+        _has_clean_review_positive(text)
+        and readiness_re.search(text)
+        and not _has_readiness_boundary(text)
+    ):
+        return True
     return False
 
 

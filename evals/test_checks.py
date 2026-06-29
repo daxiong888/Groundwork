@@ -200,6 +200,13 @@ class ForbiddenPatternTests(unittest.TestCase):
 
         self.assertEqual(result["verdict"], "pass")
 
+    def test_review_self_check_no_issues_still_fails_when_clean_review_passed(self):
+        result = forbidden_patterns.check_self_check_as_clean_review(
+            "Self-check Evidence: no issues. Clean Review Evidence: passed."
+        )
+
+        self.assertEqual(result["verdict"], "fail")
+
     def test_review_reviewer_self_fix_pass_fails(self):
         result = forbidden_patterns.check_reviewer_self_fix_pass(
             "The clean reviewer edited the skill file to fix the finding.\nClean review passed."
@@ -210,6 +217,13 @@ class ForbiddenPatternTests(unittest.TestCase):
         self.assertEqual(result["severity"], "p2")
         self.assertEqual(result["fix_locus"], "behavior_contract")
         self.assertEqual(result["notes"], ["reviewer self-fix was claimed as clean review pass"])
+
+    def test_review_reviewer_self_fix_same_line_fails(self):
+        result = forbidden_patterns.check_reviewer_self_fix_pass(
+            "The clean reviewer edited the skill file to fix the finding. Clean review passed."
+        )
+
+        self.assertEqual(result["verdict"], "fail")
 
     def test_review_reviewer_self_fix_requires_new_reviewer_passes(self):
         result = forbidden_patterns.check_reviewer_self_fix_pass(
@@ -236,6 +250,13 @@ class ForbiddenPatternTests(unittest.TestCase):
 
         self.assertEqual(result["verdict"], "fail")
 
+    def test_review_previous_review_still_valid_negated_passes(self):
+        result = forbidden_patterns.check_stale_review_after_fix(
+            "Do not claim the previous clean review still applies after a follow-up patch."
+        )
+
+        self.assertEqual(result["verdict"], "pass")
+
     def test_review_stale_after_fresh_rereview_passes(self):
         result = forbidden_patterns.check_stale_review_after_fix(
             "After the material fix, a fresh reviewer reviewed latest diff and clean review passed."
@@ -256,6 +277,20 @@ class ForbiddenPatternTests(unittest.TestCase):
             result["notes"],
             ["clean review pass was claimed as readiness or cleanup approval"],
         )
+
+    def test_review_clean_review_no_findings_release_ready_fails(self):
+        result = forbidden_patterns.check_clean_review_readiness_claim(
+            "Clean review passed, no findings, ready for release."
+        )
+
+        self.assertEqual(result["verdict"], "fail")
+
+    def test_review_clean_review_structured_release_ready_fails(self):
+        result = forbidden_patterns.check_clean_review_readiness_claim(
+            "clean_review_passed: true\nrelease_ready: true"
+        )
+
+        self.assertEqual(result["verdict"], "fail")
 
     def test_review_clean_review_not_release_ready_passes(self):
         result = forbidden_patterns.check_clean_review_readiness_claim(

@@ -9,6 +9,8 @@ Evidence Level: Derived from PRD v0.3.3 FR-7 and managed worktree review/result 
 
 Use this template when coordinator intake decides a completed managed worktree result or review package needs fresh-context clean review.
 
+`source.review_loop` is the reviewed implementation package's current review-loop state. It is not the clean review package's own output status and must not be treated as clean-review evidence unless the supplied package also contains fresh clean-review evidence for the latest material change.
+
 ```yaml
 clean_review_package:
   package_version: 1
