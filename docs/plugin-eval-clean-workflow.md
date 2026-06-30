@@ -106,11 +106,26 @@ Runtime/cache claims require an installed plugin root. If `installed_cache_root`
 - Rebuild the local marketplace after every package-boundary change before measuring.
 - Use `--force` only for wrapper-owned run roots under `/private/tmp/groundwork-plugin-eval/<run-id>`. The helper rejects source checkouts, source parents, and forced deletion outside that temp run-root family.
 
+## Token Budget Trend
+
+Record token budget movement in `docs/plugin-token-budget-policy.md` whenever a runtime-package or public-entry change is benchmarked. At minimum, preserve:
+
+- change scope;
+- source gate result;
+- static trigger, invoke, and deferred budget trend when `plugin-eval analyze` is available;
+- observed input/output/total usage trend when benchmark execution emits usage telemetry;
+- manifest or local evidence path.
+
+The PR 6 source guardrail baseline adds this trend discipline without claiming a Plugin Eval static-budget replacement or installed-plugin runtime evidence.
+
 ## Smoke Checks
 
 Use these source-level checks before treating the wrapper/doc update as complete:
 
 ```bash
+python3 scripts/check_runtime_package_boundary.py
+python3 scripts/check_skill_entry_budget.py
+
 python3 -m py_compile scripts/run_plugin_eval_clean.py
 
 python3 scripts/run_plugin_eval_clean.py \

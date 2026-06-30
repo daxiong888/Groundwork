@@ -37,12 +37,19 @@ jobs:
             evals/verdict_model.py \
             evals/report.py \
             evals/patch_suggestions.py \
+            scripts/check_runtime_package_boundary.py \
+            scripts/check_skill_entry_budget.py \
             scripts/codex-hooks/groundwork_router_observability.py \
             scripts/codex-hooks/user_prompt_submit_groundwork_entry.py \
             scripts/codex-hooks/pre_tool_use_groundwork_trace.py \
             scripts/codex-hooks/post_tool_use_groundwork_trace.py \
             scripts/codex-hooks/permission_request_groundwork_trace.py \
             scripts/codex-hooks/stop_groundwork_score.py
+
+      - name: Token budget guardrails
+        run: |
+          python scripts/check_runtime_package_boundary.py
+          python scripts/check_skill_entry_budget.py
 
       - name: Prompt CSV parse
         run: |
