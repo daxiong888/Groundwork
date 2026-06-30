@@ -52,7 +52,7 @@ The v0.5 public skill expansion policy shifts Groundwork from a fixed public-ski
 
 The v0.5.2 public wiki skill adds project-level LLM Wiki lifecycle support for init, ingest, query, audit, update, deprecate/archive, and repair. Wiki remains source-validation context and claim inventory only; it is not source truth, implementation authority, verification pass evidence, runtime evidence, release evidence, UAT evidence, marketplace evidence, installed-plugin evidence, or cache-refresh evidence.
 
-The v0.5.3 router observability work adds dormant plugin-bundled Codex hook definitions and project opt-in hook entrypoints. These hooks are observe-only by default and write local scratch artifacts under `.groundwork/harness/router-observability/` only after a project explicitly opts in. Hook cards, scores, and local scratch output are source-validation and improvement evidence only; they are not release, UAT, customer, marketplace, installed-plugin, cache-refresh, or hook-trust evidence by themselves.
+The v0.5.4 router observability follow-up keeps the dormant plugin-bundled Codex hook definitions and project opt-in hook entrypoints from v0.5.3, while tightening review-fix behavior, score schema coverage, and secret redaction. These hooks are observe-only by default and write local scratch artifacts under `.groundwork/harness/router-observability/` only after a project explicitly opts in. Hook cards, scores, and local scratch output are source-validation and improvement evidence only; they are not release, UAT, customer, marketplace, installed-plugin, cache-refresh, or hook-trust evidence by themselves.
 
 This repository currently contains:
 

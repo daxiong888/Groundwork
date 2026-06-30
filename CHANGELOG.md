@@ -4,6 +4,26 @@ All notable changes to Groundwork are documented in this file.
 
 ## Unreleased
 
+## v0.5.4 - 2026-06-30
+
+### Changed
+
+- Bumped plugin metadata to `0.5.4` for the router observability follow-up source-validation release.
+- Tightened router observability review-fix behavior after the v0.5.3 hook packaging release.
+- Restored the legacy eval fallback path for older runtime cases.
+
+### Fixed
+
+- Added schema validation coverage for dynamic router observability score artifacts.
+- Completed router observability score schema and redaction protections.
+- Added assignment-style secret redaction coverage for router observability capture.
+
+### Notes
+
+- This release is source-validation focused. Local source checks, hook unit tests, CI source gates, and clean review do not prove installed-plugin runtime behavior, hook trust state, marketplace publishing, UAT readiness, release readiness, or customer readiness by themselves.
+- Runtime/cache claims require a named installed plugin root, source root, refresh or source/cache equivalence method, hook trust state, run scope, commands/trials, limitations, and missing evidence.
+- Router observability scratch output belongs under ignored `.groundwork/harness/` unless a maintainer explicitly approves a reviewed and redacted promotion path.
+
 ## v0.5.3 - 2026-06-30
 
 ### Added
