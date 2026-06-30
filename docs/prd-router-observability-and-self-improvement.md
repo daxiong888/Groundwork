@@ -504,7 +504,7 @@ selector_enforcement
 score_eligibility
 ```
 
-If the source strength is insufficient, the score must use `unknown`, `partial`, or `insufficient_evidence` instead of converting uncertainty into a passing verdict.
+If the source strength is insufficient, the score must use `unknown`, `partial`, `display_only`, or `insufficient_evidence` instead of converting uncertainty into baseline passing evidence.
 
 ### 8.8 Self-Improvement Proposal
 
@@ -1062,12 +1062,14 @@ Acceptance criteria:
   "schema_version": "router_observability.v0",
   "session_id": "...",
   "turn_id": "...",
+  "session_id_source": "session_id | conversation_id | thread_id | fallback",
+  "turn_id_source": "turn_id | event_id | request_id | tool_use_id_fallback | transcript_path_fallback | event_hash_fallback",
   "created_at": "2026-06-27T00:00:00Z",
   "cwd": "...",
   "deployment_target": "personal_maintainer_cross_project_trial",
   "hook_packaging": "plugin_bundled",
   "project_opt_in": true,
-  "activation_source": ".groundwork/harness/router-observability/config.json | env | local_config | unknown",
+  "activation_source": ".groundwork/harness/router-observability/config.json | env | env_force_enable_over_config | invalid_config_env_force_enable | local_config | unknown",
   "decision_mode": "observe_only",
   "router_hint_emitted": false,
   "raw_prompt_storage": "disabled",
@@ -1150,9 +1152,17 @@ Each row:
   "schema_version": "router_observability.tool_event.v0",
   "session_id": "...",
   "turn_id": "...",
+  "session_id_source": "session_id | conversation_id | thread_id | fallback",
+  "turn_id_source": "turn_id | event_id | request_id | tool_use_id_fallback | transcript_path_fallback | event_hash_fallback",
   "event_index": 1,
   "hook_event_name": "PostToolUse",
   "tool_name": "Bash",
+  "tool_use_id": "...",
+  "tool_input_sha256": "...",
+  "tool_response_present": true,
+  "tool_response_status": "success",
+  "tool_response_length": 1234,
+  "tool_response_sha256": "...",
   "command_class": "git | test | file_read | file_write | browser | unknown",
   "coverage_status": "observed_supported | unsupported | unknown",
   "coverage_limitations": [],
@@ -1179,7 +1189,7 @@ Each row:
   "actual_route_source": "hook_event | final_message_marker | codex_exec_json | changed_file_snapshot | unknown",
   "skill_hit_source": "hook_event | codex_exec_json | final_message_marker | unknown",
   "tool_coverage_status": "supported_events_observed | partial | unsupported | unknown",
-  "score_eligibility": "baseline_eligible | guided_hint_excluded | insufficient_evidence",
+  "score_eligibility": "baseline_eligible | display_only | guided_hint_excluded | insufficient_evidence",
   "acceptable_routes": ["write-plan"],
   "forbidden_routes": ["implement", "verify", "direct"],
   "routing_verdict": "fail",
@@ -1284,8 +1294,9 @@ A live score is `baseline_eligible` only when all of these are true:
 
 If any required source-strength condition is missing:
 
-- `score_eligibility = insufficient_evidence`;
-- `routing_verdict = blocked`;
+- `score_eligibility = display_only` for live heuristic candidates that should preserve candidate route verdicts for human review;
+- `score_eligibility = insufficient_evidence` for non-heuristic scores that cannot support baseline scoring;
+- `routing_verdict = blocked` only when the score cannot preserve a meaningful candidate route verdict;
 - the turn must not count toward `best_route_hit_at_1`, `acceptable_route_coverage`, or passive route-pair confusion;
 - the router card must explain which source, coverage, or selector-evidence field blocked baseline scoring.
 
@@ -1458,6 +1469,7 @@ Hook traces with `decision_mode=guided_hint_trial` are behavior-shaping trial ev
 - Percentage of dispatch-involved turns with `dispatch-decision.json`.
 - Percentage of dispatch-involved turns with complete execution profile fields.
 - Percentage of scored turns with `score_eligibility=baseline_eligible`.
+- Percentage of scored turns with `score_eligibility=display_only`.
 - Percentage of scored turns with `score_eligibility=insufficient_evidence`.
 - Percentage of events with `coverage_status=unsupported | unknown`.
 - Percentage of non-pass turns with `failure_type` and `fix_locus` populated.

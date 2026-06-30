@@ -52,6 +52,7 @@ EVIDENCE_LAYERS = {
 
 SCORE_ELIGIBILITY = {
     "baseline_eligible",
+    "display_only",
     "guided_hint_excluded",
     "insufficient_evidence",
 }

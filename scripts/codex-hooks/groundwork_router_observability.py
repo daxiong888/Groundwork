@@ -77,19 +77,62 @@ def load_config(cwd):
         return None, "env_disabled"
     config = dict(DEFAULT_CONFIG)
     path = config_path(cwd)
+    config_source = "absent"
     if path.exists():
         try:
             loaded = json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
-            return None, "invalid_config"
-        if isinstance(loaded, dict):
-            config.update(loaded)
-            return config, str(path.relative_to(cwd))
+            if os.environ.get("GROUNDWORK_ROUTER_OBSERVABILITY") != "1":
+                return None, "invalid_config"
+            config_source = "invalid_config_env_force_enable"
+        else:
+            if isinstance(loaded, dict):
+                config.update(loaded)
+                config_source = str(path.relative_to(cwd))
     if os.environ.get("GROUNDWORK_ROUTER_OBSERVABILITY") == "1":
         config["enabled"] = True
-        config["mode"] = os.environ.get("GROUNDWORK_ROUTER_OBSERVABILITY_MODE", "observe_only")
-        return config, "env"
+        config["mode"] = os.environ.get("GROUNDWORK_ROUTER_OBSERVABILITY_MODE", config.get("mode") or "observe_only")
+        if config_source == "absent":
+            return config, "env"
+        if config_source == "invalid_config_env_force_enable":
+            return config, config_source
+        return config, "env_force_enable_over_config"
+    if config_source != "absent":
+        return config, config_source
     return None, "absent"
+
+
+def ids_from_event_with_sources(event):
+    session_source = "session_id"
+    session_id = event.get("session_id")
+    if not session_id:
+        session_source = "conversation_id"
+        session_id = event.get("conversation_id")
+    if not session_id:
+        session_source = "thread_id"
+        session_id = event.get("thread_id")
+    if not session_id:
+        session_source = "fallback"
+        session_id = "session-unknown"
+
+    turn_source = "turn_id"
+    turn_id = event.get("turn_id")
+    if not turn_id:
+        turn_source = "event_id"
+        turn_id = event.get("event_id")
+    if not turn_id:
+        turn_source = "request_id"
+        turn_id = event.get("request_id")
+    if not turn_id and event.get("tool_use_id"):
+        turn_source = "tool_use_id_fallback"
+        turn_id = stable_hash(f"{session_id}:tool:{event.get('tool_use_id')}")[:12]
+    if not turn_id and event.get("transcript_path"):
+        turn_source = "transcript_path_fallback"
+        turn_id = stable_hash(f"{session_id}:transcript:{event.get('transcript_path')}")[:12]
+    if not turn_id:
+        turn_source = "event_hash_fallback"
+        turn_id = stable_hash(json.dumps(event, sort_keys=True))[:12]
+    return str(session_id), str(turn_id), session_source, turn_source
 
 
 def is_enabled(config):
@@ -97,18 +140,7 @@ def is_enabled(config):
 
 
 def ids_from_event(event):
-    session_id = str(
-        event.get("session_id")
-        or event.get("conversation_id")
-        or event.get("thread_id")
-        or "session-unknown"
-    )
-    turn_id = str(
-        event.get("turn_id")
-        or event.get("event_id")
-        or event.get("request_id")
-        or stable_hash(json.dumps(event, sort_keys=True))[:12]
-    )
+    session_id, turn_id, _, _ = ids_from_event_with_sources(event)
     return session_id, turn_id
 
 
@@ -191,12 +223,46 @@ def command_from_event(event):
     return str(tool_input or event.get("command") or "")
 
 
+def compact_jsonish(value):
+    try:
+        return json.dumps(value, ensure_ascii=False, sort_keys=True)
+    except TypeError:
+        return str(value or "")
+
+
+def tool_response_summary(event):
+    marker = object()
+    response = event.get("tool_response", marker)
+    if response is marker:
+        response = event.get("response", marker)
+    if response is marker:
+        return {
+            "tool_response_present": False,
+            "tool_response_status": "",
+            "tool_response_length": 0,
+            "tool_response_sha256": "",
+        }
+    text = compact_jsonish(response)
+    status = ""
+    if isinstance(response, dict):
+        for key in ("status", "outcome", "exit_code"):
+            if key in response and response.get(key) is not None:
+                status = str(response.get(key))
+                break
+    return {
+        "tool_response_present": True,
+        "tool_response_status": status,
+        "tool_response_length": len(text),
+        "tool_response_sha256": stable_hash(text),
+    }
+
+
 def handle_user_prompt_submit(event):
     cwd = cwd_from_event(event)
     config, source = load_config(cwd)
     if not is_enabled(config):
         return None
-    session_id, turn_id = ids_from_event(event)
+    session_id, turn_id, session_id_source, turn_id_source = ids_from_event_with_sources(event)
     mode = str(config.get("mode") or "observe_only")
     raw_capture = bool(config.get("raw_capture"))
     snippet_capture = bool(config.get("snippet_capture"))
@@ -208,6 +274,8 @@ def handle_user_prompt_submit(event):
         "schema_version": "router_observability.prompt_metadata.v0",
         "session_id": session_id,
         "turn_id": turn_id,
+        "session_id_source": session_id_source,
+        "turn_id_source": turn_id_source,
         "created_at": utc_now(),
         "prompt_sha256": stable_hash(prompt),
         "prompt_length": len(str(prompt or "")),
@@ -219,6 +287,8 @@ def handle_user_prompt_submit(event):
         "schema_version": "router_observability.v0",
         "session_id": session_id,
         "turn_id": turn_id,
+        "session_id_source": session_id_source,
+        "turn_id_source": turn_id_source,
         "created_at": utc_now(),
         "cwd": str(cwd),
         "deployment_target": "personal_maintainer_cross_project_trial",
@@ -268,19 +338,26 @@ def handle_tool_event(event, hook_event_name):
     out_dir = turn_dir(cwd, event)
     tool_name = tool_name_from_event(event)
     command = command_from_event(event)
+    session_id, turn_id, session_id_source, turn_id_source = ids_from_event_with_sources(event)
+    tool_input = event.get("tool_input") or event.get("input") or {}
     event_row = {
         "schema_version": "router_observability.tool_event.v0",
-        "session_id": ids_from_event(event)[0],
-        "turn_id": ids_from_event(event)[1],
+        "session_id": session_id,
+        "turn_id": turn_id,
+        "session_id_source": session_id_source,
+        "turn_id_source": turn_id_source,
         "event_index": len(read_jsonl(out_dir / "tool-events.jsonl")) + 1,
         "hook_event_name": hook_event_name,
         "tool_name": tool_name,
+        "tool_use_id": str(event.get("tool_use_id") or ""),
+        "tool_input_sha256": stable_hash(compact_jsonish(tool_input)) if tool_input else "",
         "command_class": classify_command(command, tool_name),
         "coverage_status": "observed_supported" if tool_name in {"Bash", "apply_patch"} or tool_name.startswith("mcp__") else "unsupported",
         "coverage_limitations": ["hooks do not prove complete shell, WebSearch, non-shell, or non-MCP coverage"],
         "risk_markers": risk_markers(command, tool_name),
         "evidence_markers": evidence_markers(command),
         "status": str(event.get("status") or "unknown"),
+        **tool_response_summary(event),
         "redaction": {"status": "not_reviewed", "notes": []},
     }
     append_jsonl(out_dir / "tool-events.jsonl", event_row)
@@ -293,10 +370,13 @@ def handle_permission_event(event):
     if not is_enabled(config):
         return None
     out_dir = turn_dir(cwd, event)
+    session_id, turn_id, session_id_source, turn_id_source = ids_from_event_with_sources(event)
     row = {
         "schema_version": "router_observability.permission_event.v0",
-        "session_id": ids_from_event(event)[0],
-        "turn_id": ids_from_event(event)[1],
+        "session_id": session_id,
+        "turn_id": turn_id,
+        "session_id_source": session_id_source,
+        "turn_id_source": turn_id_source,
         "event_index": len(read_jsonl(out_dir / "permission-events.jsonl")) + 1,
         "hook_event_name": "PermissionRequest",
         "permission": str(event.get("permission") or event.get("action") or "unknown"),

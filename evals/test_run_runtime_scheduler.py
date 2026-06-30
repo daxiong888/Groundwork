@@ -1241,6 +1241,14 @@ class RuntimeSchedulerTests(unittest.TestCase):
         self.assertEqual(model["overall_verdict"], "pass")
         self.assertFalse(run_runtime.should_apply_legacy_override(case, legacy_verdict, model))
 
+    def test_legacy_verdict_never_overrides_verdict_model(self):
+        case = row(id="legacy-case", expected_skill="implement", skill_load_required="true")
+        model = {"overall_verdict": "pass"}
+
+        self.assertFalse(run_runtime.should_apply_legacy_override(case, "fail", model))
+        self.assertFalse(run_runtime.should_apply_legacy_override(case, "blocked", model))
+        self.assertFalse(run_runtime.should_apply_legacy_override(case, "timeout", model))
+
     def test_prototype_throwaway_html_artifact_satisfies_no_production_file_changes(self):
         verdict = run_runtime.routing_verdict_model(
             routing_row(
@@ -1329,6 +1337,36 @@ class RuntimeSchedulerTests(unittest.TestCase):
             "/Users/me/.codex/plugins/cache/openai-curated/superpowers/skills/using-superpowers/SKILL.md",
             "Direct safety refusal.",
             "direct",
+        )
+
+        self.assertEqual(actual, "direct")
+        self.assertEqual(hits, [])
+
+    def test_final_answer_skill_path_reference_does_not_become_actual_route(self):
+        actual, hits = run_runtime.parse_actual_skill(
+            "",
+            "I reviewed `/Users/me/project/skills/implement/SKILL.md` while explaining the issue.",
+            "implement",
+        )
+
+        self.assertEqual(actual, "direct")
+        self.assertEqual(hits, [])
+
+    def test_structured_skill_load_log_becomes_actual_route(self):
+        actual, hits = run_runtime.parse_actual_skill(
+            '{"event":"skill_load","skill_path":"/Users/me/project/skills/implement/SKILL.md"}',
+            "Implementation Summary",
+            "implement",
+        )
+
+        self.assertEqual(actual, "implement")
+        self.assertEqual(hits, ["implement"])
+
+    def test_stdout_final_answer_json_skill_path_reference_does_not_become_actual_route(self):
+        actual, hits = run_runtime.parse_actual_skill(
+            '{"type":"final_answer","message":"I reviewed /Users/me/project/skills/implement/SKILL.md"}',
+            "Implementation Summary",
+            "implement",
         )
 
         self.assertEqual(actual, "direct")

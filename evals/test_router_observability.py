@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -16,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 HOOKS = ROOT / "scripts" / "codex-hooks"
 
 
-def run_hook(script, event, cwd):
+def run_hook(script, event, cwd, env=None):
     return subprocess.run(
         [sys.executable, str(HOOKS / script)],
         input=json.dumps(event),
@@ -24,6 +25,7 @@ def run_hook(script, event, cwd):
         cwd=cwd,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        env=env,
         check=True,
     )
 
@@ -32,6 +34,8 @@ class RouterObservabilityTests(unittest.TestCase):
     def test_hooks_manifest_uses_official_command_handler_shape(self):
         manifest = json.loads((ROOT / "hooks" / "hooks.json").read_text(encoding="utf-8"))
 
+        self.assertIsInstance(manifest.get("description"), str)
+        self.assertIn("router observability", manifest["description"])
         self.assertIsInstance(manifest.get("hooks"), dict)
         for event_name, matcher_groups in manifest["hooks"].items():
             self.assertIsInstance(event_name, str)
@@ -46,6 +50,8 @@ class RouterObservabilityTests(unittest.TestCase):
                     self.assertEqual(handler.get("type"), "command")
                     self.assertIsInstance(handler.get("command"), str)
                     self.assertTrue(handler["command"])
+                    self.assertIsInstance(handler.get("timeout"), int)
+                    self.assertGreater(handler["timeout"], 0)
 
     def write_config(self, root, **overrides):
         config = {
@@ -96,6 +102,8 @@ class RouterObservabilityTests(unittest.TestCase):
             prompt_metadata = json.loads((self.turn_dir(root) / "prompt-metadata.json").read_text(encoding="utf-8"))
             self.assertEqual(decision["decision_mode"], "observe_only")
             self.assertEqual(decision["decision_source"], "heuristic")
+            self.assertEqual(decision["activation_source"], ".groundwork/harness/router-observability/config.json")
+            self.assertEqual(decision["turn_id_source"], "turn_id")
             self.assertFalse(decision["router_hint_emitted"])
             self.assertEqual(decision["entry_decision"]["expected_best"], "implement")
             self.assertEqual(prompt_metadata["raw_prompt_storage"], "disabled")
@@ -104,6 +112,43 @@ class RouterObservabilityTests(unittest.TestCase):
             self.assertNotIn("secret-123", json.dumps(prompt_metadata))
             self.assertNotIn("secret-123", json.dumps(decision))
             self.assertFalse((self.turn_dir(root) / "prompt.raw.json").exists())
+
+    def test_env_force_enable_overrides_disabled_project_config(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.write_config(root, enabled=False, mode="observe_only", snippet_capture=True)
+
+            result = run_hook(
+                "user_prompt_submit_groundwork_entry.py",
+                {"cwd": str(root), "session_id": "s1", "turn_id": "t1", "prompt": "按 PRD 实施 docs/foo.md"},
+                root,
+                env={**os.environ, "GROUNDWORK_ROUTER_OBSERVABILITY": "1"},
+            )
+
+            self.assertEqual(result.stdout, "")
+            decision = json.loads((self.turn_dir(root) / "router-decision.json").read_text(encoding="utf-8"))
+            prompt_metadata = json.loads((self.turn_dir(root) / "prompt-metadata.json").read_text(encoding="utf-8"))
+            self.assertEqual(decision["activation_source"], "env_force_enable_over_config")
+            self.assertEqual(decision["decision_mode"], "observe_only")
+            self.assertEqual(prompt_metadata["snippet_capture"], "enabled")
+
+    def test_env_force_enable_records_invalid_config_source(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config = root / ".groundwork" / "harness" / "router-observability" / "config.json"
+            config.parent.mkdir(parents=True)
+            config.write_text("{not json", encoding="utf-8")
+
+            result = run_hook(
+                "user_prompt_submit_groundwork_entry.py",
+                {"cwd": str(root), "session_id": "s1", "turn_id": "t1", "prompt": "按 PRD 实施 docs/foo.md"},
+                root,
+                env={**os.environ, "GROUNDWORK_ROUTER_OBSERVABILITY": "1"},
+            )
+
+            self.assertEqual(result.stdout, "")
+            decision = json.loads((self.turn_dir(root) / "router-decision.json").read_text(encoding="utf-8"))
+            self.assertEqual(decision["activation_source"], "invalid_config_env_force_enable")
 
     def test_guided_hint_mode_emits_context_and_excludes_baseline(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -136,7 +181,14 @@ class RouterObservabilityTests(unittest.TestCase):
             )
             run_hook(
                 "post_tool_use_groundwork_trace.py",
-                {**base_event, "tool_name": "Bash", "tool_input": {"command": "git status --short"}, "status": "pass"},
+                {
+                    **base_event,
+                    "tool_name": "Bash",
+                    "tool_use_id": "tool-1",
+                    "tool_input": {"command": "git status --short"},
+                    "tool_response": {"status": "success", "output": "clean"},
+                    "status": "pass",
+                },
                 root,
             )
             result = run_hook(
@@ -148,16 +200,76 @@ class RouterObservabilityTests(unittest.TestCase):
             self.assertEqual(result.stdout, "")
             score = json.loads((self.turn_dir(root) / "router-score.json").read_text(encoding="utf-8"))
             final_metadata = json.loads((self.turn_dir(root) / "final-metadata.json").read_text(encoding="utf-8"))
+            tool_event = json.loads((self.turn_dir(root) / "tool-events.jsonl").read_text(encoding="utf-8"))
             card = (self.turn_dir(root) / "router-card.md").read_text(encoding="utf-8")
             self.assertEqual(score["expected_route"], "implement")
             self.assertEqual(score["actual_route"], "implement")
             self.assertEqual(final_metadata["snippet_capture"], "disabled")
             self.assertEqual(final_metadata["final_snippet"], "")
             self.assertNotIn("secret-456", json.dumps(final_metadata))
-            self.assertEqual(score["score_eligibility"], "insufficient_evidence")
+            self.assertEqual(score["score_eligibility"], "display_only")
             self.assertIn("expected_route_source", score["notes"])
+            self.assertEqual(score["routing_verdict"], "pass")
+            self.assertEqual(tool_event["tool_use_id"], "tool-1")
+            self.assertEqual(tool_event["tool_response_present"], True)
+            self.assertEqual(tool_event["tool_response_status"], "success")
+            self.assertTrue(tool_event["tool_input_sha256"])
+            self.assertTrue(tool_event["tool_response_sha256"])
             self.assertTrue(score["checker_results"])
             self.assertIn("Groundwork Router Decision", card)
+            self.assertIn("Live heuristic display-only", card)
+
+    def test_tool_use_id_fallback_groups_pre_and_post_events(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.write_config(root)
+            base_event = {"cwd": str(root), "session_id": "s1", "tool_use_id": "tool-1"}
+
+            run_hook(
+                "pre_tool_use_groundwork_trace.py",
+                {**base_event, "tool_name": "Bash", "tool_input": {"command": "git status --short"}},
+                root,
+            )
+            run_hook(
+                "post_tool_use_groundwork_trace.py",
+                {
+                    **base_event,
+                    "tool_name": "Bash",
+                    "tool_input": {"command": "git status --short"},
+                    "tool_response": {"status": "success"},
+                },
+                root,
+            )
+
+            router_root = root / ".groundwork" / "harness" / "router-observability" / "s1"
+            turn_dirs = [path for path in router_root.iterdir() if path.is_dir()]
+            self.assertEqual(len(turn_dirs), 1)
+            rows = [
+                json.loads(line)
+                for line in (turn_dirs[0] / "tool-events.jsonl").read_text(encoding="utf-8").splitlines()
+            ]
+            self.assertEqual([row["hook_event_name"] for row in rows], ["PreToolUse", "PostToolUse"])
+            self.assertEqual({row["turn_id_source"] for row in rows}, {"tool_use_id_fallback"})
+
+    def test_tool_response_exit_code_zero_is_preserved_as_status(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.write_config(root)
+            base_event = {"cwd": str(root), "session_id": "s1", "turn_id": "t1"}
+
+            run_hook(
+                "post_tool_use_groundwork_trace.py",
+                {
+                    **base_event,
+                    "tool_name": "Bash",
+                    "tool_input": {"command": "true"},
+                    "tool_response": {"exit_code": 0},
+                },
+                root,
+            )
+
+            tool_event = json.loads((self.turn_dir(root) / "tool-events.jsonl").read_text(encoding="utf-8"))
+            self.assertEqual(tool_event["tool_response_status"], "0")
 
     def test_raw_capture_writes_final_raw_metadata_with_redaction_status(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -440,6 +552,51 @@ class RouterObservabilityTests(unittest.TestCase):
 
         self.assertEqual(score["execution_profile_verdict"], "insufficient_evidence")
         self.assertEqual(score["score_eligibility"], "insufficient_evidence")
+
+    def test_fast_profile_mismatch_uses_structured_clean_review_signal(self):
+        decision = {
+            "session_id": "s1",
+            "turn_id": "t1",
+            "decision_mode": "observe_only",
+            "decision_source": "fixture",
+            "router_hint_emitted": False,
+            "entry_decision": {
+                "expected_best": "dispatch",
+                "acceptable_routes": ["dispatch"],
+                "forbidden_routes": ["implement"],
+                "route_boundary": "entry-contract",
+            },
+        }
+        base_dispatch_decision = {
+            "runtime_id": "fast_router",
+            "route_decision": "local_with_artifact",
+            "execution_claim": "not_executed_by_dispatch",
+            "notes": ["the word clean appears in a non-authoritative note"],
+            "execution_profile": {
+                "model_profile": "fast_scan",
+                "reasoning_effort": "low",
+                "cost_latency_bias": "fast",
+                "selector_enforcement": "prompt_preference",
+                "evidence_layer": "prompt_preference",
+            },
+        }
+
+        non_clean_score = score_turn(
+            decision,
+            "Dispatch Package\nDispatch Runtime Decision",
+            [{"coverage_status": "observed_supported"}],
+            base_dispatch_decision,
+        )
+        clean_score = score_turn(
+            decision,
+            "Dispatch Package\nDispatch Runtime Decision",
+            [{"coverage_status": "observed_supported"}],
+            {**base_dispatch_decision, "task_shape": "clean_review"},
+        )
+
+        self.assertEqual(non_clean_score["execution_profile_verdict"], "pass")
+        self.assertEqual(clean_score["execution_profile_verdict"], "mismatch")
+        self.assertEqual(clean_score["selector_mismatch_reason"], "profile_too_weak_for_risk")
 
     def test_verify_right_route_wrong_output_contract_fails(self):
         decision = {
