@@ -52,7 +52,7 @@ The v0.5 public skill expansion policy shifts Groundwork from a fixed public-ski
 
 The v0.5.2 public wiki skill adds project-level LLM Wiki lifecycle support for init, ingest, query, audit, update, deprecate/archive, and repair. Wiki remains source-validation context and claim inventory only; it is not source truth, implementation authority, verification pass evidence, runtime evidence, release evidence, UAT evidence, marketplace evidence, installed-plugin evidence, or cache-refresh evidence.
 
-The v0.5.5 router observability follow-up keeps the dormant plugin-bundled Codex hook definitions and project opt-in hook entrypoints from v0.5.3, while tightening review-fix behavior, score schema coverage, secret redaction, and plugin-cache refresh self-protection. These hooks are observe-only by default and write local scratch artifacts under `.groundwork/harness/router-observability/` only after a project explicitly opts in. Hook cards, scores, and local scratch output are source-validation and improvement evidence only; they are not release, UAT, customer, marketplace, installed-plugin, cache-refresh, or hook-trust evidence by themselves.
+The v0.5.5 router observability follow-up keeps source-checkout-only harness docs and standard-library scripts for project opt-in experiments, while tightening review-fix behavior, score schema coverage, secret redaction, and plugin-cache refresh self-protection. These harness materials are excluded from the runtime package. When run from a source checkout, they are observe-only by default and write local scratch artifacts under `.groundwork/harness/router-observability/` only after a project explicitly opts in. Harness cards, scores, and local scratch output are source-validation and improvement evidence only; they are not release, UAT, customer, marketplace, installed-plugin, cache-refresh, or hook-trust evidence by themselves.
 
 This repository currently contains:
 
@@ -63,8 +63,7 @@ This repository currently contains:
 - real maintenance case studies
 - Codex plugin manifest
 - ten public skills, including `dispatch` and `wiki`
-- dormant Codex hook definitions for project opt-in router observability
-- standard-library hook entrypoint scripts under `scripts/codex-hooks/`
+- source-checkout-only router observability harness docs and scripts
 - native Codex worktree/handoff governance contracts for v0.4.0
 - v0.4.x trace-first eval platform source-validation docs, schemas, helpers, checker modules, reports, patch suggestions, CI workflow, and release evidence claim template
 - v0.5 public skill expansion policy and shared skill-quality gate
@@ -85,7 +84,7 @@ Reader Action Needed: Register the Groundwork marketplace, install the plugin, a
 Decision Supported: Whether this repository can be used directly as a local Codex plugin.
 Scope: Local personal installation from this repository through Codex's plugin marketplace flow.
 Out of Scope: Public marketplace publishing, remote plugin distribution, task CRUD, MCP servers, production integrations, automatic trace capture, and hook-trust or runtime-readiness claims.
-Evidence Level: `.agents/plugins/marketplace.json` exposes the plugin to Codex, and `.codex-plugin/plugin.json` declares the plugin metadata, bundled `skills/` path, and dormant hook definitions.
+Evidence Level: `.agents/plugins/marketplace.json` exposes the local marketplace to Codex, and `.codex-plugin/plugin.json` declares the plugin metadata and bundled `skills/` path.
 
 Groundwork is currently intended to be installed as a local personal Codex plugin. During active development, the only supported local installation source is the generated marketplace under `dist/groundwork-local-marketplace`; do not point Codex directly at the development checkout or its symlink.
 
@@ -111,7 +110,7 @@ Then verify that groundwork@groundwork is installed and enabled.
 
 The same marketplace and plugin state is local to the machine. If you use both Codex CLI and the Codex desktop app on the same computer, restart the app or refresh the plugin list after installing from the CLI.
 
-Router observability hooks remain dormant after installation. To opt a project into local observe-only trace capture, see [`docs/router-observability-harness.md`](docs/router-observability-harness.md). Downstream projects that opt in should ignore local scratch output, for example:
+Router observability harness materials are source-checkout-only maintainer tooling. They are not included in the generated runtime package. If you are working from this source repository and intentionally testing local observe-only trace capture, see [`docs/router-observability-harness.md`](docs/router-observability-harness.md). Downstream projects that opt in from a source checkout should ignore local scratch output, for example:
 
 ```bash
 echo ".groundwork/harness/" >> .gitignore
@@ -127,7 +126,7 @@ codex plugin marketplace add ~/.codex/plugins/groundwork-local-marketplace
 codex plugin add groundwork@groundwork
 ```
 
-The generated local marketplace copies only package-relevant files into `plugins/groundwork`. It intentionally excludes source-control and local scratch roots such as `.git/`, `.codegraph/`, `.groundwork/`, `.trellis/`, `refer/`, `dist/`, and `node_modules/` so local installation does not ship reference repositories or runtime state into the Codex plugin cache.
+The generated local marketplace is a runtime kernel package. It intentionally copies only `.codex-plugin/`, `skills/`, `README.md`, and `LICENSE` into `plugins/groundwork`, with `README.md` generated from `README.runtime.md`. It excludes repo-only and tooling-only roots such as `.github/`, `AGENTS.md`, `CHANGELOG.md`, `PROJECT.md`, `docs/`, `evals/`, `artifacts/`, `examples/`, `hooks/`, `research/`, `schemas/`, `scripts/`, `.git/`, `.codegraph/`, `.groundwork/`, `.trellis/`, `refer/`, `dist/`, and `node_modules/` so local installation does not ship maintainer history, evaluation fixtures, reference repositories, or runtime state into the Codex plugin cache.
 
 You can also install interactively by running `codex`, opening `/plugins`, choosing the `Groundwork` marketplace, and selecting `Install plugin`. Codex should discover the plugin from `.codex-plugin/plugin.json` and load the public skills from `skills/`.
 
@@ -149,9 +148,9 @@ python3 scripts/build_local_marketplace.py --output ~/.codex/plugins/groundwork-
 codex plugin add groundwork@groundwork
 ```
 
-If the local marketplace was originally pointed directly at a working checkout, rebuild it with `scripts/build_local_marketplace.py` and re-add the generated marketplace path before reinstalling. A healthy installed cache should not contain `.git/`, `.codegraph/`, `.groundwork/`, `.trellis/`, `refer/`, `dist/`, or `node_modules/`.
+If the local marketplace was originally pointed directly at a working checkout, rebuild it with `scripts/build_local_marketplace.py` and re-add the generated marketplace path before reinstalling. A healthy installed cache should not contain repo-only, tooling-only, source-control, or local scratch roots such as `.github/`, `AGENTS.md`, `CHANGELOG.md`, `PROJECT.md`, `docs/`, `evals/`, `artifacts/`, `examples/`, `hooks/`, `research/`, `schemas/`, `scripts/`, `.git/`, `.codegraph/`, `.groundwork/`, `.trellis/`, `refer/`, `dist/`, or `node_modules/`.
 
-Restart Codex or refresh the plugin list after upgrading. You should not need to edit Codex's plugin cache manually; Codex installs plugins under `~/.codex/plugins/cache/<marketplace>/<plugin>/<version>/` and records enabled state in `~/.codex/config.toml`. Router observability hook commands are expected to no-op if an already-running thread still points at an old versioned plugin cache while the cache is being refreshed.
+Restart Codex or refresh the plugin list after upgrading. You should not need to edit Codex's plugin cache manually; Codex installs plugins under `~/.codex/plugins/cache/<marketplace>/<plugin>/<version>/` and records enabled state in `~/.codex/config.toml`. The runtime package excludes router observability harness scripts and maintainer docs; use the source checkout when testing that harness.
 
 ## Privacy
 
