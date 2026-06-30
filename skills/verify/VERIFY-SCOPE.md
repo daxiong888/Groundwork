@@ -27,6 +27,18 @@ Rules:
 
 Questions that ask whether missing evidence is enough for readiness, including code-diff-only, no-runtime-evidence, no-browser-evidence, no-command, or "can this count as ready" prompts, are verification reports.
 
+This branch runs as `verify-lite` unless the user explicitly asks for TASK/PRD conformance, runtime/cache/release readiness, or another strict branch.
+
+`verify-lite` reads only:
+
+- the user-visible claim;
+- user-provided evidence or paths;
+- current evidence already present in the conversation or explicitly supplied by the user.
+
+Do not perform historical search in `verify-lite`. Do not inspect `evals/baselines/`, `artifacts/`, `research/`, `examples/`, old handoffs, old runtime trials, historical release notes, broad `docs/prd-v*` materials, or repo-wide historical searches.
+
+If the user explicitly asks for historical, eval, baseline, release-evidence, or Groundwork-maintainer evidence, or if a current source artifact cites a specific historical path that must be checked, leave `verify-lite` and use `verify-standard` or `verify-strict` as appropriate.
+
 Do not answer them as a direct short judgment. Start with `Verification Scope`, put forbidden or unavailable checks under `Out of Scope` or `Not Covered`, and mark missing runtime/browser/test/data/environment/UAT evidence as `unverified`.
 Code diff, implementation summary, historical evidence, or source-validation checks alone do not prove runtime, browser, data, environment, release, UAT, or customer readiness.
 

@@ -1,6 +1,6 @@
 ---
 name: verify
-description: Skeptically verify scope-first readiness, frontend integration readiness, implementation acceptance evidence with tests/checks, source-truth, UAT/release evidence, UI evidence, git boundary, or frontend contract confidence. Use for no-command readiness or evidence-sufficiency prompts such as "不要运行命令", "只有 code diff 没有 runtime 或 browser evidence 这次可以算 ready 吗", and other questions about whether code diff alone without runtime or browser evidence can count as ready. Final verification reports must start with the literal line "Verification Scope" followed by the six dash-prefixed fields In Scope, Out of Scope, Covered, Not Covered, Evidence Sources, and User-visible Claim Being Verified. Do not bold, translate, rename, or replace this block. Not for plain implementation conformance review without readiness or acceptance verification, and not for prototype contract-boundary classification.
+description: Use when skeptically verifying scope-first readiness, frontend integration readiness, implementation acceptance evidence with tests/checks, source-truth, UAT/release evidence, UI evidence, git boundary, or frontend contract confidence. Use for no-command readiness or evidence-sufficiency prompts such as "不要运行命令", "只有 code diff 没有 runtime 或 browser evidence 这次可以算 ready 吗", and other questions about whether code diff alone without runtime or browser evidence can count as ready. Do not use for plain implementation conformance review without readiness or acceptance verification, and do not use for prototype contract-boundary classification. Final verification reports must start with the literal line "Verification Scope" followed by the six dash-prefixed fields In Scope, Out of Scope, Covered, Not Covered, Evidence Sources, and User-visible Claim Being Verified. Do not bold, translate, rename, or replace this block.
 ---
 
 # verify
@@ -116,6 +116,68 @@ A `verify` verdict does not directly close a task. After the verification body, 
 
 Never place task-state recommendations before the required `Verification Scope` block.
 
+## Evidence Search Boundary
+
+Default verification is claim-scoped, not repository-wide evidence archaeology.
+
+Start from:
+
+- the user-visible claim being verified;
+- user-provided evidence or paths;
+- current workspace source, diff, tests, or check output relevant to that claim;
+- current runtime or browser evidence when the user asks for runtime, browser, or readiness;
+- current installed plugin cache or local `dist/` only when the claim explicitly concerns plugin install, cache, marketplace, package, or release readiness.
+
+Do not default to:
+
+- `evals/baselines/`;
+- `artifacts/`;
+- `research/`;
+- `examples/`;
+- historical release notes;
+- old handoffs;
+- old runtime trials;
+- broad `docs/prd-v*` archaeology;
+- repo-wide `rg` across historical materials.
+
+Historical baselines may orient investigation only when the user explicitly asks for historical, eval, baseline, release-evidence, or Groundwork-maintainer evidence, or when a current source artifact cites a specific baseline path.
+
+If current `dist/`, installed cache, runtime/browser evidence, or user-provided evidence is missing, report the gap under `Not Covered`, `Unverified Claims`, or `blocked needs-info`; do not compensate by sweeping historical materials.
+
+## Active Verify Modes
+
+Pick the lightest mode that can answer the user's claim.
+
+### `verify-lite`
+
+Trigger: no-command prompts, code-diff-only sufficiency questions, or "现有证据够不够" questions.
+
+Reads: the user claim plus provided/current evidence only.
+
+Output: `Verification Scope` followed by a compact evidence-sufficiency verdict.
+
+Boundary: no historical search.
+
+### `verify-standard`
+
+Trigger: implementation acceptance, TASK/PRD conformance with a readiness or evidence claim, or ordinary verification after a scoped change.
+
+Reads: the task or PRD, source, diff, tests, checks, and current named task artifacts that are directly relevant to the claim.
+
+Output: `Verification Scope` followed by `Claim / AC -> Evidence -> Result -> Gap`.
+
+Boundary: no historical baseline search unless the current source artifact cites it or the user asks for historical/eval/baseline evidence.
+
+### `verify-strict`
+
+Trigger: release, UAT, customer, runtime, cache, marketplace, installed-plugin, selector enforcement, or package-readiness claims.
+
+Reads: strict branch references and current qualifying runtime, cache, release, UAT, marketplace, installed-plugin, selector, or package evidence for the specific claim.
+
+Output: `Verification Scope` plus the strict branch payload and explicit missing-evidence handling.
+
+Boundary: historical baselines are allowed only when explicitly requested or cited by a current source artifact; they do not replace current qualifying evidence.
+
 ## CHECKPOINTS
 
 - STOP before any verdict unless `Verification Scope` includes concrete `Covered`, `Not Covered`, and `Evidence Sources` fields.
@@ -150,17 +212,18 @@ Never place task-state recommendations before the required `Verification Scope` 
 2. State the named lens or lenses being used.
 3. State claimed behavior before judging it.
 4. Run lifecycle preflight when `STATE.md`, task-state, source-truth, UAT/release, or closeout claims are in scope.
-5. Inspect source/diff/test evidence; do not pass readiness from `STATE.md` alone.
-6. Run or report relevant checks when available.
-7. Load the branch file only for the active branch from the Branch Index below.
-8. Separate data, environment, and customer/UAT readiness.
-9. Map `Claim / AC -> Evidence -> Result -> Gap -> Severity`.
-10. For runtime/model claims, map `capability_status`, `selector_enforcement`, evidence layer, Runtime mismatch, and runtime/cache refresh evidence to the claim. Prompt preference alone cannot satisfy `tool_enforced`.
-11. Mark missing checks as `unverified`.
-12. Keep any customer-facing summary optional and secondary to engineering readiness.
-13. Give a verdict: `pass`, `partial`, `fail`, or `blocked`.
-14. Add a task-state recommendation after the verification body.
-15. After the verification body, add a lifecycle state note only when `LIFECYCLE-STATE.md` thresholds are met. Never place lifecycle notes before `Verification Scope`.
+5. Choose `verify-lite`, `verify-standard`, or `verify-strict` and apply the Evidence Search Boundary before expanding file reads.
+6. Inspect source/diff/test evidence; do not pass readiness from `STATE.md` alone.
+7. Run or report relevant checks when available.
+8. Load the branch file only for the active branch from the Branch Index below.
+9. Separate data, environment, and customer/UAT readiness.
+10. Map `Claim / AC -> Evidence -> Result -> Gap -> Severity`.
+11. For runtime/model claims, map `capability_status`, `selector_enforcement`, evidence layer, Runtime mismatch, and runtime/cache refresh evidence to the claim. Prompt preference alone cannot satisfy `tool_enforced`.
+12. Mark missing checks as `unverified`.
+13. Keep any customer-facing summary optional and secondary to engineering readiness.
+14. Give a verdict: `pass`, `partial`, `fail`, or `blocked`.
+15. Add a task-state recommendation after the verification body.
+16. After the verification body, add a lifecycle state note only when `LIFECYCLE-STATE.md` thresholds are met. Never place lifecycle notes before `Verification Scope`.
 
 ## Output Shape
 
