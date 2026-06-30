@@ -35,6 +35,11 @@ Should not trigger:
 - The user only asks for final frontend implementation commitment, not prototype exploration; use `implement`.
 - The user only asks for server/source truth, not prototype exploration; use `verify`.
 - The user only asks for runtime, browser, UAT, release, customer-readiness, marketplace, or installed-plugin evidence; use `verify`.
+- "验证这个前端实现是否 ready 联调"; use `verify`.
+- "按这个原型实现生产代码"; use `implement`.
+- "只想把这个需求写成 PRD 文案"; use `to-prd`.
+- "只查后端源码事实，不需要原型"; use `verify` or direct source inspection.
+- "把这个静态原型当最终合同验收"; use `verify` for source-truth verification.
 
 ## Required Evidence
 

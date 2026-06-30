@@ -19,6 +19,12 @@ Should trigger:
 - "Deprecate the old architecture page and point to the new one."
 - "Move this handoff lesson into long-lived project knowledge."
 - "Repair wiki aliases, broken links, and contested claims."
+- "初始化这个项目的 LLM Wiki"
+- "查一下项目 wiki 里关于 dispatch 边界的结论"
+- "把这次实现后的长期知识更新进 wiki"
+- "审计 wiki 里过期或矛盾的 claim"
+- "修复 wiki alias、broken links 和 contested claims"
+- "把 handoff 里的可复用经验沉淀为长期项目知识"
 
 Should not trigger:
 
@@ -31,6 +37,11 @@ Should not trigger:
 - The project has no wiki and the user did not request durable wiki creation or maintenance.
 - The note is one-time scratch context, a daily diary, or a session log without durable reuse value.
 - The user needs external graph/search visualization rather than wiki maintenance.
+- "wiki 说这个功能 UAT ready，帮我验证"; use `verify`.
+- "只问当前源码里有没有这个 route"; answer directly or use source inspection.
+- "按 wiki 里的说法直接改代码"; use `implement` only after source truth is inspected.
+- "给下个 session 做 handoff"; use `handoff`.
+- "把这个需求整理成 PRD"; use `to-prd`.
 
 ## Required Evidence
 
@@ -44,9 +55,11 @@ Use `skills/_shared/AUDIENCE-FIRST-ARTIFACT.md` for new or materially updated wi
 
 Use `skills/_shared/DOMAIN-LANGUAGE.md` when terminology affects PRD, contract, source, runtime, verification, or handoff truth. Wiki glossary alignment does not promote terms into stronger truth layers.
 
-Use `skills/_shared/ROLE-SEPARATION.md` for material wiki changes that affect public skill surface, source-truth claims, contract claims, readiness evidence, broad eval behavior, or acceptance. Same-session wiki authoring may provide self-check evidence only.
+Apply `EB-ROLE-001` from `skills/_shared/EVIDENCE-BOUNDARY.md` and use `skills/_shared/ROLE-SEPARATION.md` for material wiki changes that affect public skill surface, source-truth claims, contract claims, readiness evidence, broad eval behavior, or acceptance. Skill-specific delta: same-session wiki authoring may provide self-check evidence only.
 
-Use `skills/_shared/RUNTIME-CAPABILITY.md` if a wiki claim touches runtime, selector, child-thread/worktree, installed-plugin, marketplace, cache, release, UAT, browser, or customer evidence. Wiki source edits alone are source-validation evidence only.
+Apply `EB-WIKI-001`, `EB-RUNTIME-001`, `EB-CACHE-001`, and `EB-RELEASE-001` from `skills/_shared/EVIDENCE-BOUNDARY.md`, and use `skills/_shared/RUNTIME-CAPABILITY.md` if a wiki claim touches runtime, selector, child-thread/worktree, installed-plugin, marketplace, cache, release, UAT, browser, or customer evidence.
+
+Use `skills/_shared/NON-EXECUTOR-BOUNDARY.md` for any wiki claim about execution, source mutation, runtime/cache behavior, release, UAT, or customer acceptance. Wiki maintenance preserves source-cited knowledge; it does not execute tasks or mutate raw source truth.
 
 ## Wiki Root Discovery
 
@@ -111,7 +124,7 @@ Required behavior:
 
 ### `audit`
 
-Assess wiki health, not release readiness.
+Assess wiki health under `EB-WIKI-001`, not release readiness under `EB-RELEASE-001`.
 
 Audit scope must be declared:
 
@@ -144,7 +157,7 @@ Required behavior:
 
 - Check stale claims, contradictions, orphan pages, missing citations, evidence-layer mismatch, deprecated pages still recommended by index, and raw-source drift where practical.
 - Mark claims as `supported`, `stale_suspected`, `contradicted`, `uncited`, or `insufficient`.
-- Do not claim runtime, browser, UAT, customer, marketplace, installed-plugin, cache-refresh, or release readiness.
+- Apply `EB-RUNTIME-001`, `EB-CACHE-001`, and `EB-RELEASE-001` before discussing runtime, browser, UAT, customer, marketplace, installed-plugin, cache-refresh, or release readiness; do not claim those stronger outcomes without the direct evidence required by `skills/_shared/NON-EXECUTOR-BOUNDARY.md` and the relevant evidence contract.
 
 ### `update`
 
@@ -273,11 +286,11 @@ Route Conflict
 
 ## Do Not
 
-- Do not treat wiki synthesis as source truth, product truth, backend/API contract truth, implementation authority, verification evidence, release evidence, UAT evidence, customer readiness, marketplace evidence, installed-plugin evidence, browser evidence, runtime evidence, cache-refresh evidence, or selector enforcement.
+- Do not promote wiki synthesis beyond `EB-WIKI-001`.
 - Do not create backend fields, states, permissions, migrations, owners, metrics, APIs, or tests from wiki synthesis alone.
 - Do not block normal `to-prd`, `implement`, `verify`, `handoff`, or `dispatch` work because a wiki is absent.
 - Do not copy repo source files wholesale into `wiki/raw/`.
-- Do not mutate raw source truth during wiki cleanup.
+- Do not mutate raw source truth during wiki cleanup; route source changes to the appropriate implementation owner.
 - Do not create daily diaries, automatic memory, vector databases, graphs, external tool config, hooks, or MCP servers by default.
 - Do not route direct bounded answers, implementation, readiness, UAT, release, customer, or dispatch requests into wiki merely because wiki context exists.
 

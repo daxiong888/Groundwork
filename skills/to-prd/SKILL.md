@@ -34,6 +34,11 @@ Should not trigger:
 - The user asks only whether a task is ready; use `triage`.
 - The user asks for code edits; use `implement`.
 - The user asks for verification evidence; use `verify`.
+- "基于这个已接受 PRD 拆 issues"; use `to-issues`.
+- "按这个 ready issue 直接实现"; use `implement`.
+- "这个任务是否 ready-for-agent"; use `triage`.
+- "验证这次能不能给客户 UAT"; use `verify`.
+- "只需要把这句话润色自然一点"; answer directly.
 
 ## Required Evidence
 
@@ -63,7 +68,7 @@ Use `skills/_shared/GRILLING.md` when material ambiguity blocks PRD shaping and 
 
 Use `skills/_shared/DOMAIN-LANGUAGE.md` when terminology materially affects acceptance, contract truth, source truth, prototype interpretation, verification, or handoff. Do not print a full `Domain Language / Term Conflict` bucket when no material term conflict exists. Keep glossary-only alignment separate from PRD truth, contract truth, source truth, runtime evidence, user confirmation, and unknown terms.
 
-Use `skills/_shared/LLM-WIKI.md` when a project wiki exists or the user provides wiki pages as context. Wiki pages may orient PRD drafting and help avoid asking for facts already supported by cited sources, but wiki synthesis is not PRD acceptance, product truth, source truth, contract truth, implementation readiness, or verification evidence. If wiki pages are `draft`, `contested`, `stale_suspected`, `deprecated`, `archived`, glossary-only, uncited, page-level-source-only, or otherwise insufficient, mark the affected requirement as **NEEDS CLARIFICATION** or inspect the cited source instead of promoting the wiki claim.
+Apply `EB-WIKI-001` and `EB-VERIFY-001` from `skills/_shared/EVIDENCE-BOUNDARY.md`, and use `skills/_shared/LLM-WIKI.md` when a project wiki exists or the user provides wiki pages as context. Skill-specific delta: wiki pages may orient PRD drafting and help avoid asking for facts already supported by cited sources; insufficient wiki claims become **NEEDS CLARIFICATION** or require cited-source inspection before promotion.
 
 Use `skills/_shared/DECISION-MAPPING.md` when the options are already enumerable and the user needs a comparison of tradeoffs, dependencies, decision criteria, or consequences before choosing a path. Decision mapping is a shared reference, not a public `decision-map` skill, and it must not replace PRD shaping when the user explicitly asks to write requirements, acceptance criteria, or a spec.
 
@@ -107,15 +112,15 @@ Use `skills/_shared/DECISION-MAPPING.md` when the options are already enumerable
 | User asks for a PRD artifact from sensitive source material | Redact secret values, private URLs, credentials, PII, sensitive logs, screenshots, requests, and database rows before drafting or writing. | Preserve only stable non-secret identifiers, source types, and decisions needed for review. |
 | User asks to split issues from raw intent | Stop before `to-issues`. | State that PRD/spec acceptance is required first. |
 | User gives a raw solution idea or vague urgency as if it were implementation-ready | Keep ownership in `to-prd`. | State that urgency or a proposed solution is not an explicit PRD bypass, then shape the requirement or ask the highest-impact clarification question. |
-| Wiki context is relevant but not source-backed enough | Use it as orientation only and inspect cited sources or ask the highest-impact clarification question. | Do not treat wiki synthesis, page-level source lists, glossary pages, stale pages, or uncited claims as accepted PRD truth. |
+| Wiki context is relevant but not source-backed enough | Use it as orientation only and inspect cited sources or ask the highest-impact clarification question. | Apply `EB-WIKI-001` before promoting wiki context into PRD truth. |
 
 ## Do Not
 
 - Do not turn raw, draft-only, or contradictory requirements into accepted product truth.
 - Do not invent backend fields, business states, metrics, owners, timelines, APIs, or acceptance details.
 - Do not promote prototype-only mock data into confirmed source truth.
-- Do not treat glossary-only alignment as accepted PRD truth, backend/API contract truth, source truth, implementation readiness, verification evidence, UAT evidence, release evidence, or customer readiness.
-- Do not treat wiki synthesis, stale wiki pages, page-level source lists, uncited claims, or external graph/search/index output as accepted PRD truth, source truth, contract truth, implementation readiness, verification evidence, UAT evidence, release evidence, marketplace evidence, installed-plugin evidence, or cache-refresh evidence.
+- Do not treat glossary-only alignment as stronger truth; apply `skills/_shared/DOMAIN-LANGUAGE.md`.
+- Do not promote wiki, stale, uncited, or external graph/search/index output beyond `EB-WIKI-001`.
 - Do not create `skills/socratic/SKILL.md`, `skills/grill/SKILL.md`, `skills/domain-language/SKILL.md`, or `skills/grill-with-docs/SKILL.md` for v0.5.1 MVP behavior.
 - Do not write or update a durable PRD file just because the output looks reusable; require user intent, source-of-truth need, or artifact promotion.
 - Do not create or update durable PRD artifacts from Plan Mode, read-only, or chat-only context.

@@ -16,6 +16,8 @@ Should trigger:
 - "这个 ready-for-agent 任务怎么落地"
 - "按这个 issue 写执行步骤"
 - "实现前列一下改动顺序和验证点"
+- "这个 ready issue 只写计划，不要改代码"
+- "先列依赖、stop condition 和验证点"
 
 Should not trigger:
 
@@ -26,6 +28,11 @@ Should not trigger:
 - The user asks to make code changes now; use `implement`.
 - The user asks to implement now and only needs an inline mini-plan; `implement` uses `skills/implement/LIGHTWEIGHT-PLAN.md`.
 - The user asks for proof after changes; use `verify`.
+- "按这个 plan 现在开始改代码"; use `implement`.
+- "这个需求还不清楚，先整理成 PRD"; use `to-prd`.
+- "这个 issue 能不能给 agent 做"; use `triage`.
+- "把这些 ready issue 分配给 worktree 或 subagent"; use `dispatch`.
+- "验证这次证据链是否完整"; use `verify`.
 
 ## Required Evidence
 
