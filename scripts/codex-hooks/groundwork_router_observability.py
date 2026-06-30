@@ -27,6 +27,7 @@ SECRET_PATTERNS = (
     (re.compile(r"(Authorization:\s*Bearer\s+)[^\s,;]+", re.I), r"\1[REDACTED]"),
     (re.compile(r"(token=)[^\s,;]+", re.I), r"\1[REDACTED]"),
     (re.compile(r"(api[_-]?key=)[^\s,;]+", re.I), r"\1[REDACTED]"),
+    (re.compile(r"((?:password|passwd|client[_-]?secret|aws_secret_access_key)\s*[:=]\s*)[^\s,;]+", re.I), r"\1[REDACTED]"),
     (re.compile(r"(cookie:\s*)[^\n]+", re.I), r"\1[REDACTED]"),
     (re.compile(r"\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{20,}\b"), "[REDACTED_GITHUB_TOKEN]"),
     (re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}\b"), "[REDACTED_GITHUB_PAT]"),

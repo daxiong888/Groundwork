@@ -338,14 +338,26 @@ class RouterObservabilityTests(unittest.TestCase):
             base_event = {"cwd": str(root), "session_id": "s1", "turn_id": "t1"}
             run_hook(
                 "user_prompt_submit_groundwork_entry.py",
-                {**base_event, "prompt": "按 PRD 实施 docs/foo.md ghp_1234567890abcdef1234567890abcdef1234"},
+                {
+                    **base_event,
+                    "prompt": (
+                        "按 PRD 实施 docs/foo.md "
+                        "ghp_1234567890abcdef1234567890abcdef1234 "
+                        "password=hunter2"
+                    ),
+                },
                 root,
             )
             run_hook(
                 "stop_groundwork_score.py",
                 {
                     **base_event,
-                    "last_assistant_message": "Implementation Summary\nFiles Changed\nChecks Run sk-1234567890abcdef1234567890abcdef",
+                    "last_assistant_message": (
+                        "Implementation Summary\n"
+                        "Files Changed\n"
+                        "Checks Run sk-1234567890abcdef1234567890abcdef "
+                        "client_secret=secret-client-value AWS_SECRET_ACCESS_KEY=secret-access-key"
+                    ),
                 },
                 root,
             )
@@ -359,7 +371,10 @@ class RouterObservabilityTests(unittest.TestCase):
             self.assertIn("[REDACTED_GITHUB_TOKEN]", prompt_raw["prompt"])
             self.assertIn("[REDACTED_OPENAI_KEY]", final_raw)
             self.assertNotIn("ghp_1234567890abcdef1234567890abcdef1234", json.dumps(prompt_raw))
+            self.assertNotIn("hunter2", json.dumps(prompt_raw))
             self.assertNotIn("sk-1234567890abcdef1234567890abcdef", final_raw)
+            self.assertNotIn("secret-client-value", final_raw)
+            self.assertNotIn("secret-access-key", final_raw)
             self.assertTrue((out_dir / "final.raw.txt").exists())
             self.assertEqual(final_metadata["raw_final_storage"], "enabled")
             self.assertEqual(final_raw_metadata["redaction"]["status"], "redacted")
@@ -374,6 +389,9 @@ class RouterObservabilityTests(unittest.TestCase):
             "xoxb-1234567890-abcdefghij "
             "sk-proj-1234567890abcdef1234567890abcdef "
             "sk-svcacct-1234567890abcdef1234567890abcdef "
+            "password=hunter2 "
+            "client_secret=secret-client-value "
+            "AWS_SECRET_ACCESS_KEY=secret-access-key "
             "Authorization: Bearer secret-token"
         )
 
@@ -383,12 +401,18 @@ class RouterObservabilityTests(unittest.TestCase):
         self.assertIn("[REDACTED_AWS_ACCESS_KEY_ID]", redacted)
         self.assertIn("[REDACTED_SLACK_TOKEN]", redacted)
         self.assertEqual(redacted.count("[REDACTED_OPENAI_KEY]"), 2)
+        self.assertIn("password=[REDACTED]", redacted)
+        self.assertIn("client_secret=[REDACTED]", redacted)
+        self.assertIn("AWS_SECRET_ACCESS_KEY=[REDACTED]", redacted)
         self.assertIn("Authorization: Bearer [REDACTED]", redacted)
         self.assertNotIn("github_pat_1234567890abcdef1234567890abcdef", redacted)
         self.assertNotIn("AKIA1234567890ABCDEF", redacted)
         self.assertNotIn("xoxb-1234567890-abcdefghij", redacted)
         self.assertNotIn("sk-proj-1234567890abcdef1234567890abcdef", redacted)
         self.assertNotIn("sk-svcacct-1234567890abcdef1234567890abcdef", redacted)
+        self.assertNotIn("hunter2", redacted)
+        self.assertNotIn("secret-client-value", redacted)
+        self.assertNotIn("secret-access-key", redacted)
 
     def test_stop_orders_events_and_reports_malformed_jsonl(self):
         with tempfile.TemporaryDirectory() as tmp:
