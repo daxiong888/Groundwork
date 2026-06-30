@@ -84,11 +84,13 @@ Reject or revise the contract if it:
 
 ## Lightweight Lint
 
-Use the local linter for a fast structural check:
+Use the skill-bundled linter from the Groundwork plugin or source repo root for a fast structural check:
 
 ```bash
-python3 scripts/lint_goal_contract.py <goal-contract-file>
+python3 skills/_shared/tools/lint_goal_contract.py <goal-contract-file>
 ```
+
+For source-repo maintainer compatibility, `python3 scripts/lint_goal_contract.py <goal-contract-file>` remains a wrapper for the same linter. The `scripts/` path is source-repo-root relative and must not be assumed available from an installed plugin cache that only exposes `skills/`.
 
 The linter scans the full Markdown file, including fenced code blocks. It accepts either same-line field values or indented/block values immediately after a required label, and it requires the extracted `Goal Command` value itself to start with `/goal`. It also rejects structurally detectable placeholder commands, including bare placeholders and embedded placeholder tokens such as `/goal Implement <task> [acceptance]`. It intentionally does not perform full Markdown AST validation.
 

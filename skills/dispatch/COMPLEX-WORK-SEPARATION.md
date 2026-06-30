@@ -21,7 +21,9 @@ An implementer may self-check and report validation evidence. That self-check is
 
 ## Separation Required
 
-Require role separation when any condition is true:
+Start with the canonical base materiality threshold in `skills/_shared/ROLE-SEPARATION.md`. The dispatch-specific triggers below are additive operational triggers for managed worktree, package-return, and coordinator closeout contexts.
+
+Require role separation when any base threshold or dispatch-specific condition is true:
 
 - the task is P0/P1 or otherwise high-risk;
 - the change affects security, privacy, auth, permissions, data correctness, or customer-visible readiness;

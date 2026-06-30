@@ -172,7 +172,7 @@ All checks must pass before creating a child thread:
 - `source_package.issue_body` is present.
 - `source_package.known_source_or_first_inspection_step` is present.
 - Goal Contract is present and complete enough to execute, including `preferred_runtime` and `result_package_expected = review_package`.
-- `goal_contract.goal_command` starts with `/goal`, is not a placeholder such as `/goal <one executable task>`, and passes `python3 scripts/lint_goal_contract.py <goal-contract-file>` before delivery.
+- `goal_contract.goal_command` starts with `/goal`, is not a placeholder such as `/goal <one executable task>`, and passes `python3 skills/_shared/tools/lint_goal_contract.py <goal-contract-file>` before delivery. Source-repo maintainers may use the compatibility wrapper `python3 scripts/lint_goal_contract.py <goal-contract-file>`.
 - The rendered child prompt passes `python3 scripts/lint_child_goal_prompt.py <rendered-child-prompt-file>` before delivery: its first non-empty line starts with `/goal`, `/goal` is not wrapped in a fenced code block, and no prose precedes `/goal`.
 - Validation package includes `fastest_signal` and `required_evidence`.
 - `runtime_package.expected_output = review_package`

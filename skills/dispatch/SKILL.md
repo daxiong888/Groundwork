@@ -57,6 +57,8 @@ When maintaining the Groundwork repository itself, apply the repo-local `AGENTS.
 
 Use `skills/_shared/RUNTIME-CAPABILITY.md` before recommending, requesting, or reporting runtime/model selection. Dispatch must keep capability seed facts, prompt preferences, runtime/tool evidence, official docs, and community evidence separate.
 
+When dispatch templates inline `evidence_layer` values, they mirror the canonical runtime evidence layer enum in `skills/_shared/RUNTIME-CAPABILITY.md` and must be updated together with that source.
+
 Use `skills/_shared/COGNITIVE-BUDGET.md` for `model_profile`, reasoning/thinking preference, cost/latency bias, and Spark final authority restrictions. Route by profile before mapping to a concrete model.
 
 Use `skills/_shared/DECISION-MAPPING.md` only for pre-dispatch option comparison when the user needs to choose among enumerable runtime, model-profile, skill-route, or workflow paths. Preserve `dispatch` when accepted, ready tasks need runtime routing, an execution matrix, model/profile recommendations, package-only handoff, or Result Package expectations. A decision map can recommend a dispatch path, but it must not generate or execute the dispatch package and must not claim selector enforcement beyond prompt preference without runtime/tool evidence.

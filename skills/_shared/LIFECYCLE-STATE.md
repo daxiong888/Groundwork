@@ -76,7 +76,8 @@ Field rules:
 - `Last Updated` uses an exact timestamp with timezone, preferably ISO 8601 such as `2026-05-26T18:30:00+08:00`; author or session metadata is optional.
 - `Canonical Sources` links the true sources of facts. Source truth beats lifecycle state when they conflict.
 - `Current Workflow Mode` records the Groundwork route or state, not a GSD phase. `direct` is allowed as a route value, not as a public skill or project lifecycle mode.
-- Allowed route/state values: `direct`, `to-prd`, `to-issues`, `triage`, `write-plan`, `prototype`, `implement`, `verify`, `handoff`, `paused`, `blocked`, `done`.
+- Allowed route/state values: `direct`, `to-prd`, `to-issues`, `triage`, `write-plan`, `prototype`, `implement`, `verify`, `handoff`, `dispatch`, `wiki`, `paused`, `blocked`, `done`.
+- `paused` and `done` are lifecycle states, not preflight suggested routes. Preflight suggests actionable routes plus `blocked`; lifecycle state may record actionable routes plus durable holding or terminal states.
 - `Current Milestone` is `none` unless there is real multi-milestone work.
 - `Current Gap Closure` records the current unresolved verify/QA gap. If no active gap exists, write `none`.
 - `Next Skill` recommends the next Groundwork skill or direct action.

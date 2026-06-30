@@ -35,7 +35,7 @@ A new public skill may be merged only when all of these are true:
 5. The trigger contract and should-not-trigger cases are clear enough for routing review.
 6. Completion criteria and failure branches are checkable.
 7. Evidence boundaries state what the skill can and cannot claim, including runtime, browser, UAT, release, customer, marketplace, and installed-plugin cache claims.
-8. Minimum eval coverage exists before merge: at least three positive fixtures, three negative fixtures, and hard-negative fixtures for the candidate's most dangerous overclaims.
+8. Minimum eval coverage exists before merge: at least three positive fixtures, three negative fixtures, and hard-negative fixtures as defined in Hard-negative Expectations below.
 9. Route-conflict negatives prove the skill does not steal direct answers, accepted implementation work, verification, handoff, or another public skill's route.
 10. A separate clean review or skill-quality review checks the candidate before merge; the author or implementer self-check is not final approval.
 
@@ -48,6 +48,8 @@ Public skill additions and material skill changes must use `skills/_shared/SKILL
 `skill-audit` is classified as a required shared workflow/reference first. It must not be promoted to `skills/skill-audit/SKILL.md` or treated as a public skill unless a later accepted publicization slice proves direct invocation value, routing negatives pass, and maintainer acceptance explicitly authorizes public exposure.
 
 The shared audit lens covers invocation class, trigger description, workflow, information hierarchy, progressive disclosure, duplication, failure branches, evidence boundary, and eval coverage. Author self-audit is useful self-check evidence only; public skill approval, material skill-quality approval, and final acceptance require an independent clean review or maintainer acceptance according to `skills/_shared/ROLE-SEPARATION.md`.
+
+Expected sequence: the author or implementer may run self-audit first; an independent clean reviewer or maintainer must then apply or accept the audit before approval. These are not alternatives.
 
 ## Hard-negative Expectations
 
@@ -62,7 +64,7 @@ Every public skill candidate must include hard negatives that fail when:
 - the shared `skill-audit` reference is treated as a public skill before accepted public exposure and maintainer acceptance;
 - a public project-knowledge skill treats wiki synthesis, page-level source lists, stale pages, uncited claims, missing wiki roots, or derived search/index/graph output as source truth, contract truth, implementation authority, verification evidence, release evidence, UAT evidence, customer readiness, marketplace evidence, installed-plugin evidence, or cache-refresh evidence;
 - prompt text alone is treated as runtime, selector, browser, UAT, release, customer, marketplace, or installed-plugin cache evidence;
-- the author or same-session implementer approves their own material skill-quality change as final.
+- the author or same-session implementer approves their own material skill-quality change as final;
 - `low_risk_coordinator_intake` is used to bypass clean-review fan-out for material public skill, shared guardrail, adapter contract, package template, schema, shared fixture, state-machine, or shared-config changes;
 - `low_risk_coordinator_intake` is relabeled as clean review passed or used as public skill approval, release/UAT/customer readiness, archive, branch cleanup, merge, commit, push, PR, runtime, browser, marketplace, installed-plugin, or cache-refresh evidence.
 

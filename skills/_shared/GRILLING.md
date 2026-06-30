@@ -99,6 +99,13 @@ Use this taxonomy as a selection aid. It is not required user-visible output tex
 
 Every question must be valid under the question-quality gate below. A question is valid only when it can change the next route, artifact boundary, acceptance criterion, contract boundary, or evidence requirement.
 
+Selection priority / tie-breaker:
+
+1. Prefer Boundary and Evidence questions when the answer can change route, artifact ownership, truth layer, readiness boundary, or verification requirement.
+2. Prefer Counterexample questions when implementation would otherwise proceed from an assumption or when the next verification risk needs a falsifiable check.
+3. Prefer Consequence questions when several valid questions compete and the agent must identify which answer would change the next action most.
+4. Use Definition and Canonical-term questions when term ambiguity blocks acceptance, contract wording, handoff language, or source alignment.
+
 ### Definition Question
 
 Purpose: clarify what a term means before it is written into a PRD, prototype, contract, issue, or implementation.

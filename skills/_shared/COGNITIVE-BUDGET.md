@@ -45,7 +45,7 @@ Do not report selector enforcement, concrete runtime execution, installed-plugin
 
 ## Profile-To-Model Mapping Gate
 
-Before mapping a profile to a concrete model, record the evidence layer:
+Before mapping a profile to a concrete model, record the evidence layer. The inline `evidence_layer` values below mirror the canonical runtime evidence layer enum in `skills/_shared/RUNTIME-CAPABILITY.md` and must be updated together.
 
 ```yaml
 model_profile: fast_scan | balanced_work | strong_reasoning | exhaustive_review | spark_iteration

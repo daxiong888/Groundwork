@@ -139,9 +139,11 @@ Route examples:
 - throwaway question-answering UI or logic artifact -> `prototype`;
 - scoped code change -> `implement`, after git topology gate;
 - tests/runtime/UAT/release/customer-safe evidence -> `verify`;
-- pause/resume/cross-session transfer -> `handoff`.
+- pause/resume/cross-session transfer -> `handoff`;
 - accepted ready-task runtime routing or package-only execution matrix -> `dispatch`;
 - durable project wiki query, ingest, audit, repair, or update request -> `wiki`.
+
+Preflight suggested modes are actionable routes plus `blocked`. Durable terminal or holding states such as `paused` and `done` belong to lifecycle state, not to preflight suggested routes.
 
 ### `Host Mode`
 
@@ -310,6 +312,18 @@ If `Intent = new_requirement`, start with grill-before-write. Do not implement b
 
 If `Requirement State` is not `prd_accepted`, `issue_ready`, or owned by an external task source, stop and request acceptance or source-of-truth promotion. Do not split raw requirements into fake-precise issues.
 
+### `triage`
+
+Classify readiness, blockers, source state, lifecycle-state need, and next owner. Do not turn a readiness decision into implementation, verification, or remote closeout without the owning route and evidence gate.
+
+### `write-plan`
+
+Use only after scope is accepted enough to plan implementation. Produce dependencies, sequence, stop conditions, and verification checkpoints; do not invent PRD truth, split issues, dispatch runtimes, or implement the plan.
+
+### `prototype`
+
+Keep the output throwaway and question-answering. State the artifact boundary clearly, and do not promote prototype fields, UI observations, or mock data into backend/API contract truth without source evidence.
+
 ### `implement`
 
 Before writing files, run git topology gate. If current branch is `main` / `master` / `trunk`, the branch name is empty, or `HEAD` is detached and the work is PR-bound, choose a branch or worktree first.
@@ -321,6 +335,14 @@ Begin the final report with `Verification Scope`. If a gap must survive the sess
 ### `handoff`
 
 Reference existing `STATE.md` when present. Recommend creating or updating state only when lifecycle thresholds are met. Do not turn handoff into a full lifecycle database.
+
+### `dispatch`
+
+Route only accepted, ready tasks to runtime/package choices. Dispatch may generate package-only routing, execution matrixes, and Result Package expectations; it is not an executor and must not claim runtime execution, validation, or clean review happened.
+
+### `wiki`
+
+Use for durable project wiki query, ingest, audit, repair, or update work. Wiki pages can orient work and preserve project knowledge, but wiki synthesis must not become source truth, implementation authority, verification evidence, runtime evidence, release evidence, or UAT/customer readiness without cited authoritative sources.
 
 ## Forbidden Behavior
 

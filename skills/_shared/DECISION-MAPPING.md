@@ -77,6 +77,8 @@ Decision maps may recommend a model profile or runtime preference, but selector 
 
 Use these labels when runtime/model choice is material:
 
+The inline `evidence_layer` values below mirror the canonical runtime evidence layer enum in `skills/_shared/RUNTIME-CAPABILITY.md` and must be updated together.
+
 ```yaml
 model_profile: fast_scan | balanced_work | strong_reasoning | exhaustive_review | spark_iteration
 capability_status: known | unknown | user_supplied | docs_reference | tool_enforced

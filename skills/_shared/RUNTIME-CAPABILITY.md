@@ -71,6 +71,25 @@ Keep these layers separate in packages and final reports:
 | Community evidence | Supporting signal or research context | Mandatory acceptance gate, representative consensus, or runtime/tool enforcement |
 | Local characterization eval | Groundwork-specific fit for a profile or workflow | Universal benchmark, release readiness, or customer/UAT readiness |
 
+### Canonical Runtime Evidence Layer Enum
+
+Use these machine values when an `evidence_layer` enum is required:
+
+```text
+prompt_preference
+runtime_tool_evidence
+user_observed_model_menu_seed
+official_docs
+community_evidence
+local_characterization_eval
+```
+
+Mirrored inline template locations must match this enum:
+
+- `skills/_shared/COGNITIVE-BUDGET.md`
+- `skills/_shared/DECISION-MAPPING.md`
+- `skills/dispatch/SKILL.md`
+
 Capability seed facts must be labeled as seed facts and kept separate from runtime/tool enforcement evidence.
 
 ## Capability Seed Handling

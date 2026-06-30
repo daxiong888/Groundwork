@@ -26,6 +26,8 @@ same-session design -> implementation -> verification != allowed material closeo
 
 ## Materiality Threshold
 
+This section is the canonical base materiality threshold for Groundwork role separation. Skill-specific policies may add operational triggers, but they must not narrow or override this base threshold.
+
 Role separation is required when the change affects any of these areas:
 
 - public skill surface or skill-routing policy;
