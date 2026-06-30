@@ -5,6 +5,8 @@ import json
 import os
 import re
 import sys
+import time
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -22,11 +24,19 @@ from evals.verdict_model import dispatch_decision_from_entry, render_router_card
 
 
 SECRET_PATTERNS = (
-    re.compile(r"(Authorization:\s*Bearer\s+)[^\s,;]+", re.I),
-    re.compile(r"(token=)[^\s,;]+", re.I),
-    re.compile(r"(api[_-]?key=)[^\s,;]+", re.I),
-    re.compile(r"(cookie:\s*)[^\n]+", re.I),
-    re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----", re.S),
+    (re.compile(r"(Authorization:\s*Bearer\s+)[^\s,;]+", re.I), r"\1[REDACTED]"),
+    (re.compile(r"(token=)[^\s,;]+", re.I), r"\1[REDACTED]"),
+    (re.compile(r"(api[_-]?key=)[^\s,;]+", re.I), r"\1[REDACTED]"),
+    (re.compile(r"(cookie:\s*)[^\n]+", re.I), r"\1[REDACTED]"),
+    (re.compile(r"\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{20,}\b"), "[REDACTED_GITHUB_TOKEN]"),
+    (re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}\b"), "[REDACTED_GITHUB_PAT]"),
+    (re.compile(r"\bAKIA[0-9A-Z]{16}\b"), "[REDACTED_AWS_ACCESS_KEY_ID]"),
+    (re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{10,}\b"), "[REDACTED_SLACK_TOKEN]"),
+    (re.compile(r"\bsk-(?:[A-Za-z0-9]+-)?[A-Za-z0-9_-]{20,}\b"), "[REDACTED_OPENAI_KEY]"),
+    (
+        re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----", re.S),
+        "[REDACTED_PRIVATE_KEY]",
+    ),
 )
 
 DEFAULT_CONFIG = {
@@ -48,15 +58,19 @@ def load_stdin_event():
     return json.loads(raw)
 
 
-def redacted_snippet(text, limit=120):
+def redact_text(text, *, compact=False, limit=None):
     value = str(text or "")
-    for pattern in SECRET_PATTERNS:
-        if pattern.groups:
-            value = pattern.sub(r"\1[REDACTED]", value)
-        else:
-            value = pattern.sub("[REDACTED_PRIVATE_KEY]", value)
-    value = " ".join(value.split())
-    return value[:limit]
+    for pattern, replacement in SECRET_PATTERNS:
+        value = pattern.sub(replacement, value)
+    if compact:
+        value = " ".join(value.split())
+    if limit is not None:
+        value = value[:limit]
+    return value
+
+
+def redacted_snippet(text, limit=120):
+    return redact_text(text, compact=True, limit=limit)
 
 
 def stable_hash(text):
@@ -167,22 +181,79 @@ def read_json(path):
         return None
 
 
-def read_jsonl(path):
+def read_jsonl_with_diagnostics(path):
     rows = []
+    malformed = 0
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
     except FileNotFoundError:
-        return rows
+        return rows, malformed
     for line in lines:
         if not line.strip():
             continue
         try:
             value = json.loads(line)
         except json.JSONDecodeError:
+            malformed += 1
             continue
         if isinstance(value, dict):
             rows.append(value)
+    return rows, malformed
+
+
+def read_jsonl(path):
+    rows, _malformed = read_jsonl_with_diagnostics(path)
     return rows
+
+
+def event_metadata():
+    return {
+        "observed_at_ns": time.time_ns(),
+        "pid": os.getpid(),
+        "event_uuid": str(uuid.uuid4()),
+    }
+
+
+def raw_capture_allows_unredacted():
+    return os.environ.get("GROUNDWORK_ROUTER_OBSERVABILITY_ALLOW_UNREDACTED_RAW_CAPTURE") == "1"
+
+
+def raw_capture_payload(key, value):
+    if raw_capture_allows_unredacted():
+        return {
+            key: value,
+            "redaction": {"status": "unredacted_explicitly_allowed", "notes": []},
+        }
+    return {
+        key: redact_text(value),
+        "redaction": {
+            "status": "redacted",
+            "notes": ["set GROUNDWORK_ROUTER_OBSERVABILITY_ALLOW_UNREDACTED_RAW_CAPTURE=1 to store unredacted raw text"],
+        },
+    }
+
+
+def ordered_events_for_stop(out_dir):
+    tool_events, malformed_tool_events = read_jsonl_with_diagnostics(out_dir / "tool-events.jsonl")
+    permission_events, malformed_permission_events = read_jsonl_with_diagnostics(out_dir / "permission-events.jsonl")
+    events = tool_events + permission_events
+    events.sort(
+        key=lambda event: (
+            int(event.get("observed_at_ns") or 0),
+            str(event.get("event_uuid") or ""),
+        )
+    )
+    for index, event in enumerate(events, start=1):
+        event["event_index"] = index
+    diagnostics = {
+        "schema_version": "router_observability.coverage.v0",
+        "tool_events": len(tool_events),
+        "permission_events": len(permission_events),
+        "malformed_tool_events": malformed_tool_events,
+        "malformed_permission_events": malformed_permission_events,
+        "event_ordering": "observed_at_ns,event_uuid",
+    }
+    return events, diagnostics
 
 
 def prompt_from_event(event):
@@ -245,7 +316,7 @@ def tool_response_summary(event):
     text = compact_jsonish(response)
     status = ""
     if isinstance(response, dict):
-        for key in ("status", "outcome", "exit_code"):
+        for key in ("status", "outcome", "exit_code", "returncode", "rc"):
             if key in response and response.get(key) is not None:
                 status = str(response.get(key))
                 break
@@ -320,7 +391,7 @@ def handle_user_prompt_submit(event):
     if dispatch_decision:
         write_json(out_dir / "dispatch-decision.json", dispatch_decision)
     if raw_capture:
-        write_json(out_dir / "prompt.raw.json", {"prompt": prompt, "redaction": {"status": "not_reviewed", "notes": []}})
+        write_json(out_dir / "prompt.raw.json", raw_capture_payload("prompt", prompt))
     if router_hint_emitted:
         hint = (
             f"Groundwork route hint: expected first route {decision['expected_best']}; "
@@ -346,7 +417,6 @@ def handle_tool_event(event, hook_event_name):
         "turn_id": turn_id,
         "session_id_source": session_id_source,
         "turn_id_source": turn_id_source,
-        "event_index": len(read_jsonl(out_dir / "tool-events.jsonl")) + 1,
         "hook_event_name": hook_event_name,
         "tool_name": tool_name,
         "tool_use_id": str(event.get("tool_use_id") or ""),
@@ -359,6 +429,7 @@ def handle_tool_event(event, hook_event_name):
         "status": str(event.get("status") or "unknown"),
         **tool_response_summary(event),
         "redaction": {"status": "not_reviewed", "notes": []},
+        **event_metadata(),
     }
     append_jsonl(out_dir / "tool-events.jsonl", event_row)
     return None
@@ -377,7 +448,6 @@ def handle_permission_event(event):
         "turn_id": turn_id,
         "session_id_source": session_id_source,
         "turn_id_source": turn_id_source,
-        "event_index": len(read_jsonl(out_dir / "permission-events.jsonl")) + 1,
         "hook_event_name": "PermissionRequest",
         "permission": str(event.get("permission") or event.get("action") or "unknown"),
         "command_class": classify_command(command_from_event(event), tool_name_from_event(event)),
@@ -387,6 +457,7 @@ def handle_permission_event(event):
         "evidence_markers": evidence_markers(command_from_event(event)),
         "status": str(event.get("status") or "unknown"),
         "redaction": {"status": "not_reviewed", "notes": []},
+        **event_metadata(),
     }
     append_jsonl(out_dir / "permission-events.jsonl", row)
     return None
@@ -416,7 +487,8 @@ def handle_stop(event):
     }
     write_json(out_dir / "final-metadata.json", final_metadata)
     if config.get("raw_capture"):
-        (out_dir / "final.raw.txt").write_text(str(final_message or ""), encoding="utf-8")
+        final_raw = raw_capture_payload("final", final_message)
+        (out_dir / "final.raw.txt").write_text(str(final_raw["final"] or ""), encoding="utf-8")
         write_json(
             out_dir / "final.raw.meta.json",
             {
@@ -426,10 +498,11 @@ def handle_stop(event):
                 "created_at": utc_now(),
                 "final_sha256": final_metadata["final_sha256"],
                 "final_length": final_metadata["final_length"],
-                "redaction": {"status": "not_reviewed", "notes": []},
+                "redaction": final_raw["redaction"],
             },
         )
-    events = read_jsonl(out_dir / "tool-events.jsonl") + read_jsonl(out_dir / "permission-events.jsonl")
+    events, coverage = ordered_events_for_stop(out_dir)
+    write_json(out_dir / "coverage.json", coverage)
     dispatch_decision = read_json(out_dir / "dispatch-decision.json")
     score = score_turn({**decision, "final_sha256": final_metadata["final_sha256"]}, final_message, events, dispatch_decision)
     write_json(out_dir / "router-score.json", score)

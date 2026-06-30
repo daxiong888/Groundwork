@@ -43,6 +43,7 @@
         "implement",
         "verify",
         "handoff",
+        "wiki",
         "direct",
         "runtime-safety-gate",
         "unknown"

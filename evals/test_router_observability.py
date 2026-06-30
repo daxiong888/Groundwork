@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+import importlib.util
 import os
 import subprocess
 import sys
@@ -15,6 +16,16 @@ from evals.verdict_model import normalize_execution_profile, render_router_card,
 
 ROOT = Path(__file__).resolve().parents[1]
 HOOKS = ROOT / "scripts" / "codex-hooks"
+
+
+def load_hooks_module():
+    spec = importlib.util.spec_from_file_location(
+        "groundwork_router_observability_for_test",
+        HOOKS / "groundwork_router_observability.py",
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def run_hook(script, event, cwd, env=None):
@@ -271,19 +282,55 @@ class RouterObservabilityTests(unittest.TestCase):
             tool_event = json.loads((self.turn_dir(root) / "tool-events.jsonl").read_text(encoding="utf-8"))
             self.assertEqual(tool_event["tool_response_status"], "0")
 
-    def test_raw_capture_writes_final_raw_metadata_with_redaction_status(self):
+    def test_tool_response_returncode_and_rc_are_status_aliases(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.write_config(root)
+            base_event = {"cwd": str(root), "session_id": "s1", "turn_id": "t1"}
+
+            run_hook(
+                "post_tool_use_groundwork_trace.py",
+                {
+                    **base_event,
+                    "tool_name": "Bash",
+                    "tool_input": {"command": "false"},
+                    "tool_response": {"returncode": 7},
+                },
+                root,
+            )
+            run_hook(
+                "post_tool_use_groundwork_trace.py",
+                {
+                    **base_event,
+                    "tool_name": "Bash",
+                    "tool_input": {"command": "false"},
+                    "tool_response": {"rc": 8},
+                },
+                root,
+            )
+
+            rows = [
+                json.loads(line)
+                for line in (self.turn_dir(root) / "tool-events.jsonl").read_text(encoding="utf-8").splitlines()
+            ]
+            self.assertEqual([row["tool_response_status"] for row in rows], ["7", "8"])
+
+    def test_raw_capture_writes_redacted_raw_by_default(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             self.write_config(root, raw_capture=True)
             base_event = {"cwd": str(root), "session_id": "s1", "turn_id": "t1"}
             run_hook(
                 "user_prompt_submit_groundwork_entry.py",
-                {**base_event, "prompt": "按 PRD 实施 docs/foo.md"},
+                {**base_event, "prompt": "按 PRD 实施 docs/foo.md ghp_1234567890abcdef1234567890abcdef1234"},
                 root,
             )
             run_hook(
                 "stop_groundwork_score.py",
-                {**base_event, "last_assistant_message": "Implementation Summary\nFiles Changed\nChecks Run"},
+                {
+                    **base_event,
+                    "last_assistant_message": "Implementation Summary\nFiles Changed\nChecks Run sk-1234567890abcdef1234567890abcdef",
+                },
                 root,
             )
 
@@ -291,11 +338,76 @@ class RouterObservabilityTests(unittest.TestCase):
             prompt_raw = json.loads((out_dir / "prompt.raw.json").read_text(encoding="utf-8"))
             final_metadata = json.loads((out_dir / "final-metadata.json").read_text(encoding="utf-8"))
             final_raw_metadata = json.loads((out_dir / "final.raw.meta.json").read_text(encoding="utf-8"))
-            self.assertEqual(prompt_raw["redaction"]["status"], "not_reviewed")
+            final_raw = (out_dir / "final.raw.txt").read_text(encoding="utf-8")
+            self.assertEqual(prompt_raw["redaction"]["status"], "redacted")
+            self.assertIn("[REDACTED_GITHUB_TOKEN]", prompt_raw["prompt"])
+            self.assertIn("[REDACTED_OPENAI_KEY]", final_raw)
+            self.assertNotIn("ghp_1234567890abcdef1234567890abcdef1234", json.dumps(prompt_raw))
+            self.assertNotIn("sk-1234567890abcdef1234567890abcdef", final_raw)
             self.assertTrue((out_dir / "final.raw.txt").exists())
             self.assertEqual(final_metadata["raw_final_storage"], "enabled")
-            self.assertEqual(final_raw_metadata["redaction"]["status"], "not_reviewed")
+            self.assertEqual(final_raw_metadata["redaction"]["status"], "redacted")
             self.assertEqual(final_raw_metadata["final_sha256"], final_metadata["final_sha256"])
+
+    def test_secret_redaction_covers_common_token_prefixes(self):
+        hooks = load_hooks_module()
+
+        text = (
+            "github_pat_1234567890abcdef1234567890abcdef "
+            "AKIA1234567890ABCDEF "
+            "xoxb-1234567890-abcdefghij "
+            "sk-proj-1234567890abcdef1234567890abcdef "
+            "sk-svcacct-1234567890abcdef1234567890abcdef "
+            "Authorization: Bearer secret-token"
+        )
+
+        redacted = hooks.redact_text(text)
+
+        self.assertIn("[REDACTED_GITHUB_PAT]", redacted)
+        self.assertIn("[REDACTED_AWS_ACCESS_KEY_ID]", redacted)
+        self.assertIn("[REDACTED_SLACK_TOKEN]", redacted)
+        self.assertEqual(redacted.count("[REDACTED_OPENAI_KEY]"), 2)
+        self.assertIn("Authorization: Bearer [REDACTED]", redacted)
+        self.assertNotIn("github_pat_1234567890abcdef1234567890abcdef", redacted)
+        self.assertNotIn("AKIA1234567890ABCDEF", redacted)
+        self.assertNotIn("xoxb-1234567890-abcdefghij", redacted)
+        self.assertNotIn("sk-proj-1234567890abcdef1234567890abcdef", redacted)
+        self.assertNotIn("sk-svcacct-1234567890abcdef1234567890abcdef", redacted)
+
+    def test_stop_orders_events_and_reports_malformed_jsonl(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.write_config(root)
+            base_event = {"cwd": str(root), "session_id": "s1", "turn_id": "t1"}
+            run_hook(
+                "user_prompt_submit_groundwork_entry.py",
+                {**base_event, "prompt": "按 PRD 实施 docs/foo.md"},
+                root,
+            )
+            out_dir = self.turn_dir(root)
+            (out_dir / "tool-events.jsonl").write_text(
+                '{"coverage_status":"observed_supported","observed_at_ns":30,"event_uuid":"c"}\n'
+                '{malformed}\n'
+                '{"coverage_status":"observed_supported","observed_at_ns":10,"event_uuid":"a"}\n',
+                encoding="utf-8",
+            )
+            (out_dir / "permission-events.jsonl").write_text(
+                '{"coverage_status":"observed_supported","observed_at_ns":20,"event_uuid":"b"}\n',
+                encoding="utf-8",
+            )
+
+            run_hook(
+                "stop_groundwork_score.py",
+                {**base_event, "last_assistant_message": "Implementation Summary\nFiles Changed\nChecks Run"},
+                root,
+            )
+
+            coverage = json.loads((out_dir / "coverage.json").read_text(encoding="utf-8"))
+            events, diagnostics = load_hooks_module().ordered_events_for_stop(out_dir)
+            self.assertEqual([event["event_uuid"] for event in events], ["a", "b", "c"])
+            self.assertEqual([event["event_index"] for event in events], [1, 2, 3])
+            self.assertEqual(diagnostics["malformed_tool_events"], 1)
+            self.assertEqual(coverage["malformed_tool_events"], 1)
 
     def test_tool_permission_and_stop_hooks_noop_without_opt_in(self):
         with tempfile.TemporaryDirectory() as tmp:

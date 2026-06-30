@@ -76,6 +76,7 @@ jobs:
       - name: Fixture CLIs
         run: |
           python evals/schema_validation.py schemas/groundwork-eval-score.schema.json evals/fixtures/score/valid-eval-score.json
+          python evals/schema_validation.py schemas/groundwork-router-score.schema.json evals/fixtures/score/valid-router-score.json
           python evals/report.py --run-dir evals/fixtures/report >/tmp/groundwork-report.md
           python evals/patch_suggestions.py --run-dir evals/fixtures/patch-suggestions >/tmp/groundwork-patch-suggestions.json
 

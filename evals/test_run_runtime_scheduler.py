@@ -691,6 +691,35 @@ class RuntimeSchedulerTests(unittest.TestCase):
         self.assertEqual(errors, [])
         self.assertEqual(normalized[0]["output_contract"], ["verify_scope_full"])
 
+    def test_legacy_id_specific_checks_still_have_prompt_rows(self):
+        rows = run_runtime.read_rows(run_runtime.prompt_suites())
+        row_ids = {item["id"] for item in rows}
+        missing = sorted(set(run_runtime.LEGACY_ID_SPECIFIC_CHECKS) - row_ids)
+
+        self.assertEqual(missing, [])
+
+    def test_zh_trigger_parity_with_route_boundary_enters_routing_summary(self):
+        summary = run_runtime.summarize_routing_results(
+            [
+                {
+                    "id": "zh-route",
+                    "suite": "zh-trigger-parity.csv",
+                    "route_boundary": "entry-contract",
+                    "expected_route": "verify",
+                    "actual_route": "verify",
+                    "acceptable_routes": ["verify"],
+                    "forbidden_routes": ["implement"],
+                    "overall_verdict": "pass",
+                    "routing_verdict": "pass",
+                    "score_eligibility": "baseline_eligible",
+                }
+            ]
+        )
+
+        self.assertIsNotNone(summary)
+        self.assertEqual(summary["rows"], 1)
+        self.assertEqual(summary["best_route_hit_at_1"], {"count": 1, "total": 1, "rate": 1.0})
+
     def test_validate_schema_cli_dry_path_parses_without_runtime_dirs(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)

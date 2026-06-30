@@ -102,10 +102,14 @@ Opted-in projects write per-turn scratch under:
   final.raw.meta.json             # optional, raw_capture only
   router-score.json
   router-card.md
-  coverage.json                   # optional, future diagnostic aggregate
+  coverage.json                   # written by Stop hook with event replay diagnostics
 ```
 
-`prompt-metadata.json` and `final-metadata.json` are deterministic minimized metadata, not LLM summaries. By default they use hashes, lengths, capture-status fields, and source-strength fields instead of full content. Short redacted snippets are disabled by default and require explicit `snippet_capture=true`; raw prompt/final capture remains a separate `raw_capture=true` opt-in. When raw final capture is enabled, `final.raw.meta.json` records redaction status for the raw final text. Coverage is available from `tool-events.jsonl`, `permission-events.jsonl`, and `router-score.json`; a separate `coverage.json` is reserved for future diagnostics.
+`prompt-metadata.json` and `final-metadata.json` are deterministic minimized metadata, not LLM summaries. By default they use hashes, lengths, capture-status fields, and source-strength fields instead of full content. Short redacted snippets are disabled by default and require explicit `snippet_capture=true`.
+
+`raw_capture=true` remains a separate opt-in, but raw capture is redacted by default. To store unredacted raw prompt/final text, the process must also set `GROUNDWORK_ROUTER_OBSERVABILITY_ALLOW_UNREDACTED_RAW_CAPTURE=1`. This second switch is intended only for local debugging where the operator has already reviewed secret/PII risk. When raw final capture is enabled, `final.raw.meta.json` records whether raw text was redacted or explicitly unredacted.
+
+Coverage is available from `tool-events.jsonl`, `permission-events.jsonl`, `coverage.json`, and `router-score.json`. Tool and permission JSONL rows record `observed_at_ns`, `pid`, and `event_uuid`; Stop-stage scoring sorts those rows by `observed_at_ns,event_uuid` and assigns replay `event_index` values in memory. `coverage.json` records malformed JSONL line counts so replay gaps are visible instead of silently disappearing.
 
 ## Dispatch And Selector Boundary
 

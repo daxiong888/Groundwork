@@ -13,9 +13,9 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 try:
-    from evals.routing_schema import ROUTER_OBSERVABILITY_ROW_FIELDS, as_list
+    from evals.routing_schema import ROUTER_OBSERVABILITY_BACKFILL_FIELDS, as_list
 except ImportError:  # pragma: no cover - script execution from evals/
-    from routing_schema import ROUTER_OBSERVABILITY_ROW_FIELDS, as_list
+    from routing_schema import ROUTER_OBSERVABILITY_BACKFILL_FIELDS, as_list
 
 
 def load_score(path):
@@ -72,7 +72,7 @@ def row_from_score(score):
 
 def csv_text(row):
     buffer = io.StringIO()
-    writer = csv.DictWriter(buffer, fieldnames=ROUTER_OBSERVABILITY_ROW_FIELDS, extrasaction="ignore")
+    writer = csv.DictWriter(buffer, fieldnames=ROUTER_OBSERVABILITY_BACKFILL_FIELDS, extrasaction="ignore")
     writer.writeheader()
     writer.writerow(row)
     return buffer.getvalue()
