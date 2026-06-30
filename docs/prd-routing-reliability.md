@@ -309,6 +309,8 @@ prototype
 implement
 verify
 handoff
+dispatch
+wiki
 ```
 
 Eval-only host preemption classification:
