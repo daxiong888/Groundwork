@@ -89,6 +89,11 @@ Should not trigger:
 - The user asks whether an issue is ready to start; use `triage`.
 - The user asks for only PRD wording; use `to-prd`.
 - The user asks for compact continuation context; use `handoff`.
+- "按这个任务直接实现"; use `implement`.
+- "review 这次实现是否符合 TASK.md，但不要判断 ready/UAT"; use `implement`.
+- "这个 issue 能不能给 agent 做"; use `triage`.
+- "查项目 wiki 里之前怎么决定的"; use `wiki`.
+- "给下个 session 做 handoff"; use `handoff`.
 
 ## Required Evidence
 

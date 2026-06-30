@@ -26,6 +26,11 @@ Should not trigger:
 - The user asks for readiness proof; use `verify`.
 - The work is small enough to answer directly.
 - The user asks to duplicate full PRDs, diffs, or logs.
+- "把这个需求整理成 PRD"; use `to-prd`.
+- "按这个任务改代码"; use `implement`.
+- "验证这次能不能发布"; use `verify`.
+- "查 wiki 里的长期知识"; use `wiki`.
+- "这事一句话回答即可"; answer directly.
 
 ## Required Evidence
 

@@ -41,6 +41,15 @@ Use this skill when the user asks to:
 - reject clean-review direct-edit requests and route required writes as a separate dispatch write task
 - classify missing validation evidence, hidden parent context, parent full-history fork, or nested reviewer topology as `blocked`, `unverified`, `needs_remediation`, or `human_decision`
 
+zh-CN should trigger:
+
+- "把这些 ready issue 分配给不同 agent 或 runtime"
+- "给这个任务选择 managed worktree 还是 subagent"
+- "为这些任务生成 Dispatch Package v2"
+- "按成本和延迟给每个任务推荐 model profile"
+- "把 clean review fanout 分给 reviewer，不要直接改文件"
+- "判断这些任务能不能并行跑"
+
 Do not use this skill when:
 
 - requirements are not accepted; use `to-prd`
@@ -50,6 +59,14 @@ Do not use this skill when:
 - the user asks to implement one scoped task directly; use `implement`
 - the user only asks for an implementation plan; use `write-plan`
 - the user asks whether finished work is ready or verified; use `verify`
+
+zh-CN should not trigger:
+
+- "这个需求还没确认，先写 PRD"; use `to-prd`.
+- "这个 issue 能不能给 agent 做"; use `triage`.
+- "这个 ready issue 只需要写实现计划，不要开 worktree"; use `write-plan`.
+- "按这个任务直接改代码"; use `implement`.
+- "验证这次能不能给客户 UAT"; use `verify`.
 
 ## Required Behavior
 

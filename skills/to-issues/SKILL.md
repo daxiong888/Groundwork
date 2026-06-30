@@ -16,6 +16,8 @@ Should trigger:
 - "帮我按垂直切片拆一下"
 - "这个计划怎么拆给 agent 做"
 - "生成可以贴到 GitHub 的任务草稿"
+- "把已确认方案拆成 ready-for-agent issue 草稿"
+- "按这个 accepted PRD 拆垂直任务切片"
 
 Should not trigger:
 
@@ -25,6 +27,11 @@ Should not trigger:
 - The user asks for implementation steps for one accepted task; use `write-plan`.
 - The user asks to execute code changes; use `implement`.
 - The user asks for a tiny direct checklist; use direct fallback.
+- "把我刚说的想法直接拆 issues"; use `to-prd`.
+- "这个 issue 能不能给 agent 做"; use `triage`.
+- "给这个 ready issue 写实现计划"; use `write-plan`.
+- "按这个 issue 直接改代码"; use `implement`.
+- "验证这批任务能不能发布"; use `verify`.
 
 ## Required Evidence
 

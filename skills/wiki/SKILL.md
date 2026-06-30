@@ -19,6 +19,12 @@ Should trigger:
 - "Deprecate the old architecture page and point to the new one."
 - "Move this handoff lesson into long-lived project knowledge."
 - "Repair wiki aliases, broken links, and contested claims."
+- "初始化这个项目的 LLM Wiki"
+- "查一下项目 wiki 里关于 dispatch 边界的结论"
+- "把这次实现后的长期知识更新进 wiki"
+- "审计 wiki 里过期或矛盾的 claim"
+- "修复 wiki alias、broken links 和 contested claims"
+- "把 handoff 里的可复用经验沉淀为长期项目知识"
 
 Should not trigger:
 
@@ -31,6 +37,11 @@ Should not trigger:
 - The project has no wiki and the user did not request durable wiki creation or maintenance.
 - The note is one-time scratch context, a daily diary, or a session log without durable reuse value.
 - The user needs external graph/search visualization rather than wiki maintenance.
+- "wiki 说这个功能 UAT ready，帮我验证"; use `verify`.
+- "只问当前源码里有没有这个 route"; answer directly or use source inspection.
+- "按 wiki 里的说法直接改代码"; use `implement` only after source truth is inspected.
+- "给下个 session 做 handoff"; use `handoff`.
+- "把这个需求整理成 PRD"; use `to-prd`.
 
 ## Required Evidence
 

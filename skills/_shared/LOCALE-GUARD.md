@@ -14,6 +14,20 @@ User-visible language follows the current session locale. Skill-file language an
 
 If the user communicates in Simplified Chinese, output Simplified Chinese prose and headings by default.
 
+## Trigger Parity
+
+Locale handling covers output language only. Public skill routing also needs trigger parity so a zh-CN user can reach the same intended route through natural Chinese prompts.
+
+For every public skill, maintain zh-CN trigger parity:
+
+- at least 5 zh-CN positive trigger examples in the skill's `Trigger Contract`;
+- at least 3 zh-CN should-not-trigger examples in the skill's `Trigger Contract`;
+- at least 2 zh-CN route-conflict eval rows for adjacent skills.
+
+Do not solve trigger parity by frontmatter phrase stuffing. Prefer explicit `Trigger Contract` examples and focused eval rows that name the route boundary, expected route, acceptable adjacent routes, and forbidden route theft.
+
+Route-conflict rows should cover common zh-CN natural expressions, not only literal skill names. For example, prompts about assigning ready work, choosing worktrees or subagents, clean-review fanout, and runtime selection should protect `dispatch`; prompts about "只写计划，不改代码" should protect `write-plan`; prompts about "能不能给 agent 做", blockers, and ownership should protect `triage`; prompts about project wiki query/update/audit should protect `wiki`; prompts about release, UAT, integration, evidence chains, and source-truth validation should protect `verify`.
+
 ## Locale Detection
 
 Infer `Session Locale` from the user's recent stable communication language.

@@ -34,6 +34,11 @@ Should not trigger:
 - The user asks only whether a task is ready; use `triage`.
 - The user asks for code edits; use `implement`.
 - The user asks for verification evidence; use `verify`.
+- "基于这个已接受 PRD 拆 issues"; use `to-issues`.
+- "按这个 ready issue 直接实现"; use `implement`.
+- "这个任务是否 ready-for-agent"; use `triage`.
+- "验证这次能不能给客户 UAT"; use `verify`.
+- "只需要把这句话润色自然一点"; answer directly.
 
 ## Required Evidence
 

@@ -40,6 +40,11 @@ Should not trigger:
 - The user asks if the finished work is ready; use `verify`.
 - The user asks whether an implementation can pass UAT or release; use `verify`.
 - The user only asks for a full implementation plan before edits; use `write-plan`.
+- "这个新需求还没想清楚，先写 PRD"; use `to-prd`.
+- "基于这个已接受 PRD 拆 issues"; use `to-issues`.
+- "这个 issue 能不能给 agent 做"; use `triage`.
+- "给这个 ready issue 写实现计划，不要改代码"; use `write-plan`.
+- "验证这次能不能给客户 UAT"; use `verify`.
 
 ## Required Evidence
 
