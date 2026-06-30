@@ -18,6 +18,7 @@ Inputs
 States / Transitions
 Cases Covered
 Observed Result
+Coverage Evidence Status: prototype_only / runtime_verified / unverified
 Known Gaps
 Implementation Implications
 Proposed PRD / Issue / Contract Feedback

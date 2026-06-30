@@ -228,6 +228,10 @@ Wiki audit must declare one of these scopes:
 
 Default to `quick` unless the user requests or accepts broader scope.
 
+For audit scope, `recent log.md` means the last 20 entries or the last 30 days, whichever is smaller. If `log.md` has no parseable entries, inspect the last 120 non-empty lines and mark that limitation.
+
+Hard-negative coverage reference: `evals/prompts/v0.5.2-wiki.csv` includes source-truth and release-evidence guards such as `wiki-014`, `wiki-015`, `wiki-021`, `wiki-022`, and `wiki-030`.
+
 Audit output must include:
 
 ```text

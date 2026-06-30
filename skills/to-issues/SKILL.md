@@ -40,37 +40,30 @@ Use `skills/_shared/LOCALE-GUARD.md` for issue titles, issue bodies, headings, s
 
 `to-issues` may also emit runtime-routing candidates for later `triage` and `dispatch` use. These are recommendations only; `to-issues` must not create a Goal Contract, dispatch runtime work, or final-mark a slice `ready-for-agent`.
 
-Use these candidate fields when the accepted source supports them:
+Use this recommendation-only block when the accepted source supports runtime-routing candidates. Keep every value explicitly advisory; the block is not a Goal Contract, dispatch package, readiness verdict, or execution proof.
 
 ```text
-Implementation Task Type Candidate:
-  write_implementation / read_only_review / planning_only / hybrid / diagnosis / verification / direct
-
-Implementation Runtime Candidate:
-  codex_app_managed_worktree_thread / codex_subagent / main_thread_direct / main_thread_readonly / clean_reviewer / triage_required
-
-Product Runtime Covered:
-  none / goal_contract / to_issues_runtime_candidates / triage_goal_contract / dispatch_core / codex_subagent / codex_app_managed_worktree_thread / other named runtime capability
-
-Isolation Needed:
-  context: none / subagent_prompt / thread / review_package
-  filesystem: none / current_workspace / codex_managed_worktree / unknown
-  diff surface: required / optional / not_required
-
-Parallelization Candidate:
-  eligible: yes / no / unknown
-  conflict group:
-  dependency group:
-  merge order hint:
-
-Goal Contract Status:
-  not_generated_by_to_issues / missing_fields / ready_for_triage_contract_generation
-
-Goal Contract Missing Fields:
-  - ...
-
-Runtime Missing Fields:
-  - ...
+Runtime Routing Candidate
+- recommendation_only: true
+- source_support:
+- implementation_task_type_candidate: write_implementation / read_only_review / planning_only / hybrid / diagnosis / verification / direct
+- runtime_candidate: codex_app_managed_worktree_thread / codex_subagent / main_thread_direct / main_thread_readonly / clean_reviewer / triage_required
+- product_runtime_surface_candidate: none / goal_contract / triage_goal_contract / dispatch_core / codex_subagent / codex_app_managed_worktree_thread / other named runtime capability
+- groundwork_surface_covered: to_issues_runtime_candidates / none / other
+- isolation_candidate:
+  - context: none / subagent_prompt / thread / review_package
+  - filesystem: none / current_workspace / codex_managed_worktree / unknown
+  - diff_surface: required / optional / not_required
+- parallelization_candidate:
+  - eligible: yes / no / unknown
+  - conflict_group:
+  - dependency_group:
+  - merge_order_hint:
+- goal_contract_status: not_generated_by_to_issues / missing_fields / ready_for_triage_contract_generation
+- goal_contract_missing_fields:
+- runtime_missing_fields:
+- not_readiness_evidence: true
+- missing_fields:
 ```
 
 Runtime candidate rules:
@@ -144,14 +137,7 @@ Issue Drafts
 - Execution: AFK / HITL
 - Contract Impact: API / DB / UI state / docs / verification contract / none
 - Verification Evidence Needed
-- Implementation Task Type Candidate
-- Implementation Runtime Candidate
-- Product Runtime Covered
-- Isolation Needed
-- Parallelization Candidate
-- Goal Contract Status
-- Goal Contract Missing Fields
-- Runtime Missing Fields
+- Runtime Routing Candidate
 - Ready-for-Agent Missing Fields
 - Triage Recommendation Candidate: ready-for-agent candidate / needs-info recommendation / ready-for-human recommendation
 Ordering Notes

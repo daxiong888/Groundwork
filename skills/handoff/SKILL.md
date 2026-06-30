@@ -97,6 +97,8 @@ Use `skills/_shared/VISUAL-HANDOFF-PACKET.md` when handoff cites or carries a vi
 
 Use `skills/_shared/LLM-WIKI.md` when continuation state includes reusable project knowledge or cites a project wiki. Handoff may reference wiki pages as orientation and may emit a `Wiki Update Candidate` for durable reusable knowledge, but it must not turn every handoff into a wiki diary, update wiki pages without explicit wiki-maintenance scope, or present wiki synthesis as source truth, clean review evidence, independent verification evidence, runtime evidence, UAT evidence, release evidence, marketplace evidence, installed-plugin evidence, or cache-refresh evidence.
 
+Use `skills/_shared/RELEASE-EVIDENCE-CLAIM.md` when a handoff preserves runtime, cache, release, UAT, marketplace, installed-plugin, or cache-refresh claims. If the handoff only references source-validation or continuation evidence, set those stronger claims to `unverified` or `not_applicable`.
+
 Small, low-risk continuation notes should remain compact. Do not force a full separation package when no separation threshold applies and a concise handoff can safely identify source truth, current state, gaps, and next action.
 
 Use `skills/_shared/LIFECYCLE-STATE.md` when the user asks to pause, resume, switch sessions, save state, continue later, or otherwise preserve workstream recovery state.
@@ -108,13 +110,15 @@ When an existing workstream `artifacts/<workstream-slug>/STATE.md` is present, h
 Use this algorithm before reporting `State Freshness` for an existing `artifacts/<workstream-slug>/STATE.md`:
 
 1. Read the existing state file enough to inspect `Last Updated`, `Canonical Sources`, current risks/gaps, and next action. Do not copy the full state into the handoff.
-2. Verify `Last Updated` is present, readable, and exact enough to compare, preferably an ISO 8601 timestamp with timezone.
+2. Verify `Last Updated` is comparable:
+   - ISO 8601 timestamp with timezone; or
+   - exact date plus source-order evidence that can be compared.
 3. Verify `Canonical Sources` is present, readable, and points to the artifacts, issue, PRD, code, tests, runtime evidence, or user-confirmed decision that currently own truth.
 4. Compare state claims against the canonical sources available in the current handoff scope.
 5. Report one of:
-   - `fresh` only when `Last Updated` is readable, canonical sources are present, no checked canonical source conflicts with the state, and the evidence is recent enough for the continuation claim.
+   - `fresh` only when `Last Updated` is comparable, `Canonical Sources` are readable and resolvable, all checked canonical sources are not newer/conflicting or newer sources are explicitly irrelevant, and the handoff names the checked source set.
    - `stale` when a checked canonical source conflicts with `STATE.md`, a later source supersedes it, or a verified gap/risk changed after `Last Updated`.
-   - `unknown` when the file cannot be read, `Last Updated` is missing/unreadable, `Canonical Sources` is missing/unreadable, canonical sources conflict with each other, or freshness cannot be evidenced from available sources.
+   - `unknown` when the file cannot be read, `Last Updated` is missing/unreadable/not comparable, `Canonical Sources` is missing/unreadable/unresolvable, canonical sources conflict with each other, checked source set is not named, or freshness cannot be evidenced from available sources.
 
 Default to `State Freshness: unknown` and `State Update Needed: yes` unless freshness is evidenced. Do not infer freshness from path existence, confidence, or absence of known conflicts.
 

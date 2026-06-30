@@ -60,13 +60,17 @@ Use `skills/_shared/REVIEW-LOOP.md` when implementation is performed in a child 
 
 Use `skills/_shared/RUNTIME-CAPABILITY.md` when the implementation request or final report references runtime/model selection, selector enforcement, child-thread/worktree execution, subagents, runtime cache, marketplace, or installed-plugin behavior. `implement` may report source-validation checks it ran, but must not claim runtime execution, cache refresh, model execution, or selector enforcement without runtime/tool evidence.
 
+Use `skills/_shared/RELEASE-EVIDENCE-CLAIM.md` when an implementation final report makes or scopes out runtime, cache, release, UAT, marketplace, installed-plugin, or cache-refresh claims. Implementation self-check and source-validation checks are not release evidence by themselves.
+
 Use `skills/_shared/LLM-WIKI.md` when a project wiki is present or the user cites wiki pages. Wiki context may identify likely files, concepts, prior decisions, or stale-risk areas, but implementation must inspect source, contracts, tests, or authoritative artifacts before changing code. Do not create backend fields, APIs, states, permissions, migrations, owners, metrics, tests, release claims, marketplace claims, installed-plugin claims, or cache-refresh claims from wiki synthesis, page-level source lists, uncited claims, stale pages, implementation summaries, or graph/search/index output alone. If implementation reveals durable reusable architecture, contract, procedure, or error-book knowledge, emit a `Wiki Update Candidate` or recommend the `wiki` route instead of updating wiki pages unless the user explicitly requested wiki maintenance.
 
 Use `skills/_shared/COGNITIVE-BUDGET.md` when recommending a model profile. Recommend `model_profile` before any concrete model, and do not use Spark or any fast profile as final clean reviewer, final verifier, public skill approver, release/UAT authority, or customer authority.
 
 For read-only implementation conformance review, do not force a fix plan. Inspect the task/PRD, source, tests, and git boundary when available; report whether the implementation satisfies acceptance, what evidence was checked, what gaps remain, and explicitly avoid UAT/release/readiness verdicts unless the user asks for them.
 
-Use this output block for read-only conformance review, and include the same field labels in implementation final reports when the task asks for implementation conformance, gated implementation, or reviewable delivery evidence. Keep the exact field labels:
+### Conformance Field Set
+
+Use this exact field set for read-only conformance review and any implementation final report that includes conformance evidence:
 
 ```text
 Scope:
@@ -82,17 +86,7 @@ Next Action:
 
 ### Runtime Output Contract
 
-For implementation, diagnose-before-edit, explicit PRD-bypass implementation, gated implementation, blocked implementation, or implementation conformance review, final reports must include the exact conformance field labels as line-prefixed fields:
-
-```text
-Scope:
-Acceptance Map:
-Evidence Inspected:
-Findings P0/P1/P2:
-Non-Readiness Boundary:
-Gaps:
-Next Action:
-```
+For implementation, diagnose-before-edit, explicit PRD-bypass implementation, gated implementation, blocked implementation, or implementation conformance review, final reports must include the `Conformance Field Set` as line-prefixed fields.
 
 If the implementation is blocked before edits because source truth, git topology, permissions, or tests are unavailable, still include those labels and put the blocker under `Findings P0/P1/P2`, `Gaps`, and `Next Action`.
 
@@ -131,7 +125,7 @@ If using a subagent for review, use `skills/_shared/SUBAGENT-DELEGATION.md`. The
 11. If fixing a verify or clean-review failure, confirm the original failed check or cited finding was re-QA'd, list `findings_addressed`, and explain unresolved gaps.
 12. If runtime/model selection is material, include `capability_status`, `selector_enforcement`, evidence layer, and Runtime mismatch status; use `unknown`, `unavailable`, or `prompt_preference` rather than silent substitution when runtime/tool evidence is absent.
 13. For runtime/cache claims, name installed plugin root, source root, cache/source refresh or equivalence evidence, run scope, commands/trials, and limitations; otherwise state that runtime evidence was not refreshed and is not claimed.
-14. Include a `Wiki Update Candidate` only when the implementation produced durable reusable project knowledge and the current request did not already authorize wiki maintenance.
+14. Include a `Wiki Update Candidate` only when the implementation produced durable reusable project knowledge and the current request did not already authorize wiki maintenance. A Wiki Update Candidate is advisory project-knowledge maintenance input, not Clean Review Evidence, Independent Verification Evidence, readiness evidence, or wiki source-truth approval.
 15. For child-thread, managed-worktree, subagent, or package-returning implementation, include a `Review Loop` status with `status`, `previous_review_stale_reason`, `findings_addressed`, `next_review_required`, and `next_route`.
 16. In the final report, include `Scope`, `Acceptance Map`, `Evidence Inspected`, `Findings P0/P1/P2`, `Non-Readiness Boundary`, `Gaps`, and `Next Action` when the task touches implementation conformance, gated implementation, or reviewable delivery evidence.
 17. Run self-review from `SELF-REVIEW.md`.

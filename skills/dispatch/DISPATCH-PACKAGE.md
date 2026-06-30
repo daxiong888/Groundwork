@@ -133,6 +133,7 @@ tasks:
         fastest_signal: ""
         required_evidence: ""
         release_readiness_claimed: false
+        # Use the exact object from skills/_shared/RELEASE-EVIDENCE-CLAIM.md.
         release_evidence_claim:
           claim_type: runtime | cache | release | uat | marketplace | cache_refresh | not_applicable
           claim: ""
@@ -330,6 +331,13 @@ Policy rules:
 
 `legacy_compatibility` keeps v0.3.3 package readers from losing safety coverage while dispatch moves to `dispatch_native_alignment`.
 
+Legacy Compatibility Policy:
+
+- Status: `deprecated_in_place_for_v0_3_3_compatibility`.
+- Kept until: `v0.6.0` or until all declared adapters consume `dispatch_native_alignment`.
+- Removal gate: evals pass without legacy fields, adapter migration path is documented, and maintainer acceptance is recorded.
+- New adapters must not depend on `legacy_compatibility`.
+
 - Custom lifecycle fields are `legacy_compatibility_only`. Native closeout owns verdict, merge decision, cleanup decision, blockers, and next route.
 - Registry fields are `deprecated_in_place`. They may preserve old evidence references, but Groundwork dispatch must not treat registry status as Codex-native runtime state.
 - Child-thread identity fields are replaced by native context availability markers when visible. If the native identifier is unavailable, say `unavailable_before_handoff`, `unavailable_in_current_surface`, or `redacted`; do not invent IDs.
@@ -385,6 +393,7 @@ dispatch_native_alignment:
     fastest_signal: present
     required_evidence: present
     release_readiness_claimed: false
+    # Use the exact object from skills/_shared/RELEASE-EVIDENCE-CLAIM.md.
     release_evidence_claim:
       claim_type: not_applicable | runtime | cache | release | uat | marketplace | cache_refresh
       evidence_status: not_applicable | unverified | verified

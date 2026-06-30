@@ -1,6 +1,6 @@
 ---
 name: to-prd
-description: Use shared grilling before write when raw, draft, new, or ambiguous product/engineering intent needs clarification, then shape it into a compact PRD/spec before task slicing or implementation without inventing product truth. In Codex hosts with Plan Mode, enter Plan Mode first for raw requirements, PRD/spec drafting, and explicit grill-me/challenge/clarify requests that may become PRD intent. Use Plan Mode for route, scope, evidence, and artifact boundary before conversation drafting or durable artifact writing. Use for 新需求, 需求收敛, 整理成 PRD, 写需求说明, clarify acceptance, UAT feedback, draft PRDs before acceptance, raw 方案/solution ideas, raw issue-split requests, vague urgency like 先做起来, or raw product, plugin install/upgrade, marketplace, runtime, version, workflow capability, and skill-selection changes. Do not use for tiny title or wording rewrites.
+description: Shape raw or ambiguous product/engineering intent into a compact PRD/spec with acceptance criteria before task slicing or implementation. Use shared grilling or Plan Mode when available; do not use for tiny rewrites, accepted tasks, implementation, or verification.
 ---
 
 # to-prd
@@ -45,7 +45,19 @@ Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` before shaping new requirements, ver
 
 Use Codex Plan Mode as an intake harness when available for raw requirements, PRD/spec drafting, or explicit grill-me/challenge/clarify requests that may become requirements. Use `skills/_shared/MODE-HARNESS.md` for host-mode evidence and downgrade behavior. Plan Mode may shape route, scope, evidence, artifact boundary, conversation draft, and the highest-impact question. It must not create or update durable PRD files. If Plan Mode is unavailable or not exposed, run the same entry decision as prompt-level planning, state the fallback only when material to trust, and do not claim tool-enforced Plan Mode evidence.
 
-Mandatory durable-artifact hard stop: if the user asks to create, update, write, save, or directly produce a durable PRD file or explicit path such as `docs/*.md` while the current context is Plan Mode, read-only, or chat-only, do not create files, do not call write/edit tools, do not draft the file as if written, and do not claim file creation. This remains true when the user says "directly", "no need to confirm", "不需要确认", or similar bypass wording. The required response is the `Plan Mode Durable Artifact Promotion Gate` with `Proposed Action`, `Target`, `Risk`, `Rollback/Undo`, and `Approval Needed`.
+Mandatory durable-artifact hard stop: if the user asks to create, update, write, save, or directly produce a durable PRD file or explicit path such as `docs/*.md` while the current context is Plan Mode, read-only, or chat-only, do not create files, do not call write/edit tools, do not draft the file as if written, and do not claim file creation. This remains true when the user says "directly", "no need to confirm", "不需要确认", or similar bypass wording. The required response is the `Plan Mode Durable Artifact Promotion Gate` with the common risk fields plus the PRD-specific promotion fields below.
+
+Plan Mode durable-artifact promotion fields:
+
+- `Proposed Action`: the file write or update being requested.
+- `Target`: the intended canonical path or artifact class.
+- `Risk`: why writing from Plan Mode/read-only/chat-only would be unsafe or unverifiable.
+- `Rollback/Undo`: how the user or a write-capable route could undo the proposed write.
+- `Approval Needed`: the explicit approval or mode change required.
+- `Write-capable Route`: the route that may write after acceptance, such as `to-prd` in write-capable context or a later `implement`/maintainer edit when appropriate.
+- `Promotion Condition`: the source-of-truth, acceptance, and artifact-promotion condition that must be true before writing.
+- `Canonical Target Path`: the exact path when known, or `unknown` when it has not been accepted.
+- `Post-Plan Owner`: the role or skill that owns the write after Plan Mode ends.
 
 Use `skills/_shared/GRILLING.md` when material ambiguity blocks PRD shaping and the unknowns are not yet enumerable. Ask one highest-impact question at a time, inspect repo/source evidence before asking when it can answer the question, and treat the result as clarification only. Shared grilling may prepare a PRD route, but it is not PRD acceptance, implementation readiness, clean review, independent verification, or runtime/browser/UAT/release evidence.
 
@@ -127,6 +139,10 @@ Target:
 Risk:
 Rollback/Undo:
 Approval Needed:
+Write-capable Route:
+Promotion Condition:
+Canonical Target Path:
+Post-Plan Owner:
 ```
 
 ```text

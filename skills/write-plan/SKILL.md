@@ -43,7 +43,7 @@ Use `skills/_shared/LIFECYCLE-STATE.md` when planning a multi-stage or multi-ses
 2. Read existing `STATE.md` / `ROADMAP.md` when the workstream is multi-stage, cross-session, or release/UAT gated.
 3. Check canonical sources before trusting lifecycle state.
 4. Inspect source when exact paths, APIs, schemas, or commands matter.
-5. Add inline `Contract Notes` when API/DB/state/frontend/docs alignment matters.
+5. Add inline `Contract Notes` from `skills/_shared/CONTRACT-NOTES.md` when API/DB/state/frontend/docs alignment matters.
    - `contract` is an internal planning concern, not a public skill route.
    - If contract facts are uninspected, mark them as unverified and plan the next source check instead of naming exact endpoints, fields, schemas, or state transitions.
    - If the user asks to validate contract truth or readiness, route to `verify`.
@@ -85,11 +85,12 @@ Assumptions
 Lifecycle Inputs (only when multi-stage, multi-session, release/UAT gated, or existing lifecycle state is relevant)
 - STATE.md:
 - ROADMAP.md:
-- Stale State Risk:
-- Roadmap Needed:
+- Stale State Risk: none / low / medium / high / unknown
+- Roadmap Needed: yes / no
+- Roadmap Threshold Met: multi_milestone / dependency_sequence / release_uat_gate / user_requested / state_insufficient / none
 Files / Areas Inspected
 Implementation Steps
-Contract Notes (include inline when API/DB/state/frontend/docs alignment or uncertainty affects implementation)
+Contract Notes (use `skills/_shared/CONTRACT-NOTES.md` when API/DB/state/frontend/docs alignment or uncertainty affects implementation)
 Risks / Gates
 Verification Checkpoints
 Stop Condition

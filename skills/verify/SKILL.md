@@ -144,22 +144,7 @@ When verifying a `native_closeout_package`, treat merge readiness and cleanup de
 - do not treat archive, worktree retention, Codex-managed cleanup, or branch cleanup as merge readiness evidence;
 - do not claim thread archive, worktree cleanup, branch deletion, runtime execution, cache refresh, release readiness, or UAT readiness unless the package includes direct evidence for that specific claim.
 
-When verifying runtime, cache, release, UAT, marketplace, or cache-refresh claims, require a `release_evidence_claim` object for each material claim:
-
-```yaml
-release_evidence_claim:
-  claim_type: runtime | cache | release | uat | marketplace | cache_refresh | not_applicable
-  claim: ""
-  evidence_status: verified | unverified | not_applicable
-  installed_plugin_root: ""
-  source_root: ""
-  cache_or_source_refresh:
-    method: refresh_step | source_equivalence | not_run | not_applicable
-    evidence: ""
-  run_scope: targeted | full | not_run | not_applicable
-  commands_or_trials: []
-  limitations: []
-```
+When verifying runtime, cache, release, UAT, marketplace, installed-plugin, or cache-refresh claims, require the shared `release_evidence_claim` object from `skills/_shared/RELEASE-EVIDENCE-CLAIM.md` for each material claim.
 
 - Documentation, schema, fixture, PRD, or issue-pack edits alone must set runtime, cache, release, UAT, marketplace, and cache-refresh evidence to `unverified` or `not_applicable`.
 - A `verified` runtime or cache claim must name the installed plugin root, source root, cache/source refresh or equivalence method, run scope, commands or trials, and limitations.

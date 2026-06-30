@@ -198,7 +198,7 @@ Groundwork-specific additions:
 - browser verification should be used when visual or interaction claims matter
 - if browser/runtime inspection is unavailable, visual and interaction claims must be marked `unverified`
 - do not claim layout, color, responsiveness, hover/focus, animation, or state-transition correctness without browser/runtime evidence
-- prototype output must capture the question answered, decision needed, covered states/interactions, known gaps, implementation implications, and feedback into PRD/task/contract/implementation
+- prototype output must capture the question answered, decision needed, explored states/interactions, coverage evidence status, known gaps, implementation implications, and feedback into PRD/task/contract/implementation
 - prototype code must be deleted or absorbed after the question is answered
 - UI prototypes default to one minimum verifiable prototype; multiple variants are used only when the user asks for options or the problem is explicitly a visual or interaction tradeoff
 - prototype cleanup decision must be explicit: delete, absorb, or keep temporarily with reason
@@ -208,8 +208,9 @@ Suggested `prototype` output shape:
 ```text
 Prototype Question
 Decision Needed
-States Covered
-Interactions Covered
+States Explored
+Interactions Explored
+Coverage Evidence Status: prototype_only / browser_verified / runtime_verified / unverified
 Known Gaps
 Implementation Implications
 PRD / Issue / Contract Updates
