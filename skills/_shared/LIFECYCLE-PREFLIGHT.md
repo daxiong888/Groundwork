@@ -4,7 +4,7 @@ Target Reader: Groundwork skills that need to decide the next action before writ
 Reader Action Needed: Classify the current request, choose the workflow mode, and apply the right gate before acting.
 Decision Supported: Whether the next step is direct work, PRD/grill, issue splitting, implementation, verification, handoff, artifact promotion, git topology handling, or a stop condition.
 Artifact Type: shared guardrail
-Source of Truth: v0.3 lifecycle-state contract, task-state spine, routing reliability fixtures, and shared mode-harness policy.
+Source of Truth: v0.3 lifecycle-state contract, task-state spine, routing reliability fixtures, shared mode-harness policy, and `skills/_shared/WORKFLOW-STATE-MACHINE.md`.
 Scope: Transient pre-action routing, source-of-truth checks, locale inheritance, artifact promotion checks, git topology checks, verification strategy, and lifecycle-state promotion decisions.
 Out of Scope: Public skills, task CRUD, tracker APIs, project task databases, `.planning`, `.gsd`, automatic state mutation, automatic commits, and replacing `artifacts/<workstream-slug>/STATE.md`.
 Evidence Level: Derived from the v0.3 lifecycle-state contract, the task-state spine, and regression evidence from real Groundwork sessions.
@@ -73,6 +73,17 @@ Verification Strategy:
 Lifecycle State:
 Stop Condition:
 ```
+
+## Workflow State Machine
+
+Use `skills/_shared/WORKFLOW-STATE-MACHINE.md` as the canonical transition contract for:
+
+- Requirement State meaning and owner;
+- each public skill's accepted pre-states and produced states;
+- each public skill's legal and forbidden next routes;
+- transition gates, required evidence, stop conditions, and `expected_state_transition` tokens.
+
+This file keeps the lightweight pre-action snapshot and mode interpretation. When the state machine and this explanatory layer appear to conflict, follow `WORKFLOW-STATE-MACHINE.md` for transition legality and use this file only to compute the transient preflight fields.
 
 ## Field Rules
 
@@ -213,6 +224,7 @@ Rules:
 - `prd_draft` cannot be treated as accepted unless the user confirms it or another canonical source owns the decision.
 - `issue_ready` requires clear scope, acceptance criteria, missing-field status, and verification expectation.
 - `implementation_ready` requires source truth, scoped files or modules, acceptance criteria, and a git topology decision.
+- See `skills/_shared/WORKFLOW-STATE-MACHINE.md` for state owners, accepted pre-states, produced states, next routes, forbidden routes, and eval transition tokens.
 
 ### `Artifact Promotion`
 
@@ -304,6 +316,8 @@ Use a concrete stop condition when any of these is true:
 
 ## Required Behavior by Mode
 
+These mode rules are an interpretation layer over `skills/_shared/WORKFLOW-STATE-MACHINE.md`. They explain how to apply the state machine during preflight; they do not replace the canonical state transition tables.
+
 ### `to-prd`
 
 If `Intent = new_requirement`, start with grill-before-write. Do not implement before the requirement state is at least `prd_accepted` or explicitly bypassed.
@@ -338,11 +352,11 @@ Reference existing `STATE.md` when present. Recommend creating or updating state
 
 ### `dispatch`
 
-Route only accepted, ready tasks to runtime/package choices. Dispatch may generate package-only routing, execution matrixes, and Result Package expectations; it is not an executor and must not claim runtime execution, validation, or clean review happened.
+Route only accepted, ready tasks to runtime/package choices. Apply `skills/_shared/NON-EXECUTOR-BOUNDARY.md`: dispatch may generate package-only routing, execution matrixes, and Result Package expectations, but must not claim runtime execution, validation, or clean review happened without direct evidence.
 
 ### `wiki`
 
-Use for durable project wiki query, ingest, audit, repair, or update work. Wiki pages can orient work and preserve project knowledge, but wiki synthesis must not become source truth, implementation authority, verification evidence, runtime evidence, release evidence, or UAT/customer readiness without cited authoritative sources.
+Use for durable project wiki query, ingest, audit, repair, or update work. Apply `skills/_shared/NON-EXECUTOR-BOUNDARY.md`: wiki pages can orient work and preserve project knowledge, but wiki synthesis must not become source truth, implementation authority, verification evidence, runtime evidence, release evidence, or UAT/customer readiness without cited authoritative sources.
 
 ## Forbidden Behavior
 

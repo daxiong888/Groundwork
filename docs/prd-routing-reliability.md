@@ -19,14 +19,14 @@ Whether to implement a routing reliability layer that makes skill selection meas
 
 ### Known Facts
 
-- Groundwork's public skill surface is intentionally small: `to-prd`, `to-issues`, `triage`, `write-plan`, `prototype`, `implement`, `verify`, and `handoff`.
+- Groundwork's public skill surface is intentionally small: `to-prd`, `to-issues`, `triage`, `write-plan`, `prototype`, `implement`, `verify`, `handoff`, `dispatch`, and `wiki`.
 - `docs/plugin-architecture.md` already says prompts should choose the lightest skill that answers the current intent, with direct fallback for small obvious work.
 - Existing prompt suites use fields such as `expected_skill`, `skill_load_required`, `should_trigger`, `expected_behavior`, `forbidden_behavior`, `acceptance_standard`, `gate_required`, and `verify_scope_required`.
 - `evals/run_runtime.py` currently treats wrong expected skill selection as failure, while allowing direct safety-gate behavior when `skill_load_required=false`.
 - Existing baselines have already observed adjacent routing drift, including implementation/prototype review prompts over-routing to `verify`.
 - Recent Groundwork usage surfaced a higher-impact drift class: a new session receives raw product, workflow, or plugin intent and moves directly into implementation without first shaping PRD/spec intent or confirming an explicit bypass.
 - Prior runtime work showed that frontmatter `description` materially affects runtime skill loading; changing body examples alone can be insufficient.
-- Current Groundwork implementation already has several routing-relevant guardrails: the eight public skills, shared lifecycle preflight, raw requirement gates in `to-prd` and `implement`, direct fallback policy, verify scope-first output, implement mini-plan, prototype contract-boundary handling, and a parallel runner wrapper that delegates to the serial runner.
+- Current Groundwork implementation already has several routing-relevant guardrails: the ten public skills, shared lifecycle preflight, raw requirement gates in `to-prd` and `implement`, direct fallback policy, verify scope-first output, implement mini-plan, prototype contract-boundary handling, and a parallel runner wrapper that delegates to the serial runner.
 - The next missing implementation piece is not another broad skill-doc rewrite. It is eval schema validation, runner verdict modeling, targeted hard negatives, host-preemption classification, route-pair reporting, and baseline governance.
 - The local deep-research report agrees that the current best path is a deterministic reliability layer first, followed by observability/error-budget hardening and only later lightweight retrieval or protocol-oriented pilots.
 - Routing failures can be user-visible even when the system returns text, because the wrong workflow changes artifact type, evidence standard, approval behavior, and follow-on task state.
@@ -226,7 +226,7 @@ The entry contract is implemented first by aligning eval schema and runner verdi
 The entry decision has this compact shape:
 
 ```text
-Route: direct / to-prd / to-issues / triage / write-plan / prototype / implement / verify / handoff
+Route: direct / to-prd / to-issues / triage / write-plan / prototype / implement / verify / handoff / dispatch / wiki
 Requirement State: raw / prd_draft / prd_accepted / issue_ready / implementation_ready / verified / blocked
 Source Truth: conversation / accepted_prd / local_artifact / external_issue / source_code / test_evidence / runtime_evidence / mixed / unknown
 Stop Condition: continue / ask_clarification / require_prd_acceptance / require_artifact_promotion / require_gate / direct_answer
@@ -309,6 +309,8 @@ prototype
 implement
 verify
 handoff
+dispatch
+wiki
 ```
 
 Eval-only host preemption classification:
@@ -337,7 +339,7 @@ runner normalization: blocked becomes expected_stop_condition, behavior_verdict,
 
 It is not the whole task graph. Follow-on recommendations do not fail routing when the first owner remains correct. For example, a raw requirement may route first to `to-prd` and later recommend `to-issues`; that is not drift.
 
-`expected_best` must be `direct` or one of the eight public skills. It must not be `runtime-safety-gate`; host preemption is represented through row metadata, `actual_route`, and `host_preemption_verdict`.
+`expected_best` must be `direct` or one of the public skill route tokens in `skills/_shared/WORKFLOW-STATE-MACHINE.md`. It must not be `runtime-safety-gate`; host preemption is represented through row metadata, `actual_route`, and `host_preemption_verdict`.
 
 Backward-compatible expected-route precedence:
 
@@ -444,7 +446,7 @@ Current implementation alignment:
 
 | Existing capability | Current role in this PRD |
 | --- | --- |
-| Eight public skills | Preserve the public route vocabulary: `to-prd`, `to-issues`, `triage`, `write-plan`, `prototype`, `implement`, `verify`, and `handoff`. |
+| Ten public skills | Preserve the public route vocabulary: `to-prd`, `to-issues`, `triage`, `write-plan`, `prototype`, `implement`, `verify`, `handoff`, `dispatch`, and `wiki`. |
 | `skills/_shared/LIFECYCLE-PREFLIGHT.md` | Canonical runtime form for `Intent`, `Suggested Workflow Mode`, `Source of Truth`, `Requirement State`, `Risk Gate`, `Verification Strategy`, and `Stop Condition`. |
 | Raw requirement gates in `to-prd` and `implement` | Existing behavior to measure first: raw or draft requirements are not implementation-ready unless explicit bypass is present. |
 | Direct fallback policy | Existing boundary to preserve for small answers, title rewrites, simple command output, and low-risk direct work. |
@@ -520,10 +522,10 @@ Field rules:
 - `requirement_state` follows entry contract values: `raw`, `grilled`, `prd_draft`, `prd_accepted`, `issue_ready`, `implementation_ready`, `verified`, or `blocked`.
 - `source_truth` follows lifecycle preflight source values: `conversation`, `accepted_prd`, `local_artifact`, `external_issue`, `pull_request`, `source_code`, `test_evidence`, `runtime_evidence`, `state_md`, `mixed`, or `unknown`.
 - `risk_gate` follows lifecycle preflight risk values: `none`, `git_write`, `remote_write`, `destructive`, `customer_visible`, `data_write`, `secrets_or_pii`, or `blocked`.
-- `expected_state_transition` is `none`, `clarify`, `draft`, `accept`, `split`, `plan`, `implement`, `verify`, `handoff`, `block`, or `close`.
+- `expected_state_transition` follows the canonical tokens in `skills/_shared/WORKFLOW-STATE-MACHINE.md`.
 - `expected_stop_condition` is `continue`, `ask_clarification`, `require_prd_acceptance`, `require_artifact_promotion`, `require_gate`, `direct_answer`, or `blocked`.
 - `expected_best` is required for routing reliability rows.
-- `expected_best` must be `direct` or one of the eight public skills; it must not be `runtime-safety-gate`.
+- `expected_best` must be `direct` or one of the public skill route tokens in `skills/_shared/WORKFLOW-STATE-MACHINE.md`; it must not be `runtime-safety-gate`.
 - `blocked` must not appear in `expected_best`, `acceptable_routes`, or `forbidden_routes`.
 - `acceptable_routes` and `forbidden_routes` use `|` as the list separator.
 - Route list cells must contain only allowed route values.
@@ -865,8 +867,8 @@ Forbidden:
 ### 10.1 Acceptance For PRD Merge
 
 - AC-PM-1: The PRD defines the Groundwork Entry Contract, Intent Frame, reliability layer map, route vocabulary, implementation defaults, non-goals, implementation scope, layered acceptance criteria, and next implementation slices.
-- AC-PM-2: The PRD records current implementation alignment: eight public skills, lifecycle preflight, raw requirement gates, direct fallback, verify scope-first output, implement mini-plan, prototype contract-boundary behavior, and serial-owned parallel runner delegation.
-- AC-PM-3: The accepted design preserves the eight existing public skills and rejects public `routing`, `router`, `groundwork-entry`, or `preflight` skills.
+- AC-PM-2: The PRD records current implementation alignment: ten public skills, lifecycle preflight, raw requirement gates, direct fallback, verify scope-first output, implement mini-plan, prototype contract-boundary behavior, and serial-owned parallel runner delegation.
+- AC-PM-3: The accepted design preserves the existing public skill surface and rejects public `routing`, `router`, `groundwork-entry`, or `preflight` skills.
 - AC-PM-4: The first implementation slice is runner-first and explicitly excludes broad frontmatter edits, `DEFAULT_SUITES` promotion, observability backend work, retrieval/rerank work, protocol pilots, and broad skill rewrites.
 - AC-PM-5: `blocked` compatibility is explicit: runtime preflight may use it as a stop-capable outcome, but routing evals must not accept it as `expected_best`, `acceptable_routes`, or `forbidden_routes`.
 - AC-PM-6: `runtime-safety-gate` is documented as an eval-only `actual_route` classification with strict conditions; direct fallback remains the default no-skill route when those conditions are not satisfied.
@@ -911,8 +913,8 @@ Forbidden:
 
 Local evidence:
 
-- `docs/product-principles.md` defines small-task direct fallback, source-truth priority, verification discipline, and public skill surface.
-- `docs/plugin-architecture.md` defines the eight public skills, direct fallback policy, and lightweight eval baseline.
+- `docs/product-principles.md` defines small-task direct fallback, source-truth priority, verification discipline, and initial skill-surface principles.
+- `docs/plugin-architecture.md` defines the current ten public skills, direct fallback policy, and lightweight eval baseline.
 - `docs/workflow-taxonomy.md` defines current skill boundaries, internal branch concepts, and direct route behavior.
 - `docs/skill-success-metrics.md` defines current skill reliability metrics.
 - `skills/_shared/LIFECYCLE-PREFLIGHT.md` defines the existing transient pre-action routing fields that can become the runtime form of the Groundwork Entry Contract.

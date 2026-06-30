@@ -19,6 +19,8 @@ Should trigger:
 - "判断是否还要本地 lifecycle state"
 - "外部 GitHub issue 已经完整拥有状态，判断是否还要本地 lifecycle state"
 - "这个任务状态应该由外部 issue 还是本地 STATE.md 拥有"
+- "判断这个任务下一步归 agent、人还是 blocked"
+- "这个 issue 能不能 close，缺什么证据"
 
 Should not trigger:
 
@@ -27,6 +29,10 @@ Should not trigger:
 - The user asks for implementation steps after readiness is known; use `write-plan`.
 - The user asks for code edits; use `implement`.
 - The user asks for release or UAT evidence; use `verify`.
+- "把这些 ready issue 分配给 runtime 或 subagent"; use `dispatch`.
+- "只写实现计划，不要改代码"; use `write-plan`.
+- "验证这次能不能给前端联调"; use `verify`.
+- "基于这个 PRD 拆 issues"; use `to-issues`.
 
 ## Required Evidence
 

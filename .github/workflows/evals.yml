@@ -29,6 +29,7 @@ jobs:
         run: |
           python -m py_compile \
             evals/run_runtime.py \
+            evals/check_coverage_manifest.py \
             evals/schema_validation.py \
             evals/scoring.py \
             evals/report.py \
@@ -54,11 +55,13 @@ jobs:
           python -m unittest evals.test_trace_diagnostics
           python -m unittest evals.test_report
           python -m unittest evals.test_patch_suggestions
+          python -m unittest evals.test_coverage_manifest
+          python -m unittest evals.test_progressive_disclosure
           PYTHONPATH=evals python -m unittest evals.test_run_runtime_scheduler
 
-      - name: Trace-ready schema validation
+      - name: Prompt schema validation
         run: |
-          python evals/run_runtime.py --validate-schema --suite trace-first-verify-review.csv
+          python evals/run_runtime.py --validate-schema --all-prompts
 
       - name: Fixture CLIs
         run: |

@@ -45,7 +45,7 @@ Use this order:
 5. Review information hierarchy and progressive disclosure.
 6. Remove duplicated guidance, no-op prose, and hidden route expansion.
 7. Review failure branches for likely misuse.
-8. Review evidence boundary and role separation.
+8. Review evidence boundary and role separation using `skills/_shared/EVIDENCE-BOUNDARY.md`.
 9. Review positive, negative, route-conflict, and hard-negative eval coverage.
 10. Label the audit evidence according to role: self-check, clean review, independent verification, or maintainer acceptance.
 
@@ -83,13 +83,9 @@ Block, mark unverified, or return to implementation when any of these occur:
 
 ## Evidence Boundary
 
-Self-audit by the author or implementer is `Self-check Evidence` only.
+Apply `EB-ROLE-001`, `EB-VERIFY-001`, `EB-RUNTIME-001`, `EB-CACHE-001`, and `EB-RELEASE-001` from `skills/_shared/EVIDENCE-BOUNDARY.md` when auditing public skill additions or material skill-quality changes.
 
-Clean review evidence must come from a separate read-only role/session that did not author or edit the audited change. If that reviewer edits the change, its clean-review authority for the edited change is spent.
-
-Independent verification evidence must start from explicit scope and separate covered and not-covered claims. Runtime, browser, UAT, release, marketplace, and installed-plugin cache claims require their own named evidence.
-
-Public skill approval remains blocked until independent clean review or maintainer acceptance exists for the relevant public-surface claim. Maintainer acceptance is required before this shared `skill-audit` reference can become a public `skill-audit` skill.
+Skill-audit-specific delta: public skill approval remains blocked until independent clean review or maintainer acceptance exists for the relevant public-surface claim. Maintainer acceptance is required before this shared `skill-audit` reference can become a public `skill-audit` skill.
 
 ## Eval Coverage
 
