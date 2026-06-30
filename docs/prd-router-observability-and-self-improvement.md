@@ -681,7 +681,7 @@ Add a policy target for live router observability scratch output:
   final.raw.meta.json             # optional / explicit raw-capture metadata
   router-score.json
   router-card.md
-  coverage.json                   # optional / future diagnostic aggregate
+  coverage.json                   # written by Stop hook with event replay diagnostics
   diagnostics.json                # optional
 ```
 

@@ -29,6 +29,11 @@ from checks.verify_checks import (
     VERIFY_SCOPE_FIELDS,
 )
 try:
+    from routing_schema import ROUTING_SCHEMA_FIELDS, TRACE_READY_SUITES
+except ImportError:  # pragma: no cover - package import path
+    from evals.routing_schema import ROUTING_SCHEMA_FIELDS, TRACE_READY_SUITES
+
+try:
     from routing_summary import (
         routing_outcome as shared_routing_outcome,
         summarize_routing_results as shared_summarize_routing_results,
@@ -83,28 +88,6 @@ ROUTING_RELIABILITY_SUITE = "routing-reliability.csv"
 TRACE_FIRST_VERIFY_REVIEW_SUITE = "trace-first-verify-review.csv"
 CLEAN_REVIEW_FANOUT_SUITE = "clean-review-fanout.csv"
 ZH_TRIGGER_PARITY_SUITE = "zh-trigger-parity.csv"
-TRACE_READY_SUITES = {
-    ROUTING_RELIABILITY_SUITE,
-    TRACE_FIRST_VERIFY_REVIEW_SUITE,
-    CLEAN_REVIEW_FANOUT_SUITE,
-    ZH_TRIGGER_PARITY_SUITE,
-}
-ROUTING_SCHEMA_FIELDS = [
-    "intent_kind",
-    "requirement_state",
-    "source_truth",
-    "risk_gate",
-    "expected_state_transition",
-    "expected_stop_condition",
-    "expected_best",
-    "acceptable_routes",
-    "forbidden_routes",
-    "route_boundary",
-    "case_kind",
-    "case_source",
-    "output_contract",
-    "evidence_required",
-]
 INTENT_KIND_TOKENS = {
     "direct",
     "new_requirement",
@@ -211,6 +194,54 @@ EVIDENCE_REQUIRED_FUTURE_TOKENS = {
     "cache_equivalence",
 }
 NOT_APPLICABLE = "not_applicable"
+
+LEGACY_ID_SPECIFIC_CHECKS = {
+    "life-019": {
+        "check": "git topology gate requires real git status evidence and branch/worktree decision",
+        "target": "routing schema metadata plus git-boundary checker",
+    },
+    "life-020": {
+        "check": "dirty main topology gate requires real dirty-file evidence and worktree/blocked decision",
+        "target": "routing schema metadata plus git-boundary checker",
+    },
+    "implement-010": {
+        "check": "PR-bound clean main implementation must stop before edits and require branch/worktree",
+        "target": "git-boundary checker",
+    },
+    "implement-011": {
+        "check": "PR-bound detached HEAD implementation must classify detached/empty branch before edits",
+        "target": "git-boundary checker",
+    },
+    "implement-012": {
+        "check": "read-only implementation conformance review must use exact conformance labels",
+        "target": "implementation_conformance output contract checker",
+    },
+    "gr-009": {
+        "check": "QA failure verification must include QA-FIX-QA fields",
+        "target": "qa_fix_qa output contract checker",
+    },
+    "verify-015": {
+        "check": "verify QA failure must include scope-first report and QA-FIX-QA fields",
+        "target": "qa_fix_qa output contract checker",
+    },
+    "gr-018": {
+        "check": "durable artifact review must flag missing audience-first header fields",
+        "target": "artifact_header checker",
+    },
+    "life-001": {
+        "check": "small direct prompt must not recommend lifecycle artifacts",
+        "target": "lifecycle artifact overreach checker",
+    },
+    "life-002": {
+        "check": "one-off explanation must not recommend lifecycle artifacts",
+        "target": "lifecycle artifact overreach checker",
+    },
+    "life-011": {
+        "check": "GSD clone path request must reject .planning/.gsd/project-global task DB creep",
+        "target": "lifecycle-state artifact boundary checker",
+    },
+}
+LEGACY_GIT_TOPOLOGY_IDS = {"life-019", "life-020", "implement-010", "implement-011"}
 
 NO_EDIT_MARKERS = [
     "不要编辑文件",

@@ -289,11 +289,13 @@ Avoid scripts for:
 
 ## Hooks
 
-Hooks should be optional host integrations, not the core correctness mechanism.
+Hooks are optional host integrations, not the core correctness mechanism.
 
-Superpowers is the best packaging reference here: its Codex plugin surface is primarily `plugin.json + skills`, while its richer hook/session-start behavior appears in non-Codex runtime packaging. Groundwork should therefore keep artifacts and scripts hook-friendly, but the MVP should remain correct without hooks unless Codex plugin hook support is confirmed in the current platform.
+Groundwork v0.5.3 includes dormant router-observability hooks for `UserPromptSubmit`, `PreToolUse`, `PermissionRequest`, `PostToolUse`, and `Stop`. They are opt-in per project and must remain observational: product correctness, routing requirements, release claims, and eval pass/fail behavior must not depend on hooks being installed, trusted, or enabled.
 
-Possible future hooks:
+The `.codex-plugin/plugin.json` `interface.capabilities` value is marketplace/install metadata for the plugin surface. It is not treated in this architecture as a sandbox override, hook privilege grant, or permission bypass. Write-capable workflows still depend on Codex sandboxing, user intent, git topology gates, and approval gates.
+
+Possible future hook ideas:
 
 - session start: surface active Groundwork task index
 - pre-edit: remind the agent to inspect `task.json`, PRD, and plan when inside a managed task

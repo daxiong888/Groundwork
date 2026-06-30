@@ -1,19 +1,13 @@
 """Shared routing summary metrics for runner and observability reports."""
 
 try:
-    from routing_schema import as_list, increment, rate_summary, sorted_counts
+    from routing_schema import TRACE_READY_SUITES, as_list, increment, rate_summary, sorted_counts
 except ImportError:  # pragma: no cover - package import path
-    from evals.routing_schema import as_list, increment, rate_summary, sorted_counts
+    from evals.routing_schema import TRACE_READY_SUITES, as_list, increment, rate_summary, sorted_counts
 
 
 NOT_APPLICABLE = "not_applicable"
 PASS_VERDICTS = {"pass", "flake"}
-TRACE_READY_SUITES = {
-    "routing-reliability.csv",
-    "trace-first-verify-review.csv",
-    "clean-review-fanout.csv",
-}
-
 
 def routing_outcome(expected, actual, acceptable_routes, forbidden_routes):
     if not actual or actual == "unknown":

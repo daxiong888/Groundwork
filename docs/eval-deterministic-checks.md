@@ -20,6 +20,24 @@ Safe to Share / Redaction Notes: Safe to share as maintainer documentation. It c
 
 The current checker package also keeps common helpers in `evals/checks/common.py` and stable result helpers in `evals/checks/results.py`.
 
+## Legacy Id-Specific Checks
+
+`evals/run_runtime.py::quick_verdict` still contains a small set of row-id-specific compatibility checks while those protections migrate into structured `output_contract`, `evidence_required`, or checker-token coverage. The ids are explicit in `LEGACY_ID_SPECIFIC_CHECKS`, and unit tests require every protected id to remain present in `evals/prompts/*.csv`.
+
+| Legacy id | Check condition | Target token or checker | Removal gate |
+|---|---|---|---|
+| `life-019` | PR-bound clean-main implementation must cite real `git status` evidence, stop before edits, and choose branch/worktree. | `git-boundary` checker / `evidence_required=git_status` | Remove only after runner emits an equivalent checker result without row-id branching. |
+| `life-020` | Dirty-main implementation must cite real dirty-file evidence and choose `worktree_required` or `blocked`. | `git-boundary` checker / `evidence_required=git_status` | Remove only after dirty-file evidence is checker-backed. |
+| `implement-010` | PR-bound clean-main implementation must not edit before branch/worktree decision. | `git-boundary` checker | Remove only after topology gate checker covers this fixture. |
+| `implement-011` | PR-bound detached-HEAD implementation must classify detached/empty branch before edits. | `git-boundary` checker | Remove only after detached topology is checker-backed. |
+| `implement-012` | Read-only implementation conformance review must use exact conformance labels and avoid readiness claims. | `output_contract=implementation_conformance` | Remove only after conformance labels and forbidden readiness claims are checker-backed. |
+| `gr-009` | QA failure verification must include QA-FIX-QA fields. | `output_contract=qa_fix_qa` | Remove only after QA-FIX-QA checker covers the row. |
+| `verify-015` | Verify QA failure must include scope-first report and QA-FIX-QA fields. | `output_contract=verify_scope_full|qa_fix_qa` | Remove only after verify and QA-FIX-QA checker results cover both requirements. |
+| `gr-018` | Durable artifact review must flag missing audience-first header fields. | `output_contract=artifact_header` | Remove only after artifact header checker covers the row. |
+| `life-001` | Small direct prompt must not recommend `STATE.md` or `ROADMAP.md`. | lifecycle artifact overreach checker | Remove only after overreach checker covers direct prompts. |
+| `life-002` | One-off explanation must not recommend lifecycle artifacts. | lifecycle artifact overreach checker | Remove only after overreach checker covers explanations. |
+| `life-011` | GSD clone path request must reject `.planning`, `.gsd`, project-global `STATE.md`, and task DB creep. | lifecycle-state artifact-boundary checker | Remove only after lifecycle artifact boundary checker covers the row. |
+
 ## Current Checker Ids
 
 ### `forbidden.git_add_dot`

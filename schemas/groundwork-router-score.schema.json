@@ -1,0 +1,216 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://groundwork.dev/schemas/groundwork-router-score.schema.json",
+  "title": "Groundwork Router Observability Score Schema",
+  "description": "Schema for router-score.json artifacts emitted by dormant router observability hooks. This schema is source-validation evidence only and does not imply runtime, cache, release, UAT, or customer readiness.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "session_id",
+    "turn_id",
+    "created_at",
+    "expected_route",
+    "actual_route",
+    "route_boundary",
+    "expected_route_source",
+    "actual_route_source",
+    "skill_hit_source",
+    "tool_coverage_status",
+    "score_eligibility",
+    "acceptable_routes",
+    "forbidden_routes",
+    "routing_verdict",
+    "candidate_routing_verdict",
+    "host_preemption_verdict",
+    "execution_profile_verdict",
+    "execution_profile_source",
+    "selector_enforcement",
+    "selector_mismatch_reason",
+    "output_contract_verdict",
+    "evidence_verdict",
+    "behavior_verdict",
+    "overall_verdict",
+    "candidate_overall_verdict",
+    "failure_type",
+    "fix_locus",
+    "changed_files",
+    "skill_hits",
+    "dispatch_decisions",
+    "router_hint_emitted",
+    "checker_results",
+    "notes",
+    "evidence_boundary"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "router_observability.score.v0"
+    },
+    "session_id": {
+      "$ref": "groundwork-common.schema.json#/$defs/non_empty_string"
+    },
+    "turn_id": {
+      "$ref": "groundwork-common.schema.json#/$defs/non_empty_string"
+    },
+    "created_at": {
+      "$ref": "groundwork-common.schema.json#/$defs/non_empty_string"
+    },
+    "expected_route": {
+      "$ref": "groundwork-common.schema.json#/$defs/workflow_route"
+    },
+    "actual_route": {
+      "$ref": "groundwork-common.schema.json#/$defs/workflow_route"
+    },
+    "route_boundary": {
+      "$ref": "groundwork-common.schema.json#/$defs/non_empty_string"
+    },
+    "expected_route_source": {
+      "type": "string",
+      "enum": [
+        "fixture",
+        "deterministic_entry_classifier",
+        "heuristic",
+        "unknown"
+      ]
+    },
+    "actual_route_source": {
+      "$ref": "groundwork-common.schema.json#/$defs/non_empty_string"
+    },
+    "skill_hit_source": {
+      "$ref": "groundwork-common.schema.json#/$defs/non_empty_string"
+    },
+    "tool_coverage_status": {
+      "type": "string",
+      "enum": [
+        "supported_events_observed",
+        "partial",
+        "unsupported",
+        "unknown"
+      ]
+    },
+    "score_eligibility": {
+      "type": "string",
+      "enum": [
+        "baseline_eligible",
+        "display_only",
+        "guided_hint_excluded",
+        "insufficient_evidence"
+      ]
+    },
+    "acceptable_routes": {
+      "type": "array",
+      "items": {
+        "$ref": "groundwork-common.schema.json#/$defs/workflow_route"
+      }
+    },
+    "forbidden_routes": {
+      "type": "array",
+      "items": {
+        "$ref": "groundwork-common.schema.json#/$defs/workflow_route"
+      }
+    },
+    "routing_verdict": {
+      "$ref": "groundwork-common.schema.json#/$defs/dimension_verdict"
+    },
+    "candidate_routing_verdict": {
+      "$ref": "groundwork-common.schema.json#/$defs/dimension_verdict"
+    },
+    "host_preemption_verdict": {
+      "$ref": "groundwork-common.schema.json#/$defs/dimension_verdict"
+    },
+    "execution_profile_verdict": {
+      "type": "string",
+      "enum": [
+        "mismatch",
+        "pass",
+        "insufficient_evidence",
+        "not_applicable"
+      ]
+    },
+    "execution_profile_source": {
+      "type": "string",
+      "enum": [
+        "dispatch_decision",
+        "unknown"
+      ]
+    },
+    "selector_enforcement": {
+      "type": "string",
+      "enum": [
+        "tool_enforced",
+        "prompt_preference",
+        "unavailable",
+        "unknown"
+      ]
+    },
+    "selector_mismatch_reason": {
+      "type": "string",
+      "enum": [
+        "none",
+        "selector_unverified",
+        "profile_too_weak_for_risk"
+      ]
+    },
+    "output_contract_verdict": {
+      "$ref": "groundwork-common.schema.json#/$defs/dimension_verdict"
+    },
+    "evidence_verdict": {
+      "$ref": "groundwork-common.schema.json#/$defs/dimension_verdict"
+    },
+    "behavior_verdict": {
+      "$ref": "groundwork-common.schema.json#/$defs/dimension_verdict"
+    },
+    "overall_verdict": {
+      "$ref": "groundwork-common.schema.json#/$defs/overall_verdict"
+    },
+    "candidate_overall_verdict": {
+      "$ref": "groundwork-common.schema.json#/$defs/overall_verdict"
+    },
+    "failure_type": {
+      "type": "string",
+      "enum": [
+        "forbidden_route",
+        "route_miss",
+        "output_contract_failure",
+        "none",
+        "unclassified"
+      ]
+    },
+    "fix_locus": {
+      "$ref": "groundwork-common.schema.json#/$defs/fix_locus"
+    },
+    "changed_files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "skill_hits": {
+      "type": "array",
+      "items": {
+        "$ref": "groundwork-common.schema.json#/$defs/workflow_route"
+      }
+    },
+    "dispatch_decisions": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "router_hint_emitted": {
+      "type": "boolean"
+    },
+    "checker_results": {
+      "type": "array",
+      "items": {
+        "$ref": "groundwork-common.schema.json#/$defs/checker_result"
+      }
+    },
+    "notes": {
+      "type": "string"
+    },
+    "evidence_boundary": {
+      "$ref": "groundwork-common.schema.json#/$defs/non_empty_string"
+    }
+  }
+}
