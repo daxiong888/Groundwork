@@ -63,8 +63,58 @@ class RouterObservabilityTests(unittest.TestCase):
                     self.assertEqual(handler.get("type"), "command")
                     self.assertIsInstance(handler.get("command"), str)
                     self.assertTrue(handler["command"])
+                    self.assertIn('[ -f "$PLUGIN_ROOT/scripts/codex-hooks/', handler["command"])
+                    self.assertIn(" || true", handler["command"])
                     self.assertIsInstance(handler.get("timeout"), int)
                     self.assertGreater(handler["timeout"], 0)
+
+    def test_hooks_manifest_commands_noop_when_plugin_root_entrypoints_are_missing(self):
+        manifest = json.loads((ROOT / "hooks" / "hooks.json").read_text(encoding="utf-8"))
+
+        with tempfile.TemporaryDirectory() as tmp:
+            plugin_root = Path(tmp) / "missing-plugin-root"
+            for matcher_groups in manifest["hooks"].values():
+                for group in matcher_groups:
+                    for handler in group["hooks"]:
+                        result = subprocess.run(
+                            handler["command"],
+                            shell=True,
+                            cwd=tmp,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            text=True,
+                            env={**os.environ, "PLUGIN_ROOT": str(plugin_root)},
+                            check=True,
+                        )
+                        self.assertEqual(result.stdout, "")
+                        self.assertEqual(result.stderr, "")
+
+    def test_hook_entrypoints_noop_when_support_module_is_missing(self):
+        entrypoints = [
+            "user_prompt_submit_groundwork_entry.py",
+            "pre_tool_use_groundwork_trace.py",
+            "permission_request_groundwork_trace.py",
+            "post_tool_use_groundwork_trace.py",
+            "stop_groundwork_score.py",
+        ]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for entrypoint in entrypoints:
+                script = root / entrypoint
+                script.write_text((HOOKS / entrypoint).read_text(encoding="utf-8"), encoding="utf-8")
+                result = subprocess.run(
+                    [sys.executable, str(script)],
+                    input=json.dumps({"cwd": str(root)}),
+                    text=True,
+                    cwd=root,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    env={**os.environ, "PYTHONPATH": ""},
+                    check=True,
+                )
+                self.assertEqual(result.stdout, "")
+                self.assertEqual(result.stderr, "")
 
     def write_config(self, root, **overrides):
         config = {

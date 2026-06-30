@@ -14,7 +14,7 @@ It should also not become a blind Superpowers + mattpocock bundle. The borrowed 
 
 ## Current Stage
 
-Current `main` contains the v0.5.4 source-validation public surface. Groundwork remains a small Codex-native R&D base: it governs route, policy, evidence, project wiki knowledge artifacts, handoff, dispatch, closeout contracts, and project opt-in router observability while Codex App/runtime adapters own actual worktree creation, Handoff execution, runtime execution, cache refresh, marketplace state, and cleanup operations.
+Current `main` contains the v0.5.5 source-validation public surface. Groundwork remains a small Codex-native R&D base: it governs route, policy, evidence, project wiki knowledge artifacts, handoff, dispatch, closeout contracts, and project opt-in router observability while Codex App/runtime adapters own actual worktree creation, Handoff execution, runtime execution, cache refresh, marketplace state, and cleanup operations.
 
 Current contents:
 
@@ -26,7 +26,7 @@ Current contents:
 - `skills/` ten public skills, including `dispatch` and `wiki`, plus required shared guardrails and adapter contracts
 - `scripts/codex-hooks/` standard-library hook entrypoints for router observability v0
 
-The repository includes runtime and eval evidence accumulated across v0.1 through v0.4.0, plus source-validation evidence for v0.4.x through v0.5.4. This includes plugin discovery, representative workflow trials, fixture validation, Codex App runtime-safety follow-up, dispatch routing coverage, managed-worktree lifecycle contract coverage, governance baseline hardening, native worktree handoff alignment evidence, public wiki source-validation coverage, and router observability hook source checks. The current surface still does not add task tools, MCP servers, marketplace publishing flow, task CRUD, default trace capture, automatic routing mutation, or runtime execution.
+The repository includes runtime and eval evidence accumulated across v0.1 through v0.4.0, plus source-validation evidence for v0.4.x through v0.5.5. This includes plugin discovery, representative workflow trials, fixture validation, Codex App runtime-safety follow-up, dispatch routing coverage, managed-worktree lifecycle contract coverage, governance baseline hardening, native worktree handoff alignment evidence, public wiki source-validation coverage, and router observability hook source checks. The current surface still does not add task tools, MCP servers, marketplace publishing flow, task CRUD, default trace capture, automatic routing mutation, or runtime execution.
 
 ## MVP Surface
 
@@ -291,7 +291,7 @@ Avoid scripts for:
 
 Hooks are optional host integrations, not the core correctness mechanism.
 
-Groundwork v0.5.4 includes dormant router-observability hooks for `UserPromptSubmit`, `PreToolUse`, `PermissionRequest`, `PostToolUse`, and `Stop`, plus follow-up schema and redaction hardening. They are opt-in per project and must remain observational: product correctness, routing requirements, release claims, and eval pass/fail behavior must not depend on hooks being installed, trusted, or enabled.
+Groundwork v0.5.5 includes dormant router-observability hooks for `UserPromptSubmit`, `PreToolUse`, `PermissionRequest`, `PostToolUse`, and `Stop`, plus follow-up schema, redaction, and cache-refresh self-protection hardening. They are opt-in per project and must remain observational: product correctness, routing requirements, release claims, and eval pass/fail behavior must not depend on hooks being installed, trusted, or enabled.
 
 The `.codex-plugin/plugin.json` `interface.capabilities` value is marketplace/install metadata for the plugin surface. It is not treated in this architecture as a sandbox override, hook privilege grant, or permission bypass. Write-capable workflows still depend on Codex sandboxing, user intent, git topology gates, and approval gates.
 

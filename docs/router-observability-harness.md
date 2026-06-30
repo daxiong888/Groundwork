@@ -39,6 +39,8 @@ The repository ships dormant hook definitions at [`hooks/hooks.json`](../hooks/h
 
 Plugin install or update only makes these hook definitions available for review. It does not mean tracking has started, and it does not create marketplace release evidence. The maintainer still needs any Codex-required hook trust review for the current installed plugin version.
 
+Hook commands are self-protecting during plugin cache refresh. Each manifest command first checks whether its entrypoint still exists under the loaded `$PLUGIN_ROOT`, and each entrypoint exits `0` if the support module cannot be imported. This protects an already-running Codex thread that still holds an old versioned plugin-root path while `codex plugin add groundwork@groundwork` refreshes or replaces the installed cache. Missing or partially replaced hook files must no-op; they must not block normal Codex tool execution, Stop handling, or release work. Set `GROUNDWORK_ROUTER_OBSERVABILITY_DEBUG=1` only when locally debugging hook failures.
+
 `SessionStart` is intentionally deferred. v0 does not need session-level metadata to prove no-op behavior, route decision capture, tool event capture, or Stop-time scoring.
 
 ## Project Opt-In

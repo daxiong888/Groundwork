@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$PLUGIN_ROOT/scripts/codex-hooks/user_prompt_submit_groundwork_entry.py\"",
+            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex-hooks/user_prompt_submit_groundwork_entry.py\" ]; then python3 \"$PLUGIN_ROOT/scripts/codex-hooks/user_prompt_submit_groundwork_entry.py\" || true; fi",
             "timeout": 10
           }
         ]
@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$PLUGIN_ROOT/scripts/codex-hooks/pre_tool_use_groundwork_trace.py\"",
+            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex-hooks/pre_tool_use_groundwork_trace.py\" ]; then python3 \"$PLUGIN_ROOT/scripts/codex-hooks/pre_tool_use_groundwork_trace.py\" || true; fi",
             "timeout": 10
           }
         ]
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$PLUGIN_ROOT/scripts/codex-hooks/permission_request_groundwork_trace.py\"",
+            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex-hooks/permission_request_groundwork_trace.py\" ]; then python3 \"$PLUGIN_ROOT/scripts/codex-hooks/permission_request_groundwork_trace.py\" || true; fi",
             "timeout": 10
           }
         ]
@@ -41,7 +41,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$PLUGIN_ROOT/scripts/codex-hooks/post_tool_use_groundwork_trace.py\"",
+            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex-hooks/post_tool_use_groundwork_trace.py\" ]; then python3 \"$PLUGIN_ROOT/scripts/codex-hooks/post_tool_use_groundwork_trace.py\" || true; fi",
             "timeout": 10
           }
         ]
@@ -52,7 +52,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$PLUGIN_ROOT/scripts/codex-hooks/stop_groundwork_score.py\"",
+            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex-hooks/stop_groundwork_score.py\" ]; then python3 \"$PLUGIN_ROOT/scripts/codex-hooks/stop_groundwork_score.py\" || true; fi",
             "timeout": 30
           }
         ]

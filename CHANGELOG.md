@@ -4,6 +4,26 @@ All notable changes to Groundwork are documented in this file.
 
 ## Unreleased
 
+## v0.5.5 - 2026-06-30
+
+### Changed
+
+- Bumped plugin metadata to `0.5.5` for the router observability hook cache-refresh self-protection release.
+- Made router observability hook manifest commands no-op when an already-running Codex thread still points at an old versioned plugin cache whose entrypoints have been replaced or removed.
+- Made router observability Python entrypoints exit successfully when their support module is unavailable during plugin cache refresh.
+- Documented the old-plugin-root refresh boundary for maintainers.
+
+### Fixed
+
+- Prevented stale router observability `PreToolUse`, `PostToolUse`, and `Stop` hooks from blocking normal Codex tool execution during `codex plugin add groundwork@groundwork`.
+- Added regression coverage for missing plugin-root entrypoints and missing support modules.
+
+### Notes
+
+- This release is source-validation focused. Local source checks and hook unit tests do not prove hook trust state, marketplace publishing, runtime behavior, UAT readiness, release readiness, or customer readiness by themselves.
+- Runtime/cache claims require a named installed plugin root, source root, refresh or source/cache equivalence method, hook trust state, run scope, commands/trials, limitations, and missing evidence.
+- Router observability hooks remain observe-only and project opt-in; missing or partially replaced hook files must no-op rather than block Codex execution.
+
 ## v0.5.4 - 2026-06-30
 
 ### Changed
