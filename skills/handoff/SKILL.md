@@ -1,15 +1,15 @@
 ---
 name: handoff
-description: Preserve or write compact continuation state for long-running R&D work without duplicating PRDs plans issues commits or diffs. Use when the user asks to create a handoff, save state for next session, continue in the next session, prepare continuation context, resume notes, or compact state transfer; do not use for one-off explanations of what handoff means.
+description: Use when preserving compact continuation state for long-running R&D work across sessions, agents, or future continuation. Use for handoff notes, review packages, resume context, and compact state transfer. Do not use for one-off explanations of handoff, full PRD/diff/log duplication, readiness verification, implementation, or wiki queries.
 ---
 
 # handoff
 
-## Trigger Contract
+## Use When
 
-Use this skill when the user needs compact state transfer across sessions, agents, or future continuation.
+Use this skill when the user needs compact state transfer across sessions, agents, worktrees, or future continuation.
 
-Should trigger:
+Examples:
 
 - "给下个 session 做 handoff"
 - "下个 session 继续验证"
@@ -18,172 +18,39 @@ Should trigger:
 - "给同事一个接手摘要"
 - "把当前进展压缩成 continuation notes"
 
-Should not trigger:
+## Do Not Use When
 
-- The user asks what handoff is or asks for a one-off explanation of Groundwork handoff; answer directly.
+- The user asks what handoff is; answer directly.
 - The user asks for a PRD; use `to-prd`.
 - The user asks for issue slicing; use `to-issues`.
+- The user asks for implementation; use `implement`.
 - The user asks for readiness proof; use `verify`.
+- The user asks for durable wiki knowledge; use `wiki`.
 - The work is small enough to answer directly.
-- The user asks to duplicate full PRDs, diffs, or logs.
-- "把这个需求整理成 PRD"; use `to-prd`.
-- "按这个任务改代码"; use `implement`.
-- "验证这次能不能发布"; use `verify`.
-- "查 wiki 里的长期知识"; use `wiki`.
-- "这事一句话回答即可"; answer directly.
+- The user asks to duplicate full PRDs, diffs, logs, or transcripts.
 
-## Required Evidence
+## Runtime Mode Router
 
-Reference existing PRDs, issues, plans, commits, diffs, verification notes, lifecycle state, and artifacts. Do not copy secrets, sensitive logs, full diffs, or long documents. If the handoff includes git state, staging, commit boundary, or files that must remain out of scope, use `skills/_shared/GIT-BOUNDARY.md`.
+- `compact`: default one-screen continuation summary. Cite source artifacts and summarize only resume-critical state.
+- `review-package`: when the next reader needs a review handoff. Load `REVIEW-PACKAGE.md`.
+- `native-handoff`: when continuation crosses Codex Local and Worktree. Load `NATIVE-HANDOFF-PACKAGE.md`; Groundwork prepares the package only and does not perform official Codex Handoff or native Git operations.
+- `state-freshness`: when an existing `artifacts/<workstream-slug>/STATE.md` must be referenced. Load `STATE-FRESHNESS.md`.
+- `complex`: when managed worktree, role separation, visual packet, release/cache/runtime/wiki, or clean-review gaps affect continuation. Load `COMPLEX-HANDOFF-BRANCHES.md`.
 
-When maintaining the Groundwork repository itself, apply the repo-local `AGENTS.md` Done Definition before reporting the work complete.
+## Minimal Evidence Boundary
 
-Use `skills/_shared/NON-EXECUTOR-BOUNDARY.md` before preparing continuation, review, or native handoff packages. Handoff preserves state and packages the next move; it does not execute the next move.
+Reference existing PRDs, issues, plans, commits, diffs, verification notes, lifecycle state, artifacts, and git state by stable path or identifier. Do not copy full PRDs, plans, issue bodies, commits, long diffs, raw logs, transcripts, secrets, credentials, PII, sensitive screenshots, requests, or database rows.
 
-For Codex-native Local to Worktree or Worktree to Local continuation, use a `native_handoff_package`. Groundwork prepares this compact package only; official Codex Handoff owns moving the thread and code between Local and Worktree and owns the Git operations performed by that native flow.
+Apply only the shared contract needed by the active branch:
 
-Required shape:
+- `skills/_shared/NON-EXECUTOR-BOUNDARY.md` before preparing continuation, review, or native handoff packages.
+- `skills/_shared/LIFECYCLE-PREFLIGHT.md`, `skills/_shared/ARTIFACT-PROMOTION.md`, and `skills/_shared/LIFECYCLE-STATE.md` when lifecycle state or recovery state is in scope.
+- `skills/_shared/GIT-BOUNDARY.md` when staging, commit continuation, or allowed/disallowed files matter.
+- `skills/_shared/EVIDENCE-BOUNDARY.md`, `skills/_shared/ROLE-SEPARATION.md`, `skills/_shared/RUNTIME-CAPABILITY.md`, `skills/_shared/RELEASE-EVIDENCE-CLAIM.md`, `skills/_shared/VISUAL-HANDOFF-PACKET.md`, or `skills/_shared/LLM-WIKI.md` only when the handoff preserves that evidence class.
 
-```yaml
-native_handoff_package:
-  direction: local_to_worktree | worktree_to_local
-  goal: ""
-  scope: []
-  out_of_scope: []
-  base:
-    base_ref: ""
-    base_commit: ""
-    branch: ""
-  native_context:
-    thread_ref:
-      value: ""
-      availability: visible | unavailable_before_handoff | unavailable_in_current_surface | redacted
-    worktree_path:
-      value: ""
-      availability: visible | unavailable_before_handoff | unavailable_in_current_surface | redacted
-    worktree_association:
-      value: ""
-      availability: visible | unavailable_before_handoff | unavailable_in_current_surface | redacted
-  route_decision_ref: ""
-  relevant_artifacts: []
-  changed_files: []
-  evidence:
-    commands_run: []
-    checks_passed: []
-    checks_failed: []
-    not_run: []
-  open_risks: []
-  next_command: ""
-  stop_condition: ""
-  redaction_notes: ""
-```
+## Required Output
 
-Native handoff package rules:
-
-- The package must be self-contained enough for a new session to continue without hidden parent-session history.
-- The package must cite canonical artifacts instead of copying full PRDs, full issue bodies, long diffs, logs, or transcripts.
-- `native_context.thread_ref`, `native_context.worktree_path`, and `native_context.worktree_association` must always include explicit `availability` values.
-- Local to Worktree packages prepared before Codex creates or exposes the native worktree must set `native_context.worktree_path.availability: unavailable_before_handoff`; do not invent a future path, native ID, or thread reference.
-- Worktree to Local packages must include `changed_files`, `evidence`, `open_risks`, `stop_condition`, and all `native_context` fields with explicit availability markers before closeout. If visible native context exists, record it with `availability: visible`; if it is hidden in the current surface, mark it `unavailable_in_current_surface`; if intentionally withheld, mark it `redacted`.
-- Worktree to Local `changed_files` must list the returned file boundary. If no files changed, include an explicit empty list plus evidence that no files changed.
-- The package must state `redaction_notes` even when no sensitive data was present.
-- The package must never instruct a future reader to use `git add .`; use explicit pathspecs and denylist guidance when staging or commit continuation is in scope.
-
-Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` to decide whether lifecycle state is needed, stale, or only referenced. Use `skills/_shared/ARTIFACT-PROMOTION.md` to separate canonical artifacts from recoverable lifecycle state: handoff should cite PRDs, issue maps, verification reports, and external issues instead of copying them.
-
-Use `REVIEW-PACKAGE.md` when the next reader needs a review package rather than a basic continuation summary. Use `skills/_shared/SUBAGENT-DELEGATION.md` when the handoff prepares a fresh-context subagent review.
-Use `skills/dispatch/COMPLEX-WORK-SEPARATION.md` when handoff preserves continuation state for managed worktree work whose risk or scope may require separate planning, implementation, clean review, verification, and coordinator closeout roles.
-
-For complex work separation, `handoff` preserves continuation state and ownership boundaries only. Apply `EB-RUNTIME-001`, `EB-ROLE-001`, and `EB-RELEASE-001` from `skills/_shared/EVIDENCE-BOUNDARY.md` and `skills/_shared/NON-EXECUTOR-BOUNDARY.md` before naming stronger execution, review, verification, closeout, archive, branch cleanup, commit, push, PR, or tracker claims. Skill-specific delta: handoff may name the next owning role and cite the evidence needed for that role, but it must not become the runtime executor, clean reviewer, verifier, coordinator closeout, merge-back owner, archive owner, branch cleanup owner, commit path, push path, PR path, tracker mutation path, or native Handoff Git-operation owner.
-
-When a P1, public API, migration, schema, security, privacy, auth, permissions, data correctness, shared contract, package schema, adapter contract, state machine, weak-validation, or multi-package change is handed off without fresh clean review evidence, apply `EB-ROLE-001` and record that as an open gap or do-not-assume item.
-
-Use `skills/_shared/ROLE-SEPARATION.md` when preserving material continuation state. Skill-specific delta: handoff may report received evidence and the next independent role.
-
-Apply `EB-VISUAL-001` from `skills/_shared/EVIDENCE-BOUNDARY.md` and use `skills/_shared/VISUAL-HANDOFF-PACKET.md` when handoff cites or carries a visual handoff packet, HTML packet, screenshot set, generated visual artifact, prototype output, or frontend/backend review packet. Skill-specific delta: put unsupported API/schema/source, browser, runtime, UAT, release, and customer-readiness claims under `Do-Not-Assume` unless separate qualifying evidence is named.
-
-Apply `EB-WIKI-001`, `EB-ROLE-001`, `EB-RUNTIME-001`, `EB-CACHE-001`, and `EB-RELEASE-001` from `skills/_shared/EVIDENCE-BOUNDARY.md`, and use `skills/_shared/LLM-WIKI.md` when continuation state includes reusable project knowledge or cites a project wiki. Skill-specific delta: handoff may reference wiki pages as orientation and may emit a `Wiki Update Candidate` for durable reusable knowledge, but must not turn every handoff into a wiki diary or update wiki pages without explicit wiki-maintenance scope.
-
-Apply `EB-RUNTIME-001`, `EB-CACHE-001`, and `EB-RELEASE-001` from `skills/_shared/EVIDENCE-BOUNDARY.md`, and use `skills/_shared/RELEASE-EVIDENCE-CLAIM.md` when a handoff preserves runtime, cache, release, UAT, marketplace, installed-plugin, or cache-refresh claims. Skill-specific delta: if the handoff only references source-validation or continuation evidence, set those stronger claims to `unverified` or `not_applicable`.
-
-Small, low-risk continuation notes should remain compact. Do not force a full separation package when no separation threshold applies and a concise handoff can safely identify source truth, current state, gaps, and next action.
-
-Use `skills/_shared/LIFECYCLE-STATE.md` when the user asks to pause, resume, switch sessions, save state, continue later, or otherwise preserve workstream recovery state.
-
-When an existing workstream `artifacts/<workstream-slug>/STATE.md` is present, handoff must reference it instead of copying it. Report the state artifact path, freshness (`fresh`, `stale`, or `unknown`), and whether an update is needed. Do not paste full lifecycle state, PRDs, issue bodies, plans, diffs, logs, or transcripts into the handoff.
-
-## State Freshness Algorithm
-
-Use this algorithm before reporting `State Freshness` for an existing `artifacts/<workstream-slug>/STATE.md`:
-
-1. Read the existing state file enough to inspect `Last Updated`, `Canonical Sources`, current risks/gaps, and next action. Do not copy the full state into the handoff.
-2. Verify `Last Updated` is comparable:
-   - ISO 8601 timestamp with timezone; or
-   - exact date plus source-order evidence that can be compared.
-3. Verify `Canonical Sources` is present, readable, and points to the artifacts, issue, PRD, code, tests, runtime evidence, or user-confirmed decision that currently own truth.
-4. Compare state claims against the canonical sources available in the current handoff scope.
-5. Report one of:
-   - `fresh` only when `Last Updated` is comparable, `Canonical Sources` are readable and resolvable, all checked canonical sources are not newer/conflicting or newer sources are explicitly irrelevant, and the handoff names the checked source set.
-   - `stale` when a checked canonical source conflicts with `STATE.md`, a later source supersedes it, or a verified gap/risk changed after `Last Updated`.
-   - `unknown` when the file cannot be read, `Last Updated` is missing/unreadable/not comparable, `Canonical Sources` is missing/unreadable/unresolvable, canonical sources conflict with each other, checked source set is not named, or freshness cannot be evidenced from available sources.
-
-Default to `State Freshness: unknown` and `State Update Needed: yes` unless freshness is evidenced. Do not infer freshness from path existence, confidence, or absence of known conflicts.
-
-When freshness is `stale` or `unknown`, keep the handoff actionable:
-
-- name the missing field, unreadable section, conflicting source, or unavailable check;
-- follow canonical source truth over lifecycle state;
-- put unverifiable claims in `Open Gaps`, `Risks`, or `Do-Not-Assume`;
-- recommend updating `STATE.md` only when the lifecycle-state threshold still applies.
-
-## Workflow
-
-1. Identify the next reader and next action.
-2. Run lifecycle preflight for source truth, artifact promotion, lifecycle-state need, git topology, and stop condition.
-3. Reference existing canonical artifacts instead of duplicating them.
-4. Check whether a workstream `artifacts/<workstream-slug>/STATE.md` exists when lifecycle threshold is met.
-5. Apply the State Freshness Algorithm, then reference existing `STATE.md` by path when present, with freshness and update-needed status, or recommend creating/updating it when the threshold is met.
-6. Capture current state, decisions, evidence, gaps, and risks.
-7. Capture allowed/disallowed files when file boundary matters.
-8. Preserve visual packet boundaries when present: require state/flow, UI surface, API contract mapping, Mock vs Confirmed fields, open questions, `Do Not Implement / Do Not Assume`, and evidence boundary, or record the missing packet sections as continuation gaps.
-9. Include `native_handoff_package` when continuation crosses Local and Worktree. Keep Codex-native thread/worktree fields as explicit availability-marked context, not inferred runtime claims.
-10. Include audience, goal, current decision, source artifacts, evidence, open risks, next skill, do-not-assume, git boundary, and redaction note when producing a review package.
-11. Add a `Wiki Update Candidate` only when the handoff reveals durable reusable project knowledge; otherwise keep wiki out of the handoff.
-12. Include only enough detail to resume safely; default to a one-screen continuation summary when no durable handoff file is needed.
-13. Recommend the next skill or direct action.
-
-## CHECKPOINTS
-
-- STOP before producing a final handoff or review package if the continuation goal, source artifacts, evidence, open risks, next skill or direct action, or `Do-Not-Assume` boundary is missing.
-- STOP before marking open risks as `None` unless the source artifacts, evidence, git boundary, and verification gaps were checked closely enough to justify that claim.
-- STOP before copying PRDs, plans, issue bodies, commits, full lifecycle state, long diffs, logs, or transcripts; cite canonical artifacts and summarize only resume-critical state.
-- STOP before asking the next reader to act if the next skill, target file/path/artifact, first command/check, or human decision needed is not executable from the handoff.
-
-## Failure Branches
-
-| Trigger | Action | Output Requirement |
-|---|---|---|
-| Evidence is insufficient for a claim | Move the claim to `Open Gaps`, `Risks`, or `Do-Not-Assume`. | Name the missing source, check, runtime evidence, or artifact instead of presenting the claim as verified. |
-| Open risks are missing or unclassified | Stop and classify each material risk by impact on continuation, verification, git boundary, customer/UAT, or artifact scope. | Use `None` only when the checked evidence supports no remaining material risk. |
-| Git status or file boundary is unclear | Run or request the git-boundary evidence required for the handoff scope. | Include intended files, explicit denylist, staged/unstaged status, and unrelated dirty/untracked files; never rely on `git add .`. |
-| Next step is not executable | Rewrite the next action as a concrete next skill or direct action with target, input artifact, and first check. | If a human decision is required, state the decision and options instead of delegating vague follow-up. |
-| Existing `STATE.md` is missing or unreadable | Do not invent state contents. | Report `State Freshness: unknown`, `State Update Needed: yes` when lifecycle threshold applies, and name the missing/unreadable path. |
-| `Last Updated` is missing, unreadable, or not comparable | Do not mark state fresh. | Report `State Freshness: unknown`, `State Update Needed: yes`, and name the bad or missing field. |
-| `Canonical Sources` is missing or unreadable | Do not treat lifecycle state as source truth. | Report `State Freshness: unknown`, `State Update Needed: yes`, and ask the next action to inspect or restore canonical sources. |
-| Canonical sources conflict with each other or with `STATE.md` | Follow the strongest checked canonical source and mark the conflict. | Report `State Freshness: stale` when state conflicts with source truth, or `unknown` when source truth cannot be resolved; keep the conflict in `Risks` or `Do-Not-Assume`. |
-| Freshness is unverifiable from available evidence | Do not infer freshness from file presence. | Report `State Freshness: unknown`, `State Update Needed: yes`, and name the missing evidence/check. |
-
-## Do Not
-
-- Do not turn the handoff into a diary, transcript, or chronological status log.
-- Do not use handoff as an auto-wiki writer or treat wiki pages as continuation source truth; apply `EB-WIKI-001`.
-- Do not claim Groundwork performs official Codex Handoff, creates native Codex worktrees, moves code between Local and Worktree, archives threads, or owns native Handoff Git operations unless direct tool/runtime evidence is cited.
-- Do not copy long diffs, full PRDs, issue bodies, plans, commits, lifecycle state, raw logs, or transcripts.
-- Do not hide unverified claims; label them as open gaps, risks, or `Do-Not-Assume`.
-- Do not duplicate canonical artifacts when a stable path, issue ID, commit, or redacted source identifier is enough.
-- Do not change the compact continuation-state boundary: handoff is a transfer package, not the PRD, plan, issue map, commit history, or durable lifecycle-state owner.
-
-## Output Shape
+Use this compact shape unless a branch reference requires more:
 
 ```text
 Current State
@@ -219,22 +86,33 @@ Next Action
 Artifact Recommendation
 ```
 
-## Stop Condition
+Keep the handoff compact by default. Write a handoff file only when durable continuation is needed.
 
-Stop when the next session can resume without rediscovering core context.
+## Stop Conditions
+
+- Stop before producing a handoff if continuation goal, source artifacts, evidence, open risks, next skill/direct action, or `Do-Not-Assume` boundary is missing.
+- Stop before marking open risks as `None` unless the checked source artifacts, evidence, git boundary, and verification gaps support that claim.
+- Stop before copying long source material; cite canonical artifacts and summarize only resume-critical state.
+- Stop before asking the next reader to act if the next skill, target file/path/artifact, first command/check, or human decision is not executable.
+
+## Reference Loading Rules
+
+Load only the reference matching the active branch.
+
+- Review handoff shape: `REVIEW-PACKAGE.md`.
+- Native Local/Worktree handoff schema and rules: `NATIVE-HANDOFF-PACKAGE.md`.
+- State freshness algorithm: `STATE-FRESHNESS.md`.
+- Complex role/runtime/cache/release/wiki/visual branch details: `COMPLEX-HANDOFF-BRANCHES.md`.
+- Fresh-context review delegation: `skills/_shared/SUBAGENT-DELEGATION.md`.
+- Managed worktree separation: `skills/dispatch/COMPLEX-WORK-SEPARATION.md`.
+- Git continuation boundary: `skills/_shared/GIT-BOUNDARY.md`.
 
 ## Gate Rule
 
-Do not post, push, publish, update trackers, mutate shared skill files, or write remote handoff artifacts without explicit approval with Target, Action, Risk, and Rollback/Undo.
+Do not post, push, publish, update trackers, mutate shared skill files, execute native Handoff, or write remote handoff artifacts without explicit approval with `Target`, `Action`, `Risk`, and `Rollback/Undo`.
 
-Do not ask a future session to use `git add .`. When handoff includes commit continuation, include intended pathspecs, explicit denylist, and unrelated dirty/untracked files that must stay unstaged.
+Do not ask a future session to use `git add .`; include explicit pathspecs and denylist guidance when staging or commit continuation is in scope.
 
 ## Artifact Rule
 
-
-Follow `skills/_shared/AUDIENCE-FIRST-ARTIFACT.md`: every new or materially updated durable artifact must include the required audience-first header fields exactly.
-Follow `skills/_shared/ARTIFACT-DIRECTORY-POLICY.md`: local artifact placement must follow the directory policy, and `.groundwork/*` runtime directories are ignored by default and not committed unless explicitly approved.
-Follow `skills/_shared/ARTIFACT-PROMOTION.md`: canonical artifacts remain the source of truth, while `STATE.md` remains compact recovery state.
-Keep handoff compact by default: cite canonical artifacts, summarize only resume-critical state, and avoid copying full PRDs, issue bodies, plans, diffs, logs, or transcripts. Write a handoff file only when durable continuation is needed. Reference secret locations abstractly and never quote secret values. Existing `STATE.md` remains the lifecycle state owner; handoff is the transfer package, not the durable state layer.
-
-Redact secrets, credentials, PII, sensitive logs, screenshots, requests, and database rows before writing or quoting artifacts.
+New or materially updated durable artifacts must follow `skills/_shared/AUDIENCE-FIRST-ARTIFACT.md`, `skills/_shared/ARTIFACT-DIRECTORY-POLICY.md`, and `skills/_shared/ARTIFACT-PROMOTION.md`. Existing `STATE.md` remains the lifecycle state owner; handoff is the transfer package, not the durable state layer.

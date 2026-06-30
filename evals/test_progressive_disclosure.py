@@ -65,13 +65,19 @@ class ProgressiveDisclosureTests(unittest.TestCase):
     def test_branch_references_have_audience_first_headers(self):
         paths = [
             "skills/dispatch/EXAMPLES.md",
+            "skills/dispatch/DISPATCH-ROUTER-BRANCHES.md",
+            "skills/implement/IMPLEMENT-BRANCHES.md",
             "skills/verify/VERIFY-SCOPE.md",
+            "skills/verify/VERIFY-ROUTER-BRANCHES.md",
             "skills/verify/QA-FAILURE-BRANCH.md",
             "skills/verify/RELEASE-READINESS-BRANCH.md",
             "skills/verify/RUNTIME-CAPABILITY-BRANCH.md",
             "skills/verify/NATIVE-CLOSEOUT-BRANCH.md",
             "skills/verify/UI-READINESS-BRANCH.md",
             "skills/verify/SUBAGENT-REVIEW-BRANCH.md",
+            "skills/handoff/COMPLEX-HANDOFF-BRANCHES.md",
+            "skills/handoff/NATIVE-HANDOFF-PACKAGE.md",
+            "skills/handoff/STATE-FRESHNESS.md",
         ]
         required_fields = [
             "Target Reader:",

@@ -1,140 +1,58 @@
 ---
 name: dispatch
-description: Route accepted, ready tasks to the lightest appropriate runtime by producing Dispatch Package v2 and Result Package expectations. Use for runtime selection, execution matrixes, model/reasoning profile recommendations, managed worktree vs subagent decisions, and package-only runtime handoff. Dispatch is a router/package generator, not an executor.
+description: Use when routing accepted, ready tasks to the lightest appropriate runtime by producing Dispatch Package v2 and Result Package expectations. Use for runtime selection, execution matrixes, model/reasoning profile recommendations, managed worktree vs subagent decisions, and package-only runtime handoff. Do not use when requirements are not accepted, readiness is unknown, the user asks to implement directly, or the user asks for verification.
 ---
 
 # dispatch
 
-## Target Reader
+## Use When
 
-Groundwork users, coordinator threads, runtime adapter authors, and implementation/review threads that need a runtime routing package.
+Use this skill when accepted, ready work needs package-only runtime routing.
 
-## Reader Action Needed
-
-Use this skill to classify accepted tasks, select runtime routes, and produce package-only instructions that another runtime may execute only after explicit execution approval and available tools.
-
-## Decision Supported
-
-Which runtime should handle each task, why that runtime is appropriate, what package it receives, what result package it must return, and which tasks must stop, split, or return to triage.
-
-## Scope
-
-This skill covers dispatch-time package-only runtime routing for `codex_app_managed_worktree_thread`, `codex_subagent`, `main_thread_direct`, `main_thread_readonly`, and `clean_reviewer`.
-
-Out of scope: execution. Apply `skills/_shared/NON-EXECUTOR-BOUNDARY.md`; dispatch does not perform thread, subagent, worktree, runtime, remote, branch-cleanup, release, UAT, or customer-acceptance actions.
-
-## Trigger Contract
-
-Use this skill when the user asks to:
+Examples:
 
 - distribute ready-for-agent issues to agents or runtimes
-- decide which tasks need managed worktrees and which should use subagents or reviewers
-- assign model profile, reasoning effort, or cost/latency bias per task
-- generate an execution matrix
-- generate a dispatch package
-- plan multi-perspective review without creating worktrees
-- decide whether tasks can run in parallel
-- prepare runtime-specific child prompts or package-only handoffs
-- route managed-worktree closeout cleanup decisions, including archived thread with remaining temp branch, remote branch cleanup approval, and unmerged or uncertain branch retention
-- decide branch cleanup state without deleting local or remote branches
-- route clean-review coordinator intake packages, including fanout to `clean_reviewer` or read-only `codex_subagent`
-- reject clean-review direct-edit requests and route required writes as a separate dispatch write task
-- classify missing validation evidence, hidden parent context, parent full-history fork, or nested reviewer topology as `blocked`, `unverified`, `needs_remediation`, or `human_decision`
+- choose managed worktree vs subagent vs read-only reviewer
+- assign model profile, reasoning effort, or cost/latency bias
+- generate an execution matrix, Dispatch Package v2, or runtime-specific child prompt
+- plan clean-review fanout without creating worktrees
+- classify cleanup, hidden parent context, missing validation, or nested reviewer topology as blocked/unverified/remediation/human-decision
 
-zh-CN should trigger:
+## Do Not Use When
 
-- "把这些 ready issue 分配给不同 agent 或 runtime"
-- "给这个任务选择 managed worktree 还是 subagent"
-- "为这些任务生成 Dispatch Package v2"
-- "按成本和延迟给每个任务推荐 model profile"
-- "把 clean review fanout 分给 reviewer，不要直接改文件"
-- "判断这些任务能不能并行跑"
+- Requirements are not accepted; use `to-prd`.
+- Issues are not sliced; use `to-issues`.
+- Readiness is unknown; use `triage`.
+- The user asks to implement one scoped task directly; use `implement`.
+- The user only asks for an implementation plan; use `write-plan`.
+- The user asks whether finished work is ready or verified; use `verify`.
+- The user asks which option to choose before accepted ready work exists; use `skills/_shared/DECISION-MAPPING.md` as a shared lens.
 
-Do not use this skill when:
+## Runtime Mode Router
 
-- requirements are not accepted; use `to-prd`
-- issues are not sliced; use `to-issues`
-- readiness is unknown; use `triage`
-- the user asks which enumerable runtime, model-profile, skill-route, or workflow option to choose before there is an accepted ready package; use `skills/_shared/DECISION-MAPPING.md` as a shared lens, while keeping runtime capability evidence boundaries explicit
-- the user asks to implement one scoped task directly; use `implement`
-- the user only asks for an implementation plan; use `write-plan`
-- the user asks whether finished work is ready or verified; use `verify`
+Dispatch is a router and package generator, not an executor.
 
-zh-CN should not trigger:
+- `lite matrix`: for small accepted task sets where the user needs a runtime recommendation and no full package. Emit source truth, runtime capability boundary, task matrix, blocked/split items, expected result package, and next action.
+- `full dispatch package`: for worktree/subagent/runtime execution handoff. Load `DISPATCH-PACKAGE.md`; include source package, validation expectation, approval requirements, runtime evidence ownership, and result-package expectation.
+- `clean review fanout`: for fresh read-only review routing. Load `CLEAN-REVIEW-FANOUT.md`; reviewers must not edit files.
+- `complex separation`: for managed worktree, merge-back, cleanup, role separation, release/cache, or multi-role handoff boundaries. Load `COMPLEX-WORK-SEPARATION.md`, `RUNTIME-ADAPTERS.md`, and `RESULT-PACKAGE.md` as needed.
 
-- "这个需求还没确认，先写 PRD"; use `to-prd`.
-- "这个 issue 能不能给 agent 做"; use `triage`.
-- "这个 ready issue 只需要写实现计划，不要开 worktree"; use `write-plan`.
-- "按这个任务直接改代码"; use `implement`.
-- "验证这次能不能给客户 UAT"; use `verify`.
+## Minimal Evidence Boundary
 
-## Required Behavior
+Confirm source truth, issue set, readiness source, and evidence level before routing. Dispatch may recommend only from evidence it can name; it must not claim runtime execution, selector enforcement, cache refresh, clean review, closeout, branch cleanup, UAT, release, or customer readiness from package text alone.
 
-When maintaining the Groundwork repository itself, apply the repo-local `AGENTS.md` Done Definition before reporting the work complete.
+Apply only the shared contract needed by the active route:
 
-Apply `EB-RUNTIME-001` and `EB-CACHE-001` from `skills/_shared/EVIDENCE-BOUNDARY.md`, and use `skills/_shared/RUNTIME-CAPABILITY.md` before recommending, requesting, or reporting runtime/model selection. Dispatch must keep capability seed facts, prompt preferences, runtime/tool evidence, official docs, and community evidence separate.
+- `skills/_shared/NON-EXECUTOR-BOUNDARY.md` before emitting runtime packages or execution gates.
+- `skills/_shared/RUNTIME-CAPABILITY.md` and `skills/_shared/COGNITIVE-BUDGET.md` when runtime/model selection is material.
+- `skills/_shared/EVIDENCE-BOUNDARY.md`, `skills/_shared/ROLE-SEPARATION.md`, `skills/_shared/RELEASE-EVIDENCE-CLAIM.md`, and `skills/_shared/LLM-WIKI.md` only when the route makes those claims.
+- `skills/_shared/DECISION-MAPPING.md` only for pre-dispatch option comparison.
 
-Use `skills/_shared/NON-EXECUTOR-BOUNDARY.md` before emitting runtime packages or execution gates. Dispatch is package-only unless a later explicitly approved execution step is handled by an execution-capable runtime/tool.
+## Required Output
 
-When dispatch templates inline `evidence_layer` values, they mirror the canonical runtime evidence layer enum in `skills/_shared/RUNTIME-CAPABILITY.md` and must be updated together with that source.
-
-Use `skills/_shared/COGNITIVE-BUDGET.md` for `model_profile`, reasoning/thinking preference, cost/latency bias, and Spark final authority restrictions. Route by profile before mapping to a concrete model.
-
-Use `skills/_shared/DECISION-MAPPING.md` only for pre-dispatch option comparison when the user needs to choose among enumerable runtime, model-profile, skill-route, or workflow paths. Preserve `dispatch` when accepted, ready tasks need runtime routing, an execution matrix, model/profile recommendations, package-only handoff, or Result Package expectations. A decision map can recommend a dispatch path, but it must not generate or execute the dispatch package and must not claim selector enforcement beyond prompt preference without runtime/tool evidence.
-
-Apply `EB-WIKI-001`, `EB-RUNTIME-001`, `EB-CACHE-001`, `EB-ROLE-001`, and `EB-RELEASE-001` from `skills/_shared/EVIDENCE-BOUNDARY.md` when accepted work has relevant project wiki context. Use `skills/_shared/LLM-WIKI.md` for wiki-specific rules. Skill-specific delta: dispatch may include wiki pages in the source package as orientation or claim inventory, but must label them non-authoritative, require the executing role to inspect qualifying evidence before using the claim, and may include a `Wiki Update Candidate` only when wiki maintenance is not the current execution task.
-
-`dispatch` must:
-
-- confirm source truth, issue set, readiness source, and evidence level before routing
-- classify each task as `write_implementation`, `read_only_review`, `planning_only`, `hybrid`, `diagnosis`, `verification`, or `direct`
-- consume the Goal Contract when present and identify missing required Goal Contract fields
-- assign exactly one `runtime_id` per routed task
-- assign exactly one v0.4.0 route decision per routed task: `local_direct`, `local_with_artifact`, `worktree_isolated`, `worktree_review_only`, or `automation_candidate`
-- emit the v0.4.0 dispatch surface under `dispatch_native_alignment`: route decision, policy, source package, handoff expectation, closeout expectation, verification expectation, approval requirements, and runtime evidence ownership
-- assign isolation level, execution profile, validation expectation, and expected Result Package
-- identify parallelization eligibility and conflict/dependency groups when enough evidence exists
-- preserve the distinction between `runtime_policy.max_parallel_units` as the package-wide concurrency ceiling and `tasks[].parallelization.max_parallel_group_size` as the group-level ceiling; effective concurrency must not exceed either value
-- route read-only and planning-only tasks away from `worktree_isolated` and managed worktree runtimes
-- split hybrid work before any write worktree package is generated
-- default write implementation tasks to managed worktree only when readiness, Goal Contract, `dispatch_native_alignment.source_package`, `dispatch_native_alignment.verification_expectation`, and a concrete `worktree_isolated` route justification are present
-- mark v0.3.3 custom lifecycle, registry, child-thread identity, selector-enforcement, and background-run fields as legacy compatibility unless adapter/runtime evidence exists
-- keep `automation_candidate` recommendation-only; do not create, update, schedule, or archive automations from dispatch
-- stop before execution unless the user explicitly requests execution and the current runtime exposes the required tools
-- report selector enforcement transparently: use `tool_enforced` only when the adapter confirms selector support; otherwise use `prompt_preference`, `unavailable`, or `unknown`
-- add `capability_status` and `selector_enforcement` whenever runtime/model selection is material; do not claim `tool_enforced` from prompt text, Goal Contract text, Dispatch Package text, model menu seeds, or routing profiles alone
-- report Runtime mismatch when requested runtime and available/proposed runtime differ; do not silently substitute subagents for child-thread/worktree runtimes or child-thread/worktree runtimes for subagents
-- treat user-observed model menu seeds as dated `user_supplied` capability facts, not universal runtime truth
-- avoid permanent global concrete model tables; concrete model mapping is evidence-bound and secondary to profile routing
-- keep wiki pages, wiki summaries, wiki audits, and external graph/search/index output within `EB-WIKI-001`
-- apply `EB-ROLE-001` from `skills/_shared/EVIDENCE-BOUNDARY.md` and `skills/_shared/ROLE-SEPARATION.md` when routing material work: separate designer/planner, implementer, clean reviewer, verifier, and coordinator roles
-- include role-separation closeout expectations for material tasks using `Role`, `Design Source`, `Self-check Evidence`, `Clean Review Evidence`, `Independent Verification Evidence`, `Runtime Evidence`, `Browser Evidence`, `UAT Evidence`, `Release Evidence`, `Readiness Boundary`, and `Required Next Independent Role`
-- when a clean-review claim is blocked, unverified, invalid, inherited from parent context, or requires a future fresh reviewer, do not emit current-state fields such as `clean_review: passed`, `clean_review_passed: true`, or `Clean Review Evidence: passed`; use explicit missing/required/fresh-pass-required wording instead
-
-## Hard Stop Before Execution
-
-Dispatch is a router and package generator. It applies `skills/_shared/NON-EXECUTOR-BOUNDARY.md` and keeps these dispatch-specific deltas:
-
-- do not call runtime/thread/subagent tools from dispatch output alone;
-- do not execute package contents or write files in target runtimes;
-- do not claim selector enforcement, runtime execution, validation, clean review, or closeout happened from package text.
-
-If the user asks dispatch to execute, output the dispatch package plus an execution gate:
+Use this compact shape unless a full package is requested:
 
 ```text
-Proposed Action:
-Target Runtime:
-Required Tool Capability:
-Risk:
-Rollback/Undo:
-Approval Needed:
-```
-
-Proceed only after explicit approval and tool availability are both confirmed.
-
-## Output Shape
-
-````text
 Dispatch Runtime Decision
 
 Dispatch Summary
@@ -146,16 +64,14 @@ Source Truth
 - Evidence Level:
 
 Runtime Capability Check
-- capability_status: known | unknown | user_supplied | docs_reference | tool_enforced
-- selector_enforcement: tool_enforced | prompt_preference | unavailable | unknown
-- Evidence layer: prompt_preference | runtime_tool_evidence | user_observed_model_menu_seed | official_docs | community_evidence | local_characterization_eval
+- capability_status:
+- selector_enforcement:
+- Evidence layer:
 - Available / assumed runtimes:
 - Runtime selectors available:
-- Subagent execution available:
-- Worktree thread execution available:
 - Requested runtime:
 - Available runtime:
-- Runtime mismatch: yes | no | unknown
+- Runtime mismatch:
 - Fallback proposed:
 - User approval required:
 
@@ -164,12 +80,12 @@ Task Matrix
 |---|---|---|---|---|---|---|---|---|---|---|
 
 No-Execution / Blocked / Needs Split
-- Task:
-- Reason:
-- Required next action:
 
 Runtime Packages
-Must conform to `skills/dispatch/DISPATCH-PACKAGE.md`. Do not duplicate the package schema in `SKILL.md`. Load `skills/dispatch/EXAMPLES.md` only when an example package is useful for the active route.
+- Package Ref:
+- Source Package:
+- Validation Expectation:
+- Approval Requirements:
 
 Expected Result Package
 - Runtime:
@@ -188,13 +104,36 @@ Expected Result Package
 - Required Next Independent Role:
 
 Next Action
-````
+```
 
-## Package References
+Full package payloads must conform to `DISPATCH-PACKAGE.md`; do not duplicate the full schema in this entry file.
 
-- Runtime capabilities: `RUNTIME-ADAPTERS.md`
-- Dispatch schema and routing rules: `DISPATCH-PACKAGE.md`
-- Runtime package examples: `EXAMPLES.md`
-- Unified result envelope: `RESULT-PACKAGE.md`
-- Clean review fan-out: `CLEAN-REVIEW-FANOUT.md`
-- Managed worktree internal adapter contract: `adapters/codex_app_managed_worktree_thread/ADAPTER.md`
+## Stop Conditions
+
+- Stop before routing when source truth, issue set, readiness source, or evidence level is unknown.
+- Split hybrid work before emitting a write worktree package.
+- Route read-only and planning-only tasks away from `worktree_isolated`.
+- Stop before execution unless the user explicitly requests execution and the current runtime exposes the required tools.
+- Stop or mark unverified when selector support, managed worktree availability, cache refresh, clean review, release/UAT evidence, or runtime execution is not evidenced.
+
+## Reference Loading Rules
+
+Load only the reference matching the active route.
+
+- Full schema and routing fields: `DISPATCH-PACKAGE.md`.
+- Unified result envelope: `RESULT-PACKAGE.md`.
+- Runtime capabilities and adapter boundaries: `RUNTIME-ADAPTERS.md`.
+- Routing profiles: `ROUTING-PROFILES.md`.
+- Runtime package examples: `EXAMPLES.md`.
+- Clean review fanout: `CLEAN-REVIEW-FANOUT.md`.
+- Managed worktree, role separation, and closeout boundaries: `COMPLEX-WORK-SEPARATION.md`.
+- Conflict/dependency preflight: `CONFLICT-PREFLIGHT.md`.
+- Entry-router behavior and hard-stop details: `DISPATCH-ROUTER-BRANCHES.md`.
+
+## Gate Rule
+
+If the user asks dispatch to execute, output the package plus `Proposed Action`, `Target Runtime`, `Required Tool Capability`, `Risk`, `Rollback/Undo`, and `Approval Needed`. Proceed only after explicit approval and tool availability are both confirmed.
+
+## Artifact Rule
+
+Write dispatch artifacts only when package review, execution handoff, or later verification needs a stable file. New or materially updated durable artifacts must follow `skills/_shared/AUDIENCE-FIRST-ARTIFACT.md` and `skills/_shared/ARTIFACT-DIRECTORY-POLICY.md`. Redact secrets, credentials, PII, sensitive logs, screenshots, requests, and database rows.
