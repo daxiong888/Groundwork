@@ -30,10 +30,19 @@ jobs:
           python -m py_compile \
             evals/run_runtime.py \
             evals/check_coverage_manifest.py \
+            evals/route_detection.py \
+            evals/routing_schema.py \
             evals/schema_validation.py \
             evals/scoring.py \
+            evals/verdict_model.py \
             evals/report.py \
-            evals/patch_suggestions.py
+            evals/patch_suggestions.py \
+            scripts/codex-hooks/groundwork_router_observability.py \
+            scripts/codex-hooks/user_prompt_submit_groundwork_entry.py \
+            scripts/codex-hooks/pre_tool_use_groundwork_trace.py \
+            scripts/codex-hooks/post_tool_use_groundwork_trace.py \
+            scripts/codex-hooks/permission_request_groundwork_trace.py \
+            scripts/codex-hooks/stop_groundwork_score.py
 
       - name: Prompt CSV parse
         run: |
@@ -57,6 +66,7 @@ jobs:
           python -m unittest evals.test_patch_suggestions
           python -m unittest evals.test_coverage_manifest
           python -m unittest evals.test_progressive_disclosure
+          python -m unittest evals.test_router_observability
           PYTHONPATH=evals python -m unittest evals.test_run_runtime_scheduler
 
       - name: Prompt schema validation

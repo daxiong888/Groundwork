@@ -920,8 +920,40 @@ def unique_in_order(values):
     return out
 
 
+SKILL_LOAD_LOG_MARKERS = (
+    "load skill",
+    "loaded skill",
+    "loading skill",
+    "skill load",
+    "skill_load",
+    "skill_path",
+    "skill_file",
+)
+
+
+def looks_like_skill_load_line(line):
+    stripped = line.strip()
+    if not stripped:
+        return False
+    lowered = stripped.lower()
+    try:
+        value = json.loads(stripped)
+    except json.JSONDecodeError:
+        return any(marker in lowered for marker in SKILL_LOAD_LOG_MARKERS)
+    if not isinstance(value, dict):
+        return False
+    key_text = " ".join(str(key).lower() for key in value)
+    event_text = " ".join(
+        str(value.get(key) or "").lower()
+        for key in ("event", "type", "kind", "name", "message")
+    )
+    if "skill_path" in key_text or "skill_file" in key_text:
+        return True
+    return any(marker in event_text for marker in {"skill_load", "skill load", "loaded skill", "loading skill"})
+
+
 def parse_actual_skill(text, last, expected):
-    combined = text + "\n" + last
+    combined = "\n".join(line for line in str(text or "").splitlines() if looks_like_skill_load_line(line))
     hits = []
     for match in re.finditer(r"/skills/([A-Za-z0-9_-]+)/SKILL\.md", combined):
         skill = match.group(1)
@@ -1997,6 +2029,12 @@ def validate_lifecycle_state_artifacts(cwd, files, changes):
 
 
 def quick_verdict(row, actual, last, rc, changes, lifecycle_errors, stdout=""):
+    """Legacy compatibility diagnostics for pre-verdict-model checks.
+
+    Keep row-id-specific checks here while they are migrated into structured
+    checker tokens. Trace-ready rows use the verdict model as source of truth;
+    legacy rows may still use these checks as a compatibility backstop.
+    """
     expected = expected_skill_for_row(row)
     acceptable_routes = acceptable_routes_for_row(row)
     load_required = boolish(row.get("skill_load_required", True))
@@ -2121,11 +2159,25 @@ def quick_verdict(row, actual, last, rc, changes, lifecycle_errors, stdout=""):
 
 
 def should_apply_legacy_override(row, legacy_verdict, verdict_model):
-    if legacy_verdict == "pass":
+    """Preserve legacy-row failures until their checks are model-backed."""
+    if is_routing_reliability_row(row):
         return False
-    if verdict_model["overall_verdict"] != "pass":
+    if str(verdict_model.get("overall_verdict") or "") != "pass":
         return False
-    return not is_trace_ready_row(row)
+    return legacy_verdict in {"fail", "blocked", "timeout"}
+
+
+def apply_legacy_override(row, legacy_verdict, legacy_notes, verdict_model):
+    legacy_override = should_apply_legacy_override(row, legacy_verdict, verdict_model)
+    if not legacy_override:
+        return verdict_model["overall_verdict"], verdict_model["notes"], False
+
+    notes = "legacy compatibility override"
+    if legacy_notes:
+        notes += f": {legacy_notes}"
+    if verdict_model["notes"]:
+        notes += f"; model_notes: {verdict_model['notes']}"
+    return legacy_verdict, notes, True
 
 
 def write_case_result(result):
@@ -2203,16 +2255,12 @@ def run_row(row, timeout_s=None, attempt=1):
         stdout,
         sandbox=sandbox,
     )
-    if should_apply_legacy_override(row, legacy_verdict, verdict_model):
-        verdict_model["overall_verdict"] = legacy_verdict
-        verdict_model["failure_type"] = "legacy_runtime_check"
-        verdict_model["fix_locus"] = "runtime_verdict"
-        verdict_model["blocking_level"] = "blocking"
-    if legacy_notes and not is_trace_ready_row(row) and legacy_notes not in verdict_model["notes"]:
-        verdict_model["notes"] = "; ".join(
-            item for item in [verdict_model["notes"], legacy_notes] if item
-        )
-
+    verdict, notes, legacy_override = apply_legacy_override(
+        row,
+        legacy_verdict,
+        legacy_notes,
+        verdict_model,
+    )
     result = {
         "id": row_id,
         "suite": row["_suite"],
@@ -2222,8 +2270,11 @@ def run_row(row, timeout_s=None, attempt=1):
         "multi_skill_hit": multi_skill_hit,
         "warnings": warnings,
         "route_evidence_source": route_evidence_source(parsed_actual, skill_hits, actual, last),
-        "verdict": verdict_model["overall_verdict"],
-        "notes": verdict_model["notes"],
+        "legacy_verdict": legacy_verdict,
+        "legacy_notes": legacy_notes,
+        "legacy_override": legacy_override,
+        "verdict": verdict,
+        "notes": notes,
         "parallel_safe": metadata["parallel_safe"],
         "resource_keys": metadata["resource_keys"],
         "resource_group": metadata["group"],

@@ -113,6 +113,7 @@ def dispatch_decision_from_entry(decision):
         "turn_id": decision.get("turn_id", "unknown"),
         "dispatch_version": 2,
         "task_id": decision.get("turn_id", "unknown"),
+        "task_shape": task_shape.replace(" ", "_"),
         "task_type": "hybrid",
         "runtime_id": "main_thread_readonly",
         "route_decision": "local_with_artifact",
@@ -129,6 +130,21 @@ def dispatch_decision_from_entry(decision):
             "notes": [],
         },
     }
+
+
+def dispatch_requires_strong_profile(dispatch_decision):
+    if not dispatch_decision:
+        return False
+    if dispatch_decision.get("clean_review_required") is True:
+        return True
+    task_shape = str(dispatch_decision.get("task_shape") or "").strip().lower().replace("-", "_").replace(" ", "_")
+    if task_shape in {"clean_review", "read_only_clean_review"}:
+        return True
+    review_type = str(dispatch_decision.get("review_type") or "").strip().lower().replace("-", "_").replace(" ", "_")
+    if review_type in {"clean_review", "independent_clean_review"}:
+        return True
+    route_decision = str(dispatch_decision.get("route_decision") or "").strip().lower()
+    return route_decision in {"clean_review", "worktree_clean_review", "readonly_clean_review"}
 
 
 def execution_profile_verdict(dispatch_decision):
@@ -148,7 +164,7 @@ def execution_profile_verdict(dispatch_decision):
             return "insufficient_evidence", "selector_unverified"
         if selector_evidence.get("source") not in {"runtime_adapter", "tool_report"}:
             return "insufficient_evidence", "selector_unverified"
-    if profile.get("model_profile") in {"fast_scan", "spark_iteration"} and "clean" in str(dispatch_decision).lower():
+    if profile.get("model_profile") in {"fast_scan", "spark_iteration"} and dispatch_requires_strong_profile(dispatch_decision):
         return "mismatch", "profile_too_weak_for_risk"
     return "pass", "none"
 
@@ -242,6 +258,13 @@ def apply_live_score_authority_gate(score, decision):
         blockers.append("checker_results")
 
     if blockers:
+        if score.get("expected_route_source") == "heuristic":
+            score["score_eligibility"] = "display_only"
+            score["notes"] = (
+                "display-only live heuristic; candidate verdict is not baseline scoring evidence; "
+                "baseline scoring blocked by: " + ", ".join(blockers)
+            )
+            return score
         score["score_eligibility"] = "insufficient_evidence"
         score["routing_verdict"] = "blocked"
         score["overall_verdict"] = "blocked"
@@ -315,6 +338,7 @@ def score_turn(decision, final_message="", events=None, dispatch_decision=None, 
         "acceptable_routes": acceptable,
         "forbidden_routes": forbidden,
         "routing_verdict": routing_verdict,
+        "candidate_routing_verdict": routing_verdict,
         "host_preemption_verdict": NOT_APPLICABLE,
         "execution_profile_verdict": profile_verdict,
         "execution_profile_source": "dispatch_decision" if dispatch_decision else "unknown",
@@ -324,6 +348,7 @@ def score_turn(decision, final_message="", events=None, dispatch_decision=None, 
         "evidence_verdict": "pass" if events or final_message else "blocked",
         "behavior_verdict": "pass" if overall == "pass" else "fail",
         "overall_verdict": overall,
+        "candidate_overall_verdict": overall,
         "failure_type": failure_type,
         "fix_locus": fix_locus,
         "changed_files": changed_files,
@@ -404,6 +429,12 @@ def render_router_card(score, decision=None, dispatch_decision=None):
             "",
             "## Limitations",
             f"- {score.get('evidence_boundary')}",
+            (
+                "- Live heuristic display-only: candidate verdicts are shown for review, "
+                "but they do not count as baseline pass/fail evidence."
+                if score.get("score_eligibility") == "display_only"
+                else ""
+            ),
             "",
             "## Score Eligibility",
             f"- `{score.get('score_eligibility', 'unknown')}`",

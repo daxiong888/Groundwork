@@ -14,18 +14,19 @@ It should also not become a blind Superpowers + mattpocock bundle. The borrowed 
 
 ## Current Stage
 
-Current `main` contains the v0.5.2 source-validation public surface. Groundwork remains a small Codex-native R&D base: it governs route, policy, evidence, project wiki knowledge artifacts, handoff, dispatch, and closeout contracts while Codex App/runtime adapters own actual worktree creation, Handoff execution, runtime execution, cache refresh, marketplace state, and cleanup operations.
+Current `main` contains the v0.5.3 source-validation public surface. Groundwork remains a small Codex-native R&D base: it governs route, policy, evidence, project wiki knowledge artifacts, handoff, dispatch, closeout contracts, and project opt-in router observability while Codex App/runtime adapters own actual worktree creation, Handoff execution, runtime execution, cache refresh, marketplace state, and cleanup operations.
 
 Current contents:
 
 - `.codex-plugin/plugin.json`
 - `docs/` product and architecture docs
 - `evals/` prompt fixtures, structured smoke, safety, and reliability fixtures, scenario fixtures, fixture repos, baselines, and runtime trial checklist
+- `hooks/` dormant Codex hook definitions for project opt-in router observability
 - `research/` source research and scenario analysis
 - `skills/` ten public skills, including `dispatch` and `wiki`, plus required shared guardrails and adapter contracts
-- `scripts/` optional future scripts directory, currently empty except `.gitkeep`
+- `scripts/codex-hooks/` standard-library hook entrypoints for router observability v0
 
-The repository includes runtime and eval evidence accumulated across v0.1 through v0.4.0, including plugin discovery, representative workflow trials, fixture validation, Codex App runtime-safety follow-up, dispatch routing coverage, managed-worktree lifecycle contract coverage, governance baseline hardening, and native worktree handoff alignment evidence. The v0.4.0 line does not add task tools, hooks, MCP servers, marketplace publishing flow, or task CRUD.
+The repository includes runtime and eval evidence accumulated across v0.1 through v0.4.0, plus source-validation evidence for v0.4.x through v0.5.3. This includes plugin discovery, representative workflow trials, fixture validation, Codex App runtime-safety follow-up, dispatch routing coverage, managed-worktree lifecycle contract coverage, governance baseline hardening, native worktree handoff alignment evidence, public wiki source-validation coverage, and router observability hook source checks. The current surface still does not add task tools, MCP servers, marketplace publishing flow, task CRUD, default trace capture, automatic routing mutation, or runtime execution.
 
 ## MVP Surface
 
@@ -132,7 +133,7 @@ skills/
     templates/
 ```
 
-`OUT-OF-SCOPE.md`, templates, examples, scripts, hooks, `.mcp.json`, `.app.json`, and assets are deferred unless real usage proves they are needed. Add supporting examples only after the first real task validates the workflow:
+`OUT-OF-SCOPE.md`, templates, examples, `.mcp.json`, `.app.json`, assets, and new scripts or hooks beyond the accepted router observability surface are deferred unless real usage proves they are needed. Add supporting examples only after the first real task validates the workflow:
 
 ```text
 skills/<skill-name>/examples/
@@ -156,7 +157,7 @@ Do not give every skill the same folder shape by default. Mirror the borrowed sk
 | `verify` | Source ideas are behavioral: Superpowers verification-before-completion, gstack QA, GSD UAT evidence. | `SKILL.md` plus a small verification output format inline. Add `templates/verification.md` only after repeated use. |
 | `handoff` | mattpocock `handoff` is intentionally tiny and avoids duplication. | `SKILL.md` only, with a compact handoff format and artifact-reference rule. |
 
-Scripts are not required for the first cut. Add scripts only after a repeated operation is clearly deterministic and failure-prone, such as local fallback task indexing or artifact link validation. Do not build task CRUD, tracker API integration, hooks, MCP, UI, or a CLI until the skills have been used on real work.
+Scripts are not required for each skill's first cut. Add new scripts only after a repeated operation is clearly deterministic and failure-prone, such as local fallback task indexing or artifact link validation. The accepted router observability surface is the current exception: it owns the dormant hook definitions and `scripts/codex-hooks/` entrypoints described above. Do not build task CRUD, tracker API integration, additional hooks, MCP, UI, or a CLI until repeated real work proves the need.
 
 ## Task Source Strategy
 

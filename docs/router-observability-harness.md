@@ -69,6 +69,8 @@ GROUNDWORK_ROUTER_OBSERVABILITY=1
 GROUNDWORK_ROUTER_OBSERVABILITY_MODE=observe_only
 ```
 
+`GROUNDWORK_ROUTER_OBSERVABILITY=1` force-enables the hooks for the current process. If a project config exists, the file still supplies settings such as `raw_capture`, `snippet_capture`, and mode defaults, but env activation records `activation_source=env_force_enable_over_config` and overrides `enabled=false`.
+
 Disable for one process:
 
 ```text
@@ -80,6 +82,8 @@ GROUNDWORK_ROUTER_OBSERVABILITY_DISABLED=1
 `observe_only` is the default v0 mode. It writes local scratch artifacts for opted-in projects only. It does not inject route hints, block prompts, rewrite tool calls, request Stop continuation, spawn subagents, create worktrees, create PRs, commit, push, or mutate trackers.
 
 `guided_hint_trial` is explicit. It may emit compact `additionalContext`, and every score from this mode is marked `guided_hint_excluded`; it must not count toward passive baseline metrics.
+
+Live heuristic `observe_only` scores are `display_only` until a fixture or accepted deterministic classifier supplies stronger expected-route evidence. Display-only scores preserve candidate route verdicts for review, but they do not count as baseline pass/fail evidence.
 
 ## Scratch Layout
 
@@ -119,7 +123,7 @@ evidence_layer
 execution_claim
 ```
 
-These fields describe dispatch intent unless a runtime adapter or tool reports selector application for the specific run. v0 hook output must keep `actual_dispatch_output_observed=false` and `score_eligibility=insufficient_evidence` for the heuristic candidate. `tool_enforced` must not be claimed from a prompt, dispatch package, routing profile, model-menu seed, or hook score alone.
+These fields describe dispatch intent unless a runtime adapter or tool reports selector application for the specific run. v0 hook output must keep `actual_dispatch_output_observed=false` and `score_eligibility=insufficient_evidence` for the heuristic dispatch candidate. Router score artifacts may use `score_eligibility=display_only` for live heuristic entry decisions. `tool_enforced` must not be claimed from a prompt, dispatch package, routing profile, model-menu seed, or hook score alone.
 
 ## Backfill
 

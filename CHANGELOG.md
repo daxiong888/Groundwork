@@ -4,6 +4,27 @@ All notable changes to Groundwork are documented in this file.
 
 ## Unreleased
 
+## v0.5.3 - 2026-06-30
+
+### Added
+
+- Added plugin-bundled dormant Codex hook definitions for router observability v0.
+- Added project opt-in router observability hook entrypoints under `scripts/codex-hooks/`.
+- Added local scratch router decision, dispatch candidate, tool event, permission event, final metadata, score, and card artifacts under `.groundwork/harness/router-observability/`.
+- Added router observability docs and focused unit coverage for hook no-op, opt-in, capture, scoring, report, and backfill behavior.
+
+### Changed
+
+- Bumped plugin metadata to `0.5.3` for the router observability source-validation release.
+- Kept router observability hooks observe-only by default and project opt-in only.
+- Preserved `implement` and artifact-writing workflows under the plugin-wide `Write` capability while keeping router observability hooks local-scratch-only.
+
+### Notes
+
+- This release is source-validation focused. Local source checks, hook unit tests, CI source gates, and clean review do not prove installed-plugin runtime behavior, hook trust state, marketplace publishing, cache-refresh behavior, UAT readiness, release readiness, or customer readiness by themselves.
+- Runtime/cache claims require a named installed plugin root, source root, refresh or source/cache equivalence method, hook trust state, run scope, commands/trials, limitations, and missing evidence.
+- Router observability scratch output belongs under ignored `.groundwork/harness/` unless a maintainer explicitly approves a reviewed and redacted promotion path.
+
 ## v0.5.2 - 2026-06-27
 
 ### Added

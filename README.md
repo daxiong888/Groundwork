@@ -52,6 +52,8 @@ The v0.5 public skill expansion policy shifts Groundwork from a fixed public-ski
 
 The v0.5.2 public wiki skill adds project-level LLM Wiki lifecycle support for init, ingest, query, audit, update, deprecate/archive, and repair. Wiki remains source-validation context and claim inventory only; it is not source truth, implementation authority, verification pass evidence, runtime evidence, release evidence, UAT evidence, marketplace evidence, installed-plugin evidence, or cache-refresh evidence.
 
+The v0.5.3 router observability work adds dormant plugin-bundled Codex hook definitions and project opt-in hook entrypoints. These hooks are observe-only by default and write local scratch artifacts under `.groundwork/harness/router-observability/` only after a project explicitly opts in. Hook cards, scores, and local scratch output are source-validation and improvement evidence only; they are not release, UAT, customer, marketplace, installed-plugin, cache-refresh, or hook-trust evidence by themselves.
+
 This repository currently contains:
 
 - project vision and boundaries
@@ -61,6 +63,8 @@ This repository currently contains:
 - real maintenance case studies
 - Codex plugin manifest
 - ten public skills, including `dispatch` and `wiki`
+- dormant Codex hook definitions for project opt-in router observability
+- standard-library hook entrypoint scripts under `scripts/codex-hooks/`
 - native Codex worktree/handoff governance contracts for v0.4.0
 - v0.4.x trace-first eval platform source-validation docs, schemas, helpers, checker modules, reports, patch suggestions, CI workflow, and release evidence claim template
 - v0.5 public skill expansion policy and shared skill-quality gate
@@ -72,7 +76,7 @@ This repository currently contains:
 - runtime trial checklist
 - managed worktree lifecycle, clean review, merge-back, and serial barrier contracts for v0.3.3
 
-It intentionally does not yet contain task tools, hooks, MCP servers, marketplace publishing flow, or local task CRUD. Those should be added only after repeated real usage exposes a need.
+It intentionally does not yet contain task tools, MCP servers, marketplace publishing flow, local task CRUD, automatic routing mutation, or default trace capture. New non-observability hooks or active runtime behavior should be added only after repeated real usage exposes a need.
 
 ## Local Installation
 
@@ -80,8 +84,8 @@ Target Reader: Someone who found this repository and wants to install Groundwork
 Reader Action Needed: Register the Groundwork marketplace, install the plugin, and enable it in Codex.
 Decision Supported: Whether this repository can be used directly as a local Codex plugin.
 Scope: Local personal installation from this repository through Codex's plugin marketplace flow.
-Out of Scope: Public marketplace publishing, remote plugin distribution, task CRUD, hooks, MCP servers, and production integrations.
-Evidence Level: `.agents/plugins/marketplace.json` exposes the plugin to Codex, and `.codex-plugin/plugin.json` declares the plugin metadata and bundled `skills/` path.
+Out of Scope: Public marketplace publishing, remote plugin distribution, task CRUD, MCP servers, production integrations, automatic trace capture, and hook-trust or runtime-readiness claims.
+Evidence Level: `.agents/plugins/marketplace.json` exposes the plugin to Codex, and `.codex-plugin/plugin.json` declares the plugin metadata, bundled `skills/` path, and dormant hook definitions.
 
 Groundwork is currently intended to be installed as a local personal Codex plugin. The recommended path is to add this repository as a Codex marketplace, then install the plugin from that marketplace:
 
@@ -100,6 +104,12 @@ Then verify that groundwork@groundwork is installed and enabled.
 ```
 
 The same marketplace and plugin state is local to the machine. If you use both Codex CLI and the Codex desktop app on the same computer, restart the app or refresh the plugin list after installing from the CLI.
+
+Router observability hooks remain dormant after installation. To opt a project into local observe-only trace capture, see [`docs/router-observability-harness.md`](docs/router-observability-harness.md). Downstream projects that opt in should ignore local scratch output, for example:
+
+```bash
+echo ".groundwork/harness/" >> .gitignore
+```
 
 If you are testing an unpublished local checkout, add the checkout path as the marketplace source instead:
 

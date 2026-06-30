@@ -1,11 +1,13 @@
 {
+  "description": "Groundwork router observability v0 dormant hooks. They no-op unless the current project opts in.",
   "hooks": {
     "UserPromptSubmit": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$PLUGIN_ROOT/scripts/codex-hooks/user_prompt_submit_groundwork_entry.py\""
+            "command": "python3 \"$PLUGIN_ROOT/scripts/codex-hooks/user_prompt_submit_groundwork_entry.py\"",
+            "timeout": 10
           }
         ]
       }
@@ -16,7 +18,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$PLUGIN_ROOT/scripts/codex-hooks/pre_tool_use_groundwork_trace.py\""
+            "command": "python3 \"$PLUGIN_ROOT/scripts/codex-hooks/pre_tool_use_groundwork_trace.py\"",
+            "timeout": 10
           }
         ]
       }
@@ -26,7 +29,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$PLUGIN_ROOT/scripts/codex-hooks/permission_request_groundwork_trace.py\""
+            "command": "python3 \"$PLUGIN_ROOT/scripts/codex-hooks/permission_request_groundwork_trace.py\"",
+            "timeout": 10
           }
         ]
       }
@@ -37,7 +41,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$PLUGIN_ROOT/scripts/codex-hooks/post_tool_use_groundwork_trace.py\""
+            "command": "python3 \"$PLUGIN_ROOT/scripts/codex-hooks/post_tool_use_groundwork_trace.py\"",
+            "timeout": 10
           }
         ]
       }
@@ -47,7 +52,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$PLUGIN_ROOT/scripts/codex-hooks/stop_groundwork_score.py\""
+            "command": "python3 \"$PLUGIN_ROOT/scripts/codex-hooks/stop_groundwork_score.py\"",
+            "timeout": 30
           }
         ]
       }

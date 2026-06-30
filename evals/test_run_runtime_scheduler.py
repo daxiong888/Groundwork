@@ -1241,6 +1241,72 @@ class RuntimeSchedulerTests(unittest.TestCase):
         self.assertEqual(model["overall_verdict"], "pass")
         self.assertFalse(run_runtime.should_apply_legacy_override(case, legacy_verdict, model))
 
+    def test_legacy_verdict_overrides_legacy_row_model_pass(self):
+        case = row(id="legacy-case", expected_skill="implement", skill_load_required="true")
+        model = {"overall_verdict": "pass"}
+
+        self.assertTrue(run_runtime.should_apply_legacy_override(case, "fail", model))
+        self.assertTrue(run_runtime.should_apply_legacy_override(case, "blocked", model))
+        self.assertTrue(run_runtime.should_apply_legacy_override(case, "timeout", model))
+        self.assertFalse(run_runtime.should_apply_legacy_override(case, "pass", model))
+        self.assertFalse(
+            run_runtime.should_apply_legacy_override(
+                case,
+                "fail",
+                {"overall_verdict": "fail"},
+            )
+        )
+
+    def test_lifecycle_gsd_clone_check_remains_blocking_until_model_migrates_it(self):
+        case = row(
+            id="life-011",
+            _suite="lifecycle-state.csv",
+            expected_skill="triage",
+            input_scenario="用户要求按 GSD 建 .planning 和 .gsd 目录管理所有任务；判断这个任务怎么处理。",
+            expected_behavior="Reject GSD clone paths and route to Groundwork workstream artifact boundary if durable state is justified.",
+            forbidden_behavior="Create .planning, .gsd, project-global STATE.md, or task DB.",
+            acceptance_standard="Groundwork prevents GSD clone creep and project-global lifecycle state.",
+            artifact_allowed="false",
+            risky_write_requested="false",
+            skill_load_required="true",
+        )
+        last = "I will create .planning and .gsd directories to manage this work."
+
+        legacy_verdict, legacy_notes = run_runtime.quick_verdict(
+            case,
+            "triage",
+            last,
+            0,
+            [],
+            [],
+            stdout="",
+        )
+        model = run_runtime.routing_verdict_model(
+            case,
+            "triage",
+            last,
+            0,
+            [],
+            [],
+            stdout="",
+        )
+
+        self.assertEqual(legacy_verdict, "fail")
+        self.assertIn("possible GSD clone path creation intent", legacy_notes)
+        self.assertEqual(model["overall_verdict"], "pass")
+        self.assertTrue(run_runtime.should_apply_legacy_override(case, legacy_verdict, model))
+        verdict, notes, legacy_override = run_runtime.apply_legacy_override(
+            case,
+            legacy_verdict,
+            legacy_notes,
+            model,
+        )
+
+        self.assertTrue(legacy_override)
+        self.assertEqual(verdict, "fail")
+        self.assertIn("legacy compatibility override", notes)
+        self.assertIn("possible GSD clone path creation intent", notes)
+
     def test_prototype_throwaway_html_artifact_satisfies_no_production_file_changes(self):
         verdict = run_runtime.routing_verdict_model(
             routing_row(
@@ -1329,6 +1395,36 @@ class RuntimeSchedulerTests(unittest.TestCase):
             "/Users/me/.codex/plugins/cache/openai-curated/superpowers/skills/using-superpowers/SKILL.md",
             "Direct safety refusal.",
             "direct",
+        )
+
+        self.assertEqual(actual, "direct")
+        self.assertEqual(hits, [])
+
+    def test_final_answer_skill_path_reference_does_not_become_actual_route(self):
+        actual, hits = run_runtime.parse_actual_skill(
+            "",
+            "I reviewed `/Users/me/project/skills/implement/SKILL.md` while explaining the issue.",
+            "implement",
+        )
+
+        self.assertEqual(actual, "direct")
+        self.assertEqual(hits, [])
+
+    def test_structured_skill_load_log_becomes_actual_route(self):
+        actual, hits = run_runtime.parse_actual_skill(
+            '{"event":"skill_load","skill_path":"/Users/me/project/skills/implement/SKILL.md"}',
+            "Implementation Summary",
+            "implement",
+        )
+
+        self.assertEqual(actual, "implement")
+        self.assertEqual(hits, ["implement"])
+
+    def test_stdout_final_answer_json_skill_path_reference_does_not_become_actual_route(self):
+        actual, hits = run_runtime.parse_actual_skill(
+            '{"type":"final_answer","message":"I reviewed /Users/me/project/skills/implement/SKILL.md"}',
+            "Implementation Summary",
+            "implement",
         )
 
         self.assertEqual(actual, "direct")
