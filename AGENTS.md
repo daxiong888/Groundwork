@@ -47,6 +47,12 @@ Groundwork is a Codex-native evidence-first R&D workflow base. The public skill 
 - Use `git diff --check` for whitespace/conflict-marker checks before reporting changed files as complete.
 - Runtime evidence from `evals/run_runtime.py` is release-relevant only when the installed plugin cache/source equivalence or supported marketplace refresh is named. Local source edits alone are not runtime evidence.
 
+## CodeGraph
+
+- `.codegraph` contains local DB/socket/log state and is intentionally not shared through Git.
+- In a new worktree, run `scripts/ensure-codegraph.sh` from that worktree before relying on the CodeGraph MCP; the script initializes the local index when missing and syncs it when present.
+- Do not treat a different worktree's CodeGraph index as evidence for the current worktree.
+
 ## Review Rules
 
 - Treat PRDs, skill files, shared guardrails, eval prompts, and baselines as source-truth-bearing artifacts. Do not rely on memory or summaries when the file is available.
