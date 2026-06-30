@@ -96,6 +96,8 @@ Use the complete block from `SCOPE-EVIDENCE-TEMPLATE.md` as the required opening
 
 When maintaining the Groundwork repository itself, apply the repo-local `AGENTS.md` Done Definition before reporting the work complete.
 
+Use `skills/_shared/NON-EXECUTOR-BOUNDARY.md` before judging execution, closeout, runtime, cache, release, UAT, customer, thread, subagent, worktree, handoff, branch deletion, or remote mutation claims. Verify reports evidence sufficiency and recommends next task-state action; it does not perform those actions.
+
 Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` before judging readiness when lifecycle state, task state, source truth, or downstream closeout is involved. Source truth beats `STATE.md`: if lifecycle state conflicts with source code, tests, runtime evidence, accepted PRD/issue, or user-confirmed decisions, mark the state stale or insufficient and follow the canonical source.
 
 When lifecycle state is stale or insufficient but lifecycle thresholds do not justify updating `STATE.md`, still report the stale or insufficient state under `Risks` or `Unverified Claims`.
@@ -126,7 +128,7 @@ Use specialized references when they apply:
 - `skills/_shared/SUBAGENT-DELEGATION.md` for fresh-context subagent review prompts.
 - `skills/dispatch/COMPLEX-WORK-SEPARATION.md` when verification follows managed worktree work whose risk or scope may require separate planning, implementation, clean review, verification, and coordinator closeout roles.
 
-For complex work separation, `verify` owns evidence sufficiency only. It may confirm whether clean review evidence is present, absent, stale, or insufficient for the claimed readiness question. It must not replace fresh clean review, perform runtime implementation, edit files, approve merge-back, archive threads, clean up branches, commit, push, open PRs, mutate trackers, or close the task directly.
+For complex work separation, `verify` owns evidence sufficiency only. It may confirm whether clean review evidence is present, absent, stale, or insufficient for the claimed readiness question. Fresh clean review, runtime implementation, edits, merge-back approval, archives, branch cleanup, commits, pushes, PRs, tracker mutation, and task closeout remain separate owner/tool actions.
 
 When a P1, public API, migration, schema, security, privacy, auth, permissions, data correctness, shared contract, package schema, adapter contract, state machine, weak-validation, or multi-package change reaches `verify` without fresh clean review evidence, mark the clean review claim `unverified` or `blocked` instead of issuing a readiness `pass`.
 
@@ -142,7 +144,7 @@ When verifying a `native_closeout_package`, treat merge readiness and cleanup de
 - verify that `merge_decision.merge_source` uses only `patch_bundle`, `visible_branch`, `codex_handoff`, `pathspec_checkout`, `none`, or `unknown`;
 - verify that `cleanup_decision.thread_action`, `cleanup_decision.worktree_action`, and `cleanup_decision.branch_action` are separate fields and are not represented as merge recommendations;
 - do not treat archive, worktree retention, Codex-managed cleanup, or branch cleanup as merge readiness evidence;
-- do not claim thread archive, worktree cleanup, branch deletion, runtime execution, cache refresh, release readiness, or UAT readiness unless the package includes direct evidence for that specific claim.
+- apply `skills/_shared/NON-EXECUTOR-BOUNDARY.md` before accepting cleanup, execution, cache, release, UAT, or closeout claims.
 
 When verifying runtime, cache, release, UAT, marketplace, installed-plugin, or cache-refresh claims, require the shared `release_evidence_claim` object from `skills/_shared/RELEASE-EVIDENCE-CLAIM.md` for each material claim.
 

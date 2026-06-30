@@ -48,6 +48,8 @@ Use `skills/_shared/ROLE-SEPARATION.md` for material wiki changes that affect pu
 
 Use `skills/_shared/RUNTIME-CAPABILITY.md` if a wiki claim touches runtime, selector, child-thread/worktree, installed-plugin, marketplace, cache, release, UAT, browser, or customer evidence. Wiki source edits alone are source-validation evidence only.
 
+Use `skills/_shared/NON-EXECUTOR-BOUNDARY.md` for any wiki claim about execution, source mutation, runtime/cache behavior, release, UAT, or customer acceptance. Wiki maintenance preserves source-cited knowledge; it does not execute tasks or mutate raw source truth.
+
 ## Wiki Root Discovery
 
 Before reading or writing a wiki:
@@ -144,7 +146,7 @@ Required behavior:
 
 - Check stale claims, contradictions, orphan pages, missing citations, evidence-layer mismatch, deprecated pages still recommended by index, and raw-source drift where practical.
 - Mark claims as `supported`, `stale_suspected`, `contradicted`, `uncited`, or `insufficient`.
-- Do not claim runtime, browser, UAT, customer, marketplace, installed-plugin, cache-refresh, or release readiness.
+- Do not claim runtime, browser, UAT, customer, marketplace, installed-plugin, cache-refresh, or release readiness without the direct evidence required by `skills/_shared/NON-EXECUTOR-BOUNDARY.md` and the relevant evidence contract.
 
 ### `update`
 
@@ -277,7 +279,7 @@ Route Conflict
 - Do not create backend fields, states, permissions, migrations, owners, metrics, APIs, or tests from wiki synthesis alone.
 - Do not block normal `to-prd`, `implement`, `verify`, `handoff`, or `dispatch` work because a wiki is absent.
 - Do not copy repo source files wholesale into `wiki/raw/`.
-- Do not mutate raw source truth during wiki cleanup.
+- Do not mutate raw source truth during wiki cleanup; route source changes to the appropriate implementation owner.
 - Do not create daily diaries, automatic memory, vector databases, graphs, external tool config, hooks, or MCP servers by default.
 - Do not route direct bounded answers, implementation, readiness, UAT, release, customer, or dispatch requests into wiki merely because wiki context exists.
 

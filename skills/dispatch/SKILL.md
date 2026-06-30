@@ -19,9 +19,9 @@ Which runtime should handle each task, why that runtime is appropriate, what pac
 
 ## Scope
 
-This skill covers dispatch-time runtime routing for `codex_app_managed_worktree_thread`, `codex_subagent`, `main_thread_direct`, `main_thread_readonly`, and `clean_reviewer`.
+This skill covers dispatch-time package-only runtime routing for `codex_app_managed_worktree_thread`, `codex_subagent`, `main_thread_direct`, `main_thread_readonly`, and `clean_reviewer`.
 
-Out of scope: calling Codex App thread tools, spawning subagents, executing runtime tools, writing remotes, destructive actions, committing, pushing, opening PRs, closing issues, or claiming runtime execution occurred.
+Out of scope: execution. Apply `skills/_shared/NON-EXECUTOR-BOUNDARY.md`; dispatch does not perform thread, subagent, worktree, runtime, remote, branch-cleanup, release, UAT, or customer-acceptance actions.
 
 ## Trigger Contract
 
@@ -56,6 +56,8 @@ Do not use this skill when:
 When maintaining the Groundwork repository itself, apply the repo-local `AGENTS.md` Done Definition before reporting the work complete.
 
 Use `skills/_shared/RUNTIME-CAPABILITY.md` before recommending, requesting, or reporting runtime/model selection. Dispatch must keep capability seed facts, prompt preferences, runtime/tool evidence, official docs, and community evidence separate.
+
+Use `skills/_shared/NON-EXECUTOR-BOUNDARY.md` before emitting runtime packages or execution gates. Dispatch is package-only unless a later explicitly approved execution step is handled by an execution-capable runtime/tool.
 
 When dispatch templates inline `evidence_layer` values, they mirror the canonical runtime evidence layer enum in `skills/_shared/RUNTIME-CAPABILITY.md` and must be updated together with that source.
 
@@ -94,15 +96,11 @@ Use `skills/_shared/LLM-WIKI.md` when accepted work has relevant project wiki co
 
 ## Hard Stop Before Execution
 
-Dispatch is a router and package generator. It must not:
+Dispatch is a router and package generator. It applies `skills/_shared/NON-EXECUTOR-BOUNDARY.md` and keeps these dispatch-specific deltas:
 
-- call Codex App thread tools
-- create or manage child threads
-- spawn subagents
-- execute package contents
-- write files in target runtimes
-- mutate remotes or external trackers
-- claim that runtime execution, validation, or review happened
+- do not call runtime/thread/subagent tools from dispatch output alone;
+- do not execute package contents or write files in target runtimes;
+- do not claim selector enforcement, runtime execution, validation, clean review, or closeout happened from package text.
 
 If the user asks dispatch to execute, output the dispatch package plus an execution gate:
 

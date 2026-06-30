@@ -338,11 +338,11 @@ Reference existing `STATE.md` when present. Recommend creating or updating state
 
 ### `dispatch`
 
-Route only accepted, ready tasks to runtime/package choices. Dispatch may generate package-only routing, execution matrixes, and Result Package expectations; it is not an executor and must not claim runtime execution, validation, or clean review happened.
+Route only accepted, ready tasks to runtime/package choices. Apply `skills/_shared/NON-EXECUTOR-BOUNDARY.md`: dispatch may generate package-only routing, execution matrixes, and Result Package expectations, but must not claim runtime execution, validation, or clean review happened without direct evidence.
 
 ### `wiki`
 
-Use for durable project wiki query, ingest, audit, repair, or update work. Wiki pages can orient work and preserve project knowledge, but wiki synthesis must not become source truth, implementation authority, verification evidence, runtime evidence, release evidence, or UAT/customer readiness without cited authoritative sources.
+Use for durable project wiki query, ingest, audit, repair, or update work. Apply `skills/_shared/NON-EXECUTOR-BOUNDARY.md`: wiki pages can orient work and preserve project knowledge, but wiki synthesis must not become source truth, implementation authority, verification evidence, runtime evidence, release evidence, or UAT/customer readiness without cited authoritative sources.
 
 ## Forbidden Behavior
 
