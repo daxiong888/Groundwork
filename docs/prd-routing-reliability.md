@@ -226,7 +226,7 @@ The entry contract is implemented first by aligning eval schema and runner verdi
 The entry decision has this compact shape:
 
 ```text
-Route: direct / to-prd / to-issues / triage / write-plan / prototype / implement / verify / handoff
+Route: direct / to-prd / to-issues / triage / write-plan / prototype / implement / verify / handoff / dispatch / wiki
 Requirement State: raw / prd_draft / prd_accepted / issue_ready / implementation_ready / verified / blocked
 Source Truth: conversation / accepted_prd / local_artifact / external_issue / source_code / test_evidence / runtime_evidence / mixed / unknown
 Stop Condition: continue / ask_clarification / require_prd_acceptance / require_artifact_promotion / require_gate / direct_answer
