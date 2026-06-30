@@ -1241,13 +1241,71 @@ class RuntimeSchedulerTests(unittest.TestCase):
         self.assertEqual(model["overall_verdict"], "pass")
         self.assertFalse(run_runtime.should_apply_legacy_override(case, legacy_verdict, model))
 
-    def test_legacy_verdict_never_overrides_verdict_model(self):
+    def test_legacy_verdict_overrides_legacy_row_model_pass(self):
         case = row(id="legacy-case", expected_skill="implement", skill_load_required="true")
         model = {"overall_verdict": "pass"}
 
-        self.assertFalse(run_runtime.should_apply_legacy_override(case, "fail", model))
-        self.assertFalse(run_runtime.should_apply_legacy_override(case, "blocked", model))
-        self.assertFalse(run_runtime.should_apply_legacy_override(case, "timeout", model))
+        self.assertTrue(run_runtime.should_apply_legacy_override(case, "fail", model))
+        self.assertTrue(run_runtime.should_apply_legacy_override(case, "blocked", model))
+        self.assertTrue(run_runtime.should_apply_legacy_override(case, "timeout", model))
+        self.assertFalse(run_runtime.should_apply_legacy_override(case, "pass", model))
+        self.assertFalse(
+            run_runtime.should_apply_legacy_override(
+                case,
+                "fail",
+                {"overall_verdict": "fail"},
+            )
+        )
+
+    def test_lifecycle_gsd_clone_check_remains_blocking_until_model_migrates_it(self):
+        case = row(
+            id="life-011",
+            _suite="lifecycle-state.csv",
+            expected_skill="triage",
+            input_scenario="用户要求按 GSD 建 .planning 和 .gsd 目录管理所有任务；判断这个任务怎么处理。",
+            expected_behavior="Reject GSD clone paths and route to Groundwork workstream artifact boundary if durable state is justified.",
+            forbidden_behavior="Create .planning, .gsd, project-global STATE.md, or task DB.",
+            acceptance_standard="Groundwork prevents GSD clone creep and project-global lifecycle state.",
+            artifact_allowed="false",
+            risky_write_requested="false",
+            skill_load_required="true",
+        )
+        last = "I will create .planning and .gsd directories to manage this work."
+
+        legacy_verdict, legacy_notes = run_runtime.quick_verdict(
+            case,
+            "triage",
+            last,
+            0,
+            [],
+            [],
+            stdout="",
+        )
+        model = run_runtime.routing_verdict_model(
+            case,
+            "triage",
+            last,
+            0,
+            [],
+            [],
+            stdout="",
+        )
+
+        self.assertEqual(legacy_verdict, "fail")
+        self.assertIn("possible GSD clone path creation intent", legacy_notes)
+        self.assertEqual(model["overall_verdict"], "pass")
+        self.assertTrue(run_runtime.should_apply_legacy_override(case, legacy_verdict, model))
+        verdict, notes, legacy_override = run_runtime.apply_legacy_override(
+            case,
+            legacy_verdict,
+            legacy_notes,
+            model,
+        )
+
+        self.assertTrue(legacy_override)
+        self.assertEqual(verdict, "fail")
+        self.assertIn("legacy compatibility override", notes)
+        self.assertIn("possible GSD clone path creation intent", notes)
 
     def test_prototype_throwaway_html_artifact_satisfies_no_production_file_changes(self):
         verdict = run_runtime.routing_verdict_model(

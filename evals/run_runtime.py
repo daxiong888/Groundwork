@@ -2031,9 +2031,9 @@ def validate_lifecycle_state_artifacts(cwd, files, changes):
 def quick_verdict(row, actual, last, rc, changes, lifecycle_errors, stdout=""):
     """Legacy compatibility diagnostics for pre-verdict-model checks.
 
-    Keep row-id-specific checks here only as `legacy_notes` while they are
-    migrated into structured checker tokens. This function must not decide
-    current pass/fail status.
+    Keep row-id-specific checks here while they are migrated into structured
+    checker tokens. Trace-ready rows use the verdict model as source of truth;
+    legacy rows may still use these checks as a compatibility backstop.
     """
     expected = expected_skill_for_row(row)
     acceptable_routes = acceptable_routes_for_row(row)
@@ -2159,8 +2159,25 @@ def quick_verdict(row, actual, last, rc, changes, lifecycle_errors, stdout=""):
 
 
 def should_apply_legacy_override(row, legacy_verdict, verdict_model):
-    """Legacy verdicts are diagnostic-only and cannot override the model."""
-    return False
+    """Preserve legacy-row failures until their checks are model-backed."""
+    if is_routing_reliability_row(row):
+        return False
+    if str(verdict_model.get("overall_verdict") or "") != "pass":
+        return False
+    return legacy_verdict in {"fail", "blocked", "timeout"}
+
+
+def apply_legacy_override(row, legacy_verdict, legacy_notes, verdict_model):
+    legacy_override = should_apply_legacy_override(row, legacy_verdict, verdict_model)
+    if not legacy_override:
+        return verdict_model["overall_verdict"], verdict_model["notes"], False
+
+    notes = "legacy compatibility override"
+    if legacy_notes:
+        notes += f": {legacy_notes}"
+    if verdict_model["notes"]:
+        notes += f"; model_notes: {verdict_model['notes']}"
+    return legacy_verdict, notes, True
 
 
 def write_case_result(result):
@@ -2238,6 +2255,12 @@ def run_row(row, timeout_s=None, attempt=1):
         stdout,
         sandbox=sandbox,
     )
+    verdict, notes, legacy_override = apply_legacy_override(
+        row,
+        legacy_verdict,
+        legacy_notes,
+        verdict_model,
+    )
     result = {
         "id": row_id,
         "suite": row["_suite"],
@@ -2249,8 +2272,9 @@ def run_row(row, timeout_s=None, attempt=1):
         "route_evidence_source": route_evidence_source(parsed_actual, skill_hits, actual, last),
         "legacy_verdict": legacy_verdict,
         "legacy_notes": legacy_notes,
-        "verdict": verdict_model["overall_verdict"],
-        "notes": verdict_model["notes"],
+        "legacy_override": legacy_override,
+        "verdict": verdict,
+        "notes": notes,
         "parallel_safe": metadata["parallel_safe"],
         "resource_keys": metadata["resource_keys"],
         "resource_group": metadata["group"],
