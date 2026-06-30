@@ -21,15 +21,17 @@
     "longDescription": "Groundwork is a Codex-native personal R&D base for turning PRD/spec intent into managed tasks, grounding execution in project evidence, selecting the lightest execution path, preserving project wiki knowledge artifacts, and producing verified deliverables.",
     "developerName": "Daxiong",
     "category": "Productivity",
+    "websiteURL": "https://github.com/daxiong888/Groundwork",
+    "privacyPolicyURL": "https://github.com/daxiong888/Groundwork#privacy",
+    "termsOfServiceURL": "https://github.com/daxiong888/Groundwork/blob/main/LICENSE",
     "capabilities": [
       "Read",
       "Write"
     ],
     "defaultPrompt": [
       "Use Groundwork only when context, risk, or reuse justifies a workflow.",
-      "Use Groundwork dispatch to route accepted ready tasks without executing them.",
-      "For raw requirements, PRD/spec intake, or explicit grill-me before requirements, prefer Plan Mode-first intake; write durable artifacts only after plan acceptance and a write-capable route.",
-      "Use Groundwork to verify an issue or prepare a handoff."
+      "Shape raw requirements into PRD/spec intent before task slicing or implementation.",
+      "For accepted tasks, dispatch only packages routes; implement or verify owns evidence."
     ],
     "brandColor": "#1F6FEB"
   }

@@ -1,15 +1,14 @@
 {
   "name": "groundwork",
   "interface": {
-    "displayName": "Groundwork"
+    "displayName": "Groundwork Dev Dist"
   },
   "plugins": [
     {
       "name": "groundwork",
       "source": {
-        "source": "url",
-        "url": "https://github.com/daxiong888/Groundwork.git",
-        "ref": "main"
+        "source": "local",
+        "path": "./dist/groundwork-local-marketplace/plugins/groundwork"
       },
       "policy": {
         "installation": "AVAILABLE",

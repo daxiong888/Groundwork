@@ -87,10 +87,13 @@ Scope: Local personal installation from this repository through Codex's plugin m
 Out of Scope: Public marketplace publishing, remote plugin distribution, task CRUD, MCP servers, production integrations, automatic trace capture, and hook-trust or runtime-readiness claims.
 Evidence Level: `.agents/plugins/marketplace.json` exposes the plugin to Codex, and `.codex-plugin/plugin.json` declares the plugin metadata, bundled `skills/` path, and dormant hook definitions.
 
-Groundwork is currently intended to be installed as a local personal Codex plugin. The recommended path is to add this repository as a Codex marketplace, then install the plugin from that marketplace:
+Groundwork is currently intended to be installed as a local personal Codex plugin. During active development, the only supported local installation source is the generated marketplace under `dist/groundwork-local-marketplace`; do not point Codex directly at the development checkout or its symlink.
+
+For a local checkout, build the generated marketplace first, then install the plugin from that marketplace:
 
 ```bash
-codex plugin marketplace add daxiong888/Groundwork --ref main
+python3 scripts/build_local_marketplace.py
+codex plugin marketplace add ./dist/groundwork-local-marketplace
 codex plugin add groundwork@groundwork
 ```
 
@@ -98,7 +101,10 @@ If you already have Codex open, you can also ask Codex to install it for you:
 
 ```text
 Install the Groundwork Codex plugin from GitHub. Please run:
-codex plugin marketplace add daxiong888/Groundwork --ref main
+git clone https://github.com/daxiong888/Groundwork.git ~/.codex/plugins/groundwork
+cd ~/.codex/plugins/groundwork
+python3 scripts/build_local_marketplace.py --output ~/.codex/plugins/groundwork-local-marketplace
+codex plugin marketplace add ~/.codex/plugins/groundwork-local-marketplace
 codex plugin add groundwork@groundwork
 Then verify that groundwork@groundwork is installed and enabled.
 ```
@@ -111,13 +117,17 @@ Router observability hooks remain dormant after installation. To opt a project i
 echo ".groundwork/harness/" >> .gitignore
 ```
 
-If you are testing an unpublished local checkout, add the checkout path as the marketplace source instead:
+If you are testing an unpublished local checkout, use the same generated-marketplace path:
 
 ```bash
 git clone https://github.com/daxiong888/Groundwork.git ~/.codex/plugins/groundwork
-codex plugin marketplace add ~/.codex/plugins/groundwork
+cd ~/.codex/plugins/groundwork
+python3 scripts/build_local_marketplace.py --output ~/.codex/plugins/groundwork-local-marketplace
+codex plugin marketplace add ~/.codex/plugins/groundwork-local-marketplace
 codex plugin add groundwork@groundwork
 ```
+
+The generated local marketplace copies only package-relevant files into `plugins/groundwork`. It intentionally excludes source-control and local scratch roots such as `.git/`, `.codegraph/`, `.groundwork/`, `.trellis/`, `refer/`, `dist/`, and `node_modules/` so local installation does not ship reference repositories or runtime state into the Codex plugin cache.
 
 You can also install interactively by running `codex`, opening `/plugins`, choosing the `Groundwork` marketplace, and selecting `Install plugin`. Codex should discover the plugin from `.codex-plugin/plugin.json` and load the public skills from `skills/`.
 
@@ -135,10 +145,17 @@ To update an installation that was added from a local checkout:
 ```bash
 cd ~/.codex/plugins/groundwork
 git pull --ff-only
+python3 scripts/build_local_marketplace.py --output ~/.codex/plugins/groundwork-local-marketplace
 codex plugin add groundwork@groundwork
 ```
 
+If the local marketplace was originally pointed directly at a working checkout, rebuild it with `scripts/build_local_marketplace.py` and re-add the generated marketplace path before reinstalling. A healthy installed cache should not contain `.git/`, `.codegraph/`, `.groundwork/`, `.trellis/`, `refer/`, `dist/`, or `node_modules/`.
+
 Restart Codex or refresh the plugin list after upgrading. You should not need to edit Codex's plugin cache manually; Codex installs plugins under `~/.codex/plugins/cache/<marketplace>/<plugin>/<version>/` and records enabled state in `~/.codex/config.toml`. Router observability hook commands are expected to no-op if an already-running thread still points at an old versioned plugin cache while the cache is being refreshed.
+
+## Privacy
+
+Groundwork is a local Codex workflow plugin. It does not include a service backend, analytics endpoint, account system, or telemetry sink. The bundled skills and scripts operate on local files and user-approved Codex tool actions. Any network, remote tracker, deployment, migration, or data-write action remains subject to explicit user approval and the evidence gates documented in this repository.
 
 ## Working Thesis
 
