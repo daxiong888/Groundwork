@@ -1,6 +1,6 @@
 ---
 name: wiki
-description: Create, ingest, query, audit, update, deprecate, archive, or repair a project-level LLM Wiki as a source-cited, evidence-layered, stale-checkable knowledge artifact. Use when the user explicitly asks for durable project wiki work, wiki maintenance, wiki questions, stale wiki audits, or moving reusable project knowledge into a wiki. Do not use for direct answers, PRD shaping, implementation, verification, handoff, dispatch, one-time scratch notes, readiness claims, or external graph/search tooling unless wiki maintenance is the explicit primary task.
+description: Use when the user explicitly asks to create, ingest, query, audit, update, deprecate/archive, or repair a project-level LLM Wiki. Do not use for direct answers, PRD shaping, task slicing, implementation, verification, handoff, dispatch, or one-time scratch notes unless wiki maintenance is the primary task.
 ---
 
 # wiki

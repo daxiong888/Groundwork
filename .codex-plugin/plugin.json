@@ -1,7 +1,7 @@
 {
   "name": "groundwork",
   "version": "0.5.5",
-  "description": "Codex-native personal R&D workflow base for PRD, task slicing, planning, prototypes, implementation, verification, handoff, dispatch, and project wiki knowledge artifacts.",
+  "description": "Lightweight evidence-first workflow routing for non-trivial Codex R&D tasks. Use for requirement shaping, scoped implementation, verification, compact handoff, and explicit advanced routing or wiki maintenance.",
   "author": {
     "name": "Daxiong"
   },
@@ -17,8 +17,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Groundwork",
-    "shortDescription": "A personal R&D base for Codex.",
-    "longDescription": "Groundwork is a Codex-native personal R&D base for turning PRD/spec intent into managed tasks, grounding execution in project evidence, selecting the lightest execution path, preserving project wiki knowledge artifacts, and producing verified deliverables.",
+    "shortDescription": "Lightweight evidence-first routing for Codex.",
+    "longDescription": "Groundwork helps Codex choose a light workflow for non-trivial R&D tasks: shape requirements, scope implementation, verify evidence, preserve compact handoff, or explicitly route dispatch/wiki work. Small obvious tasks should stay direct.",
     "developerName": "Daxiong",
     "category": "Productivity",
     "websiteURL": "https://github.com/daxiong888/Groundwork",
@@ -29,9 +29,9 @@
       "Write"
     ],
     "defaultPrompt": [
-      "Use Groundwork only when context, risk, or reuse justifies a workflow.",
-      "Shape raw requirements into PRD/spec intent before task slicing or implementation.",
-      "For accepted tasks, dispatch only packages routes; implement or verify owns evidence."
+      "Answer small, obvious, low-risk requests directly.",
+      "Use Groundwork only when context, risk, reuse, or verification needs a workflow.",
+      "Load strict runtime/release/cache/UAT/dispatch/wiki references only when in scope."
     ],
     "brandColor": "#1F6FEB"
   }

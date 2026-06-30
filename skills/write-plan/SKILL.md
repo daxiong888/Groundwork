@@ -1,6 +1,6 @@
 ---
 name: write-plan
-description: Write a concise implementation plan for accepted task context with dependencies stop conditions and verification checkpoints. Use for 写实现计划, plan accepted work, sequence changes, or prepare execution before edits without inventing paths.
+description: Use when an accepted task needs a concise implementation plan with dependencies, stop conditions, and verification checkpoints before edits. Do not use for raw requirements, task slicing, direct implementation, readiness verification, dispatch routing, or wiki maintenance.
 ---
 
 # write-plan

@@ -1,6 +1,6 @@
 ---
 name: prototype
-description: Build revise or review throwaway logic state or UI static HTML prototypes, including prototype contract-boundary classification, to answer a product interaction visual or business-rule question before PRD or implementation.
+description: Use when a throwaway logic, state, or UI/static HTML prototype will answer a specific product interaction, visual, or business-rule question before PRD or implementation. Do not use for production implementation, backend/API contract truth, readiness verification, durable docs, or handoff.
 ---
 
 # prototype

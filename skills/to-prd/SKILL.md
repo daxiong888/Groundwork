@@ -1,6 +1,6 @@
 ---
 name: to-prd
-description: Shape raw or ambiguous product/engineering intent into a compact PRD/spec with acceptance criteria before task slicing or implementation. Use shared grilling or Plan Mode when available; do not use for tiny rewrites, accepted tasks, implementation, or verification.
+description: Use when raw or ambiguous product/engineering intent needs requirement shaping into a compact PRD/spec before task slicing or implementation. Do not use for tiny rewrites, accepted tasks, direct implementation, verification, handoff, dispatch routing, or wiki maintenance.
 ---
 
 # to-prd

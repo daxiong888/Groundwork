@@ -1,6 +1,6 @@
 ---
 name: to-issues
-description: Split an accepted PRD spec or plan into vertical task slices with task-state fields, acceptance criteria, blockers, AFK/HITL classification, and verification evidence. Use only when the source is accepted enough; raw ideas, "刚说的想法", or conversation-only intent that asks to 拆 issues must route to to-prd first.
+description: Use when an accepted PRD, spec, or implementation plan needs vertical task slices with acceptance criteria, blockers, task-state fields, and verification expectations. Do not use for raw ideas, ambiguous requirements, direct implementation, readiness verification, or one-off planning.
 ---
 
 # to-issues

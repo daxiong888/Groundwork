@@ -1,6 +1,6 @@
 ---
 name: triage
-description: Classify task readiness, severity, transition reason, blockers, AFK/HITL, ready-for-agent, ready-for-human, needs-info, wontfix, closeout, or lifecycle-state ownership decisions based on evidence. Use when the user asks to triage an issue, 看能不能给 agent 做, decide readiness, decide whether local lifecycle state is needed, decide external source-of-truth ownership, unblock, or close a task.
+description: Use when evidence is needed to classify task readiness, blockers, severity, AFK/HITL ownership, lifecycle state, or closeout. Do not use for requirement shaping, task slicing, code edits, implementation planning, verification reports, dispatch packages, or wiki work.
 ---
 
 # triage
