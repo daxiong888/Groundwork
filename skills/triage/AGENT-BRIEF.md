@@ -19,20 +19,8 @@ Stop Condition
 Verification Expectations
 
 Goal Contract
-- Goal Command:
-- Outcome:
-- Source Truth:
-- Acceptance Criteria Mapping:
-- Verification:
-- Constraints:
-- Boundaries:
-- Iteration Policy:
-- Stop When:
-- Pause If:
-- Non-goals:
-- Risk / Gate:
-- Preferred Runtime:
-- Result Package Expected:
+Use the exact Required Shape from `skills/_shared/GOAL-CONTRACT.md`.
+Do not duplicate, omit, or rename Goal Contract fields here.
 
 Execution Profile Recommendation
 - Runtime Candidate:

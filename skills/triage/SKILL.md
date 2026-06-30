@@ -36,6 +36,16 @@ When maintaining the Groundwork repository itself, apply the repo-local `AGENTS.
 
 Every verdict must include `Severity` and `State Transition Reason`. Use `skills/_shared/SEVERITY.md` as the shared enum. In `triage`, severity describes the current blocker or gap impact, **not overall product priority**.
 
+## Severity Derivation
+
+Use this sequence before assigning severity:
+
+1. Identify the current blocker or gap being triaged, not the feature's business importance.
+2. Map the gap to the strongest affected boundary: production safety, security/privacy, release, major acceptance/data/UAT, limited workaround, or wording/evidence hygiene.
+3. Check blast radius, dependency impact, and whether a practical workaround exists.
+4. Assign the highest matching severity from `skills/_shared/SEVERITY.md`.
+5. If the gap source, affected boundary, or workaround is unknown, classify the task as `needs-info`, name the missing evidence, and do not infer product priority as severity.
+
 AFK/HITL is a local execution-routing decision, not a quality score:
 
 - `AFK`: the next action can be completed from available source truth, acceptance criteria, scope boundaries, first inspection step, and verification expectation without a new human product/access/design decision.
@@ -58,7 +68,7 @@ Do not generate an executable child goal for `needs-info`, `ready-for-human`, or
 
 1. Gather the task source and current requested outcome.
 2. Classify state: `draft`, `needs-info`, `ready-for-agent`, `ready-for-human`, `in-progress`, `verification`, `done`, or `wontfix`.
-3. Assign severity for the current blocker or gap.
+3. Assign severity for the current blocker or gap using `Severity Derivation`.
 4. State the transition reason and separate `Evidence Added` from `Evidence Missing`.
 5. Apply the readiness contracts from `docs/prd.md`.
 6. If executable `ready-for-agent + AFK`, produce an agent-ready brief using `AGENT-BRIEF.md`, including `Goal Contract` and `Execution Profile Recommendation`.

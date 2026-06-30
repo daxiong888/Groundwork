@@ -13,9 +13,10 @@ Mock / Illustrative Fields
 Client-derived Logic
 Unverified Assumptions
 Contract Impact: none / needs confirmation / confirmed update
-Screens / States Covered
-Interactions Covered
+Screens / States Explored
+Interactions Explored
 Browser / Runtime Evidence
+Coverage Evidence Status: prototype_only / browser_verified / runtime_verified / unverified
 Known Gaps
 Implementation Implications
 Proposed PRD / Issue / Contract Feedback

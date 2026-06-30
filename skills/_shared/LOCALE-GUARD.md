@@ -137,7 +137,7 @@ Plan and final report follow session locale. File paths and identifiers remain l
 
 ### `verify`
 
-`Verification Scope` may remain as a stable field name if repo convention requires it, but the report body and user-visible findings follow session locale. If a Chinese report keeps stable English field names, explain that they are contract field names.
+For `verify`, the opening six-field `Verification Scope` block is a stable contract and must remain literal English. The report body and user-visible findings follow session locale. In Chinese reports, explain once that the opening field names are contract labels.
 
 ### `handoff`
 

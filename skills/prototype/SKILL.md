@@ -111,6 +111,15 @@ Do not stop with a browser opt-in question such as asking whether to open a loca
 
 ## Output Shape
 
+Prototype output uses schema layering:
+
+- Base fields are always required.
+- Branch extension must use exactly one of `LOGIC.md`, `LOGIC-LAB.md`, `UI.md`, or `UI-VARIANTS.md`; that branch extends the base and does not require unrelated branch fields.
+- `Visual Handoff Packet` is conditional and appears only when a handoff or review packet is produced.
+- The role-separation evidence block is conditional and appears only when materiality thresholds apply.
+- `Coverage Evidence Status` must be `prototype_only`, `browser_verified`, `runtime_verified`, or `unverified`.
+- `browser_verified` and `runtime_verified` require tool/context/action/observation/limitation evidence; otherwise use `prototype_only` or `unverified`.
+
 ```text
 Prototype Question
 Decision Needed
@@ -125,9 +134,10 @@ Unverified Assumptions
 Contract Impact: none / needs confirmation / confirmed update
 Open Questions
 Next Route: to-prd / to-issues / implement / verify / handoff / dispatch / cleanup / no follow-up
-States Covered
-Interactions Covered
+States Explored
+Interactions Explored
 Browser / Runtime Evidence
+Coverage Evidence Status: prototype_only / browser_verified / runtime_verified / unverified
 Visual Handoff Packet
 Role:
 Design Source:

@@ -54,9 +54,10 @@ Before reading or writing a wiki:
 
 1. Inspect the current project root for `wiki/`.
 2. Inspect `artifacts/wiki/` only when the project convention requires durable artifacts under `artifacts/`.
-3. Inspect `.groundwork/wiki/` only as private scratch, ignored by default.
-4. Ask before adopting a parent or sibling wiki root.
-5. If no wiki exists and the request is not explicit wiki maintenance, do not block the primary route.
+3. If neither shared wiki root exists, report `Wiki Status: missing` unless the user explicitly requested private scratch or onboarding notes.
+4. Inspect `.groundwork/wiki/` only for explicitly requested private scratch or onboarding notes; never treat it as fallback shared wiki root.
+5. Ask before adopting a parent or sibling wiki root.
+6. If no wiki exists and the request is not explicit wiki maintenance, do not block the primary route.
 
 Storage modes:
 
@@ -121,6 +122,10 @@ Audit scope must be declared:
 | `full` | User explicitly requests broad audit. | Whole wiki index, page metadata, link graph, stale flags, citation coverage, and documented limitations. |
 
 Default to `quick` unless the user requests or accepts broader scope.
+
+For audit scope, `recent log.md` means the last 20 entries or the last 30 days, whichever is smaller. If `log.md` has no parseable entries, inspect the last 120 non-empty lines and mark that limitation.
+
+Wiki hard-negative coverage reference: `evals/prompts/v0.5.2-wiki.csv` includes current protections against wiki synthesis becoming source/API truth or release evidence, including `wiki-014`, `wiki-015`, `wiki-021`, `wiki-022`, and `wiki-030`.
 
 Audit output must include:
 
