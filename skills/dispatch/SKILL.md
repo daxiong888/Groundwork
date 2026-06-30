@@ -55,7 +55,7 @@ Do not use this skill when:
 
 When maintaining the Groundwork repository itself, apply the repo-local `AGENTS.md` Done Definition before reporting the work complete.
 
-Use `skills/_shared/RUNTIME-CAPABILITY.md` before recommending, requesting, or reporting runtime/model selection. Dispatch must keep capability seed facts, prompt preferences, runtime/tool evidence, official docs, and community evidence separate.
+Apply `EB-RUNTIME-001` and `EB-CACHE-001` from `skills/_shared/EVIDENCE-BOUNDARY.md`, and use `skills/_shared/RUNTIME-CAPABILITY.md` before recommending, requesting, or reporting runtime/model selection. Dispatch must keep capability seed facts, prompt preferences, runtime/tool evidence, official docs, and community evidence separate.
 
 When dispatch templates inline `evidence_layer` values, they mirror the canonical runtime evidence layer enum in `skills/_shared/RUNTIME-CAPABILITY.md` and must be updated together with that source.
 
@@ -63,7 +63,7 @@ Use `skills/_shared/COGNITIVE-BUDGET.md` for `model_profile`, reasoning/thinking
 
 Use `skills/_shared/DECISION-MAPPING.md` only for pre-dispatch option comparison when the user needs to choose among enumerable runtime, model-profile, skill-route, or workflow paths. Preserve `dispatch` when accepted, ready tasks need runtime routing, an execution matrix, model/profile recommendations, package-only handoff, or Result Package expectations. A decision map can recommend a dispatch path, but it must not generate or execute the dispatch package and must not claim selector enforcement beyond prompt preference without runtime/tool evidence.
 
-Use `skills/_shared/LLM-WIKI.md` when accepted work has relevant project wiki context. Dispatch may include wiki pages in the source package as orientation or claim inventory, but must label them as non-authoritative and require the executing role to inspect cited source, contract, test, runtime, or release evidence before using the claim. A missing wiki must not block dispatch. Wiki context must not become runtime execution evidence, implementation evidence, verification evidence, clean review evidence, selector-enforcement evidence, UAT evidence, release evidence, marketplace evidence, installed-plugin evidence, or cache-refresh evidence. Dispatch may include a `Wiki Update Candidate` only when the ready package identifies durable reusable knowledge and wiki maintenance is not the current execution task.
+Apply `EB-WIKI-001`, `EB-RUNTIME-001`, `EB-CACHE-001`, `EB-ROLE-001`, and `EB-RELEASE-001` from `skills/_shared/EVIDENCE-BOUNDARY.md` when accepted work has relevant project wiki context. Use `skills/_shared/LLM-WIKI.md` for wiki-specific rules. Skill-specific delta: dispatch may include wiki pages in the source package as orientation or claim inventory, but must label them non-authoritative, require the executing role to inspect qualifying evidence before using the claim, and may include a `Wiki Update Candidate` only when wiki maintenance is not the current execution task.
 
 `dispatch` must:
 
@@ -87,8 +87,8 @@ Use `skills/_shared/LLM-WIKI.md` when accepted work has relevant project wiki co
 - report Runtime mismatch when requested runtime and available/proposed runtime differ; do not silently substitute subagents for child-thread/worktree runtimes or child-thread/worktree runtimes for subagents
 - treat user-observed model menu seeds as dated `user_supplied` capability facts, not universal runtime truth
 - avoid permanent global concrete model tables; concrete model mapping is evidence-bound and secondary to profile routing
-- keep wiki pages, wiki summaries, wiki audits, and external graph/search/index output as orientation or claim inventory only unless separately backed by source, contract, test, runtime, or release evidence
-- apply `skills/_shared/ROLE-SEPARATION.md` when routing material work: separate designer/planner, implementer, clean reviewer, verifier, and coordinator roles; do not route a same-session implementer as clean reviewer or final verifier for its own material change
+- keep wiki pages, wiki summaries, wiki audits, and external graph/search/index output within `EB-WIKI-001`
+- apply `EB-ROLE-001` from `skills/_shared/EVIDENCE-BOUNDARY.md` and `skills/_shared/ROLE-SEPARATION.md` when routing material work: separate designer/planner, implementer, clean reviewer, verifier, and coordinator roles
 - include role-separation closeout expectations for material tasks using `Role`, `Design Source`, `Self-check Evidence`, `Clean Review Evidence`, `Independent Verification Evidence`, `Runtime Evidence`, `Browser Evidence`, `UAT Evidence`, `Release Evidence`, `Readiness Boundary`, and `Required Next Independent Role`
 - when a clean-review claim is blocked, unverified, invalid, inherited from parent context, or requires a future fresh reviewer, do not emit current-state fields such as `clean_review: passed`, `clean_review_passed: true`, or `Clean Review Evidence: passed`; use explicit missing/required/fresh-pass-required wording instead
 

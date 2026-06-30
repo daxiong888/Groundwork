@@ -44,9 +44,9 @@ Use `skills/_shared/AUDIENCE-FIRST-ARTIFACT.md` for new or materially updated wi
 
 Use `skills/_shared/DOMAIN-LANGUAGE.md` when terminology affects PRD, contract, source, runtime, verification, or handoff truth. Wiki glossary alignment does not promote terms into stronger truth layers.
 
-Use `skills/_shared/ROLE-SEPARATION.md` for material wiki changes that affect public skill surface, source-truth claims, contract claims, readiness evidence, broad eval behavior, or acceptance. Same-session wiki authoring may provide self-check evidence only.
+Apply `EB-ROLE-001` from `skills/_shared/EVIDENCE-BOUNDARY.md` and use `skills/_shared/ROLE-SEPARATION.md` for material wiki changes that affect public skill surface, source-truth claims, contract claims, readiness evidence, broad eval behavior, or acceptance. Skill-specific delta: same-session wiki authoring may provide self-check evidence only.
 
-Use `skills/_shared/RUNTIME-CAPABILITY.md` if a wiki claim touches runtime, selector, child-thread/worktree, installed-plugin, marketplace, cache, release, UAT, browser, or customer evidence. Wiki source edits alone are source-validation evidence only.
+Apply `EB-WIKI-001`, `EB-RUNTIME-001`, `EB-CACHE-001`, and `EB-RELEASE-001` from `skills/_shared/EVIDENCE-BOUNDARY.md`, and use `skills/_shared/RUNTIME-CAPABILITY.md` if a wiki claim touches runtime, selector, child-thread/worktree, installed-plugin, marketplace, cache, release, UAT, browser, or customer evidence.
 
 ## Wiki Root Discovery
 
@@ -111,7 +111,7 @@ Required behavior:
 
 ### `audit`
 
-Assess wiki health, not release readiness.
+Assess wiki health under `EB-WIKI-001`, not release readiness under `EB-RELEASE-001`.
 
 Audit scope must be declared:
 
@@ -144,7 +144,7 @@ Required behavior:
 
 - Check stale claims, contradictions, orphan pages, missing citations, evidence-layer mismatch, deprecated pages still recommended by index, and raw-source drift where practical.
 - Mark claims as `supported`, `stale_suspected`, `contradicted`, `uncited`, or `insufficient`.
-- Do not claim runtime, browser, UAT, customer, marketplace, installed-plugin, cache-refresh, or release readiness.
+- Apply `EB-RUNTIME-001`, `EB-CACHE-001`, and `EB-RELEASE-001` before discussing runtime, browser, UAT, customer, marketplace, installed-plugin, cache-refresh, or release readiness.
 
 ### `update`
 
@@ -273,7 +273,7 @@ Route Conflict
 
 ## Do Not
 
-- Do not treat wiki synthesis as source truth, product truth, backend/API contract truth, implementation authority, verification evidence, release evidence, UAT evidence, customer readiness, marketplace evidence, installed-plugin evidence, browser evidence, runtime evidence, cache-refresh evidence, or selector enforcement.
+- Do not promote wiki synthesis beyond `EB-WIKI-001`.
 - Do not create backend fields, states, permissions, migrations, owners, metrics, APIs, or tests from wiki synthesis alone.
 - Do not block normal `to-prd`, `implement`, `verify`, `handoff`, or `dispatch` work because a wiki is absent.
 - Do not copy repo source files wholesale into `wiki/raw/`.

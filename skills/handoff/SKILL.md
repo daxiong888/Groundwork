@@ -87,17 +87,17 @@ Use `skills/_shared/LIFECYCLE-PREFLIGHT.md` to decide whether lifecycle state is
 Use `REVIEW-PACKAGE.md` when the next reader needs a review package rather than a basic continuation summary. Use `skills/_shared/SUBAGENT-DELEGATION.md` when the handoff prepares a fresh-context subagent review.
 Use `skills/dispatch/COMPLEX-WORK-SEPARATION.md` when handoff preserves continuation state for managed worktree work whose risk or scope may require separate planning, implementation, clean review, verification, and coordinator closeout roles.
 
-For complex work separation, `handoff` preserves continuation state and ownership boundaries only. It must not become a runtime executor, clean reviewer, verifier, coordinator closeout, merge-back owner, archive owner, branch cleanup owner, commit path, push path, PR path, or tracker mutation path. It may name the next owning role and cite the evidence needed for that role.
+For complex work separation, `handoff` preserves continuation state and ownership boundaries only. Apply `EB-RUNTIME-001`, `EB-ROLE-001`, and `EB-RELEASE-001` from `skills/_shared/EVIDENCE-BOUNDARY.md` before naming stronger execution, review, verification, closeout, archive, branch cleanup, commit, push, PR, or tracker claims. Skill-specific delta: handoff may name the next owning role and cite the evidence needed for that role, but it must not become the runtime executor, clean reviewer, verifier, coordinator closeout, merge-back owner, archive owner, branch cleanup owner, commit path, push path, PR path, or tracker mutation path.
 
-When a P1, public API, migration, schema, security, privacy, auth, permissions, data correctness, shared contract, package schema, adapter contract, state machine, weak-validation, or multi-package change is handed off without fresh clean review evidence, record that as an open gap or do-not-assume item. Do not let handoff wording imply that child implementer self-check is clean review.
+When a P1, public API, migration, schema, security, privacy, auth, permissions, data correctness, shared contract, package schema, adapter contract, state machine, weak-validation, or multi-package change is handed off without fresh clean review evidence, apply `EB-ROLE-001` and record that as an open gap or do-not-assume item.
 
-Use `skills/_shared/ROLE-SEPARATION.md` when preserving material continuation state. Handoff may report received evidence and the next independent role, but must not upgrade `Self-check Evidence` into `Clean Review Evidence` or `Independent Verification Evidence`.
+Use `skills/_shared/ROLE-SEPARATION.md` when preserving material continuation state. Skill-specific delta: handoff may report received evidence and the next independent role.
 
-Use `skills/_shared/VISUAL-HANDOFF-PACKET.md` when handoff cites or carries a visual handoff packet, HTML packet, screenshot set, generated visual artifact, prototype output, or frontend/backend review packet. Treat it as a communication artifact, not readiness evidence; put unsupported API/schema/source, browser, runtime, UAT, release, and customer-readiness claims under `Do-Not-Assume` unless separate qualifying evidence is named.
+Apply `EB-VISUAL-001` from `skills/_shared/EVIDENCE-BOUNDARY.md` and use `skills/_shared/VISUAL-HANDOFF-PACKET.md` when handoff cites or carries a visual handoff packet, HTML packet, screenshot set, generated visual artifact, prototype output, or frontend/backend review packet. Skill-specific delta: put unsupported API/schema/source, browser, runtime, UAT, release, and customer-readiness claims under `Do-Not-Assume` unless separate qualifying evidence is named.
 
-Use `skills/_shared/LLM-WIKI.md` when continuation state includes reusable project knowledge or cites a project wiki. Handoff may reference wiki pages as orientation and may emit a `Wiki Update Candidate` for durable reusable knowledge, but it must not turn every handoff into a wiki diary, update wiki pages without explicit wiki-maintenance scope, or present wiki synthesis as source truth, clean review evidence, independent verification evidence, runtime evidence, UAT evidence, release evidence, marketplace evidence, installed-plugin evidence, or cache-refresh evidence.
+Apply `EB-WIKI-001`, `EB-ROLE-001`, `EB-RUNTIME-001`, `EB-CACHE-001`, and `EB-RELEASE-001` from `skills/_shared/EVIDENCE-BOUNDARY.md`, and use `skills/_shared/LLM-WIKI.md` when continuation state includes reusable project knowledge or cites a project wiki. Skill-specific delta: handoff may reference wiki pages as orientation and may emit a `Wiki Update Candidate` for durable reusable knowledge, but must not turn every handoff into a wiki diary or update wiki pages without explicit wiki-maintenance scope.
 
-Use `skills/_shared/RELEASE-EVIDENCE-CLAIM.md` when a handoff preserves runtime, cache, release, UAT, marketplace, installed-plugin, or cache-refresh claims. If the handoff only references source-validation or continuation evidence, set those stronger claims to `unverified` or `not_applicable`.
+Apply `EB-RUNTIME-001`, `EB-CACHE-001`, and `EB-RELEASE-001` from `skills/_shared/EVIDENCE-BOUNDARY.md`, and use `skills/_shared/RELEASE-EVIDENCE-CLAIM.md` when a handoff preserves runtime, cache, release, UAT, marketplace, installed-plugin, or cache-refresh claims. Skill-specific delta: if the handoff only references source-validation or continuation evidence, set those stronger claims to `unverified` or `not_applicable`.
 
 Small, low-risk continuation notes should remain compact. Do not force a full separation package when no separation threshold applies and a concise handoff can safely identify source truth, current state, gaps, and next action.
 
@@ -169,7 +169,7 @@ When freshness is `stale` or `unknown`, keep the handoff actionable:
 ## Do Not
 
 - Do not turn the handoff into a diary, transcript, or chronological status log.
-- Do not use handoff as an auto-wiki writer or treat wiki pages as continuation source truth without separately named source evidence.
+- Do not use handoff as an auto-wiki writer or treat wiki pages as continuation source truth; apply `EB-WIKI-001`.
 - Do not claim Groundwork performs official Codex Handoff, creates native Codex worktrees, moves code between Local and Worktree, or owns native Handoff Git operations.
 - Do not copy long diffs, full PRDs, issue bodies, plans, commits, lifecycle state, raw logs, or transcripts.
 - Do not hide unverified claims; label them as open gaps, risks, or `Do-Not-Assume`.

@@ -106,13 +106,13 @@ Use source evidence, test output, runtime/browser evidence, data readiness, envi
 
 Use implementation evidence review only when the user asks whether a finished implementation is ready, verified, releaseable, handoff-ready, or evidence-supported. For a read-only conformance review of implementation against TASK/PRD with no UAT/readiness judgment, use `implement`.
 
-Use `skills/_shared/VISUAL-HANDOFF-PACKET.md` when the claim depends on a visual handoff packet, HTML packet, screenshot set, generated image, visual artifact, prototype output, or frontend/backend review packet. A visual packet is a communication artifact, not browser evidence, runtime evidence, UAT evidence, release evidence, customer-readiness evidence, or confirmed API/schema/source truth unless the packet names the separate qualifying evidence and `verify` inspects it.
+Apply `EB-VISUAL-001` from `skills/_shared/EVIDENCE-BOUNDARY.md` and use `skills/_shared/VISUAL-HANDOFF-PACKET.md` when the claim depends on a visual handoff packet, HTML packet, screenshot set, generated image, visual artifact, prototype output, or frontend/backend review packet. Skill-specific delta: verify may inspect separately named qualifying evidence for the specific stronger claim.
 
-Use `skills/_shared/ROLE-SEPARATION.md` for material readiness claims. `verify` may provide `Independent Verification Evidence` only when it begins from explicit scope and inspects or runs evidence independent from the same-session designer/implementer. If the only available evidence is same-session self-check, implementation summary, or self-run tests, block or mark the readiness claim `unverified` instead of passing it.
+Apply `EB-ROLE-001` from `skills/_shared/EVIDENCE-BOUNDARY.md` and use `skills/_shared/ROLE-SEPARATION.md` for material readiness claims. Skill-specific delta: `verify` may provide `Independent Verification Evidence` only when it begins from explicit scope and inspects or runs evidence independent from the same-session designer/implementer; otherwise block or mark the readiness claim `unverified`.
 
-Use `skills/_shared/RUNTIME-CAPABILITY.md` when verifying model/runtime execution, selector enforcement, subagent or child-thread/worktree routing, runtime cache, installed plugin, marketplace, release, UAT, or customer claims. If only prompt text, package text, source diff, or implementation summary is available, mark runtime/tool and selector claims `unverified` or `not applicable`; do not claim `tool_enforced`.
+Apply `EB-RUNTIME-001` and `EB-CACHE-001` from `skills/_shared/EVIDENCE-BOUNDARY.md`, and use `skills/_shared/RUNTIME-CAPABILITY.md` when verifying model/runtime execution, selector enforcement, subagent or child-thread/worktree routing, runtime cache, installed plugin, marketplace, release, UAT, or customer claims. Skill-specific delta: if only non-runtime evidence is available, mark runtime/tool and selector claims `unverified` or `not applicable`.
 
-Use `skills/_shared/LLM-WIKI.md` when a readiness, source-truth, contract, runtime, marketplace, installed-plugin, cache-refresh, or release claim cites a project wiki. Wiki pages are claim inventory and orientation only. Verification must inspect the cited source, authoritative artifact, test output, runtime/browser evidence, cache/source refresh evidence, or release evidence that is specific to the claim. If the wiki claim is stale, contested, uncited, page-level-source-only, glossary-only, or source-inaccessible, mark the claim `unverified`, `insufficient`, `stale_suspected`, or `blocked` and report the required next evidence.
+Apply `EB-WIKI-001` from `skills/_shared/EVIDENCE-BOUNDARY.md` and use `skills/_shared/LLM-WIKI.md` when a readiness, source-truth, contract, runtime, marketplace, installed-plugin, cache-refresh, or release claim cites a project wiki. Skill-specific delta: verification must inspect the cited qualifying evidence for the specific claim or mark the claim `unverified`, `insufficient`, `stale_suspected`, or `blocked`.
 
 Use `skills/_shared/COGNITIVE-BUDGET.md` when a readiness claim depends on model profile choice. Verify profile fit separately from concrete model execution, and block or mark unverified any Spark or fast-profile final-authority claim.
 
@@ -148,10 +148,10 @@ When verifying runtime, cache, release, UAT, marketplace, installed-plugin, or c
 
 - Documentation, schema, fixture, PRD, or issue-pack edits alone must set runtime, cache, release, UAT, marketplace, and cache-refresh evidence to `unverified` or `not_applicable`.
 - A `verified` runtime or cache claim must name the installed plugin root, source root, cache/source refresh or equivalence method, run scope, commands or trials, and limitations.
-- Release readiness is not inferred from PRD acceptance, issue-pack completion, fixture pass, package completeness, or clean review alone; it requires separate release-gate evidence.
+- Apply `EB-RELEASE-001`; release readiness requires separate release-gate evidence.
 - Codex App Handoff execution evidence is separate from Groundwork package/schema evidence and must be represented as commands or trials before it can support a release or handoff-readiness claim.
 
-If a check cannot be run, mark it `unverified`. A code diff or implementation summary alone is not readiness evidence.
+If a check cannot be run, mark it `unverified`. Apply `EB-VERIFY-001` when only code diff, implementation summary, source-validation checks, or old evidence is available.
 
 When the user forbids running commands, browser checks, or file inspection, still emit the full `Verification Scope` block first. Treat the requested readiness claim as an evidence sufficiency check, put the forbidden checks under `Not Covered`, and mark missing runtime/browser/test evidence as `unverified` instead of answering with a direct no-scope summary.
 
@@ -169,7 +169,7 @@ Never place task-state recommendations before the required `Verification Scope` 
 - STOP before any verdict unless `Verification Scope` includes concrete `Covered`, `Not Covered`, and `Evidence Sources` fields.
 - STOP before claiming `pass`, readiness, UAT, release, or handoff confidence unless fresh in-scope evidence has been inspected or run.
 - If only source, doc, diff, summary, or historical evidence is available, state that evidence boundary and do not upgrade it into runtime, browser, data, environment, or UAT evidence.
-- If only a visual handoff packet, HTML packet, screenshot, generated image, visual artifact, or prototype output is available, classify it as communication artifact evidence only and do not upgrade it into source/API, browser, runtime, UAT, release, customer-readiness, or final readiness evidence.
+- If only a visual handoff packet, HTML packet, screenshot, generated image, visual artifact, or prototype output is available, apply `EB-VISUAL-001`.
 
 ## Failure Branches
 
@@ -180,17 +180,17 @@ Never place task-state recommendations before the required `Verification Scope` 
 | Tests were not run | Report tests as not run. | Do not claim test-backed behavior passed. |
 | UI tool choice does not match the claim | Use `UI-TOOL-ROUTER.md` or mark UI evidence `unverified`. | Do not claim visual, responsive, interaction, console, or network evidence from the wrong tool. |
 | UAT/customer readiness is claimed without runtime evidence | Separate source, test, runtime/browser, data, environment, and UAT/customer readiness. | Do not give UAT/customer `pass` without the required runtime and readiness evidence. |
-| Visual packet output is treated as browser/runtime/UAT/release evidence | Reclassify it as a communication artifact and inspect only separately named qualifying evidence. | Mark browser/runtime/UAT/release/customer-readiness claims `unverified` unless actual evidence is produced and named. |
+| Visual packet output is treated as browser/runtime/UAT/release evidence | Apply `EB-VISUAL-001` and inspect only separately named qualifying evidence. | Mark stronger claims `unverified` unless actual evidence is produced and named. |
 | Mock fields from a visual packet are treated as confirmed API/schema truth | Reclassify them as `mock / illustrative / not backend contract` or `proposed contract hypothesis`. | Route source/API/schema confirmation to source inspection or mark the claim `unverified`. |
 
 ## Do Not
 
 - Do not use a user summary, implementation summary, changelog, issue comment, or old handoff as evidence unless it is explicitly labeled as the claim being checked.
-- Do not treat a diff summary, old test run, or stale runtime note as current readiness evidence.
-- Do not treat wiki synthesis, wiki audits, wiki page-level source lists, stale wiki claims, uncited wiki claims, or external graph/search/index output as source truth, verification pass evidence, release evidence, UAT evidence, marketplace evidence, installed-plugin evidence, or cache-refresh evidence.
+- Apply `EB-VERIFY-001` before using diff summaries, old test runs, or stale runtime notes for readiness.
+- Apply `EB-WIKI-001` before using wiki synthesis, audits, page-level source lists, stale claims, uncited claims, or external graph/search/index output.
 - Do not issue a review verdict before declaring scope, coverage, and evidence sources.
 - Do not hide source/doc-only or no-command boundaries in prose after the verdict.
-- Do not treat visual handoff packets, screenshots, generated images, HTML packets, or prototype output as browser evidence, runtime evidence, UAT evidence, release evidence, or confirmed API/schema/source truth by themselves.
+- Apply `EB-VISUAL-001` before using visual handoff packets, screenshots, generated images, HTML packets, or prototype output.
 
 ## Workflow
 
