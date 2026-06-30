@@ -8,6 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from evals import schema_validation
 from evals.router_observability import backfill_row
 from evals import report
 from evals.routing_summary import summarize_routing_results
@@ -16,6 +17,7 @@ from evals.verdict_model import normalize_execution_profile, render_router_card,
 
 ROOT = Path(__file__).resolve().parents[1]
 HOOKS = ROOT / "scripts" / "codex-hooks"
+ROUTER_SCORE_SCHEMA = ROOT / "schemas" / "groundwork-router-score.schema.json"
 
 
 def load_hooks_module():
@@ -79,6 +81,17 @@ class RouterObservabilityTests(unittest.TestCase):
 
     def turn_dir(self, root):
         return root / ".groundwork" / "harness" / "router-observability" / "s1" / "t1"
+
+    def assert_router_score_schema_valid(self, score_or_path):
+        if isinstance(score_or_path, (str, Path)):
+            score_path = Path(score_or_path)
+            errors = schema_validation.validate_json_file(ROUTER_SCORE_SCHEMA, score_path)
+        else:
+            with tempfile.TemporaryDirectory() as tmp:
+                score_path = Path(tmp) / "router-score.json"
+                score_path.write_text(json.dumps(score_or_path), encoding="utf-8")
+                errors = schema_validation.validate_json_file(ROUTER_SCORE_SCHEMA, score_path)
+        self.assertEqual([str(error) for error in errors], [])
 
     def test_user_prompt_hook_noops_without_project_opt_in(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -179,6 +192,7 @@ class RouterObservabilityTests(unittest.TestCase):
             self.assertEqual(decision["entry_decision"]["expected_best"], "write-plan")
             score = score_turn(decision, "Implementation Mini-Plan", [])
             self.assertEqual(score["score_eligibility"], "guided_hint_excluded")
+            self.assert_router_score_schema_valid(score)
 
     def test_tool_and_stop_hooks_write_score_and_card(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -209,7 +223,9 @@ class RouterObservabilityTests(unittest.TestCase):
             )
 
             self.assertEqual(result.stdout, "")
-            score = json.loads((self.turn_dir(root) / "router-score.json").read_text(encoding="utf-8"))
+            score_path = self.turn_dir(root) / "router-score.json"
+            self.assert_router_score_schema_valid(score_path)
+            score = json.loads(score_path.read_text(encoding="utf-8"))
             final_metadata = json.loads((self.turn_dir(root) / "final-metadata.json").read_text(encoding="utf-8"))
             tool_event = json.loads((self.turn_dir(root) / "tool-events.jsonl").read_text(encoding="utf-8"))
             card = (self.turn_dir(root) / "router-card.md").read_text(encoding="utf-8")
@@ -709,6 +725,7 @@ class RouterObservabilityTests(unittest.TestCase):
         self.assertEqual(non_clean_score["execution_profile_verdict"], "pass")
         self.assertEqual(clean_score["execution_profile_verdict"], "mismatch")
         self.assertEqual(clean_score["selector_mismatch_reason"], "profile_too_weak_for_risk")
+        self.assert_router_score_schema_valid(clean_score)
 
     def test_verify_right_route_wrong_output_contract_fails(self):
         decision = {
@@ -738,6 +755,7 @@ class RouterObservabilityTests(unittest.TestCase):
         self.assertEqual(score["failure_type"], "output_contract_failure")
         self.assertEqual(score["fix_locus"], "skill_output_contract")
         self.assertEqual(score["score_eligibility"], "baseline_eligible")
+        self.assert_router_score_schema_valid(score)
 
     def test_debug_hook_failure_uses_stderr_not_system_message(self):
         with tempfile.TemporaryDirectory() as tmp:
