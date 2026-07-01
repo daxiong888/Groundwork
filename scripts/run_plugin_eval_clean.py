@@ -41,6 +41,13 @@ SCRIPT_EXECUTORS = {
     "bash",
     "zsh",
 }
+TRANSPORT_FAILURE_PATTERNS = (
+    "stream disconnected before completion",
+    "failed to lookup address information",
+    "nodename nor servname provided",
+    "error sending request for url",
+    "backend-api/codex/responses",
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -580,12 +587,22 @@ def run_plugin_eval_benchmark(
     relocate_plugin_eval_dir(target_root, scenario_result_root)
     assert_no_plugin_eval(target_root)
     runtime_trace = read_runtime_trace_summary(scenario_result_root)
-    status = benchmark_status(result.returncode, runtime_trace)
+    observed_usage = read_observed_usage(scenario_result_root / "observed-usage.jsonl")
+    validation = validate_benchmark_run(
+        exit_code=result.returncode,
+        scenario_result_root=scenario_result_root,
+        runtime_trace=runtime_trace,
+        observed_usage=observed_usage,
+    )
     return {
-        "status": status,
+        "status": validation["status"],
+        "valid_for_usage_regression": validation["valid_for_usage_regression"],
+        "evidence_category": validation["evidence_category"],
+        "reason": validation["reason"],
+        "validation": validation,
         "exit_code": result.returncode,
         "command": command_text,
-        "observed_usage": read_observed_usage(scenario_result_root / "observed-usage.jsonl"),
+        "observed_usage": observed_usage,
         "runtime_trace": runtime_trace,
     }
 
@@ -602,14 +619,232 @@ def relocate_plugin_eval_dir(target_root: Path, scenario_result_root: Path) -> N
 
 def benchmark_status(exit_code: int, runtime_trace: dict) -> str:
     if exit_code != 0:
-        return "failed"
+        return "invalid-run"
     if runtime_trace.get("status") != "present":
-        return "failed"
+        return "invalid-run"
     if runtime_trace.get("nested_command_count", 0) > 0:
-        return "failed"
+        return "invalid-run"
     if runtime_trace.get("forbidden_source_scan_count", 0) > 0:
-        return "failed"
+        return "invalid-run"
+    if runtime_trace.get("terminal_transport_failure_count", 0) > 0:
+        return "invalid-run"
     return "completed"
+
+
+def validate_benchmark_run(
+    exit_code: int,
+    scenario_result_root: Path,
+    runtime_trace: dict,
+    observed_usage: dict | None,
+) -> dict:
+    benchmark_result = read_benchmark_result(scenario_result_root / "benchmark-result.json")
+    reasons: list[str] = []
+
+    expected_usage_path = str(scenario_result_root / "observed-usage.jsonl")
+    if observed_usage is None:
+        reasons.append("observed_usage_missing")
+    elif observed_usage.get("path") != expected_usage_path:
+        reasons.append(
+            f"observed_usage_path_mismatch: expected {expected_usage_path}, got {observed_usage.get('path')}"
+        )
+    elif observed_usage.get("status") != "present":
+        reasons.append(f"observed_usage_unavailable: {observed_usage.get('status')}")
+    elif parse_token_count(observed_usage.get("input_tokens")) is None or observed_usage.get("input_tokens", 0) <= 0:
+        reasons.append(f"observed_usage_input_tokens_not_positive: {observed_usage.get('input_tokens')}")
+
+    if exit_code != 0:
+        reasons.append(f"plugin_eval_exit_code_nonzero: {exit_code}")
+    if runtime_trace.get("status") != "present":
+        reasons.append(f"runtime_trace_not_present: {runtime_trace.get('status')}")
+    if runtime_trace.get("nested_command_count", 0) > 0:
+        reasons.append(f"nested_benchmark_commands: {runtime_trace.get('nested_command_count')}")
+    if runtime_trace.get("forbidden_source_scan_count", 0) > 0:
+        reasons.append(f"forbidden_source_scans: {runtime_trace.get('forbidden_source_scan_count')}")
+    if runtime_trace.get("terminal_transport_failure_count", 0) > 0:
+        reasons.append("terminal_transport_failure_in_trace")
+
+    if benchmark_result["status"] != "present":
+        reasons.append(f"benchmark_result_{benchmark_result['status']}")
+        return benchmark_validation_result(
+            status="invalid-run",
+            evidence_category="discarded_runs",
+            reason="; ".join(reasons),
+            reasons=reasons,
+            invalid_run_class="invalid_missing_result",
+            benchmark_result=benchmark_result,
+        )
+
+    result_payload = benchmark_result["payload"]
+    if not isinstance(result_payload, dict):
+        reasons.append("benchmark_result_payload_not_object")
+        return benchmark_validation_result(
+            status="invalid-run",
+            evidence_category="discarded_runs",
+            reason="; ".join(reasons),
+            reasons=reasons,
+            invalid_run_class="invalid_result_payload",
+            benchmark_result=benchmark_result,
+        )
+
+    result_path = result_payload.get("resultPath")
+    expected_result_path = str(scenario_result_root / "benchmark-result.json")
+    if result_path and result_path != expected_result_path:
+        reasons.append(f"benchmark_result_path_mismatch: expected {expected_result_path}, got {result_path}")
+
+    usage_log_path = result_payload.get("usageLogPath")
+    if usage_log_path != expected_usage_path:
+        reasons.append(f"benchmark_usage_log_path_mismatch: expected {expected_usage_path}, got {usage_log_path}")
+
+    summary = result_payload.get("summary") if isinstance(result_payload.get("summary"), dict) else {}
+    scenarios = result_payload.get("scenarios")
+    if not isinstance(scenarios, list) or not scenarios:
+        reasons.append("benchmark_result_scenarios_missing")
+        return benchmark_validation_result(
+            status="invalid-run",
+            evidence_category="discarded_runs",
+            reason="; ".join(reasons),
+            reasons=reasons,
+            invalid_run_class="invalid_missing_scenario_result",
+            benchmark_result=benchmark_result,
+        )
+
+    scenario = scenarios[0]
+    if not isinstance(scenario, dict):
+        reasons.append("benchmark_result_scenario_not_object")
+        return benchmark_validation_result(
+            status="invalid-run",
+            evidence_category="discarded_runs",
+            reason="; ".join(reasons),
+            reasons=reasons,
+            invalid_run_class="invalid_missing_scenario_result",
+            benchmark_result=benchmark_result,
+        )
+
+    scenario_status = scenario.get("status")
+    failed_scenarios = parse_token_count(summary.get("failedScenarios")) or 0
+    completed_scenarios = parse_token_count(summary.get("completedScenarios")) or 0
+    if failed_scenarios > 0:
+        reasons.append(f"benchmark_failed_scenarios: {failed_scenarios}")
+    if completed_scenarios < 1:
+        reasons.append(f"benchmark_completed_scenarios_not_positive: {completed_scenarios}")
+    if scenario_status != "completed":
+        reasons.append(f"scenario_status_not_completed: {scenario_status}")
+
+    has_final_message = final_assistant_message_exists(scenario, scenario_result_root)
+    if not has_final_message:
+        reasons.append("final_assistant_message_missing")
+
+    scenario_usage = scenario.get("usage") if isinstance(scenario.get("usage"), dict) else {}
+    scenario_input_tokens = parse_token_count(scenario_usage.get("input_tokens"))
+    if scenario_input_tokens is None or scenario_input_tokens <= 0:
+        reasons.append(f"scenario_usage_input_tokens_not_positive: {scenario_usage.get('input_tokens')}")
+
+    transport_failure = (
+        runtime_trace.get("terminal_transport_failure_count", 0) > 0
+        or (not has_final_message and runtime_trace.get("transport_failure_count", 0) > 0)
+        or contains_transport_failure(result_payload)
+    )
+    if transport_failure and (scenario_status != "completed" or not has_final_message):
+        return benchmark_validation_result(
+            status="invalid-run",
+            evidence_category="discarded_runs",
+            reason="; ".join(reasons or ["invalid_transport_failure"]),
+            reasons=reasons or ["invalid_transport_failure"],
+            invalid_run_class="invalid_transport_failure",
+            benchmark_result=benchmark_result,
+        )
+
+    if scenario_status != "completed" or failed_scenarios > 0:
+        return benchmark_validation_result(
+            status="failed-plugin-run",
+            evidence_category="failed_plugin_runs",
+            reason="; ".join(reasons),
+            reasons=reasons,
+            invalid_run_class="plugin_scenario_failed",
+            benchmark_result=benchmark_result,
+        )
+
+    if reasons:
+        invalid_class = "invalid_clean_guardrail" if any(
+            reason.startswith(("nested_benchmark_commands", "forbidden_source_scans"))
+            for reason in reasons
+        ) else "invalid_usage_or_result"
+        return benchmark_validation_result(
+            status="invalid-run",
+            evidence_category="discarded_runs",
+            reason="; ".join(reasons),
+            reasons=reasons,
+            invalid_run_class=invalid_class,
+            benchmark_result=benchmark_result,
+        )
+
+    return benchmark_validation_result(
+        status="completed",
+        evidence_category="valid_runs",
+        reason="all validity checks passed",
+        reasons=[],
+        invalid_run_class=None,
+        benchmark_result=benchmark_result,
+    )
+
+
+def benchmark_validation_result(
+    status: str,
+    evidence_category: str,
+    reason: str,
+    reasons: list[str],
+    invalid_run_class: str | None,
+    benchmark_result: dict,
+) -> dict:
+    return {
+        "status": status,
+        "valid_for_usage_regression": status == "completed",
+        "evidence_category": evidence_category,
+        "reason": reason,
+        "reasons": reasons,
+        "invalid_run_class": invalid_run_class,
+        "benchmark_result_status": benchmark_result.get("status"),
+        "benchmark_result_path": benchmark_result.get("path"),
+    }
+
+
+def read_benchmark_result(result_path: Path) -> dict:
+    if not result_path.exists():
+        return {"status": "missing", "path": str(result_path)}
+    try:
+        payload = json.loads(result_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        return {
+            "status": "invalid_json",
+            "path": str(result_path),
+            "error": str(exc),
+        }
+    return {
+        "status": "present",
+        "path": str(result_path),
+        "payload": payload,
+    }
+
+
+def final_assistant_message_exists(scenario: dict, scenario_result_root: Path) -> bool:
+    preview = scenario.get("finalMessagePreview")
+    if isinstance(preview, str) and preview.strip():
+        return True
+
+    final_path = scenario.get("finalMessagePath")
+    if not isinstance(final_path, str) or not final_path:
+        return False
+
+    path = Path(final_path)
+    if path.is_file():
+        return True
+
+    marker = f"{os.sep}.plugin-eval{os.sep}"
+    if marker not in final_path:
+        return False
+    relocated_suffix = final_path.split(marker, 1)[1]
+    relocated_path = scenario_result_root / "target-plugin-eval-output" / relocated_suffix
+    return relocated_path.is_file()
 
 
 def read_runtime_trace_summary(scenario_result_root: Path) -> dict:
@@ -627,6 +862,12 @@ def read_runtime_trace_summary(scenario_result_root: Path) -> dict:
             "broad_scan_count": 0,
             "broad_scan_commands": [],
             "package_files_read": [],
+            "transport_failure_count": 0,
+            "transport_failure_messages": [],
+            "terminal_transport_failure_count": 0,
+            "terminal_transport_failure_messages": [],
+            "turn_completed_count": 0,
+            "turn_failed_count": 0,
             "invalid_json_line_count": 0,
         }
 
@@ -636,6 +877,10 @@ def read_runtime_trace_summary(scenario_result_root: Path) -> dict:
     forbidden_source_scan_commands: list[str] = []
     broad_scan_commands: list[str] = []
     package_files_read: set[str] = set()
+    transport_failure_messages: list[str] = []
+    terminal_transport_failure_messages: list[str] = []
+    turn_completed_count = 0
+    turn_failed_count = 0
     invalid_json_line_count = 0
 
     for log_path in log_paths:
@@ -650,6 +895,17 @@ def read_runtime_trace_summary(scenario_result_root: Path) -> dict:
 
             if payload.get("type") == "turn.started":
                 model_turn_count += 1
+            if payload.get("type") == "turn.completed":
+                turn_completed_count += 1
+            if payload.get("type") == "turn.failed":
+                turn_failed_count += 1
+                message = transport_message_from_payload(payload)
+                if message:
+                    terminal_transport_failure_messages.append(message)
+
+            message = transport_message_from_payload(payload)
+            if message:
+                transport_failure_messages.append(message)
 
             item = payload.get("item")
             if not isinstance(item, dict):
@@ -681,8 +937,46 @@ def read_runtime_trace_summary(scenario_result_root: Path) -> dict:
         "broad_scan_count": len(broad_scan_commands),
         "broad_scan_commands": broad_scan_commands,
         "package_files_read": sorted(package_files_read),
+        "transport_failure_count": len(transport_failure_messages),
+        "transport_failure_messages": transport_failure_messages,
+        "terminal_transport_failure_count": len(terminal_transport_failure_messages),
+        "terminal_transport_failure_messages": terminal_transport_failure_messages,
+        "turn_completed_count": turn_completed_count,
+        "turn_failed_count": turn_failed_count,
         "invalid_json_line_count": invalid_json_line_count,
     }
+
+
+def transport_message_from_payload(payload: dict) -> str | None:
+    message = payload.get("message")
+    if isinstance(message, str) and is_transport_failure_message(message):
+        return message
+    error = payload.get("error")
+    if isinstance(error, dict):
+        error_message = error.get("message")
+        if isinstance(error_message, str) and is_transport_failure_message(error_message):
+            return error_message
+    item = payload.get("item")
+    if isinstance(item, dict):
+        item_message = item.get("message")
+        if isinstance(item_message, str) and is_transport_failure_message(item_message):
+            return item_message
+    return None
+
+
+def is_transport_failure_message(message: str) -> bool:
+    normalized = message.lower()
+    return any(pattern in normalized for pattern in TRANSPORT_FAILURE_PATTERNS)
+
+
+def contains_transport_failure(value: object) -> bool:
+    if isinstance(value, str):
+        return is_transport_failure_message(value)
+    if isinstance(value, dict):
+        return any(contains_transport_failure(item) for item in value.values())
+    if isinstance(value, list):
+        return any(contains_transport_failure(item) for item in value)
+    return False
 
 
 def is_nested_benchmark_command(command: str) -> bool:
@@ -952,6 +1246,28 @@ def write_run_manifest(run_root: Path, manifest: dict) -> Path:
     return path
 
 
+def benchmark_run_categories(scenario_results: list[dict]) -> dict:
+    categories = {
+        "valid_runs": [],
+        "discarded_runs": [],
+        "failed_plugin_runs": [],
+    }
+    for result in scenario_results:
+        benchmark = result.get("benchmark", {})
+        category = benchmark.get("evidence_category")
+        if category not in categories:
+            category = "discarded_runs"
+        categories[category].append({
+            "scenario": result.get("scenario"),
+            "status": benchmark.get("status"),
+            "valid_for_usage_regression": benchmark.get("valid_for_usage_regression", False),
+            "invalid_run_class": benchmark.get("validation", {}).get("invalid_run_class"),
+            "reason": benchmark.get("reason"),
+            "result_root": result.get("result_root"),
+        })
+    return categories
+
+
 def main() -> int:
     args = parse_args()
     ensure_target_basename(args.target_basename)
@@ -1011,6 +1327,7 @@ def main() -> int:
         "plugin_eval_command_detected": command,
         "execute": args.execute,
         "print_commands": args.print_commands,
+        "benchmark_run_categories": benchmark_run_categories(scenario_results),
         "scenarios": scenario_results,
     }
     manifest_path = write_run_manifest(run_root, manifest)
@@ -1018,7 +1335,7 @@ def main() -> int:
     print(f"Marketplace root: {marketplace['marketplace_root']}")
     print(f"Package root: {marketplace['package_root']}")
     print(f"Result root: {result_root}")
-    if any(result["benchmark"]["status"] == "failed" for result in scenario_results):
+    if any(result["benchmark"]["status"] != "completed" for result in scenario_results):
         return 1
     return 0
 

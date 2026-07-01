@@ -12,6 +12,74 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import run_plugin_eval_clean  # noqa: E402
 
 
+def write_runtime_log(result_root: Path, events: list[dict]) -> Path:
+    log_path = (
+        result_root
+        / "target-plugin-eval-output"
+        / "runs"
+        / "run"
+        / "01-scenario"
+        / "codex.stdout.jsonl"
+    )
+    log_path.parent.mkdir(parents=True)
+    log_path.write_text(
+        "\n".join(json.dumps(event) for event in events) + "\n",
+        encoding="utf-8",
+    )
+    return log_path
+
+
+def write_usage(result_root: Path, input_tokens: int = 100, output_tokens: int = 25) -> dict:
+    usage_path = result_root / "observed-usage.jsonl"
+    usage_path.parent.mkdir(parents=True, exist_ok=True)
+    usage_path.write_text(
+        json.dumps({
+            "id": "sample",
+            "usage": {
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "total_tokens": input_tokens + output_tokens,
+            },
+        }) + "\n",
+        encoding="utf-8",
+    )
+    return run_plugin_eval_clean.read_observed_usage(usage_path)
+
+
+def write_benchmark_result(
+    result_root: Path,
+    scenario_status: str = "completed",
+    input_tokens: int = 100,
+    final_message: bool = True,
+    failed_scenarios: int = 0,
+    raw_usage: dict | None = None,
+) -> Path:
+    usage = raw_usage or {
+        "input_tokens": input_tokens,
+        "output_tokens": 25,
+        "total_tokens": input_tokens + 25,
+    }
+    scenario = {
+        "id": "sample",
+        "status": scenario_status,
+        "finalMessagePath": str(result_root / "target-plugin-eval-output" / "final-message.txt") if final_message else None,
+        "finalMessagePreview": "done" if final_message else None,
+        "usage": usage,
+    }
+    result = {
+        "usageLogPath": str(result_root / "observed-usage.jsonl"),
+        "resultPath": str(result_root / "benchmark-result.json"),
+        "summary": {
+            "completedScenarios": 1 if scenario_status == "completed" else 0,
+            "failedScenarios": failed_scenarios,
+        },
+        "scenarios": [scenario],
+    }
+    result_path = result_root / "benchmark-result.json"
+    result_path.write_text(json.dumps(result) + "\n", encoding="utf-8")
+    return result_path
+
+
 class PluginEvalCleanBenchmarkConfigTests(unittest.TestCase):
     def test_dispatch_config_uses_non_recursive_task_workspace(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -191,6 +259,185 @@ class PluginEvalCleanBenchmarkConfigTests(unittest.TestCase):
             )
             self.assertEqual(run_plugin_eval_clean.benchmark_status(0, summary), "completed")
 
+    def test_validate_benchmark_run_accepts_only_complete_usage_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result_root = Path(tmp) / "results" / "to-prd"
+            write_runtime_log(
+                result_root,
+                [
+                    {"type": "turn.started"},
+                    {"type": "item.completed", "item": {"type": "agent_message", "text": "done"}},
+                    {"type": "turn.completed", "usage": {"input_tokens": 100, "output_tokens": 25}},
+                ],
+            )
+            observed_usage = write_usage(result_root)
+            write_benchmark_result(result_root)
+
+            validation = run_plugin_eval_clean.validate_benchmark_run(
+                exit_code=0,
+                scenario_result_root=result_root,
+                runtime_trace=run_plugin_eval_clean.read_runtime_trace_summary(result_root),
+                observed_usage=observed_usage,
+            )
+
+            self.assertEqual(validation["status"], "completed")
+            self.assertTrue(validation["valid_for_usage_regression"])
+            self.assertEqual(validation["evidence_category"], "valid_runs")
+            self.assertEqual(validation["reason"], "all validity checks passed")
+
+    def test_validate_benchmark_run_discards_transport_failure(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result_root = Path(tmp) / "results" / "verify"
+            write_runtime_log(
+                result_root,
+                [
+                    {"type": "turn.started"},
+                    {
+                        "type": "error",
+                        "message": (
+                            "Reconnecting... 5/5 (stream disconnected before completion: "
+                            "failed to lookup address information)"
+                        ),
+                    },
+                    {
+                        "type": "turn.failed",
+                        "error": {
+                            "message": (
+                                "stream disconnected before completion: error sending request "
+                                "for url (https://chatgpt.com/backend-api/codex/responses)"
+                            )
+                        },
+                    },
+                ],
+            )
+            observed_usage = write_usage(result_root, input_tokens=0, output_tokens=0)
+            write_benchmark_result(
+                result_root,
+                scenario_status="failed",
+                input_tokens=0,
+                final_message=False,
+                failed_scenarios=1,
+                raw_usage={
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                    "total_tokens": 0,
+                    "raw": {
+                        "message": (
+                            "stream disconnected before completion: error sending request "
+                            "for url (https://chatgpt.com/backend-api/codex/responses)"
+                        )
+                    },
+                },
+            )
+
+            validation = run_plugin_eval_clean.validate_benchmark_run(
+                exit_code=0,
+                scenario_result_root=result_root,
+                runtime_trace=run_plugin_eval_clean.read_runtime_trace_summary(result_root),
+                observed_usage=observed_usage,
+            )
+
+            self.assertEqual(validation["status"], "invalid-run")
+            self.assertFalse(validation["valid_for_usage_regression"])
+            self.assertEqual(validation["evidence_category"], "discarded_runs")
+            self.assertEqual(validation["invalid_run_class"], "invalid_transport_failure")
+
+    def test_validate_benchmark_run_separates_plugin_failure_from_transport(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result_root = Path(tmp) / "results" / "dispatch"
+            write_runtime_log(
+                result_root,
+                [
+                    {"type": "turn.started"},
+                    {"type": "item.completed", "item": {"type": "agent_message", "text": "failed"}},
+                    {"type": "turn.completed", "usage": {"input_tokens": 100, "output_tokens": 25}},
+                ],
+            )
+            observed_usage = write_usage(result_root)
+            write_benchmark_result(
+                result_root,
+                scenario_status="failed",
+                final_message=True,
+                failed_scenarios=1,
+            )
+
+            validation = run_plugin_eval_clean.validate_benchmark_run(
+                exit_code=0,
+                scenario_result_root=result_root,
+                runtime_trace=run_plugin_eval_clean.read_runtime_trace_summary(result_root),
+                observed_usage=observed_usage,
+            )
+
+            self.assertEqual(validation["status"], "failed-plugin-run")
+            self.assertFalse(validation["valid_for_usage_regression"])
+            self.assertEqual(validation["evidence_category"], "failed_plugin_runs")
+            self.assertEqual(validation["invalid_run_class"], "plugin_scenario_failed")
+
+    def test_validate_benchmark_run_rejects_missing_benchmark_result(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result_root = Path(tmp) / "results" / "to-prd"
+            write_runtime_log(
+                result_root,
+                [
+                    {"type": "turn.started"},
+                    {"type": "turn.completed", "usage": {"input_tokens": 100, "output_tokens": 25}},
+                ],
+            )
+            observed_usage = write_usage(result_root)
+
+            validation = run_plugin_eval_clean.validate_benchmark_run(
+                exit_code=0,
+                scenario_result_root=result_root,
+                runtime_trace=run_plugin_eval_clean.read_runtime_trace_summary(result_root),
+                observed_usage=observed_usage,
+            )
+
+            self.assertEqual(validation["status"], "invalid-run")
+            self.assertEqual(validation["evidence_category"], "discarded_runs")
+            self.assertEqual(validation["invalid_run_class"], "invalid_missing_result")
+
+    def test_benchmark_run_categories_groups_evidence_classes(self):
+        categories = run_plugin_eval_clean.benchmark_run_categories([
+            {
+                "scenario": "to-prd",
+                "result_root": "/tmp/to-prd",
+                "benchmark": {
+                    "status": "completed",
+                    "valid_for_usage_regression": True,
+                    "evidence_category": "valid_runs",
+                    "reason": "all validity checks passed",
+                    "validation": {"invalid_run_class": None},
+                },
+            },
+            {
+                "scenario": "verify",
+                "result_root": "/tmp/verify",
+                "benchmark": {
+                    "status": "invalid-run",
+                    "valid_for_usage_regression": False,
+                    "evidence_category": "discarded_runs",
+                    "reason": "invalid_transport_failure",
+                    "validation": {"invalid_run_class": "invalid_transport_failure"},
+                },
+            },
+            {
+                "scenario": "dispatch",
+                "result_root": "/tmp/dispatch",
+                "benchmark": {
+                    "status": "failed-plugin-run",
+                    "valid_for_usage_regression": False,
+                    "evidence_category": "failed_plugin_runs",
+                    "reason": "scenario_status_not_completed: failed",
+                    "validation": {"invalid_run_class": "plugin_scenario_failed"},
+                },
+            },
+        ])
+
+        self.assertEqual([item["scenario"] for item in categories["valid_runs"]], ["to-prd"])
+        self.assertEqual([item["scenario"] for item in categories["discarded_runs"]], ["verify"])
+        self.assertEqual([item["scenario"] for item in categories["failed_plugin_runs"]], ["dispatch"])
+        self.assertFalse(categories["discarded_runs"][0]["valid_for_usage_regression"])
+
     def test_runtime_trace_summary_fails_nested_benchmark_command(self):
         with tempfile.TemporaryDirectory() as tmp:
             result_root = Path(tmp) / "results" / "dispatch"
@@ -222,13 +469,13 @@ class PluginEvalCleanBenchmarkConfigTests(unittest.TestCase):
             self.assertEqual(summary["model_turn_count"], 1)
             self.assertEqual(summary["command_execution_count"], 1)
             self.assertEqual(summary["nested_command_count"], 1)
-            self.assertEqual(run_plugin_eval_clean.benchmark_status(0, summary), "failed")
+            self.assertEqual(run_plugin_eval_clean.benchmark_status(0, summary), "invalid-run")
 
     def test_benchmark_status_fails_when_runtime_trace_missing(self):
         summary = run_plugin_eval_clean.read_runtime_trace_summary(Path("/tmp/no-such-result-root"))
 
         self.assertEqual(summary["status"], "not_found")
-        self.assertEqual(run_plugin_eval_clean.benchmark_status(0, summary), "failed")
+        self.assertEqual(run_plugin_eval_clean.benchmark_status(0, summary), "invalid-run")
 
     def test_runtime_trace_summary_fails_source_repo_scan(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -260,7 +507,7 @@ class PluginEvalCleanBenchmarkConfigTests(unittest.TestCase):
 
             self.assertEqual(summary["nested_command_count"], 0)
             self.assertEqual(summary["forbidden_source_scan_count"], 1)
-            self.assertEqual(run_plugin_eval_clean.benchmark_status(0, summary), "failed")
+            self.assertEqual(run_plugin_eval_clean.benchmark_status(0, summary), "invalid-run")
 
     def test_command_classifiers_distinguish_patterns_from_paths(self):
         self.assertFalse(
