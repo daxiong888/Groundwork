@@ -1,13 +1,13 @@
 ---
 name: prototype
-description: Use a throwaway logic/state/UI/static-HTML prototype to answer a specific interaction, visual, or business-rule question before PRD or implementation. Not for production code, backend/API truth, readiness verification, durable docs, or handoff.
+description: Throwaway logic/state/UI/static-HTML prototype for a specific interaction, visual, or business-rule question. Not production code, backend/API truth, readiness, durable docs, or handoff.
 ---
 
 # prototype
 
 ## Trigger Contract
 
-Use when a bounded throwaway artifact can answer a product, state, interaction, visual, or business-rule question faster than full implementation.
+Use when a bounded throwaway artifact can answer a product, state, interaction, visual, or business-rule question faster than implementation.
 
 Route away:
 
@@ -19,17 +19,17 @@ Route away:
 
 ## Required Evidence
 
-Name the prototype question first. Inspect source, PRD, task, data shape, existing prototype, screenshot, or UI notes only as needed to answer it. Static HTML/visual claims need browser/runtime evidence; otherwise mark them `unverified`.
+Name the prototype question first. Inspect source, PRD, task, data shape, existing prototype, screenshot, or UI notes only as needed. Static HTML/visual claims need browser/runtime evidence; otherwise mark `unverified`.
 
 For Groundwork repo maintenance, apply repo-local `AGENTS.md` before reporting complete.
 
-Core boundaries: prototype evidence can classify backend candidates, mock fields, and client-derived logic, but cannot confirm backend/API/source truth without source, schema/API, runtime evidence, or explicit confirmation.
+Prototype evidence can classify backend candidates, mock fields, and client-derived logic, but cannot confirm backend/API/source truth without source, schema/API, runtime evidence, or explicit confirmation.
 
-Load only one branch extension: `LOGIC.md`, `LOGIC-LAB.md`, `UI.md`, or `UI-VARIANTS.md`. Add `CONTRACT-BOUNDARY.md` for mock/backend-candidate separation, `DECISION-CAPTURE.md` for promoted decisions, `VISUAL-HANDOFF-PACKET.md` for visual packets, and `ROLE-SEPARATION.md` only when downstream ownership is material.
+Load one branch extension: `LOGIC.md`, `LOGIC-LAB.md`, `UI.md`, or `UI-VARIANTS.md`. Add `CONTRACT-BOUNDARY.md` for mock/backend separation, `DECISION-CAPTURE.md` for promoted decisions, `VISUAL-HANDOFF-PACKET.md` for visual packets, and `ROLE-SEPARATION.md` only when downstream ownership matters.
 
 ## Workflow
 
-State question, decision, contract sources, and unavailable evidence; grill only if ambiguity blocks scope; pick one branch; keep artifact throwaway; separate confirmed/rejected decisions, mock/client-derived fields, assumptions, and backend candidates; run browser/runtime checks when visual/interaction correctness matters; draft findings as proposed downstream feedback unless source truth supports promotion; decide cleanup.
+State question, decision, contract sources, and unavailable evidence; grill only if ambiguity blocks scope; pick one branch; keep artifact throwaway; separate confirmed/rejected decisions, mock/client-derived fields, assumptions, and backend candidates; run browser/runtime checks for visual/interaction correctness; draft findings as proposed feedback unless source truth supports promotion; decide cleanup.
 
 ## Hard Stops
 
@@ -46,7 +46,7 @@ Mark missing backend/state/rule evidence as `mock`, `illustrative`, `proposed hy
 
 ## Output Shape
 
-Use a compact prototype report with question, decision, contract sources/status, confirmed/rejected decisions, mock/client-derived fields, assumptions, contract impact, open questions, next route, states/interactions explored, browser/runtime evidence, coverage status, gaps, downstream feedback, cleanup, and next action.
+Use a compact prototype report with question, decision, contract sources/status, confirmed/rejected decisions, mock/client-derived fields, assumptions, contract impact, open questions, next route, states/interactions explored, browser/runtime evidence, coverage, gaps, downstream feedback, cleanup, and next action.
 
 For visual handoff packets, include the required sections from `skills/_shared/VISUAL-HANDOFF-PACKET.md` or mark them `not applicable`.
 

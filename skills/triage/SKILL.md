@@ -1,13 +1,13 @@
 ---
 name: triage
-description: Classify task readiness, blockers, severity, AFK/HITL ownership, lifecycle-state need, or closeout. Not for requirement shaping, slicing, code edits, implementation planning, verification reports, dispatch packages, or wiki work.
+description: Classify readiness, blockers, severity, AFK/HITL, lifecycle-state need, or closeout. Not for shaping, slicing, code edits, planning, verification reports, dispatch packages, or wiki.
 ---
 
 # triage
 
 ## Trigger Contract
 
-Use when the user needs task state, readiness, blocker, AFK/HITL, lifecycle-state, or closeout classification.
+Use for task state, readiness, blockers, AFK/HITL, lifecycle-state, or closeout classification.
 
 Route away:
 
@@ -20,25 +20,25 @@ Route away:
 
 ## Required Evidence
 
-Inspect task source, PRD/spec, conversation, prior state when known, blockers, source refs, lifecycle state, and verification expectations. Unknown source -> `needs-info`.
+Inspect task source, PRD/spec, conversation, prior state, blockers, source refs, lifecycle state, and verification expectations. Unknown source -> `needs-info`.
 
 For Groundwork repo maintenance, apply repo-local `AGENTS.md` before reporting complete.
 
-Every verdict includes `Severity` and `State Transition Reason`. Use `SEVERITY.md`; severity is current blocker/gap impact, not product priority. `AFK` can proceed from available source/acceptance/scope/first inspection/verification without new human decision/access/approval. `HITL` still needs human decision, authority/access, manual validation, risky approval, or product/design choice.
+Every verdict includes `Severity` and `State Transition Reason`. Use `SEVERITY.md`; severity is current blocker/gap impact, not product priority. `AFK` can proceed from available source/acceptance/scope/first inspection/verification without new human decision/access/approval. `HITL` needs human decision, authority/access, manual validation, risky approval, or product/design choice.
 
 Closeout requires `verify` evidence, already-`done` evidence, or explicit `wontfix` owner decision. Otherwise keep open as `verification`, `needs-info`, or `ready-for-human`.
 
-Use `skills/_shared/LIFECYCLE-STATE.md` only to decide whether workstream-scoped state is justified. External issue/PR ownership should not be duplicated unless Groundwork recovery needs remain.
+Use `skills/_shared/LIFECYCLE-STATE.md` only to decide if workstream-scoped state is justified. Do not duplicate external issue/PR ownership unless Groundwork recovery needs remain.
 
-Executable `ready-for-agent + AFK` must include a `Goal Contract` using `skills/_shared/GOAL-CONTRACT.md` field names plus preferred runtime recommendation and expected result package. Do not emit executable child goals for `needs-info`, `ready-for-human`, or HITL-only tasks.
+Executable `ready-for-agent + AFK` must include a `Goal Contract` using `skills/_shared/GOAL-CONTRACT.md` field names, preferred runtime recommendation, and expected result package. Do not emit child goals for `needs-info`, `ready-for-human`, or HITL-only tasks.
 
 ## Severity Derivation
 
-Identify the current blocker/gap, map the strongest affected boundary, check blast radius/dependencies/workaround, then assign the highest matching severity. If source, boundary, or workaround is unknown, classify `needs-info` and name missing evidence.
+Identify current blocker/gap, strongest affected boundary, blast radius/dependencies/workaround, then assign the highest matching severity. If source, boundary, or workaround is unknown, classify `needs-info` and name missing evidence.
 
 ## Workflow
 
-Gather source/outcome; classify state; assign severity and transition reason; separate evidence added/missing; apply readiness contracts; for executable `ready-for-agent + AFK`, produce agent brief with Goal Contract/runtime recommendation; for HITL, output decision/options/risks/next action; decide lifecycle-state need; recommend next route.
+Gather source/outcome; classify state; assign severity and transition reason; separate evidence added/missing; apply readiness contracts; for `ready-for-agent + AFK`, produce agent brief with Goal Contract/runtime recommendation; for HITL, output decision/options/risks/next action; decide lifecycle-state need; recommend next route.
 
 ## Hard Stops
 
@@ -52,7 +52,7 @@ Gather source/outcome; classify state; assign severity and transition reason; se
 
 ## Output Shape
 
-Use `Triage Verdict` with state, severity, AFK/HITL, previous state, transition reason, evidence added/missing, blockers, readiness check, lifecycle-state recommendation, agent brief or human decision, next action, and artifact recommendation.
+Use `Triage Verdict` with state, severity, AFK/HITL, previous state, transition reason, evidence added/missing, blockers, readiness check, lifecycle recommendation, agent brief or human decision, next action, and artifact recommendation.
 
 ## Stop Condition
 

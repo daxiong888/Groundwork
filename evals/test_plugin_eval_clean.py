@@ -294,6 +294,42 @@ class PluginEvalCleanBenchmarkConfigTests(unittest.TestCase):
             )
             self.assertEqual(run_plugin_eval_clean.benchmark_status(0, summary), "completed")
 
+    def test_package_read_detector_covers_common_read_commands(self):
+        commands = [
+            "python3 - <<'PY' plugins/groundwork/skills/verify/SKILL.md",
+            "head -40 plugins/groundwork/skills/to-prd/SKILL.md",
+            "tail -20 plugins/groundwork/skills/dispatch/DISPATCH-PACKAGE.md",
+            "grep -n scope plugins/groundwork/skills/verify/VERIFY-SCOPE.md",
+            "rg -n scope plugins/groundwork/skills/verify/SCOPE-EVIDENCE-TEMPLATE.md",
+            "perl -ne 'print' plugins/groundwork/skills/wiki/SKILL.md",
+            "node -e 'console.log()' plugins/groundwork/.codex-plugin/plugin.json",
+        ]
+
+        reads = set()
+        for command in commands:
+            reads.update(run_plugin_eval_clean.extract_package_file_reads(command))
+
+        self.assertEqual(
+            reads,
+            {
+                "plugins/groundwork/skills/verify/SKILL.md",
+                "plugins/groundwork/skills/to-prd/SKILL.md",
+                "plugins/groundwork/skills/dispatch/DISPATCH-PACKAGE.md",
+                "plugins/groundwork/skills/verify/VERIFY-SCOPE.md",
+                "plugins/groundwork/skills/verify/SCOPE-EVIDENCE-TEMPLATE.md",
+                "plugins/groundwork/skills/wiki/SKILL.md",
+                "plugins/groundwork/.codex-plugin/plugin.json",
+            },
+        )
+
+    def test_package_read_detector_ignores_non_read_commands(self):
+        self.assertEqual(
+            run_plugin_eval_clean.extract_package_file_reads(
+                "echo plugins/groundwork/skills/to-prd/SKILL.md"
+            ),
+            set(),
+        )
+
     def test_validate_benchmark_run_accepts_only_complete_usage_evidence(self):
         with tempfile.TemporaryDirectory() as tmp:
             result_root = Path(tmp) / "results" / "to-prd"
@@ -516,7 +552,7 @@ class PluginEvalCleanBenchmarkConfigTests(unittest.TestCase):
         self.assertEqual(result["status"], "fail")
         self.assertIn("to-prd: input_tokens 35001 exceeds threshold 35000", result["failures"])
 
-    def test_clean_regression_gate_rejects_forbidden_read_paths(self):
+    def test_clean_regression_gate_rejects_unexpected_read_paths(self):
         scenarios = {
             "to-prd": scenario_result(
                 "to-prd",
@@ -534,9 +570,43 @@ class PluginEvalCleanBenchmarkConfigTests(unittest.TestCase):
         result = check_plugin_eval_clean_regression.validate_scenarios(scenarios)
 
         self.assertEqual(result["status"], "fail")
-        self.assertIn("to-prd: forbidden package reads: plugins/groundwork/README.md", result["failures"])
+        self.assertIn("to-prd: unexpected package reads: plugins/groundwork/README.md", result["failures"])
         self.assertIn(
-            "dispatch: forbidden package reads: plugins/groundwork/skills/dispatch/DISPATCH-PACKAGE-DETAILS.md",
+            "dispatch: unexpected package reads: plugins/groundwork/skills/dispatch/DISPATCH-PACKAGE-DETAILS.md",
+            result["failures"],
+        )
+
+    def test_clean_regression_gate_rejects_verify_extra_read_paths(self):
+        scenarios = {
+            "to-prd": scenario_result(
+                "to-prd",
+                24493,
+                ["plugins/groundwork/skills/to-prd/SKILL.md"],
+            ),
+            "verify": scenario_result(
+                "verify",
+                39702,
+                [
+                    "plugins/groundwork/skills/verify/SKILL.md",
+                    "plugins/groundwork/skills/verify/VERIFY-SCOPE.md",
+                    "plugins/groundwork/skills/verify/RUNTIME-CAPABILITY-BRANCH.md",
+                ],
+            ),
+            "dispatch": scenario_result(
+                "dispatch",
+                36333,
+                [
+                    "plugins/groundwork/skills/dispatch/SKILL.md",
+                    "plugins/groundwork/skills/dispatch/DISPATCH-PACKAGE.md",
+                ],
+            ),
+        }
+
+        result = check_plugin_eval_clean_regression.validate_scenarios(scenarios)
+
+        self.assertEqual(result["status"], "fail")
+        self.assertIn(
+            "verify: unexpected package reads: plugins/groundwork/skills/verify/RUNTIME-CAPABILITY-BRANCH.md",
             result["failures"],
         )
 

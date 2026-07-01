@@ -1,13 +1,13 @@
 ---
 name: write-plan
-description: Write a concise implementation plan for an accepted task, including dependencies, stop conditions, and verification checkpoints before edits. Not for raw requirements, slicing, direct implementation, readiness verification, dispatch routing, or wiki maintenance.
+description: Concise implementation plan for an accepted task before edits: dependencies, stops, verification checkpoints. Not for raw requirements, slicing, implementation, readiness, dispatch, or wiki.
 ---
 
 # write-plan
 
 ## Trigger Contract
 
-Use when an accepted task is ready for implementation planning but edits have not started.
+Use when an accepted task is ready for implementation planning and edits have not started.
 
 Route away:
 
@@ -21,15 +21,15 @@ Route away:
 
 ## Required Evidence
 
-Use accepted task/PRD/spec/issue, source references, lifecycle state when relevant, roadmap, and verification expectations. Do not invent exact paths, APIs, schemas, owners, commands, dependencies, or tests before inspection; plan the first inspection step instead.
+Use accepted task/PRD/spec/issue, source refs, relevant lifecycle state/roadmap, and verification expectations. Do not invent exact paths, APIs, schemas, owners, commands, dependencies, or tests before inspection; plan the first inspection step instead.
 
 For Groundwork repo maintenance, apply repo-local `AGENTS.md` before reporting complete.
 
 Load only when needed:
 
-- `skills/_shared/DECISION-MAPPING.md` only before an implementation path is accepted or when the user explicitly asks option comparison.
+- `skills/_shared/DECISION-MAPPING.md` only before implementation path acceptance or explicit option comparison.
 - `skills/_shared/LIFECYCLE-STATE.md` only for multi-stage, multi-session, release/UAT-gated, or existing lifecycle-state workstreams.
-- `skills/_shared/CONTRACT-NOTES.md` only when API/DB/state/frontend/docs alignment affects implementation; uninspected contract facts stay unverified. Contract validation/readiness belongs to `verify`; throwaway interaction exploration belongs to `prototype`.
+- `skills/_shared/CONTRACT-NOTES.md` only when API/DB/state/frontend/docs alignment affects implementation; uninspected contract facts stay unverified. Contract validation/readiness belongs to `verify`; throwaway exploration to `prototype`.
 
 ## Workflow
 
@@ -37,7 +37,7 @@ Load only when needed:
 2. Read `STATE.md` / `ROADMAP.md` only when multi-stage, cross-session, or release/UAT-gated.
 3. Check canonical sources before trusting lifecycle state.
 4. Inspect source when exact paths, APIs, schemas, commands, or tests matter.
-5. List focused steps, dependencies, risks/gates, stop conditions, and verification checkpoints.
+5. List steps, dependencies, risks/gates, stop conditions, and verification checkpoints.
 6. Recommend `implement` only when executable.
 
 ## Hard Stops
@@ -50,25 +50,7 @@ Load only when needed:
 
 ## Output Shape
 
-```text
-Plan Summary
-Source
-Assumptions
-Lifecycle Inputs (only when relevant)
-- STATE.md:
-- ROADMAP.md:
-- Stale State Risk: none / low / medium / high / unknown
-- Roadmap Needed: yes / no
-- Roadmap Threshold Met:
-Files / Areas Inspected
-Implementation Steps
-Contract Notes
-Risks / Gates
-Verification Checkpoints
-Stop Condition
-Next Action
-Artifact Recommendation
-```
+Use: Plan Summary, Source, Assumptions, Lifecycle Inputs when relevant, Files/Areas Inspected, Implementation Steps, Contract Notes, Risks/Gates, Verification Checkpoints, Stop Condition, Next Action, Artifact Recommendation.
 
 ## Stop Condition
 
@@ -76,4 +58,4 @@ Stop when steps, dependencies, risks, verification checkpoints, and stop conditi
 
 ## Artifact Rule
 
-Default to conversation output. Write a plan artifact only when it will guide execution, review, handoff, or later verification. Follow `skills/_shared/AUDIENCE-FIRST-ARTIFACT.md` and `skills/_shared/ARTIFACT-DIRECTORY-POLICY.md`. Redact secrets, credentials, PII, sensitive logs, screenshots, private payloads, and database rows.
+Default to conversation output. Write a plan artifact only when it will guide execution, review, handoff, or later verification. Follow audience/artifact policy and redact sensitive data.

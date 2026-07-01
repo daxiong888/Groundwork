@@ -1,105 +1,92 @@
-Target Reader: Groundwork skill authors, implementers, clean reviewers, verifiers, coordinators, and maintainers auditing public skill additions or material skill changes.
-Reader Action Needed: Apply this shared audit workflow before approving public skill additions or material skill-quality changes.
-Decision Supported: Whether the change has enough trigger clarity, hierarchy, progressive disclosure, failure handling, eval coverage, and role-separated evidence to proceed.
+Target Reader: skill authors, implementers, clean reviewers, verifiers, coordinators, and maintainers auditing public skill additions or material skill changes.
+Reader Action Needed: apply this workflow before approving public skill additions or material skill-quality changes.
+Decision Supported: whether trigger clarity, hierarchy, progressive disclosure, failure handling, eval coverage, and role-separated evidence are sufficient.
 Artifact Type: shared workflow/reference.
-Source of Truth: `docs/prd-v0.5-prototype-first-skill-expansion.md` section 12, FR-542, AC-A3, AC-C1, AC-C2, AC-C7, AC-D1, and V050-006A in `artifacts/v0.5-prototype-first-skill-expansion/issue-map.md`.
-Scope: Shared skill-audit workflow for public skill candidates, public skill additions, and material skill changes.
-Out of Scope: Creating a public `skill-audit` skill, accepting public skill exposure, replacing independent clean review, replacing maintainer acceptance, or claiming runtime/browser/UAT/release readiness.
-Evidence Level: Source-validation workflow. Self-audit output is self-check evidence only unless produced by an independent clean reviewer in a read-only role.
-Safe to Share / Redaction Notes: Safe to share as-is; contains no secrets, credentials, private payloads, or personal data.
+Source of Truth: `docs/prd-v0.5-prototype-first-skill-expansion.md` section 12, FR-542, AC-A3, AC-C1, AC-C2, AC-C7, AC-D1, and V050-006A.
+Scope: public skill candidates, public skill additions, and material skill changes.
+Out of Scope: creating public `skill-audit`, accepting public exposure, replacing clean review/maintainer acceptance, or claiming runtime/browser/UAT/release readiness.
+Evidence Level: source-validation workflow. Self-audit is self-check unless produced by an independent read-only clean reviewer.
 
 # Skill Audit
 
 ## Invocation Class
 
-`skill-audit` is a required shared workflow/reference before public skill additions and material skill changes are accepted.
+`skill-audit` is a required shared workflow/reference before public skill additions and material skill changes are accepted. Do not create or rely on `skills/skill-audit/SKILL.md` unless a later accepted publicization slice proves direct invocation value, routing negatives pass, and maintainer acceptance authorizes public exposure.
 
-It is not a public skill in this reference-first state. Do not create or rely on `skills/skill-audit/SKILL.md` unless a later accepted publicization slice proves direct invocation value, routing negatives pass, and maintainer acceptance explicitly authorizes public exposure.
+Classify first:
 
-Classify the audited change before reviewing details:
+- Public model-invoked skill: top-level `skills/<name>/SKILL.md`.
+- User-invoked public skill: distinct user-facing invocation.
+- Shared reference: reusable guardrail/checklist/template/workflow under `skills/_shared/`.
+- Branch/workflow lens: bounded branch inside an existing public skill.
+- Router behavior: selection/dispatch behavior that should not become public skill surface.
 
-- Public model-invoked skill: a top-level `skills/<name>/SKILL.md` loaded by routing.
-- User-invoked public skill: a public skill with a distinct user-facing invocation moment.
-- Shared reference: a reusable guardrail, checklist, template, or workflow under `skills/_shared/`.
-- Branch/workflow lens: a bounded branch inside an existing public skill.
-- Router behavior: selection or dispatch behavior that should not become user-facing skill surface.
+## Trigger Audit
 
-## Trigger Description
+For public candidates and material trigger changes, verify:
 
-For public candidates and material trigger changes, audit the trigger contract before workflow prose:
-
-- The leading name or phrase is stable and meaningfully distinct.
-- Should-trigger examples describe a real invocation moment, not a synonym for an existing skill.
-- Should-not-trigger examples protect direct answers, accepted implementation, verification, handoff, dispatch, and neighboring public skills.
-- Route-conflict negatives prove the candidate does not steal established routes.
-- Public exposure is blocked when the behavior is better represented as a shared reference, branch/workflow lens, router behavior, or one-off guide.
+- leading name/phrase is stable and distinct;
+- should-trigger cases describe a real invocation moment;
+- should-not-trigger cases protect direct answers, accepted implementation, verification, handoff, dispatch, and neighbors;
+- route-conflict negatives prove established routes are not stolen;
+- public exposure is blocked when shared reference, branch lens, router behavior, or one-off guide fits better.
 
 ## Workflow
 
-Use this order:
-
-1. Confirm accepted source truth for the public skill addition or material skill change.
-2. Classify the invocation class and public-surface impact.
+1. Confirm accepted source truth and public-surface impact.
+2. Classify invocation class.
 3. Review trigger and should-not-trigger coverage.
-4. Review workflow steps, stop condition, and checkable completion criteria.
-5. Review information hierarchy and progressive disclosure.
+4. Review workflow, stop condition, and completion criteria.
+5. Review hierarchy and progressive disclosure.
 6. Remove duplicated guidance, no-op prose, and hidden route expansion.
-7. Review failure branches for likely misuse.
-8. Review evidence boundary and role separation using `skills/_shared/EVIDENCE-BOUNDARY.md`.
+7. Review failure branches.
+8. Apply `skills/_shared/EVIDENCE-BOUNDARY.md` and role separation.
 9. Review positive, negative, route-conflict, and hard-negative eval coverage.
-10. Label the audit evidence according to role: self-check, clean review, independent verification, or maintainer acceptance.
+10. Label evidence role: self-check, clean review, independent verification, or maintainer acceptance.
 
-## Information Hierarchy
+## Hierarchy And Progressive Disclosure
 
-Keep universal invocation rules in the public skill `SKILL.md`.
+Public `SKILL.md` keeps universal invocation rules. Branch-specific procedures, templates, detailed checklists, examples, and long domain references move to files loaded only when needed.
 
-Move branch-specific procedures, templates, detailed checklists, examples, and long domain references into referenced files that are loaded only when needed.
+Shared cross-skill rules belong under `skills/_shared/`; candidate-specific detail belongs with the candidate only after public exposure is accepted.
 
-Shared rules that affect multiple skills belong under `skills/_shared/`, not duplicated across public skills. Candidate-specific detail belongs with the candidate only after public exposure is accepted.
-
-## Progressive Disclosure
-
-The skill must load only the references required by the active branch. A public skill should not require users or agents to read unrelated references, eval histories, templates, or implementation notes before a simple route can proceed.
-
-An audit fails when a candidate depends on broad always-load context that can be split into a focused shared reference or branch file without losing correctness.
+Fail audit when simple routes require broad always-load context that can be split into focused references without losing correctness.
 
 ## Duplication
 
-Remove duplicate trigger language, repeated role-separation prose, copied policy blocks, and no-op instructions that restate platform behavior without changing a decision.
-
-Prefer a single canonical shared reference when multiple skills need the same rule. Link to the shared reference instead of preserving divergent local copies.
+Remove duplicate trigger language, repeated role-separation prose, copied policy blocks, and no-op instructions. Prefer one canonical shared reference over divergent local copies.
 
 ## Failure Branches
 
-Block, mark unverified, or return to implementation when any of these occur:
+Block, mark unverified, or return to implementation when:
 
-- A skill author audits and approves its own public skill addition or material skill-quality change as final.
-- Same-session self-check is offered as clean review, independent verification, readiness, final acceptance, or maintainer acceptance.
-- A clean reviewer edits the reviewed skill change and still claims clean review authority for the fixed change.
-- A shared reference is promoted to public skill surface without accepted public exposure and maintainer acceptance.
-- Trigger, should-not-trigger, route-conflict, or hard-negative eval coverage is skipped.
-- Prompt text, local source diff, or CSV parse output is used as runtime, browser, UAT, release, marketplace, installed-plugin cache, or customer evidence.
-- Spark or another fast/profile-limited run is used as final clean reviewer, final verifier, public skill approver, release authority, or UAT authority.
+- author audits and approves own public/material skill change as final;
+- same-session self-check is offered as clean review, independent verification, readiness, final acceptance, or maintainer acceptance;
+- clean reviewer edits the reviewed change and still claims clean review authority for that fixed change;
+- shared reference is promoted to public skill surface without accepted exposure and maintainer acceptance;
+- trigger, should-not-trigger, route-conflict, or hard-negative eval coverage is skipped;
+- prompt text, source diff, or CSV parse output is used as runtime, browser, UAT, release, marketplace, installed-plugin/cache, or customer evidence;
+- Spark or another fast/profile-limited run is used as final clean reviewer, verifier, public skill approver, release authority, or UAT authority.
 
 ## Evidence Boundary
 
-Apply `EB-ROLE-001`, `EB-VERIFY-001`, `EB-RUNTIME-001`, `EB-CACHE-001`, and `EB-RELEASE-001` from `skills/_shared/EVIDENCE-BOUNDARY.md` when auditing public skill additions or material skill-quality changes.
+Apply `EB-ROLE-001`, `EB-VERIFY-001`, `EB-RUNTIME-001`, `EB-CACHE-001`, and `EB-RELEASE-001` from `skills/_shared/EVIDENCE-BOUNDARY.md`.
 
-Skill-audit-specific delta: public skill approval remains blocked until independent clean review or maintainer acceptance exists for the relevant public-surface claim. Maintainer acceptance is required before this shared `skill-audit` reference can become a public `skill-audit` skill.
+Public skill approval remains blocked until independent clean review or maintainer acceptance exists for the public-surface claim. Maintainer acceptance is required before this shared `skill-audit` reference can become a public `skill-audit` skill.
 
 ## Eval Coverage
 
-Public skill additions and material skill changes need focused eval coverage proportional to risk:
+Public skill additions and material skill changes need:
 
-- positive fixtures for the intended trigger or workflow;
+- positive fixtures for intended trigger/workflow;
 - negative fixtures for should-not-trigger cases;
-- route-conflict negatives against neighboring public skills and direct answers;
-- hard negatives for the most dangerous overclaims.
+- route-conflict negatives against neighbors and direct answers;
+- hard negatives for dangerous overclaims.
 
-At minimum, public skill additions must include hard negatives that fail when:
+Minimum public-skill hard negatives fail when:
 
-- the skill author approves its own public/material skill change;
-- a shared audit reference is treated as a public skill before maintainer acceptance;
+- author approves own public/material skill change;
+- shared audit reference is treated as public before maintainer acceptance;
 - trigger, should-not-trigger, or hard-negative eval review is skipped.
 
-Eval parse checks and targeted fixture inspection are source-validation evidence only. They do not prove installed-plugin runtime behavior unless the installed plugin root, cache/source refresh or equivalence evidence, and run scope are separately named.
+Eval parse checks and fixture inspection are source-validation evidence only. Installed-plugin runtime behavior requires installed plugin root, cache/source refresh or equivalence evidence, and run scope.

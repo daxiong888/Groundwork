@@ -16,16 +16,19 @@ INPUT_THRESHOLDS = {
     "dispatch": 50_000,
 }
 TOTAL_INPUT_THRESHOLD = 140_000
-FORBIDDEN_PACKAGE_READS = {
-    "to-prd": (
-        "plugins/groundwork/README.md",
-        "plugins/groundwork/.codex-plugin/plugin.json",
-        ".codex-plugin/plugin.json",
-    ),
-    "dispatch": (
-        "plugins/groundwork/skills/dispatch/DISPATCH-PACKAGE-DETAILS.md",
-        "DISPATCH-PACKAGE-DETAILS.md",
-    ),
+EXPECTED_PACKAGE_READS = {
+    "to-prd": {
+        "plugins/groundwork/skills/to-prd/SKILL.md",
+    },
+    "verify": {
+        "plugins/groundwork/skills/verify/SKILL.md",
+        "plugins/groundwork/skills/verify/VERIFY-SCOPE.md",
+        "plugins/groundwork/skills/verify/SCOPE-EVIDENCE-TEMPLATE.md",
+    },
+    "dispatch": {
+        "plugins/groundwork/skills/dispatch/SKILL.md",
+        "plugins/groundwork/skills/dispatch/DISPATCH-PACKAGE.md",
+    },
 }
 
 
@@ -103,14 +106,12 @@ def int_value(value: object) -> int | None:
     return None
 
 
-def package_read_forbidden(package_files: list[str], forbidden_needles: tuple[str, ...]) -> list[str]:
-    matches: list[str] = []
+def unexpected_package_reads(package_files: list[str], expected: set[str]) -> list[str]:
+    unexpected: list[str] = []
     for path in package_files:
-        for needle in forbidden_needles:
-            if needle in path:
-                matches.append(path)
-                break
-    return matches
+        if path not in expected:
+            unexpected.append(path)
+    return unexpected
 
 
 def validate_scenarios(scenarios: dict[str, dict]) -> dict:
@@ -169,9 +170,9 @@ def validate_scenarios(scenarios: dict[str, dict]) -> dict:
         if forbidden_scan_count != 0:
             failures.append(f"{name}: forbidden_source_scan_count {forbidden_scan_count} != 0")
 
-        forbidden_reads = package_read_forbidden(package_files, FORBIDDEN_PACKAGE_READS.get(name, ()))
-        if forbidden_reads:
-            failures.append(f"{name}: forbidden package reads: {', '.join(forbidden_reads)}")
+        extra_reads = unexpected_package_reads(package_files, EXPECTED_PACKAGE_READS.get(name, set()))
+        if extra_reads:
+            failures.append(f"{name}: unexpected package reads: {', '.join(extra_reads)}")
 
         total_input += input_tokens or 0
 
@@ -186,7 +187,7 @@ def validate_scenarios(scenarios: dict[str, dict]) -> dict:
             "model_turn_count_per_scenario": 1,
             "nested_command_count": 0,
             "forbidden_source_scan_count": 0,
-            "forbidden_package_reads": FORBIDDEN_PACKAGE_READS,
+            "expected_package_reads": EXPECTED_PACKAGE_READS,
         },
         "total_input_tokens": total_input,
         "metrics": metrics,

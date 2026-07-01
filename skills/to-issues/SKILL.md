@@ -1,6 +1,6 @@
 ---
 name: to-issues
-description: Slice an accepted PRD/spec/plan into vertical task drafts with acceptance, blockers, task-state fields, and verification expectations. Not for raw ideas, ambiguous requirements, implementation, readiness verification, or one-off planning.
+description: Slice accepted PRD/spec/plan into vertical task drafts with acceptance, blockers, state, and verification expectations. Not for raw/ambiguous requirements, implementation, readiness, or one-off planning.
 ---
 
 # to-issues
@@ -20,19 +20,19 @@ Route away:
 
 ## Required Evidence
 
-Start from accepted source. Missing blockers, source context, contract impact, runtime inputs, Goal Contract inputs, or verification expectations go into missing-field buckets; do not fabricate readiness.
+Start from accepted source. Put missing blockers, source context, contract impact, runtime inputs, Goal Contract inputs, or verification expectations into missing-field buckets; do not fabricate readiness.
 
 For Groundwork repo maintenance, apply repo-local `AGENTS.md` before reporting complete.
 
 Load lifecycle/artifact promotion only before splitting source that will drive another session, remote issue creation, implementation, verification, or handoff. Load locale guard for user-visible text. Runtime candidate fields are advisory; final readiness belongs to `triage`, execution routing to `dispatch`.
 
-`accepted enough` means canonical artifact, accepted PRD/spec/plan, issue-ready artifact, or named external task source with owner/authority, clear acceptance criteria, and no unresolved mixed source truth.
+`accepted enough` means canonical artifact, accepted PRD/spec/plan, issue-ready artifact, or named external task with owner/authority, clear ACs, and no unresolved mixed source truth.
 
 ## Runtime Routing Candidate Rules
 
-Emit the advisory block only when the accepted source supports it. It is not a Goal Contract, dispatch package, readiness verdict, or execution proof.
+Emit the advisory block only when source supports it. It is not a Goal Contract, dispatch package, readiness verdict, or execution proof.
 
-Rules: read-only/planning tasks must not suggest write worktrees; hybrid tasks split first or mark `triage_required`; write tasks can name managed-worktree candidacy only when source context, write boundary, acceptance, and verification are clear enough for later Goal Contract generation; diagnosis may suggest read-only subagent when independence helps.
+Rules: read-only/planning tasks must not suggest write worktrees; hybrid tasks split first or mark `triage_required`; write tasks can name managed-worktree candidacy only when source context, write boundary, acceptance, and verification can support later Goal Contract generation; diagnosis may suggest read-only subagent when independence helps.
 
 ## Workflow
 
@@ -49,13 +49,13 @@ Confirm source/acceptance, stop if not accepted enough, apply locale, split vert
 
 ## Output Shape
 
-Use tracker-neutral issue drafts with summary, source, title, goal, ACs, evidence/source, blockers, AFK/HITL, contract impact, verification evidence, runtime candidate, readiness missing fields, triage candidate, ordering, next action, and artifact recommendation.
+Use tracker-neutral issue drafts with summary, source, title, goal, ACs, evidence/source, blockers, AFK/HITL, contract impact, verification evidence, runtime candidate, missing fields, triage candidate, ordering, next action, and artifact recommendation.
 
-Runtime candidate block, when used, must include `recommendation_only: true`, source support, task type/runtime/isolation/parallelization candidates, Goal Contract status/missing fields, runtime missing fields, `not_readiness_evidence: true`, and missing fields.
+Runtime candidate block, when used, must include `recommendation_only: true`, source support, task/runtime/isolation/parallelization candidates, Goal Contract status/missing fields, runtime missing fields, `not_readiness_evidence: true`.
 
 ## Stop Condition
 
-Stop when each issue draft has a vertical slice, acceptance criteria, blockers, execution type, contract impact, verification evidence needed, runtime candidate fields, missing fields, triage recommendation, and next action.
+Stop when each draft has a vertical slice, ACs, blockers, execution type, contract impact, verification evidence needed, runtime candidate fields, missing fields, triage recommendation, and next action.
 
 ## Artifact Rule
 

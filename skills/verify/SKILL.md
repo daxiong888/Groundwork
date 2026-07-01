@@ -1,6 +1,6 @@
 ---
 name: verify
-description: Use when the user asks whether a specific claim, implementation, runtime behavior, release/UAT readiness, UI behavior, or evidence package is supported by current evidence. Do not use for plain code edits, raw requirement shaping, task slicing, or implementation conformance review without readiness/evidence judgment.
+description: Judge whether a claim, implementation, runtime behavior, release/UAT readiness, UI behavior, or evidence package is supported. Not for code edits, raw requirements, slicing, or conformance review without evidence/readiness judgment.
 ---
 
 # verify

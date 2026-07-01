@@ -1,7 +1,7 @@
 {
   "name": "groundwork",
   "version": "0.5.5",
-  "description": "Lightweight evidence-first workflow routing for non-trivial Codex R&D tasks. Use for requirement shaping, scoped implementation, verification, compact handoff, and explicit advanced routing or wiki maintenance.",
+  "description": "Evidence-first workflow routing for non-trivial Codex R&D tasks: requirements, implementation, verification, handoff, dispatch, and wiki maintenance.",
   "author": {
     "name": "Daxiong"
   },
@@ -18,7 +18,7 @@
   "interface": {
     "displayName": "Groundwork",
     "shortDescription": "Lightweight evidence-first routing for Codex.",
-    "longDescription": "Groundwork helps Codex choose a light workflow for non-trivial R&D tasks: shape requirements, scope implementation, verify evidence, preserve compact handoff, or explicitly route dispatch/wiki work. Small obvious tasks should stay direct.",
+    "longDescription": "Groundwork routes non-trivial R&D work: shape requirements, scope implementation, verify evidence, preserve handoff, or handle explicit dispatch/wiki work. Small obvious tasks stay direct.",
     "developerName": "Daxiong",
     "category": "Productivity",
     "websiteURL": "https://github.com/daxiong888/Groundwork",
@@ -29,9 +29,9 @@
       "Write"
     ],
     "defaultPrompt": [
-      "Answer small, obvious, low-risk requests directly.",
-      "Use Groundwork only when context, risk, reuse, or verification needs a workflow.",
-      "Load strict runtime/release/cache/UAT/dispatch/wiki references only when in scope."
+      "Answer small low-risk requests directly.",
+      "Use Groundwork only when context, risk, reuse, or verification needs workflow.",
+      "Load strict runtime/release/cache/UAT/dispatch/wiki refs only when in scope."
     ],
     "brandColor": "#1F6FEB"
   }

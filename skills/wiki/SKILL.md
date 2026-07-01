@@ -1,13 +1,13 @@
 ---
 name: wiki
-description: Use only when the user explicitly asks to create, ingest, query, audit, update, deprecate/archive, or repair a project-level LLM Wiki. Not for direct answers, PRD shaping, slicing, implementation, verification, handoff, dispatch, or scratch notes unless wiki maintenance is primary.
+description: Explicit project-level LLM Wiki create, ingest, query, audit, update, deprecate/archive, or repair. Not for direct answers, PRD shaping, slicing, implementation, verification, handoff, dispatch, or scratch notes.
 ---
 
 # wiki
 
 ## Trigger Contract
 
-Use for explicit project-level LLM Wiki creation, ingestion, query, audit, update, deprecation/archive, or repair.
+Use for explicit project-level LLM Wiki init, ingest, query, audit, update, deprecate/archive, or repair.
 
 Route away:
 
@@ -25,19 +25,19 @@ Load `skills/_shared/LLM-WIKI.md` before wiki IO; it owns storage, frontmatter, 
 
 For Groundwork repo maintenance, apply repo-local `AGENTS.md` before reporting complete.
 
-Load only when material: lifecycle for durable creation/updates, audience-first for reports/audits/contracts, domain language for terms that affect truth, and evidence/role/runtime/non-executor refs only for stronger readiness/runtime/cache/release/UAT/customer claims.
+Load only when material: lifecycle for durable create/update; audience-first for reports/audits/contracts; domain language for truth-bearing terms; evidence/role/runtime/non-executor refs only for readiness/runtime/cache/release/UAT/customer claims.
 
-Wiki synthesis is orientation unless claim-level citations and stronger source checks support a stronger boundary.
+Wiki synthesis is orientation unless claim-level citations and source checks support a stronger boundary.
 
 ## Wiki Root Discovery
 
-Before wiki IO: inspect `wiki/`, then artifact-scoped `artifacts/wiki/`; report `Wiki Status: missing` if absent; inspect `.groundwork/wiki/` only for explicit private scratch; ask before adopting parent/sibling roots.
+Before wiki IO: inspect `wiki/`, then `artifacts/wiki/`; report `Wiki Status: missing` if absent; inspect `.groundwork/wiki/` only for explicit private scratch; ask before parent/sibling roots.
 
 Storage modes: `shared_project_wiki -> wiki/`, `artifact_scoped_wiki -> artifacts/wiki/`, `private_scratch_wiki -> .groundwork/wiki/`.
 
 ## Modes
 
-`init`, `ingest`, `query`, `audit`, `update`, `deprecate/archive`, and `repair` are allowed. In every mode: classify storage first; cite source pages; keep contested/stale claims labeled; update `index.md`/`log.md` when pages change; do not overwrite raw source truth. Audit means wiki health only, not release readiness; default `quick`, use `focused`/`full` only when requested.
+Allowed modes: `init`, `ingest`, `query`, `audit`, `update`, `deprecate/archive`, `repair`. Classify storage first; cite pages; label contested/stale claims; update `index.md`/`log.md` when pages change; do not overwrite raw source truth. Audit means wiki health only, not release readiness; default `quick`, use `focused`/`full` only when requested.
 
 ## Audit Scope Block
 
@@ -63,18 +63,18 @@ Quick audit means `SCHEMA.md`, `index.md`, recent `log.md` (last 20 entries or 3
 
 ## Failure Shapes
 
-For missing wiki, source access gaps, contested/stale/uncited claims, or route conflict, name requested action, affected page/claim, available evidence, current answer boundary, safe fallback, promotion blocker, and next route.
+For missing wiki, source gaps, contested/stale/uncited claims, or route conflict, name requested action, affected page/claim, available evidence, answer boundary, fallback, promotion blocker, and next route.
 
 ## Output Shape
 
-Use `Wiki Summary` or `Wiki Query Answer` with mode/question, root/pages/sources inspected, changes or answer, evidence boundary, checks, gaps/stale claims, recommended wiki update, and next route.
+Use `Wiki Summary` or `Wiki Query Answer` with mode/question, root/pages/sources, changes/answer, evidence boundary, checks, gaps/stale claims, recommended update, and next route.
 
 For audits, use the exact `Wiki Audit Scope` block before findings.
 
 ## Stop Condition
 
-Stop when the scoped wiki operation is complete, safely declined as a route conflict/missing evidence, or blocked with the next source check. Final readiness belongs to `verify`; public skill approval belongs to independent clean review or maintainer acceptance.
+Stop when complete, safely declined, or blocked with next source check. Final readiness belongs to `verify`; public skill approval belongs to independent clean review or maintainer acceptance.
 
 ## Artifact Rule
 
-Follow `skills/_shared/LLM-WIKI.md` for wiki pages/templates, `skills/_shared/AUDIENCE-FIRST-ARTIFACT.md` for durable reports/contracts, and `skills/_shared/ARTIFACT-DIRECTORY-POLICY.md` for committed placement. Redact secrets, credentials, PII, sensitive logs, screenshots, requests, database rows, private URLs, cookies, and tokens.
+Follow `skills/_shared/LLM-WIKI.md` for pages/templates, audience/artifact policy for durable reports/contracts and placement. Redact secrets, credentials, PII, sensitive logs, screenshots, requests, database rows, private URLs, cookies, and tokens.

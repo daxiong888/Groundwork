@@ -10,10 +10,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 MAX_ENTRY_LINES = {
-    "skills/verify/SKILL.md": 140,
+    "skills/to-prd/SKILL.md": 90,
+    "skills/to-issues/SKILL.md": 80,
+    "skills/triage/SKILL.md": 80,
+    "skills/write-plan/SKILL.md": 90,
+    "skills/prototype/SKILL.md": 80,
     "skills/implement/SKILL.md": 140,
-    "skills/dispatch/SKILL.md": 130,
+    "skills/verify/SKILL.md": 140,
     "skills/handoff/SKILL.md": 120,
+    "skills/dispatch/SKILL.md": 100,
+    "skills/wiki/SKILL.md": 90,
 }
 
 DEFAULT_MAX_INLINE_EXAMPLE_LINES = 40

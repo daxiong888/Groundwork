@@ -1,73 +1,66 @@
 # Skill Quality Gate
 
 Target Reader: Groundwork maintainers, skill authors, implementers, clean reviewers, and verifiers evaluating public skill changes.
-Reader Action Needed: Use this checklist before adding a public skill or approving a material skill-quality change.
-Decision Supported: Whether a candidate belongs in the public skill surface, a shared reference, a branch/workflow lens, router behavior, or a one-off guide.
+Reader Action Needed: use before adding a public skill or approving material skill-quality changes.
+Decision Supported: whether behavior belongs in public skill surface, shared reference, branch/workflow lens, router behavior, or one-off guide.
 Artifact Type: shared guardrail.
-Source of Truth: `docs/prd-v0.5-prototype-first-skill-expansion.md` FR-501 through FR-504, FR-542, section 12, V050-001, and V050-006A in `artifacts/v0.5-prototype-first-skill-expansion/issue-map.md`.
-Scope: Public skill expansion policy, shared skill-quality checks, routing/eval gates, and evidence boundaries for public skill merge decisions.
-Out of Scope: Creating public skills, deciding release readiness, claiming installed-plugin runtime behavior, changing plugin metadata, or replacing clean review and independent verification.
-Evidence Level: Source-validation policy. This file is local guidance only until separately reviewed and verified.
-Safe to Share / Redaction Notes: Safe to share as-is; contains no secrets, credentials, private payloads, or personal data.
+Source of Truth: `docs/prd-v0.5-prototype-first-skill-expansion.md` FR-501 through FR-504, FR-542, section 12, V050-001, and V050-006A.
+Scope: public skill expansion, routing/eval gates, and evidence boundaries.
+Out of Scope: creating public skills, release readiness, installed-plugin runtime behavior, plugin metadata changes, or replacing clean review/verification.
+Evidence Level: source-validation guidance only until independently reviewed.
 
 ## Public Surface Rule
 
-Groundwork may expand the public skill surface only when an accepted PRD, scoped issue, or maintainer directive explicitly expands that surface and the candidate passes the skill-quality, routing, and eval gates below.
+Create `skills/<candidate>/SKILL.md` only when an accepted PRD, scoped issue, or maintainer directive explicitly expands the public surface and the candidate passes this gate plus routing/eval checks.
 
-Do not create `skills/<candidate>/SKILL.md` for a behavior that can be handled as a shared reference, branch/workflow lens, router behavior, or one-off guide.
+Prefer a shared reference, branch/workflow lens, router behavior, or one-off guide when there is no distinct public invocation moment.
 
-## Candidate Classification
+## Classification
 
-- Public skill: a top-level `skills/<name>/SKILL.md` contract with a distinct invocation moment, trigger contract, should-not-trigger cases, failure branches, and eval coverage.
-- Shared reference: a reusable policy, checklist, template, or workflow under `skills/_shared/` that existing public skills can cite without expanding the public surface.
-- Branch/workflow lens: a bounded behavior inside an existing public skill route, used when the user is already in that skill's workflow.
-- Router behavior: routing, dispatch, or preflight logic that selects an existing workflow or runtime package without creating a user-invoked public skill.
-- One-off guide: documentation for infrequent setup or maintainer decisions that does not justify a persistent public trigger.
+- Public skill: top-level `skills/<name>/SKILL.md` with distinct invocation, trigger/negative cases, failure branches, and evals.
+- Shared reference: reusable policy, checklist, template, or workflow under `skills/_shared/`.
+- Branch/workflow lens: bounded behavior inside an existing public route.
+- Router behavior: selection, dispatch, or preflight logic that chooses existing workflow/runtime package.
+- One-off guide: infrequent setup or maintainer documentation without persistent trigger.
 
-## Public Skill Checklist
+## Merge Checklist
 
-A new public skill may be merged only when all of these are true:
+A public skill or material skill change may merge only when all apply:
 
-1. Accepted scope explicitly authorizes public surface expansion.
-2. The skill has a distinct invocation moment that is not already owned by an existing skill.
-3. The leading name is not merely a synonym for an existing public skill.
-4. The behavior cannot be safely implemented as a shared reference, branch/workflow lens, router behavior, or one-off guide.
-5. The trigger contract and should-not-trigger cases are clear enough for routing review.
-6. Completion criteria and failure branches are checkable.
-7. Evidence boundaries state what the skill can and cannot claim, including runtime, browser, UAT, release, customer, marketplace, and installed-plugin cache claims.
-8. Minimum eval coverage exists before merge: at least three positive fixtures, three negative fixtures, and hard-negative fixtures as defined in Hard-negative Expectations below.
-9. Route-conflict negatives prove the skill does not steal direct answers, accepted implementation work, verification, handoff, or another public skill's route.
-10. A separate clean review or skill-quality review checks the candidate before merge; the author or implementer self-check is not final approval.
+1. Accepted scope explicitly authorizes the public-surface impact.
+2. Invocation moment is distinct and not a synonym for an existing public skill.
+3. Behavior cannot be safely handled as shared reference, branch lens, router behavior, or one-off guide.
+4. Trigger and should-not-trigger cases are clear enough for routing review.
+5. Completion criteria and failure branches are checkable.
+6. Evidence boundaries cover runtime, browser, UAT, release, customer, marketplace, and installed-plugin/cache claims.
+7. Minimum eval coverage exists: three positive, three negative, plus hard negatives below.
+8. Route-conflict negatives prove the skill does not steal direct answers, accepted implementation, verification, handoff, or neighboring public routes.
+9. A separate clean review or skill-quality review checks the candidate; author/implementer self-check is not final approval.
 
-For project-knowledge candidates such as `wiki`, hard negatives must also prove that compiled notes, page-level source lists, search/index/graph output, stale pages, uncited claims, and missing wiki roots are not upgraded into source truth, contract truth, implementation authority, verification evidence, release evidence, UAT evidence, customer readiness, marketplace evidence, installed-plugin evidence, or cache-refresh evidence.
+For project-knowledge skills such as `wiki`, hard negatives must prove notes, page source lists, search/index/graph output, stale pages, uncited claims, and missing wiki roots are not upgraded into source truth, contract truth, implementation authority, verification evidence, release/UAT/customer readiness, marketplace evidence, installed-plugin evidence, or cache-refresh evidence.
 
-## Required Skill-audit Lens
+## Required Audit Lens
 
-Public skill additions and material skill changes must use `skills/_shared/SKILL-AUDIT.md` as the shared audit workflow/reference before they can be accepted.
+Material public skill changes must use `skills/_shared/SKILL-AUDIT.md` before acceptance.
 
-`skill-audit` is classified as a required shared workflow/reference first. It must not be promoted to `skills/skill-audit/SKILL.md` or treated as a public skill unless a later accepted publicization slice proves direct invocation value, routing negatives pass, and maintainer acceptance explicitly authorizes public exposure.
+`skill-audit` is a required shared workflow/reference. Do not promote it to `skills/skill-audit/SKILL.md` unless a later accepted publicization slice proves direct invocation value, routing negatives pass, and maintainer acceptance authorizes public exposure.
 
-The shared audit lens covers invocation class, trigger description, workflow, information hierarchy, progressive disclosure, duplication, failure branches, evidence boundary, and eval coverage. Author self-audit is useful self-check evidence only; public skill approval, material skill-quality approval, and final acceptance require an independent clean review or maintainer acceptance according to `skills/_shared/ROLE-SEPARATION.md`.
+Author self-audit is self-check only. Public skill approval, material skill-quality approval, and final acceptance require independent clean review or maintainer acceptance under `skills/_shared/ROLE-SEPARATION.md`.
 
-Expected sequence: the author or implementer may run self-audit first; an independent clean reviewer or maintainer must then apply or accept the audit before approval. These are not alternatives.
+## Hard Negatives
 
-## Hard-negative Expectations
+Hard-negative evals/checks must fail when:
 
-Every public skill candidate must include hard negatives that fail when:
-
-- a candidate without a distinct invocation moment is approved;
-- a shared-reference candidate is promoted to `skills/<name>/SKILL.md` without accepted public exposure;
-- trigger or should-not-trigger coverage is missing;
-- routing negatives are skipped or treated as optional;
-- hard-negative eval expectations are omitted;
-- a public skill addition skips trigger, should-not-trigger, or hard-negative eval review;
-- the shared `skill-audit` reference is treated as a public skill before accepted public exposure and maintainer acceptance;
-- a public project-knowledge skill treats wiki synthesis, page-level source lists, stale pages, uncited claims, missing wiki roots, or derived search/index/graph output as source truth, contract truth, implementation authority, verification evidence, release evidence, UAT evidence, customer readiness, marketplace evidence, installed-plugin evidence, or cache-refresh evidence;
-- prompt text alone is treated as runtime, selector, browser, UAT, release, customer, marketplace, or installed-plugin cache evidence;
-- the author or same-session implementer approves their own material skill-quality change as final;
-- `low_risk_coordinator_intake` is used to bypass clean-review fan-out for material public skill, shared guardrail, adapter contract, package template, schema, shared fixture, state-machine, or shared-config changes;
-- `low_risk_coordinator_intake` is relabeled as clean review passed or used as public skill approval, release/UAT/customer readiness, archive, branch cleanup, merge, commit, push, PR, runtime, browser, marketplace, installed-plugin, or cache-refresh evidence.
+- no distinct invocation moment exists;
+- a shared-reference candidate is promoted without accepted public exposure;
+- trigger, should-not-trigger, route-conflict, or hard-negative eval coverage is missing;
+- `skill-audit` is treated as public before accepted public exposure and maintainer acceptance;
+- wiki synthesis, page source lists, stale pages, uncited claims, missing roots, or search/index/graph output become source/contract/implementation/verification/release/UAT/customer/marketplace/installed-plugin/cache truth;
+- prompt text alone is treated as runtime, selector, browser, UAT, release, customer, marketplace, or installed-plugin/cache evidence;
+- author or same-session implementer approves their own material skill-quality change as final;
+- `low_risk_coordinator_intake` bypasses clean review for material public skill, shared guardrail, adapter contract, package template, schema, fixture, state-machine, or shared-config changes;
+- `low_risk_coordinator_intake` is relabeled as clean review passed or used as approval, readiness, archive, cleanup, merge, commit, push, PR, runtime, browser, marketplace, installed-plugin, or cache-refresh evidence.
 
 ## Evidence Boundary
 
-Source edits, docs checks, CSV parse checks, and local fixture inspection are source-validation evidence only. They do not prove installed-plugin runtime behavior, marketplace packaging, selector enforcement, UAT readiness, release readiness, or customer readiness unless the specific runtime/cache/marketplace evidence is separately produced and named.
+Source edits, docs checks, CSV parse checks, and fixture inspection are source-validation evidence only. They do not prove installed-plugin runtime behavior, marketplace packaging, selector enforcement, UAT readiness, release readiness, or customer readiness without named runtime/cache/marketplace evidence.

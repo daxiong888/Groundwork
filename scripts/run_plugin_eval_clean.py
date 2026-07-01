@@ -21,6 +21,9 @@ PLUGIN_NAME = "groundwork"
 NESTED_BENCHMARK_SCRIPT_PATTERN = re.compile(
     r"(^|[\s'\";&|])(?:\./)?(?:scripts|evals)/[^'\"\s;&|]*benchmark[^'\"\s;&|]*"
 )
+PACKAGE_READ_COMMAND_PATTERN = re.compile(
+    r"(^|[\s'\";&|()])(?:awk|cat|grep|head|nl|node|perl|python|python3|rg|sed|tail)(?=$|[\s'\";&|()])"
+)
 BROAD_SCAN_PATTERNS = (
     "rg --files",
     "find .",
@@ -1138,11 +1141,10 @@ def is_benchmark_script_path(path: str) -> bool:
 
 
 def extract_package_file_reads(command: str) -> set[str]:
-    read_commands = ("sed ", "cat ", "nl ", "awk ", "python ")
-    if not any(read_command in command for read_command in read_commands):
+    if not PACKAGE_READ_COMMAND_PATTERN.search(command):
         return set()
     return {
-        match.group(0).rstrip(".,:")
+        match.group(0).rstrip(".,:;'\"")
         for match in re.finditer(r"plugins/groundwork/[A-Za-z0-9_./-]+", command)
     }
 

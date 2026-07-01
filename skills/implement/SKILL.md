@@ -1,6 +1,6 @@
 ---
 name: implement
-description: Use when the user asks for scoped code changes, confirmed bug fixes, diagnose-before-edit work, or read-only implementation conformance review. Do not use for raw requirements, task slicing, readiness/UAT/release verification, handoff, or dispatch routing.
+description: Scoped code changes, confirmed fixes, diagnose-before-edit work, or read-only implementation conformance review. Not for raw requirements, slicing, readiness/UAT/release verification, handoff, or dispatch.
 ---
 
 # implement
