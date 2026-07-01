@@ -52,7 +52,7 @@ The v0.5 public skill expansion policy shifts Groundwork from a fixed public-ski
 
 The v0.5.2 public wiki skill adds project-level LLM Wiki lifecycle support for init, ingest, query, audit, update, deprecate/archive, and repair. Wiki remains source-validation context and claim inventory only; it is not source truth, implementation authority, verification pass evidence, runtime evidence, release evidence, UAT evidence, marketplace evidence, installed-plugin evidence, or cache-refresh evidence.
 
-The v0.5.5 router observability follow-up keeps source-checkout-only harness docs and standard-library scripts for project opt-in experiments, while tightening review-fix behavior, score schema coverage, secret redaction, and plugin-cache refresh self-protection. These harness materials are excluded from the runtime package. When run from a source checkout, they are observe-only by default and write local scratch artifacts under `.groundwork/harness/router-observability/` only after a project explicitly opts in. Harness cards, scores, and local scratch output are source-validation and improvement evidence only; they are not release, UAT, customer, marketplace, installed-plugin, cache-refresh, or hook-trust evidence by themselves.
+The v0.5.5 router observability follow-up bundles dormant hook definitions and hook entrypoints in the runtime package while keeping maintainer docs, evals, reports, schemas, artifacts, and ordinary maintainer scripts source-checkout only. The hooks no-op unless a project explicitly opts in or a controlled process force-enables them. `observe_only` writes local scratch artifacts under `.groundwork/harness/router-observability/` without injecting route hints. `guided_hint_trial` may inject route hints, but it is behavior-shaping guided trial evidence and must not be counted as a passive routing baseline. Harness cards, scores, and local scratch output are source-validation and improvement evidence only; they are not release, UAT, customer, marketplace, installed-plugin, cache-refresh, or hook-trust evidence by themselves.
 
 This repository currently contains:
 
@@ -63,7 +63,8 @@ This repository currently contains:
 - real maintenance case studies
 - Codex plugin manifest
 - ten public skills, including `dispatch` and `wiki`
-- source-checkout-only router observability harness docs and scripts
+- dormant router observability hook definitions and hook entrypoints in the runtime package
+- source-checkout-only router observability harness docs, evals, reports, schemas, and maintainer scripts
 - native Codex worktree/handoff governance contracts for v0.4.0
 - v0.4.x trace-first eval platform source-validation docs, schemas, helpers, checker modules, reports, patch suggestions, CI workflow, and release evidence claim template
 - v0.5 public skill expansion policy and shared skill-quality gate
@@ -110,7 +111,7 @@ Then verify that groundwork@groundwork is installed and enabled.
 
 The same marketplace and plugin state is local to the machine. If you use both Codex CLI and the Codex desktop app on the same computer, restart the app or refresh the plugin list after installing from the CLI.
 
-Router observability harness materials are source-checkout-only maintainer tooling. They are not included in the generated runtime package. If you are working from this source repository and intentionally testing local observe-only trace capture, see [`docs/router-observability-harness.md`](docs/router-observability-harness.md). Downstream projects that opt in from a source checkout should ignore local scratch output, for example:
+Router observability hook definitions and hook entrypoints are included in the generated runtime package as dormant hooks. Maintainer harness materials such as docs, evals, reports, schemas, artifacts, and ordinary maintainer scripts remain source-checkout-only. If you are working from this source repository and intentionally testing local observe-only trace capture, see [`docs/router-observability-harness.md`](docs/router-observability-harness.md). Downstream projects that opt in from a source checkout should ignore local scratch output, for example:
 
 ```bash
 echo ".groundwork/harness/" >> .gitignore
@@ -126,7 +127,7 @@ codex plugin marketplace add ~/.codex/plugins/groundwork-local-marketplace
 codex plugin add groundwork@groundwork
 ```
 
-The generated local marketplace is a runtime kernel package. It intentionally copies only `.codex-plugin/`, `skills/`, `README.md`, and `LICENSE` into `plugins/groundwork`, with `README.md` generated from `README.runtime.md`. It excludes repo-only and tooling-only roots such as `.github/`, `AGENTS.md`, `CHANGELOG.md`, `PROJECT.md`, `docs/`, `evals/`, `artifacts/`, `examples/`, `hooks/`, `research/`, `schemas/`, `scripts/`, `.git/`, `.codegraph/`, `.groundwork/`, `.trellis/`, `refer/`, `dist/`, and `node_modules/` so local installation does not ship maintainer history, evaluation fixtures, reference repositories, or runtime state into the Codex plugin cache.
+The generated local marketplace is a runtime kernel package. It intentionally copies only `.codex-plugin/`, `skills/`, `hooks/hooks.json`, `scripts/codex-hooks/`, `README.md`, and `LICENSE` into `plugins/groundwork`, with `README.md` generated from `README.runtime.md`. It excludes repo-only and tooling-only roots such as `.github/`, `AGENTS.md`, `CHANGELOG.md`, `PROJECT.md`, `docs/`, `evals/`, `artifacts/`, `examples/`, `research/`, `schemas/`, maintainer scripts outside `scripts/codex-hooks/`, `.git/`, `.codegraph/`, `.groundwork/`, `.trellis/`, `refer/`, `dist/`, and `node_modules/` so local installation does not ship maintainer history, evaluation fixtures, reference repositories, or runtime state into the Codex plugin cache.
 
 You can also install interactively by running `codex`, opening `/plugins`, choosing the `Groundwork` marketplace, and selecting `Install plugin`. Codex should discover the plugin from `.codex-plugin/plugin.json` and load the public skills from `skills/`.
 
@@ -148,9 +149,9 @@ python3 scripts/build_local_marketplace.py --output ~/.codex/plugins/groundwork-
 codex plugin add groundwork@groundwork
 ```
 
-If the local marketplace was originally pointed directly at a working checkout, rebuild it with `scripts/build_local_marketplace.py` and re-add the generated marketplace path before reinstalling. A healthy installed cache should not contain repo-only, tooling-only, source-control, or local scratch roots such as `.github/`, `AGENTS.md`, `CHANGELOG.md`, `PROJECT.md`, `docs/`, `evals/`, `artifacts/`, `examples/`, `hooks/`, `research/`, `schemas/`, `scripts/`, `.git/`, `.codegraph/`, `.groundwork/`, `.trellis/`, `refer/`, `dist/`, or `node_modules/`.
+If the local marketplace was originally pointed directly at a working checkout, rebuild it with `scripts/build_local_marketplace.py` and re-add the generated marketplace path before reinstalling. A healthy installed cache should not contain repo-only, tooling-only, source-control, or local scratch roots such as `.github/`, `AGENTS.md`, `CHANGELOG.md`, `PROJECT.md`, `docs/`, `evals/`, `artifacts/`, `examples/`, `research/`, `schemas/`, maintainer scripts outside `scripts/codex-hooks/`, `.git/`, `.codegraph/`, `.groundwork/`, `.trellis/`, `refer/`, `dist/`, or `node_modules/`.
 
-Restart Codex or refresh the plugin list after upgrading. You should not need to edit Codex's plugin cache manually; Codex installs plugins under `~/.codex/plugins/cache/<marketplace>/<plugin>/<version>/` and records enabled state in `~/.codex/config.toml`. The runtime package excludes router observability harness scripts and maintainer docs; use the source checkout when testing that harness.
+Restart Codex or refresh the plugin list after upgrading. You should not need to edit Codex's plugin cache manually; Codex installs plugins under `~/.codex/plugins/cache/<marketplace>/<plugin>/<version>/` and records enabled state in `~/.codex/config.toml`. For router observability, the runtime package includes only dormant hook files; use the source checkout when testing or reviewing maintainer harness docs, evals, reports, schemas, artifacts, or ordinary maintainer scripts.
 
 ## Privacy
 

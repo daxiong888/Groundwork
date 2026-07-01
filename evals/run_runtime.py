@@ -841,6 +841,115 @@ def hook_trust_bypass_enabled():
     return os.environ.get("GROUNDWORK_CODEX_BYPASS_HOOK_TRUST") == "1"
 
 
+ROUTER_OBSERVABILITY_CONFIG = Path(".groundwork") / "harness" / "router-observability" / "config.json"
+ROUTER_OBSERVABILITY_MODES = {"observe_only", "guided_hint_trial"}
+GUIDED_HINT_TRIAL_BOUNDARY = (
+    "behavior-shaping guided trial; not passive baseline, release, UAT, marketplace, "
+    "cache-refresh, hook-trust, or customer readiness evidence"
+)
+OBSERVE_ONLY_BOUNDARY = (
+    "observe-only router observability run; no route hints injected; local eval evidence only, "
+    "not release, UAT, marketplace, cache-refresh, hook-trust, or customer readiness evidence"
+)
+DISABLED_ROUTER_OBSERVABILITY_BOUNDARY = (
+    "router observability disabled; runtime eval output is not router observability, release, UAT, "
+    "marketplace, cache-refresh, hook-trust, or customer readiness evidence"
+)
+
+
+def normalize_router_observability_mode(value):
+    mode = str(value or "observe_only").strip()
+    if mode in ROUTER_OBSERVABILITY_MODES:
+        return mode
+    return "observe_only"
+
+
+def router_observability_evidence_boundary(mode):
+    if mode == "guided_hint_trial":
+        return GUIDED_HINT_TRIAL_BOUNDARY
+    if mode == "observe_only":
+        return OBSERVE_ONLY_BOUNDARY
+    return DISABLED_ROUTER_OBSERVABILITY_BOUNDARY
+
+
+def load_router_observability_config(cwd):
+    if cwd is None:
+        return None, "not_checked"
+    path = Path(cwd) / ROUTER_OBSERVABILITY_CONFIG
+    if not path.exists():
+        return None, "absent"
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None, "invalid_config"
+    if not isinstance(loaded, dict):
+        return None, "invalid_config"
+    return loaded, str(ROUTER_OBSERVABILITY_CONFIG)
+
+
+def router_observability_runtime_mode(cwd=None):
+    if os.environ.get("GROUNDWORK_ROUTER_OBSERVABILITY_DISABLED"):
+        mode = "disabled"
+        enabled = False
+        activation_source = "env_disabled"
+    else:
+        config, config_source = load_router_observability_config(cwd)
+        config_enabled = bool(config and config.get("enabled") is True)
+        config_mode = normalize_router_observability_mode(config.get("mode") if config else None)
+
+        if os.environ.get("GROUNDWORK_ROUTER_OBSERVABILITY") == "1":
+            enabled = True
+            mode = normalize_router_observability_mode(
+                os.environ.get("GROUNDWORK_ROUTER_OBSERVABILITY_MODE") or config_mode
+            )
+            activation_source = "env" if config_source in {"absent", "not_checked"} else "env_force_enable_over_config"
+        elif config_enabled:
+            enabled = True
+            mode = config_mode
+            activation_source = config_source
+        else:
+            enabled = False
+            mode = "disabled"
+            activation_source = config_source
+
+    return {
+        "router_observability_enabled": enabled,
+        "router_observability_mode": mode,
+        "hook_trust_bypass": hook_trust_bypass_enabled(),
+        "evidence_boundary": router_observability_evidence_boundary(mode),
+        "activation_source": activation_source,
+    }
+
+
+def aggregate_runtime_mode(results):
+    observed = [
+        result.get("runtime_mode")
+        for result in results
+        if isinstance(result.get("runtime_mode"), dict)
+    ]
+    if not observed:
+        return router_observability_runtime_mode()
+
+    modes = sorted({str(item.get("router_observability_mode") or "disabled") for item in observed})
+    if "guided_hint_trial" in modes:
+        primary_mode = "guided_hint_trial"
+    elif "observe_only" in modes:
+        primary_mode = "observe_only"
+    elif len(modes) == 1:
+        primary_mode = modes[0]
+    else:
+        primary_mode = "mixed"
+
+    return {
+        "router_observability_enabled": any(bool(item.get("router_observability_enabled")) for item in observed),
+        "router_observability_mode": primary_mode,
+        "router_observability_modes": modes,
+        "hook_trust_bypass": hook_trust_bypass_enabled(),
+        "evidence_boundary": router_observability_evidence_boundary(primary_mode),
+        "activation_sources": sorted({str(item.get("activation_source") or "unknown") for item in observed}),
+    }
+
+
 def codex_exec_command(cwd, sandbox, last_path, prompt):
     cmd = ["codex"]
     if hook_trust_bypass_enabled():
@@ -2344,6 +2453,7 @@ def run_row(row, timeout_s=None, attempt=1):
         "cwd": str(cwd),
         "sandbox": sandbox,
         "hook_trust_bypass": hook_trust_bypass_enabled(),
+        "runtime_mode": router_observability_runtime_mode(cwd),
         "workspace_note": workspace_note,
         "returncode": rc,
         "changed_files": changes,
@@ -2556,12 +2666,14 @@ def write_summary(results, jobs, suites, resource_policy, group=None):
         for result in ordered
         if is_nonpass(result)
     ]
+    runtime_mode = aggregate_runtime_mode(ordered)
     summary = {
         "run_root": str(RUN),
         "jobs": jobs,
         "resource_policy": resource_policy,
         "group": group,
         "suites": suites,
+        "runtime_mode": runtime_mode,
         "rows": len(ordered),
         "counts": counts,
         "failures": failures,
@@ -2578,7 +2690,19 @@ def write_summary(results, jobs, suites, resource_policy, group=None):
         summary["routing_summary"] = routing_summary
     SUMMARY.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
-    lines = ["# Runtime Failures", ""]
+    lines = [
+        "# Runtime Failures",
+        "",
+        "## Evidence Boundary",
+        "",
+        f"- Runtime mode: `{runtime_mode['router_observability_mode']}`",
+        f"- Router observability enabled: `{str(runtime_mode['router_observability_enabled']).lower()}`",
+        f"- Hook trust bypass: `{str(runtime_mode['hook_trust_bypass']).lower()}`",
+        f"- Evidence boundary: {runtime_mode['evidence_boundary']}",
+        "",
+        "## Non-pass Results",
+        "",
+    ]
     if not failures:
         lines.append("No non-pass results.")
     else:

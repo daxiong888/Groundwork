@@ -206,6 +206,90 @@ class RuntimeSchedulerTests(unittest.TestCase):
 
         self.assertEqual(changes, ["A .groundwork/state.json"])
 
+    def test_router_observability_runtime_mode_defaults_to_disabled(self):
+        with mock.patch.dict(os.environ, {}, clear=True):
+            mode = run_runtime.router_observability_runtime_mode()
+
+        self.assertFalse(mode["router_observability_enabled"])
+        self.assertEqual(mode["router_observability_mode"], "disabled")
+        self.assertFalse(mode["hook_trust_bypass"])
+        self.assertIn("router observability disabled", mode["evidence_boundary"])
+
+    def test_router_observability_runtime_mode_observe_only_from_env(self):
+        with mock.patch.dict(os.environ, {"GROUNDWORK_ROUTER_OBSERVABILITY": "1"}, clear=True):
+            mode = run_runtime.router_observability_runtime_mode()
+
+        self.assertTrue(mode["router_observability_enabled"])
+        self.assertEqual(mode["router_observability_mode"], "observe_only")
+        self.assertFalse(mode["hook_trust_bypass"])
+        self.assertIn("no route hints injected", mode["evidence_boundary"])
+
+    def test_router_observability_runtime_mode_guided_records_boundary_and_bypass(self):
+        env = {
+            "GROUNDWORK_ROUTER_OBSERVABILITY": "1",
+            "GROUNDWORK_ROUTER_OBSERVABILITY_MODE": "guided_hint_trial",
+            "GROUNDWORK_CODEX_BYPASS_HOOK_TRUST": "1",
+        }
+        with mock.patch.dict(os.environ, env, clear=True):
+            mode = run_runtime.router_observability_runtime_mode()
+
+        self.assertTrue(mode["router_observability_enabled"])
+        self.assertEqual(mode["router_observability_mode"], "guided_hint_trial")
+        self.assertTrue(mode["hook_trust_bypass"])
+        self.assertIn("behavior-shaping guided trial; not passive baseline", mode["evidence_boundary"])
+
+    def test_write_summary_records_runtime_mode_and_failure_boundary(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            old_results = run_runtime.RESULTS
+            old_summary = run_runtime.SUMMARY
+            old_failures = run_runtime.FAILURES
+            old_cases = run_runtime.CASES
+            env = {
+                "GROUNDWORK_ROUTER_OBSERVABILITY": "1",
+                "GROUNDWORK_ROUTER_OBSERVABILITY_MODE": "guided_hint_trial",
+                "GROUNDWORK_CODEX_BYPASS_HOOK_TRUST": "1",
+            }
+            try:
+                root = Path(tmp)
+                run_runtime.RESULTS = root / "results.jsonl"
+                run_runtime.SUMMARY = root / "summary.json"
+                run_runtime.FAILURES = root / "failures.md"
+                run_runtime.CASES = root / "cases"
+                run_runtime.CASES.mkdir()
+
+                with mock.patch.dict(os.environ, env, clear=True):
+                    summary = run_runtime.write_summary(
+                        [
+                            {
+                                "id": "guided-001",
+                                "suite": "v0.6-first-principles-adversarial.csv",
+                                "verdict": "fail",
+                                "notes": "wrong contract",
+                                "_input_index": 0,
+                            },
+                        ],
+                        jobs=1,
+                        suites=["v0.6-first-principles-adversarial.csv"],
+                        resource_policy="auto",
+                    )
+
+                runtime_mode = summary["runtime_mode"]
+                self.assertEqual(runtime_mode["router_observability_mode"], "guided_hint_trial")
+                self.assertTrue(runtime_mode["router_observability_enabled"])
+                self.assertTrue(runtime_mode["hook_trust_bypass"])
+                self.assertIn("behavior-shaping guided trial; not passive baseline", runtime_mode["evidence_boundary"])
+
+                failures = run_runtime.FAILURES.read_text(encoding="utf-8")
+                self.assertIn("## Evidence Boundary", failures)
+                self.assertIn("- Runtime mode: `guided_hint_trial`", failures)
+                self.assertIn("- Hook trust bypass: `true`", failures)
+                self.assertIn("behavior-shaping guided trial; not passive baseline", failures)
+            finally:
+                run_runtime.RESULTS = old_results
+                run_runtime.SUMMARY = old_summary
+                run_runtime.FAILURES = old_failures
+                run_runtime.CASES = old_cases
+
     def test_write_summary_creates_result_layout(self):
         with tempfile.TemporaryDirectory() as tmp:
             old_results = run_runtime.RESULTS
