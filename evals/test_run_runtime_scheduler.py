@@ -1656,6 +1656,19 @@ class RuntimeSchedulerTests(unittest.TestCase):
         self.assertEqual(decision["expected_best"], "implement")
         self.assertIn("verify", decision["forbidden_routes"])
 
+    def test_direct_status_prompt_routes_direct(self):
+        decision = route_detection.entry_decision_from_prompt("报一下当前时间，不要写文件")
+
+        self.assertEqual(decision["expected_best"], "direct")
+        self.assertEqual(decision["expected_stop_condition"], "direct_answer")
+
+    def test_entry_classifier_uses_runtime_hook_source_module(self):
+        self.assertTrue(
+            route_detection.CLASSIFIER_SOURCE_PATH.endswith(
+                "scripts/codex-hooks/groundwork_route_detection.py"
+            )
+        )
+
     def test_blocked_implementation_header_counts_as_implement(self):
         actual = run_runtime.classify_actual_route(
             row(expected_skill="implement"),

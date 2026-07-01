@@ -28,6 +28,7 @@ EXPECTED_RUNTIME_HOOK_FILES = {
 }
 
 EXPECTED_RUNTIME_CODEX_HOOK_FILES = {
+    "groundwork_route_detection.py",
     "groundwork_router_observability.py",
     "permission_request_groundwork_trace.py",
     "post_tool_use_groundwork_trace.py",
