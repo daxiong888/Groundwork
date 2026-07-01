@@ -1,6 +1,6 @@
 ---
 name: implement
-description: Use for scoped code changes and bug-fix requests, including "修 bug", "直接 patch", "改代码", confirmed fixes, diagnose-before-edit work, blocked implementation when source truth is missing, or read-only implementation conformance review. Not for raw requirements, slicing, readiness/UAT/release verification, handoff, or dispatch.
+description: Bug fixes, patch/code edits, "修 bug", "直接 patch", "改代码", confirmed fixes, diagnose-before-edit, blocked implementation when source truth is missing, or read-only implementation conformance review. Not for raw requirements, slicing, readiness/UAT/release verification, handoff, or dispatch.
 ---
 
 # implement

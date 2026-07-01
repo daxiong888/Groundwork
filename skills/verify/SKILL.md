@@ -15,7 +15,7 @@ Do not use for code edits, raw requirement shaping, task slicing, planning befor
 
 Choose the lightest branch that can answer the claim:
 
-- `verify-lite`: no-command prompts, code-diff-only sufficiency questions, or "现有证据够不够" checks.
+- `verify-lite`: no-command prompts, evidence-label upgrade questions, code-diff-only sufficiency questions, or "现有证据够不够" checks. Evidence-label upgrades include self-review/self-check -> clean review, same-session review -> independent verification, diff summary -> readiness, and source-only -> runtime/UAT/release. For evidence-label upgrades, do not write any preface or code-fenced scope; the first line must be `Verification Scope` with the six required scope fields.
 - `verify-standard`: implementation acceptance or TASK/PRD conformance with readiness/evidence claims.
 - `verify-strict`: release, UAT, customer, runtime, cache, marketplace, installed-plugin, selector-enforcement, package-readiness, or browser/UI claims.
 

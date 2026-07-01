@@ -94,6 +94,7 @@ If fixing clean-review or verify findings:
 | Dirty worktree state is present or unclear | Inspect relevant diffs before edits and decide whether current worktree is safe. | List intended files, unrelated dirty/untracked files, and whether edits are blocked, scoped, or need separate topology. |
 | Unrelated files appear in the diff or staged set | Stop staging/commit work until the boundary is explicit. | Report allowlist, denylist, `git diff --name-only`, and `git diff --cached --name-only`; leave unrelated files unstaged. |
 | Acceptance criteria or source truth is unclear | Stop before implementation or ask the highest-impact clarification question. | Do not infer product behavior; state what is known, missing, and needed. |
+| Code edit or bug patch is requested but no source truth, workspace file, task artifact, reproduction path, or test seam is available | Route to `blocked implementation`; do not answer as ordinary direct Q&A and do not patch speculatively. | Output exact implement field labels: `Scope`, `Acceptance Map`, `Evidence Inspected`, `Findings P0/P1/P2`, `Non-Readiness Boundary`, `Gaps`, `Next Action`; for nontrivial bug intent include `Bug Root-Cause Ladder` with unavailable fields marked `not provided` or `unverified`. |
 
 ## Full Output Skeleton
 
@@ -141,4 +142,5 @@ Self-Review
 Result
 Remaining Gaps
 Artifact Recommendation
+Bug Root-Cause Ladder
 ```

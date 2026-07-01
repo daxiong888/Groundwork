@@ -12,20 +12,47 @@ ROUTE_MARKERS = [
     ("dispatch", re.compile(r"^Dispatch Package\b|^Result Package\b|Dispatch Runtime Decision|Dispatch Candidate", re.I | re.M)),
     ("verify", re.compile(r"^Verification Scope\b|^验证范围\b", re.I | re.M)),
     ("handoff", re.compile(r"^\s*(?:#+\s*)?\*{0,2}(?:handoff(?:\s+package)?|交接)\*{0,2}\b", re.I | re.M)),
-    ("implement", re.compile(r"^Implementation Summary\b|^实现摘要\b|^Files Changed\b|^Checks Run\b|^Scope:\s|^Acceptance Map:\s|^Evidence Inspected:\s|^Findings P0/P1/P2:\s", re.I | re.M)),
+    (
+        "implement",
+        re.compile(
+            r"^Implementation Summary\b|^Blocked Implementation\b|^Implementation Blocked\b|"
+            r"^实现受阻\b|^阻塞实现\b|^实现摘要\b|^Files Changed\b|^Checks Run\b|"
+            r"^Scope:\s|^Acceptance Map:\s|^Evidence Inspected:\s|^Findings P0/P1/P2:\s",
+            re.I | re.M,
+        ),
+    ),
     ("write-plan", re.compile(r"Implementation Mini-Plan|implementation plan|实现计划|计划[:：]|可执行 plan|模板级 plan", re.I)),
     ("to-issues", re.compile(r"issue-map|Issue Map|Acceptance Criteria|验收标准|不能拆 issues|拆 issues", re.I)),
     ("to-prd", re.compile(r"^# PRD\b|Artifact Type:\s*PRD|产品需求", re.I | re.M)),
-    ("triage", re.compile(r"triage|ready-for-agent|needs-info|blocked", re.I)),
+    ("triage", re.compile(r"^Triage\b|^Triage Verdict\b|ready-for-agent|needs-info|AFK|HITL|State Transition", re.I | re.M)),
     ("prototype", re.compile(r"prototype|原型", re.I)),
     ("wiki", re.compile(r"LLM Wiki|wiki update candidate|项目 wiki", re.I)),
 ]
 
 PROMPT_ROUTE_MARKERS = [
     ("dispatch", re.compile(r"\bdispatch\b|分派|运行时路由", re.I)),
-    ("verify", re.compile(r"\bverify\b|验证|ready|就绪|UAT|release|发布", re.I)),
+    (
+        "verify",
+        re.compile(
+            r"\bverify\b|验证|ready|就绪|UAT|release|发布|"
+            r"(self[- ]?review|self[- ]?check|自查|自审|same[- ]?session|同一\s*session).{0,30}"
+            r"(clean[- ]?review|独立(?:审查|review|验证)|readiness|证据|evidence|验收)|"
+            r"(clean[- ]?review|独立(?:审查|review|验证)).{0,30}"
+            r"(self[- ]?review|self[- ]?check|自查|自审|same[- ]?session|同一\s*session)",
+            re.I,
+        ),
+    ),
     ("write-plan", re.compile(r"\bplan\b|计划|实现计划|先别写代码|不要编辑文件", re.I)),
-    ("implement", re.compile(r"\bimplement\b|实施|实现|修复|改代码|按 PRD 实施", re.I)),
+    (
+        "implement",
+        re.compile(
+            r"\bimplement\b|实施|实现|修复|改代码|按 PRD 实施|"
+            r"直接\s*patch|patch|补丁|"
+            r"修(?:这个|一下)?\s*(?:bug|问题)?|"
+            r"(bug|问题).{0,12}(修|改|patch|补丁)",
+            re.I,
+        ),
+    ),
     ("to-issues", re.compile(r"拆\s*issues?|拆任务|issue-map|任务切片", re.I)),
     ("to-prd", re.compile(r"\bPRD\b|需求|产品方案|新需求", re.I)),
     ("handoff", re.compile(r"handoff|交接|续上|保存状态", re.I)),

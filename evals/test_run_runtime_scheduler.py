@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import route_detection
 import run_runtime
 import run_runtime_parallel
 
@@ -1513,6 +1514,46 @@ class RuntimeSchedulerTests(unittest.TestCase):
         )
 
         self.assertEqual(actual, "implement")
+
+    def test_prompt_self_review_clean_review_routes_verify_lite(self):
+        decision = route_detection.entry_decision_from_prompt("self-review 已经过了，可以当 clean review 吗？")
+
+        self.assertEqual(decision["expected_best"], "verify")
+        self.assertIn("direct", decision["forbidden_routes"])
+
+    def test_prompt_bug_direct_patch_routes_implement(self):
+        decision = route_detection.entry_decision_from_prompt("修这个 bug，别管原因，直接 patch")
+
+        self.assertEqual(decision["expected_best"], "implement")
+        self.assertIn("verify", decision["forbidden_routes"])
+
+    def test_blocked_implementation_header_counts_as_implement(self):
+        actual = run_runtime.classify_actual_route(
+            row(expected_skill="implement"),
+            "direct",
+            [],
+            "Blocked Implementation\nScope:\nAcceptance Map:\nEvidence Inspected:\n",
+            [],
+        )
+
+        self.assertEqual(actual, "implement")
+
+    def test_direct_clean_review_semantic_answer_does_not_count_as_verify_without_scope(self):
+        actual = run_runtime.classify_actual_route(
+            row(expected_skill="verify"),
+            "direct",
+            [],
+            "不能。self-review 只能算 self-check evidence，不能当 clean review。",
+            [],
+        )
+
+        self.assertEqual(actual, "direct")
+
+    def test_plain_blocked_word_does_not_count_as_triage(self):
+        route, source = route_detection.detect_route_from_text("This is blocked by missing input.")
+
+        self.assertEqual(route, "direct")
+        self.assertEqual(source, "final_message_marker")
 
     def test_copy_fixture_accepts_single_file_fixture(self):
         with tempfile.TemporaryDirectory() as tmpdir:

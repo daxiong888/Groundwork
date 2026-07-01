@@ -29,9 +29,9 @@
       "Write"
     ],
     "defaultPrompt": [
-      "Answer small low-risk requests directly.",
-      "Use Groundwork only when context, risk, reuse, or verification needs workflow.",
-      "Load strict runtime/release/cache/UAT/dispatch/wiki refs only when in scope."
+      "Answer small low-risk requests directly, except code edits, evidence-label upgrades, readiness, or workflow-risk cases.",
+      "Route evidence-label upgrades to verify-lite, not direct: self-review/self-check -> clean review, diff summary -> readiness.",
+      "Route bug/patch/code-edit requests, including 修 bug/直接 patch, to implement; if source is missing, return blocked implementation."
     ],
     "brandColor": "#1F6FEB"
   }
