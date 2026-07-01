@@ -489,6 +489,215 @@ class RuntimeSchedulerTests(unittest.TestCase):
                 run_runtime.FAILURES = old_failures
                 run_runtime.CASES = old_cases
 
+    def test_comparison_report_marks_guided_boundary_and_direct_negative_regression(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            old_state = run_runtime.runtime_path_state()
+            try:
+                run_runtime.set_runtime_paths(Path(tmp) / "run")
+                run_runtime.RUN.mkdir(parents=True)
+                rows = [
+                    routing_row(
+                        id="v060-direct-negative-001",
+                        _suite="v0.6-first-principles-adversarial.csv",
+                        expected_best="direct",
+                        acceptable_routes="direct",
+                        forbidden_routes="implement",
+                    ),
+                    routing_row(
+                        id="rr-improved",
+                        expected_best="verify",
+                        acceptable_routes="verify",
+                        forbidden_routes="direct",
+                    ),
+                ]
+                passive_results = [
+                    {
+                        "id": "v060-direct-negative-001",
+                        "suite": "v0.6-first-principles-adversarial.csv",
+                        "actual": "direct",
+                        "actual_route": "direct",
+                        "expected_route": "direct",
+                        "verdict": "pass",
+                        "overall_verdict": "pass",
+                        "output_contract_verdict": "not_applicable",
+                    },
+                    {
+                        "id": "rr-improved",
+                        "suite": "routing-reliability.csv",
+                        "actual": "direct",
+                        "actual_route": "direct",
+                        "expected_route": "verify",
+                        "verdict": "fail",
+                        "overall_verdict": "fail",
+                        "output_contract_verdict": "fail",
+                        "notes": "trajectory signal missing",
+                    },
+                ]
+                guided_results = [
+                    {
+                        "id": "v060-direct-negative-001",
+                        "suite": "v0.6-first-principles-adversarial.csv",
+                        "actual": "implement",
+                        "actual_route": "implement",
+                        "expected_route": "direct",
+                        "verdict": "fail",
+                        "overall_verdict": "fail",
+                        "output_contract_verdict": "not_applicable",
+                    },
+                    {
+                        "id": "rr-improved",
+                        "suite": "routing-reliability.csv",
+                        "actual": "verify",
+                        "actual_route": "verify",
+                        "expected_route": "verify",
+                        "verdict": "pass",
+                        "overall_verdict": "pass",
+                        "output_contract_verdict": "pass",
+                    },
+                ]
+
+                report = run_runtime.write_comparison_report(
+                    rows,
+                    passive_results,
+                    guided_results,
+                    passive_summary={"failures": [{"id": "rr-improved"}]},
+                    guided_summary={"failures": [{"id": "v060-direct-negative-001"}]},
+                    suites=["v0.6-first-principles-adversarial.csv"],
+                )
+
+                self.assertEqual(report["counts"]["improved"], 1)
+                self.assertEqual(report["counts"]["guided_regressions"], 1)
+                self.assertEqual(report["counts"]["direct_negative_regressions"], 1)
+                self.assertIn("guided_hint_excluded", report["evidence_boundary"]["baseline_policy"])
+                direct_row = report["rows"][0]
+                self.assertTrue(direct_row["direct_negative"])
+                self.assertTrue(direct_row["direct_negative_regression"])
+                self.assertEqual(direct_row["guided_evidence_classification"], "guided_hint_excluded")
+                self.assertIn("behavior-shaping guided trial", direct_row["guided_evidence_boundary"])
+                self.assertEqual(report["rows"][1]["output_contract_verdict"], "passive:fail; guided:pass")
+                self.assertTrue(run_runtime.COMPARISON_JSON.exists())
+                self.assertTrue(run_runtime.COMPARISON_MD.exists())
+                self.assertIn("Direct-negative regressions: 1", run_runtime.COMPARISON_MD.read_text(encoding="utf-8"))
+            finally:
+                run_runtime.restore_runtime_path_state(old_state)
+
+    def test_compare_router_modes_cli_runs_pair_and_restores_env(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            prompts = repo / "evals" / "prompts"
+            prompts.mkdir(parents=True)
+            suite = prompts / "routing-reliability.csv"
+            suite.write_text(
+                ",".join(
+                    [
+                        "id",
+                        "route_boundary",
+                        "case_kind",
+                        "case_source",
+                        "intent_kind",
+                        "requirement_state",
+                        "source_truth",
+                        "risk_gate",
+                        "expected_state_transition",
+                        "expected_stop_condition",
+                        "expected_best",
+                        "acceptable_routes",
+                        "forbidden_routes",
+                        "fixture",
+                        "input_scenario",
+                        "expected_behavior",
+                        "forbidden_behavior",
+                        "output_contract",
+                        "evidence_required",
+                        "artifact_allowed",
+                        "risky_write_requested",
+                        "host_preemption_allowed",
+                        "skill_load_required",
+                        "gate_required",
+                    ]
+                )
+                + "\n"
+                + ",".join(
+                    [
+                        "rr-001",
+                        "entry-contract",
+                        "positive",
+                        "regression_protection",
+                        "direct",
+                        "raw",
+                        "conversation",
+                        "none",
+                        "none",
+                        "direct_answer",
+                        "direct",
+                        "direct",
+                        "implement",
+                        "none",
+                        "small answer",
+                        "Direct answer",
+                        "Creates artifact",
+                        "none",
+                        "none",
+                        "false",
+                        "false",
+                        "false",
+                        "false",
+                        "false",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            old_repo = run_runtime.REPO
+            old_state = run_runtime.runtime_path_state()
+            seen_modes = []
+
+            def fake_run_case(row, retry_timeouts=0):
+                mode = os.environ.get("GROUNDWORK_ROUTER_OBSERVABILITY_MODE")
+                seen_modes.append(mode)
+                return {
+                    "id": row["id"],
+                    "suite": row["_suite"],
+                    "expected": "direct",
+                    "expected_route": "direct",
+                    "actual": "direct",
+                    "actual_route": "direct",
+                    "route_evidence_source": "mock",
+                    "verdict": "pass",
+                    "overall_verdict": "pass",
+                    "output_contract_verdict": "pass",
+                    "runtime_mode": run_runtime.router_observability_runtime_mode(),
+                    "score_eligibility": run_runtime.score_eligibility_for_runtime_mode(
+                        run_runtime.router_observability_runtime_mode()
+                    ),
+                }
+
+            try:
+                run_runtime.REPO = repo
+                run_runtime.set_runtime_paths(repo / "runtime-run")
+                with mock.patch.dict(os.environ, {}, clear=True):
+                    with mock.patch.object(run_runtime, "run_case_with_policy", side_effect=fake_run_case):
+                        exit_code = run_runtime.main(
+                            ["--compare-router-modes", "--suite", "routing-reliability.csv"]
+                        )
+                    self.assertIsNone(os.environ.get("GROUNDWORK_ROUTER_OBSERVABILITY"))
+                    self.assertIsNone(os.environ.get("GROUNDWORK_ROUTER_OBSERVABILITY_MODE"))
+
+                self.assertEqual(exit_code, 0)
+                self.assertEqual(seen_modes, ["observe_only", "guided_hint_trial"])
+                comparison_path = repo / "runtime-run" / "comparison.json"
+                comparison = json.loads(comparison_path.read_text(encoding="utf-8"))
+                self.assertEqual(comparison["counts"]["rows"], 1)
+                self.assertIn("guided_hint_excluded", comparison["evidence_boundary"]["baseline_policy"])
+                self.assertEqual(comparison["passive_summary"]["routing_summary"]["baseline_eligible_rows"], 1)
+                self.assertEqual(comparison["guided_summary"]["routing_summary"]["baseline_eligible_rows"], 0)
+                self.assertTrue((repo / "runtime-run" / "observe_only" / "summary.json").exists())
+                self.assertTrue((repo / "runtime-run" / "guided_hint_trial" / "summary.json").exists())
+            finally:
+                run_runtime.REPO = old_repo
+                run_runtime.restore_runtime_path_state(old_state)
+
     def test_write_summary_distinguishes_missing_and_unexpected_routing_outcomes(self):
         with tempfile.TemporaryDirectory() as tmp:
             old_results = run_runtime.RESULTS

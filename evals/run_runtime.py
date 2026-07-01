@@ -59,6 +59,8 @@ RESULTS = RUN / "results.jsonl"
 CASES = RUN / "cases"
 SUMMARY = RUN / "summary.json"
 FAILURES = RUN / "failures.md"
+COMPARISON_JSON = RUN / "comparison.json"
+COMPARISON_MD = RUN / "comparison.md"
 
 DEFAULT_SUITES = [
     "smoke.csv",
@@ -855,6 +857,70 @@ DISABLED_ROUTER_OBSERVABILITY_BOUNDARY = (
     "router observability disabled; runtime eval output is not router observability, release, UAT, "
     "marketplace, cache-refresh, hook-trust, or customer readiness evidence"
 )
+ROUTER_MODE_ENV_KEYS = [
+    "GROUNDWORK_ROUTER_OBSERVABILITY",
+    "GROUNDWORK_ROUTER_OBSERVABILITY_MODE",
+    "GROUNDWORK_ROUTER_OBSERVABILITY_DISABLED",
+]
+
+
+def runtime_path_state():
+    return {
+        "RUN": RUN,
+        "LOGS": LOGS,
+        "LAST": LAST,
+        "WORKSPACES": WORKSPACES,
+        "RESULTS": RESULTS,
+        "CASES": CASES,
+        "SUMMARY": SUMMARY,
+        "FAILURES": FAILURES,
+        "COMPARISON_JSON": COMPARISON_JSON,
+        "COMPARISON_MD": COMPARISON_MD,
+    }
+
+
+def set_runtime_paths(run_root):
+    global RUN, LOGS, LAST, WORKSPACES, RESULTS, CASES, SUMMARY, FAILURES, COMPARISON_JSON, COMPARISON_MD
+    RUN = Path(run_root)
+    LOGS = RUN / "logs"
+    LAST = RUN / "last"
+    WORKSPACES = RUN / "workspaces"
+    RESULTS = RUN / "results.jsonl"
+    CASES = RUN / "cases"
+    SUMMARY = RUN / "summary.json"
+    FAILURES = RUN / "failures.md"
+    COMPARISON_JSON = RUN / "comparison.json"
+    COMPARISON_MD = RUN / "comparison.md"
+
+
+def restore_runtime_path_state(state):
+    global RUN, LOGS, LAST, WORKSPACES, RESULTS, CASES, SUMMARY, FAILURES, COMPARISON_JSON, COMPARISON_MD
+    RUN = state["RUN"]
+    LOGS = state["LOGS"]
+    LAST = state["LAST"]
+    WORKSPACES = state["WORKSPACES"]
+    RESULTS = state["RESULTS"]
+    CASES = state["CASES"]
+    SUMMARY = state["SUMMARY"]
+    FAILURES = state["FAILURES"]
+    COMPARISON_JSON = state["COMPARISON_JSON"]
+    COMPARISON_MD = state["COMPARISON_MD"]
+
+
+def apply_router_mode_env(mode):
+    previous = {key: os.environ.get(key) for key in ROUTER_MODE_ENV_KEYS}
+    os.environ["GROUNDWORK_ROUTER_OBSERVABILITY"] = "1"
+    os.environ["GROUNDWORK_ROUTER_OBSERVABILITY_MODE"] = mode
+    os.environ.pop("GROUNDWORK_ROUTER_OBSERVABILITY_DISABLED", None)
+    return previous
+
+
+def restore_router_mode_env(previous):
+    for key, value in previous.items():
+        if value is None:
+            os.environ.pop(key, None)
+        else:
+            os.environ[key] = value
 
 
 def normalize_router_observability_mode(value):
@@ -919,6 +985,15 @@ def router_observability_runtime_mode(cwd=None):
         "evidence_boundary": router_observability_evidence_boundary(mode),
         "activation_source": activation_source,
     }
+
+
+def score_eligibility_for_runtime_mode(runtime_mode):
+    mode = str((runtime_mode or {}).get("router_observability_mode") or "disabled")
+    if mode == "guided_hint_trial":
+        return "guided_hint_excluded"
+    if mode == "observe_only":
+        return "baseline_eligible"
+    return "insufficient_evidence"
 
 
 def aggregate_runtime_mode(results):
@@ -2414,6 +2489,7 @@ def run_row(row, timeout_s=None, attempt=1):
     warnings = ["multi_skill_hit"] if multi_skill_hit else []
     lifecycle_state_files, lifecycle_artifact_errors = validate_lifecycle_state_artifacts(cwd, after, changes)
     legacy_verdict, legacy_notes = quick_verdict(row, actual, last, rc, changes, lifecycle_artifact_errors, stdout)
+    runtime_mode = router_observability_runtime_mode(cwd)
     verdict_model = routing_verdict_model(
         row,
         actual,
@@ -2453,7 +2529,8 @@ def run_row(row, timeout_s=None, attempt=1):
         "cwd": str(cwd),
         "sandbox": sandbox,
         "hook_trust_bypass": hook_trust_bypass_enabled(),
-        "runtime_mode": router_observability_runtime_mode(cwd),
+        "runtime_mode": runtime_mode,
+        "score_eligibility": score_eligibility_for_runtime_mode(runtime_mode),
         "workspace_note": workspace_note,
         "returncode": rc,
         "changed_files": changes,
@@ -2547,6 +2624,7 @@ def run_case_with_policy(row, retry_timeouts=0):
 def exception_result(row, exc):
     row_id = row.get("id", "unknown")
     metadata = case_metadata(row)
+    runtime_mode = router_observability_runtime_mode()
     result = {
         "id": row_id,
         "suite": row.get("_suite"),
@@ -2563,6 +2641,8 @@ def exception_result(row, exc):
         "timeout_s": metadata["timeout_s"],
         "flake_policy": metadata["flake_policy"],
         "returncode": None,
+        "runtime_mode": runtime_mode,
+        "score_eligibility": score_eligibility_for_runtime_mode(runtime_mode),
         "changed_files": [],
         "lifecycle_state_files": [],
         "lifecycle_artifact_errors": [],
@@ -2640,6 +2720,23 @@ def run_parallel_rows(rows, jobs, retry_timeouts=0):
     return results
 
 
+def execute_rows(rows, jobs, resource_policy, retry_timeouts=0):
+    results = []
+    parallel_rows, serial_rows = partition_rows(rows, jobs, resource_policy)
+    if jobs == 1:
+        for row in rows:
+            results.append(run_case_with_policy(row, retry_timeouts))
+    else:
+        if parallel_rows:
+            results.extend(run_parallel_rows(parallel_rows, jobs, retry_timeouts))
+        for row in serial_rows:
+            results.append(run_case_with_policy(row, retry_timeouts))
+    input_indexes = {row.get("id"): row.get("_input_index", 0) for row in rows}
+    for result in results:
+        result["_input_index"] = input_indexes.get(result.get("id"), 0)
+    return results
+
+
 def write_summary(results, jobs, suites, resource_policy, group=None):
     ordered = sorted(results, key=lambda item: item.get("_input_index", 0))
     with RESULTS.open("w", encoding="utf-8") as fh:
@@ -2713,6 +2810,229 @@ def write_summary(results, jobs, suites, resource_policy, group=None):
     return summary
 
 
+def route_for_result(result):
+    return str(result.get("actual_route") or result.get("actual") or UNKNOWN_ROUTE)
+
+
+def verdict_for_comparison(result):
+    return str(result.get("overall_verdict") or result.get("verdict") or "unknown")
+
+
+def verdict_rank(verdict):
+    verdict = str(verdict or "unknown")
+    if verdict in {"pass", "flake"}:
+        return 0
+    if verdict == "fail":
+        return 1
+    return 2
+
+
+def output_contract_label(passive, guided):
+    passive_value = str(passive.get("output_contract_verdict") or NOT_APPLICABLE)
+    guided_value = str(guided.get("output_contract_verdict") or NOT_APPLICABLE)
+    if passive_value == guided_value:
+        return passive_value
+    return f"passive:{passive_value}; guided:{guided_value}"
+
+
+def output_contract_notes(result):
+    verdict = str(result.get("output_contract_verdict") or NOT_APPLICABLE)
+    if verdict in {"pass", NOT_APPLICABLE}:
+        return ""
+    return str(result.get("notes") or "")
+
+
+def is_direct_negative_row(row):
+    row_id = str(row.get("id") or "").lower()
+    boundary = str(row.get("route_boundary") or "").lower()
+    return (
+        "direct-negative" in row_id
+        or "direct_negative" in row_id
+        or "direct-negative" in boundary
+        or "direct_negative" in boundary
+    )
+
+
+def comparison_row(row, passive, guided):
+    passive_verdict = verdict_for_comparison(passive)
+    guided_verdict = verdict_for_comparison(guided)
+    passive_route = route_for_result(passive)
+    guided_route = route_for_result(guided)
+    direct_negative = is_direct_negative_row(row)
+    guided_regression = verdict_rank(guided_verdict) > verdict_rank(passive_verdict)
+    direct_negative_regression = direct_negative and (
+        guided_regression
+        or (passive_route == DIRECT_ROUTE and guided_route != DIRECT_ROUTE)
+    )
+    return {
+        "case_id": row.get("id"),
+        "suite": row.get("_suite"),
+        "expected_route": str(passive.get("expected_route") or guided.get("expected_route") or expected_skill_for_row(row)),
+        "direct_negative": direct_negative,
+        "passive_actual_route": passive_route,
+        "passive_observed_route": passive_route,
+        "passive_route_evidence_source": passive.get("route_evidence_source") or "",
+        "guided_actual_route": guided_route,
+        "guided_observed_route": guided_route,
+        "guided_route_evidence_source": guided.get("route_evidence_source") or "",
+        "passive_verdict": passive_verdict,
+        "guided_verdict": guided_verdict,
+        "passive_output_contract_verdict": str(passive.get("output_contract_verdict") or NOT_APPLICABLE),
+        "guided_output_contract_verdict": str(guided.get("output_contract_verdict") or NOT_APPLICABLE),
+        "output_contract_verdict": output_contract_label(passive, guided),
+        "output_contract_notes": "; ".join(
+            note
+            for note in [
+                output_contract_notes(passive),
+                output_contract_notes(guided),
+            ]
+            if note
+        ),
+        "improved": verdict_rank(guided_verdict) < verdict_rank(passive_verdict),
+        "guided_regression": guided_regression,
+        "direct_negative_regression": direct_negative_regression,
+        "guided_evidence_classification": "guided_hint_excluded",
+        "guided_evidence_boundary": GUIDED_HINT_TRIAL_BOUNDARY,
+        "passive_case_result": passive.get("case_result") or "",
+        "guided_case_result": guided.get("case_result") or "",
+    }
+
+
+def markdown_cell(value, limit=120):
+    text = str(value or "")
+    text = text.replace("\n", " ").replace("|", "\\|")
+    if len(text) > limit:
+        text = text[: limit - 3].rstrip() + "..."
+    return text
+
+
+def write_comparison_report(rows, passive_results, guided_results, passive_summary, guided_summary, suites):
+    passive_by_id = {str(result.get("id")): result for result in passive_results}
+    guided_by_id = {str(result.get("id")): result for result in guided_results}
+    comparison_rows = [
+        comparison_row(row, passive_by_id.get(str(row.get("id")), {}), guided_by_id.get(str(row.get("id")), {}))
+        for row in rows
+    ]
+    counts = {
+        "rows": len(comparison_rows),
+        "improved": sum(1 for row in comparison_rows if row["improved"]),
+        "guided_regressions": sum(1 for row in comparison_rows if row["guided_regression"]),
+        "direct_negative_regressions": sum(1 for row in comparison_rows if row["direct_negative_regression"]),
+    }
+    report = {
+        "run_root": str(RUN),
+        "suites": suites,
+        "compared_modes": ["observe_only", "guided_hint_trial"],
+        "evidence_boundary": {
+            "passive": OBSERVE_ONLY_BOUNDARY,
+            "guided": GUIDED_HINT_TRIAL_BOUNDARY,
+            "baseline_policy": "guided passes are guided_hint_excluded behavior-shaping trial evidence and are not passive baseline evidence",
+        },
+        "passive_summary": passive_summary,
+        "guided_summary": guided_summary,
+        "counts": counts,
+        "rows": comparison_rows,
+        "result_layout": {
+            "comparison_json": str(COMPARISON_JSON),
+            "comparison_md": str(COMPARISON_MD),
+            "passive_run_root": str(Path(RUN) / "observe_only"),
+            "guided_run_root": str(Path(RUN) / "guided_hint_trial"),
+        },
+        "finished": datetime.now(timezone.utc).isoformat(),
+    }
+    COMPARISON_JSON.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    lines = [
+        "# Router Mode Comparison",
+        "",
+        "## Evidence Boundary",
+        "",
+        f"- Passive mode: `{OBSERVE_ONLY_BOUNDARY}`",
+        f"- Guided mode: `{GUIDED_HINT_TRIAL_BOUNDARY}`",
+        "- Baseline policy: guided passes are `guided_hint_excluded` behavior-shaping trial evidence and are not passive baseline evidence.",
+        "",
+        "## Counts",
+        "",
+        f"- Rows: {counts['rows']}",
+        f"- Improved: {counts['improved']}",
+        f"- Guided regressions: {counts['guided_regressions']}",
+        f"- Direct-negative regressions: {counts['direct_negative_regressions']}",
+        "",
+        "## Rows",
+        "",
+        "| Case | Passive route | Guided route | Passive verdict | Guided verdict | Output contract | Improved | Guided regression | Direct-negative regression |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    for item in comparison_rows:
+        lines.append(
+            "| "
+            + " | ".join(
+                [
+                    markdown_cell(item["case_id"], 48),
+                    markdown_cell(item["passive_actual_route"], 32),
+                    markdown_cell(item["guided_actual_route"], 32),
+                    markdown_cell(item["passive_verdict"], 24),
+                    markdown_cell(item["guided_verdict"], 24),
+                    markdown_cell(item["output_contract_verdict"], 48),
+                    str(item["improved"]).lower(),
+                    str(item["guided_regression"]).lower(),
+                    str(item["direct_negative_regression"]).lower(),
+                ]
+            )
+            + " |"
+        )
+    COMPARISON_MD.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return report
+
+
+def run_router_mode_pass(mode, rows, jobs, suites, resource_policy, retry_timeouts, group=None):
+    parent_state = runtime_path_state()
+    previous_env = apply_router_mode_env(mode)
+    try:
+        set_runtime_paths(parent_state["RUN"] / mode)
+        LOGS.mkdir(parents=True, exist_ok=True)
+        LAST.mkdir(parents=True, exist_ok=True)
+        WORKSPACES.mkdir(parents=True, exist_ok=True)
+        CASES.mkdir(parents=True, exist_ok=True)
+        results = execute_rows(rows, jobs, resource_policy, retry_timeouts)
+        summary = write_summary(results, jobs, suites, resource_policy, group)
+        return {"mode": mode, "run_root": str(RUN), "results": results, "summary": summary}
+    finally:
+        restore_router_mode_env(previous_env)
+        restore_runtime_path_state(parent_state)
+
+
+def run_router_mode_comparison(rows, jobs, suites, resource_policy, retry_timeouts, group=None):
+    RUN.mkdir(parents=True, exist_ok=True)
+    passive = run_router_mode_pass(
+        "observe_only",
+        rows,
+        jobs,
+        suites,
+        resource_policy,
+        retry_timeouts,
+        group,
+    )
+    guided = run_router_mode_pass(
+        "guided_hint_trial",
+        rows,
+        jobs,
+        suites,
+        resource_policy,
+        retry_timeouts,
+        group,
+    )
+    report = write_comparison_report(
+        rows,
+        passive["results"],
+        guided["results"],
+        passive["summary"],
+        guided["summary"],
+        suites,
+    )
+    return {"passive": passive, "guided": guided, "comparison": report}
+
+
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Run Groundwork runtime evals.")
     parser.add_argument("ids", nargs="*", help="Optional case ids to run.")
@@ -2740,6 +3060,11 @@ def parse_args(argv=None):
     parser.add_argument("--rerun-failures", type=Path, help="Path to a previous summary.json or run directory.")
     parser.add_argument("--group", help="Run only cases in this inferred or explicit resource group, e.g. browser.")
     parser.add_argument("--case-timeout", type=int, default=CODEX_EXEC_TIMEOUT, help="Default timeout per case in seconds.")
+    parser.add_argument(
+        "--compare-router-modes",
+        action="store_true",
+        help="Run the selected rows once as observe_only and once as guided_hint_trial, then write comparison.json/md.",
+    )
     parser.add_argument(
         "--retry-timeouts",
         type=int,
@@ -2843,16 +3168,26 @@ def main(argv=None):
     if args.group:
         print(f"group={args.group}", flush=True)
 
-    results = []
-    parallel_rows, serial_rows = partition_rows(rows, jobs, args.resource_policy)
-    if jobs == 1:
-        for row in rows:
-            results.append(run_case_with_policy(row, args.retry_timeouts))
-    else:
-        if parallel_rows:
-            results.extend(run_parallel_rows(parallel_rows, jobs, args.retry_timeouts))
-        for row in serial_rows:
-            results.append(run_case_with_policy(row, args.retry_timeouts))
+    if args.compare_router_modes:
+        comparison = run_router_mode_comparison(
+            rows,
+            jobs,
+            suite_labels,
+            args.resource_policy,
+            args.retry_timeouts,
+            args.group,
+        )
+        print(json.dumps({"comparison": comparison["comparison"]}, ensure_ascii=False), flush=True)
+        counts = comparison["comparison"]["counts"]
+        has_failures = (
+            comparison["passive"]["summary"]["failures"]
+            or comparison["guided"]["summary"]["failures"]
+            or counts["guided_regressions"]
+            or counts["direct_negative_regressions"]
+        )
+        return 1 if has_failures else 0
+
+    results = execute_rows(rows, jobs, args.resource_policy, args.retry_timeouts)
 
     for result in results:
         result["_input_index"] = next(
