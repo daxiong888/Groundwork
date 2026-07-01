@@ -39,6 +39,7 @@ The wrapper prepares this layout:
     run-manifest.json
     <scenario>/
       benchmark.json
+      workspace-source/
       plugin-eval-analyze.json
 ```
 
@@ -79,6 +80,19 @@ If Plugin Eval writes `.plugin-eval` into the target during execution, the wrapp
 
 The same target cleanup runs after static `plugin-eval analyze`, because analyze must not leave `.plugin-eval` inside the benchmark target either.
 
+## Scenario Design
+
+Clean benchmarks measure Groundwork runtime behavior on small user tasks, not the cost of recursively running Plugin Eval from inside a benchmarked scenario. The wrapper writes a minimal `results/<scenario>/workspace-source/` fixture and points `benchmark.json` at that fixture instead of the Groundwork source checkout.
+
+> [!IMPORTANT]
+> Scenario prompts must not ask the nested Codex run to run Plugin Eval, `scripts/run_plugin_eval_clean.py`, eval scripts, benchmark commands, or broad repository scans. They should ask for a realistic Groundwork output such as a compact PRD/spec, a scope-first verification report, or a Dispatch Package v2.
+
+The full source checkout is still used to build the local marketplace package and record source metadata. It is not the scenario workspace copied into the nested Codex run.
+
+After execution, the wrapper reads only the nested Codex `codex.stdout.jsonl` command log under `results/<scenario>/target-plugin-eval-output/`. Missing raw command logs, nested Plugin Eval commands, `scripts/run_plugin_eval_clean.py`, benchmark-script commands under `scripts/` or `evals/`, or source-repo `docs/`, `evals/`, `artifacts/`, `scripts/`, or `research/` path scans are hard failures because they mean the scenario cannot prove clean non-recursive behavior or measured benchmark harness/source-repo exploration instead of Groundwork runtime read-path cost.
+
+Allowlisted file discovery inside the temporary scenario workspace, such as `rg --files` for named task/evidence files and installed plugin entry files, is a reportable scan signal rather than an automatic hard failure. Searching for words such as `benchmark`, `docs`, or `scripts` inside a named scenario task file is not a hard failure unless the command scans forbidden source-repo paths.
+
 ## Required Evidence
 
 Every clean benchmark run must preserve `results/run-manifest.json`. The manifest records:
@@ -90,6 +104,7 @@ Every clean benchmark run must preserve `results/run-manifest.json`. The manifes
 - installed cache root, or `null` when not visible;
 - scenario name;
 - Plugin Eval command;
+- model turn count, command execution count, nested command matches, forbidden source scan matches, broad scan matches, and package files read when raw Codex logs are present;
 - observed input/output/total tokens when Codex emits usage telemetry;
 - static trigger, invoke, and deferred token budgets from `plugin-eval analyze` when available.
 

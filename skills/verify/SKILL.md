@@ -21,6 +21,22 @@ Choose the lightest branch that can answer the claim:
 
 Historical baselines are allowed only when the user explicitly asks for historical/eval/baseline/release evidence or a current source artifact cites a specific historical path.
 
+## Default Path: Named Evidence Verification
+
+Use this path for generic claim-evidence verification when the prompt names `CLAIM.md`, `EVIDENCE.md`, a scope artifact, or explicit evidence artifact paths and does not ask to evaluate, debug, install, package, release, cache-check, or maintain Groundwork itself.
+
+Read only:
+
+- this active `verify` contract;
+- the user-named claim, evidence, scope, or check-output artifacts;
+- `VERIFY-SCOPE.md` and `SCOPE-EVIDENCE-TEMPLATE.md` when needed for the required scope-first report.
+
+Do not inspect Groundwork plugin README, `.codex-plugin/plugin.json`, plugin manifests, package internals, other skill `SKILL.md` files, or repository-wide docs/source by default. Leave this path only when the user explicitly asks for Groundwork maintenance, plugin/package/install/cache/release verification, or when a named in-scope artifact cites a specific additional path that must be checked.
+
+Scenario workspace allowlisted file discovery is allowed and may be reported as a warning when noisy; do not treat allowlisted discovery of the named evidence files as a hard failure.
+
+Even on this fast path, keep the full verify safety boundary: concrete scope, `Covered`, `Not Covered`, `Evidence Sources`, missing evidence, and bounded support/readiness judgment remain mandatory.
+
 ## Evidence Boundary
 
 Start from the user-visible claim and the smallest current evidence set that can prove or disprove it: user-provided evidence or paths, current source/diff/tests/check output, named artifacts, runtime/browser evidence when requested, and installed cache or local `dist/` only when the claim concerns plugin install, cache, marketplace, package, or release readiness.

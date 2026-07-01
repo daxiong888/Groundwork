@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -17,6 +18,29 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_RUN_ROOT_BASE = Path("/private/tmp/groundwork-plugin-eval")
 PLUGIN_NAME = "groundwork"
+NESTED_BENCHMARK_SCRIPT_PATTERN = re.compile(
+    r"(^|[\s'\";&|])(?:\./)?(?:scripts|evals)/[^'\"\s;&|]*benchmark[^'\"\s;&|]*"
+)
+BROAD_SCAN_PATTERNS = (
+    "rg --files",
+    "find .",
+    "ls -R",
+)
+FORBIDDEN_SOURCE_SCAN_ROOTS = (
+    "docs",
+    "evals",
+    "artifacts",
+    "scripts",
+    "research",
+)
+SCRIPT_EXECUTORS = {
+    "python",
+    "python3",
+    "node",
+    "sh",
+    "bash",
+    "zsh",
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -290,8 +314,169 @@ def budget_value(bucket: object) -> int | None:
     return None
 
 
+def scenario_workspace_files(scenario: str) -> dict[str, str]:
+    common_boundary = (
+        "Do not run plugin-eval, scripts/run_plugin_eval_clean.py, eval scripts, "
+        "benchmark commands, or repository-wide discovery. Use only the files in "
+        "this workspace plus the local Groundwork plugin if it is useful.\n"
+    )
+    if scenario == "to-prd":
+        return {
+            "TASK.md": (
+                "# Rough Requirement\n\n"
+                "A maintainer wants a draft-only PRD workflow for proposed plugin "
+                "changes. The PRD should capture the visible user value, acceptance "
+                "criteria, evidence needed before implementation, and open decisions. "
+                "No file edits are requested; produce the PRD/spec in the final answer.\n\n"
+                "If local Groundwork guidance is useful, read only "
+                "`plugins/groundwork/skills/to-prd/SKILL.md`. Do not inspect "
+                "Groundwork plugin README, `.codex-plugin/plugin.json`, plugin manifests, "
+                "package internals, `PRD-TEMPLATE.md`, `GRILL-BEFORE-WRITE.md`, or shared "
+                "lifecycle/evidence references unless this task explicitly asks for a "
+                "durable artifact, source-backed product truth, wiki-backed context, or "
+                "lifecycle gate evaluation.\n\n"
+                f"{common_boundary}"
+            )
+        }
+    if scenario == "verify":
+        return {
+            "CLAIM.md": (
+                "# Claim To Verify\n\n"
+                "Claim: A local package-boundary change is ready to be treated as "
+                "runtime evidence because the package build and static checks passed.\n\n"
+                "If local Groundwork guidance is useful, read only "
+                "`plugins/groundwork/skills/verify/SKILL.md`, "
+                "`plugins/groundwork/skills/verify/VERIFY-SCOPE.md`, and "
+                "`plugins/groundwork/skills/verify/SCOPE-EVIDENCE-TEMPLATE.md`. "
+                "Do not inspect Groundwork plugin README, `.codex-plugin/plugin.json`, "
+                "plugin manifests, package internals, other skill `SKILL.md` files, "
+                "or repository-wide docs/source unless this task explicitly asks for "
+                "Groundwork maintenance, plugin/package/install/cache/release verification, "
+                "or a named in-scope artifact cites that path.\n\n"
+                f"{common_boundary}"
+            ),
+            "EVIDENCE.md": (
+                "# Available Evidence\n\n"
+                "- Static package-boundary check passed.\n"
+                "- Skill entry budget check passed.\n"
+                "- No installed-cache equivalence check has been provided.\n"
+                "- No live runtime or UAT run has been provided.\n"
+            ),
+        }
+    if scenario == "dispatch":
+        return {
+            "ACCEPTED-TASK.md": (
+                "# Accepted Task\n\n"
+                "Prepare a Dispatch Package v2 for a small documentation-only change: "
+                "update an existing maintainer guide so benchmark reports separate "
+                "static estimates, observed runtime usage, and installed-cache evidence. "
+                "The package should stay package-only and include source truth, readiness, "
+                "a compact task matrix, safety policy, required evidence, stop conditions, "
+                "and expected output type. Do not produce an adapter-ready package, full "
+                "schema, runtime adapter analysis, model/profile selection, or result "
+                "package details unless explicitly requested. Do not execute the work; "
+                "produce the compact package skeleton in the final answer.\n\n"
+                "If local Groundwork guidance is useful, read only "
+                "`plugins/groundwork/skills/dispatch/SKILL.md` and "
+                "`plugins/groundwork/skills/dispatch/DISPATCH-PACKAGE.md`. Do not inspect "
+                "Groundwork plugin README, `.codex-plugin/plugin.json`, plugin manifests, "
+                "package internals, `DISPATCH-PACKAGE-DETAILS.md`, `RESULT-PACKAGE.md`, "
+                "`RUNTIME-ADAPTERS.md`, `ROUTING-PROFILES.md`, or `EXAMPLES.md` unless "
+                "this task explicitly asks for adapter-ready output, full schema, runtime "
+                "adapter behavior, model/profile selection, examples, or returned evidence "
+                "details.\n\n"
+                f"{common_boundary}"
+            )
+        }
+    return {
+        "TASK.md": (
+            f"# {scenario} Scenario Task\n\n"
+            "Use the local Groundwork plugin only if it helps. Produce a concise "
+            "final answer for this task without editing files.\n\n"
+            f"{common_boundary}"
+        )
+    }
+
+
+def write_benchmark_workspace_source(scenario: str, scenario_result_root: Path) -> Path:
+    workspace_source = scenario_result_root / "workspace-source"
+    if workspace_source.exists():
+        shutil.rmtree(workspace_source)
+    workspace_source.mkdir(parents=True, exist_ok=True)
+    for relative_path, contents in scenario_workspace_files(scenario).items():
+        path = workspace_source / relative_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(contents, encoding="utf-8")
+    return workspace_source
+
+
+def scenario_user_input(scenario: str) -> str:
+    if scenario == "to-prd":
+        task = (
+            "Read TASK.md in the current workspace and produce a compact PRD/spec "
+            "with acceptance criteria, known facts, assumptions, open questions, "
+            "and implementation-prep evidence needs in the final answer only. If "
+            "Groundwork guidance is useful, read only "
+            "plugins/groundwork/skills/to-prd/SKILL.md and do not inspect plugin "
+            "README, .codex-plugin/plugin.json, package internals, PRD-TEMPLATE.md, "
+            "GRILL-BEFORE-WRITE.md, or shared lifecycle/evidence references unless "
+            "this task explicitly asks for durable, source-backed, wiki-backed, or "
+            "lifecycle-gate output."
+        )
+    elif scenario == "verify":
+        task = (
+            "Read CLAIM.md and EVIDENCE.md in the current workspace and produce a "
+            "scope-first verification report that separates covered, not covered, "
+            "and missing evidence. If Groundwork guidance is useful, read only "
+            "plugins/groundwork/skills/verify/SKILL.md, "
+            "plugins/groundwork/skills/verify/VERIFY-SCOPE.md, and "
+            "plugins/groundwork/skills/verify/SCOPE-EVIDENCE-TEMPLATE.md. Do not "
+            "inspect plugin README, .codex-plugin/plugin.json, plugin manifests, "
+            "package internals, or other skill SKILL.md files unless this task "
+            "explicitly asks for Groundwork maintenance, plugin/package/install/cache/"
+            "release verification, or a named in-scope artifact cites that path."
+        )
+    elif scenario == "dispatch":
+        task = (
+            "Read ACCEPTED-TASK.md in the current workspace and produce a Dispatch "
+            "Package v2 compact package skeleton in the final answer only. If Groundwork "
+            "guidance is useful, read only plugins/groundwork/skills/dispatch/SKILL.md "
+            "and plugins/groundwork/skills/dispatch/DISPATCH-PACKAGE.md. Do not inspect "
+            "plugin README, .codex-plugin/plugin.json, package internals, "
+            "DISPATCH-PACKAGE-DETAILS.md, RESULT-PACKAGE.md, RUNTIME-ADAPTERS.md, "
+            "ROUTING-PROFILES.md, or EXAMPLES.md unless this task explicitly asks for "
+            "adapter-ready output, full schema, runtime adapter behavior, model/profile "
+            "selection, examples, or returned evidence details."
+        )
+    else:
+        task = (
+            "Read TASK.md in the current workspace and produce a concise final "
+            "answer for the requested Groundwork scenario."
+        )
+    return (
+        f"Use the local Codex plugin {PLUGIN_NAME!r} if it helps. {task} "
+        "Do not edit files. Do not run plugin-eval. Do not run "
+        "scripts/run_plugin_eval_clean.py. Do not run eval scripts, benchmark "
+        "commands, or broad repository scans."
+    )
+
+
+def scenario_success_checklist(scenario: str) -> list[str]:
+    checklist = [
+        "The response stays within the requested Groundwork scenario.",
+        "No nested Plugin Eval, run_plugin_eval_clean.py, eval script, or benchmark command is run.",
+        "The agent uses only the minimal scenario workspace plus the local plugin when useful.",
+        "Runtime/cache/release claims are not made without installed-plugin evidence.",
+        "Observed token usage is recorded when Codex emits usage telemetry.",
+    ]
+    if scenario == "dispatch":
+        checklist.append("The final answer is a package-only dispatch result and does not execute the task.")
+    return checklist
+
+
 def write_benchmark_config(source: Path, scenario: str, scenario_result_root: Path) -> Path:
     config_path = scenario_result_root / "benchmark.json"
+    workspace_source = write_benchmark_workspace_source(scenario, scenario_result_root)
     config = {
         "kind": "plugin-eval-benchmark",
         "schemaVersion": 2,
@@ -306,7 +491,7 @@ def write_benchmark_config(source: Path, scenario: str, scenario_result_root: Pa
             "extraArgs": [],
         },
         "workspace": {
-            "sourcePath": str(source),
+            "sourcePath": str(workspace_source),
             "setupMode": "copy",
             "preserve": "on-failure",
         },
@@ -321,15 +506,8 @@ def write_benchmark_config(source: Path, scenario: str, scenario_result_root: Pa
                 "id": scenario,
                 "title": scenario,
                 "purpose": f"Measure Groundwork runtime behavior for the {scenario} scenario.",
-                "userInput": (
-                    f"Use the local Codex plugin {PLUGIN_NAME!r} if it helps. "
-                    f"Run the Groundwork {scenario} benchmark scenario and finish with a concise evidence report."
-                ),
-                "successChecklist": [
-                    "The response stays within the requested Groundwork scenario.",
-                    "Runtime/cache/release claims are not made without installed-plugin evidence.",
-                    "Observed token usage is recorded when Codex emits usage telemetry.",
-                ],
+                "userInput": scenario_user_input(scenario),
+                "successChecklist": scenario_success_checklist(scenario),
             }
         ],
     }
@@ -401,11 +579,14 @@ def run_plugin_eval_benchmark(
     )
     relocate_plugin_eval_dir(target_root, scenario_result_root)
     assert_no_plugin_eval(target_root)
+    runtime_trace = read_runtime_trace_summary(scenario_result_root)
+    status = benchmark_status(result.returncode, runtime_trace)
     return {
-        "status": "completed" if result.returncode == 0 else "failed",
+        "status": status,
         "exit_code": result.returncode,
         "command": command_text,
         "observed_usage": read_observed_usage(scenario_result_root / "observed-usage.jsonl"),
+        "runtime_trace": runtime_trace,
     }
 
 
@@ -417,6 +598,259 @@ def relocate_plugin_eval_dir(target_root: Path, scenario_result_root: Path) -> N
     if destination.exists():
         shutil.rmtree(destination)
     shutil.move(str(plugin_eval_dir), str(destination))
+
+
+def benchmark_status(exit_code: int, runtime_trace: dict) -> str:
+    if exit_code != 0:
+        return "failed"
+    if runtime_trace.get("status") != "present":
+        return "failed"
+    if runtime_trace.get("nested_command_count", 0) > 0:
+        return "failed"
+    if runtime_trace.get("forbidden_source_scan_count", 0) > 0:
+        return "failed"
+    return "completed"
+
+
+def read_runtime_trace_summary(scenario_result_root: Path) -> dict:
+    log_paths = sorted((scenario_result_root / "target-plugin-eval-output").rglob("codex.stdout.jsonl"))
+    if not log_paths:
+        return {
+            "status": "not_found",
+            "log_paths": [],
+            "model_turn_count": 0,
+            "command_execution_count": 0,
+            "nested_command_count": 0,
+            "nested_commands": [],
+            "forbidden_source_scan_count": 0,
+            "forbidden_source_scan_commands": [],
+            "broad_scan_count": 0,
+            "broad_scan_commands": [],
+            "package_files_read": [],
+            "invalid_json_line_count": 0,
+        }
+
+    model_turn_count = 0
+    command_execution_count = 0
+    nested_commands: list[str] = []
+    forbidden_source_scan_commands: list[str] = []
+    broad_scan_commands: list[str] = []
+    package_files_read: set[str] = set()
+    invalid_json_line_count = 0
+
+    for log_path in log_paths:
+        for line in log_path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            try:
+                payload = json.loads(line)
+            except json.JSONDecodeError:
+                invalid_json_line_count += 1
+                continue
+
+            if payload.get("type") == "turn.started":
+                model_turn_count += 1
+
+            item = payload.get("item")
+            if not isinstance(item, dict):
+                continue
+            if payload.get("type") != "item.completed" or item.get("type") != "command_execution":
+                continue
+
+            command = item.get("command")
+            if not isinstance(command, str):
+                continue
+            command_execution_count += 1
+            if is_nested_benchmark_command(command):
+                nested_commands.append(command)
+            if is_forbidden_source_scan_command(command):
+                forbidden_source_scan_commands.append(command)
+            if is_broad_scan_command(command):
+                broad_scan_commands.append(command)
+            package_files_read.update(extract_package_file_reads(command))
+
+    return {
+        "status": "present",
+        "log_paths": [str(path) for path in log_paths],
+        "model_turn_count": model_turn_count,
+        "command_execution_count": command_execution_count,
+        "nested_command_count": len(nested_commands),
+        "nested_commands": nested_commands,
+        "forbidden_source_scan_count": len(forbidden_source_scan_commands),
+        "forbidden_source_scan_commands": forbidden_source_scan_commands,
+        "broad_scan_count": len(broad_scan_commands),
+        "broad_scan_commands": broad_scan_commands,
+        "package_files_read": sorted(package_files_read),
+        "invalid_json_line_count": invalid_json_line_count,
+    }
+
+
+def is_nested_benchmark_command(command: str) -> bool:
+    for segment in command_segments(command_words(command)):
+        if not segment:
+            continue
+        tool = Path(segment[0]).name
+        if tool == "plugin-eval":
+            return True
+        if tool == "node" and any(is_plugin_eval_script_path(arg) for arg in segment[1:]):
+            return True
+        if tool in {"which", "command"} and "plugin-eval" in segment[1:]:
+            return True
+        if is_run_plugin_eval_wrapper_path(segment[0]):
+            return True
+        if tool in SCRIPT_EXECUTORS and any(is_run_plugin_eval_wrapper_path(arg) for arg in segment[1:]):
+            return True
+        if any(is_benchmark_script_path(arg) for arg in segment):
+            return True
+    return False
+
+
+def is_broad_scan_command(command: str) -> bool:
+    return any(pattern in command for pattern in BROAD_SCAN_PATTERNS)
+
+
+def is_forbidden_source_scan_command(command: str) -> bool:
+    for segment in command_segments(command_words(command)):
+        if not segment:
+            continue
+        tool = Path(segment[0]).name
+        args = segment[1:]
+        if tool == "rg" and any(is_forbidden_source_path(path) for path in ripgrep_path_operands(args)):
+            return True
+        if tool == "grep" and any(is_forbidden_source_path(path) for path in grep_path_operands(args)):
+            return True
+        if tool == "find" and any(is_forbidden_source_path(path) for path in find_path_operands(args)):
+            return True
+        if tool == "ls" and any(is_forbidden_source_path(path) for path in ls_path_operands(args)):
+            return True
+    return False
+
+
+def command_words(command: str) -> list[str]:
+    try:
+        words = shlex.split(command)
+    except ValueError:
+        return command.split()
+    if len(words) >= 3 and Path(words[0]).name in {"sh", "bash", "zsh"} and words[1] == "-lc":
+        try:
+            return shlex.split(words[2])
+        except ValueError:
+            return words[2].split()
+    return words
+
+
+def command_segments(words: list[str]) -> list[list[str]]:
+    segments: list[list[str]] = []
+    current: list[str] = []
+    separators = {"&&", "||", "|", ";"}
+    for word in words:
+        if word in separators:
+            if current:
+                segments.append(current)
+                current = []
+            continue
+        current.append(word)
+    if current:
+        segments.append(current)
+    return segments
+
+
+def non_option_args(args: list[str], value_options: set[str]) -> list[str]:
+    values: list[str] = []
+    skip_next = False
+    for arg in args:
+        if skip_next:
+            skip_next = False
+            continue
+        if arg == "--":
+            values.extend(args[args.index(arg) + 1 :])
+            break
+        if arg in value_options:
+            skip_next = True
+            continue
+        if arg.startswith("--") and "=" in arg:
+            continue
+        if arg.startswith("-"):
+            continue
+        values.append(arg)
+    return values
+
+
+def ripgrep_path_operands(args: list[str]) -> list[str]:
+    value_options = {"-e", "--regexp", "-g", "--glob", "-t", "--type", "-T", "--type-not", "-f", "--file"}
+    values = non_option_args(args, value_options)
+    if "--files" in args or "--files-with-matches" in args:
+        return values
+    uses_pattern_option = any(arg in {"-e", "--regexp"} or arg.startswith("--regexp=") for arg in args)
+    return values if uses_pattern_option else values[1:]
+
+
+def grep_path_operands(args: list[str]) -> list[str]:
+    value_options = {"-e", "--regexp", "-f", "--file"}
+    values = non_option_args(args, value_options)
+    uses_pattern_option = any(arg in {"-e", "--regexp"} or arg.startswith("--regexp=") for arg in args)
+    return values if uses_pattern_option else values[1:]
+
+
+def find_path_operands(args: list[str]) -> list[str]:
+    paths: list[str] = []
+    for arg in args:
+        if arg.startswith("-") or arg in {"(", ")", "!", ","}:
+            break
+        paths.append(arg)
+    return paths
+
+
+def ls_path_operands(args: list[str]) -> list[str]:
+    return [arg for arg in args if not arg.startswith("-")]
+
+
+def is_forbidden_source_path(path: str) -> bool:
+    cleaned = path.strip().rstrip("/")
+    while cleaned.startswith("./"):
+        cleaned = cleaned[2:]
+    if any(cleaned == root or cleaned.startswith(f"{root}/") for root in FORBIDDEN_SOURCE_SCAN_ROOTS):
+        return True
+    try:
+        relative = Path(cleaned).expanduser().resolve().relative_to(REPO_ROOT)
+    except (OSError, ValueError):
+        return False
+    return bool(relative.parts and relative.parts[0] in FORBIDDEN_SOURCE_SCAN_ROOTS)
+
+
+def is_plugin_eval_script_path(path: str) -> bool:
+    cleaned = path.strip()
+    return Path(cleaned).name == "plugin-eval.js" or "/plugin-eval/" in cleaned
+
+
+def is_run_plugin_eval_wrapper_path(path: str) -> bool:
+    cleaned = path.strip()
+    return cleaned.endswith("scripts/run_plugin_eval_clean.py")
+
+
+def is_benchmark_script_path(path: str) -> bool:
+    cleaned = path.strip()
+    name = Path(cleaned).name.lower()
+    if "benchmark" not in name:
+        return False
+    parts = Path(cleaned).parts
+    if "scripts" in parts or "evals" in parts:
+        return True
+    try:
+        relative = Path(cleaned).expanduser().resolve().relative_to(REPO_ROOT)
+    except (OSError, ValueError):
+        return False
+    return bool(relative.parts and relative.parts[0] in {"scripts", "evals"})
+
+
+def extract_package_file_reads(command: str) -> set[str]:
+    read_commands = ("sed ", "cat ", "nl ", "awk ", "python ")
+    if not any(read_command in command for read_command in read_commands):
+        return set()
+    return {
+        match.group(0).rstrip(".,:")
+        for match in re.finditer(r"plugins/groundwork/[A-Za-z0-9_./-]+", command)
+    }
 
 
 def read_observed_usage(usage_path: Path) -> dict | None:
@@ -449,6 +883,11 @@ def read_observed_usage(usage_path: Path) -> dict | None:
         if all(value is None for value in token_values.values()):
             invalid_lines += 1
             continue
+        if token_values["total_tokens"] is None:
+            token_values["total_tokens"] = (
+                (token_values["input_tokens"] or 0)
+                + (token_values["output_tokens"] or 0)
+            )
         input_tokens += token_values["input_tokens"] or 0
         output_tokens += token_values["output_tokens"] or 0
         total_tokens += token_values["total_tokens"] or 0
@@ -579,6 +1018,8 @@ def main() -> int:
     print(f"Marketplace root: {marketplace['marketplace_root']}")
     print(f"Package root: {marketplace['package_root']}")
     print(f"Result root: {result_root}")
+    if any(result["benchmark"]["status"] == "failed" for result in scenario_results):
+        return 1
     return 0
 
 
