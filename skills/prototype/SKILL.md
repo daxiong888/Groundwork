@@ -23,25 +23,13 @@ Name the prototype question first. Inspect source, PRD, task, data shape, existi
 
 For Groundwork repo maintenance, apply repo-local `AGENTS.md` before reporting complete.
 
-Core boundaries:
+Core boundaries: prototype evidence can classify backend candidates, mock fields, and client-derived logic, but cannot confirm backend/API/source truth without source, schema/API, runtime evidence, or explicit confirmation.
 
-- Prototype evidence may classify backend contract candidates, mock fields, and client-derived logic, but cannot confirm backend/API/source truth without PRD, backend source, API/schema, runtime evidence, or explicit user confirmation.
-- Use `DECISION-CAPTURE.md` for confirmed decisions, rejected variants, assumptions, open questions, contract impact, and next route.
-- Use `CONTRACT-BOUNDARY.md` for backend contract candidates, mock/illustrative fields, and client-derived logic.
-- Use `LOGIC.md`, `LOGIC-LAB.md`, `UI.md`, or `UI-VARIANTS.md` as the single branch extension.
-- Use `skills/_shared/VISUAL-HANDOFF-PACKET.md` only for visual/backend/frontend review packets.
-- Use `skills/_shared/ROLE-SEPARATION.md` only when prototype output materially affects design, public skill behavior, contract truth, or downstream implementation.
+Load only one branch extension: `LOGIC.md`, `LOGIC-LAB.md`, `UI.md`, or `UI-VARIANTS.md`. Add `CONTRACT-BOUNDARY.md` for mock/backend-candidate separation, `DECISION-CAPTURE.md` for promoted decisions, `VISUAL-HANDOFF-PACKET.md` for visual packets, and `ROLE-SEPARATION.md` only when downstream ownership is material.
 
 ## Workflow
 
-1. State Prototype Question, Decision Needed, Contract Sources, and unavailable evidence.
-2. If ambiguity blocks the question, apply shared grilling instead of inventing scope.
-3. Pick one branch: simple logic, logic lab, UI/static HTML, or UI variants.
-4. Keep artifact throwaway and narrow.
-5. Separate confirmed decisions, rejected variants, mock fields, client-derived logic, unverified assumptions, and backend contract candidates.
-6. Run browser/runtime checks when visual or interaction correctness matters; if unavailable, still provide contract-boundary output and name the smallest follow-up check.
-7. Draft findings as proposed PRD/issue/contract/implementation feedback unless source truth or user confirmation already supports promotion.
-8. Decide cleanup: delete, absorb, or keep temporarily with reason and expiry.
+State question, decision, contract sources, and unavailable evidence; grill only if ambiguity blocks scope; pick one branch; keep artifact throwaway; separate confirmed/rejected decisions, mock/client-derived fields, assumptions, and backend candidates; run browser/runtime checks when visual/interaction correctness matters; draft findings as proposed downstream feedback unless source truth supports promotion; decide cleanup.
 
 ## Hard Stops
 
@@ -54,40 +42,11 @@ Core boundaries:
 
 ## Failure Handling
 
-- Missing backend source -> mark `mock / illustrative / proposed hypothesis`.
-- Missing state/rule source -> mark `unverified assumption` or `client-derived logic`.
-- Prototype conflicts with API/schema/source -> name conflict and route source-truth proof to `verify`.
-- Browser/runtime evidence unavailable -> mark visual/interaction evidence `unverified` and name the smallest check.
+Mark missing backend/state/rule evidence as `mock`, `illustrative`, `proposed hypothesis`, `unverified assumption`, or `client-derived logic`. If prototype conflicts with API/schema/source, name the conflict and route proof to `verify`. If browser/runtime evidence is unavailable, mark visual/interaction evidence `unverified`.
 
 ## Output Shape
 
-```text
-Prototype Question
-Decision Needed
-Contract Sources
-Contract Status
-Confirmed Decisions
-Rejected Variants
-Confirmed Backend Fields
-Mock / Illustrative Fields
-Client-derived Logic
-Unverified Assumptions
-Contract Impact: none / needs confirmation / confirmed update
-Open Questions
-Next Route: to-prd / to-issues / implement / verify / handoff / dispatch / cleanup / no follow-up
-States Explored
-Interactions Explored
-Browser / Runtime Evidence
-Coverage Evidence Status: prototype_only / browser_verified / runtime_verified / unverified
-Visual Handoff Packet
-Role-separation Evidence
-Known Gaps
-Implementation Implications
-Proposed PRD / Issue / Contract Feedback
-Cleanup Decision
-Next Action
-Artifact Recommendation
-```
+Use a compact prototype report with question, decision, contract sources/status, confirmed/rejected decisions, mock/client-derived fields, assumptions, contract impact, open questions, next route, states/interactions explored, browser/runtime evidence, coverage status, gaps, downstream feedback, cleanup, and next action.
 
 For visual handoff packets, include the required sections from `skills/_shared/VISUAL-HANDOFF-PACKET.md` or mark them `not applicable`.
 
@@ -97,4 +56,4 @@ Stop when the prototype question is answered, remaining gap is explicit, evidenc
 
 ## Artifact Rule
 
-Create prototype files only when they answer a concrete question. Delete or absorb them after use unless temporary retention has a clear reason. Follow `skills/_shared/AUDIENCE-FIRST-ARTIFACT.md` and `skills/_shared/ARTIFACT-DIRECTORY-POLICY.md` for durable artifacts. Redact secrets, credentials, PII, sensitive logs, screenshots, private payloads, and database rows.
+Create prototype files only for a concrete question. Delete/absorb after use unless temporary retention has reason. Follow artifact policy for durable artifacts and redact sensitive data.

@@ -7,24 +7,17 @@ description: Use when accepted ready tasks need package-only runtime routing, mo
 
 ## Use When
 
-Use this skill when accepted, ready work needs package-only runtime routing: a runtime recommendation, model/profile choice, execution matrix, Dispatch Package v2, clean-review fanout plan, or expected Result Package.
-
-Do not use when requirements are raw, issues are unsliced, readiness is unknown, the user asks to implement directly, the user asks only for a plan, or the user asks whether finished work is ready/verified.
+Use when accepted, ready work needs package-only runtime routing: recommendation, model/profile choice, matrix, Dispatch Package v2, clean-review fanout, or expected Result Package. Do not use for raw/unsliced/unknown-readiness work, direct implementation, planning-only requests, or readiness verification.
 
 ## Route First
 
-Dispatch is a router and package generator, not an executor.
-
-- `lite matrix`: small accepted task sets needing a runtime recommendation and no full package.
-- `full dispatch package`: accepted task artifact to Dispatch Package v2. Load `DISPATCH-PACKAGE.md` only by default.
-- `clean review fanout`: fresh read-only review routing. Reviewers must not edit files.
-- `complex separation`: managed worktree, merge-back, cleanup, role separation, release/cache, or multi-role handoff boundaries.
+Dispatch is a router/package generator, not executor. Routes: `lite matrix`, `full dispatch package` loading only `DISPATCH-PACKAGE.md` by default, `clean review fanout` for read-only reviewers, and `complex separation` for managed worktree, merge-back, cleanup, role separation, release/cache, or multi-role boundaries.
 
 ## Default Dispatch Package v2 Path
 
 When the user provides an accepted task artifact and asks for Dispatch Package v2, use this default read boundary: Read only the accepted task artifact and `DISPATCH-PACKAGE.md`.
 
-Default output: compact dispatch matrix plus package skeleton. Preserve source truth, readiness source, package-only status, expected output type, approval gates, and missing-evidence handling. Do not execute, spawn subagents, create worktrees, or mutate branches.
+Default output: compact dispatch matrix plus package skeleton. Preserve source truth, readiness source, package-only status, expected output, approval gates, and missing-evidence handling. Do not execute, spawn subagents, create worktrees, or mutate branches.
 
 Do not load result, runtime adapter, routing profile, examples, complex separation, clean-review, or conflict-preflight references for the default package path unless the prompt explicitly makes that reference material.
 
@@ -36,9 +29,9 @@ If runtime/model selection is material, prefer `model_profile` before concrete m
 
 ## Required Output
 
-For lite routes, emit only the fields needed to make the routing decision clear: source truth, runtime capability boundary, task matrix, blocked/split items, expected result package, and next action.
+For lite routes, emit only source truth, runtime capability boundary, task matrix, blocked/split items, expected result package, and next action.
 
-Full package payloads must conform to the compact default contract in `DISPATCH-PACKAGE.md`; do not duplicate the full schema in this entry file. The default compact package is `adapter_completeness: skeleton_only` unless the prompt explicitly needs an adapter-ready package. If required package fields are missing, mark `needs_info`, `needs_split`, `blocked`, or `human_decision` instead of searching unrelated package internals.
+Full payloads conform to `DISPATCH-PACKAGE.md`; do not duplicate schema here. Default `adapter_completeness: skeleton_only` unless adapter-ready is explicit. If fields are missing, mark `needs_info`, `needs_split`, `blocked`, or `human_decision` instead of searching package internals.
 
 ## Load Only What Fits
 
@@ -53,7 +46,7 @@ Full package payloads must conform to the compact default contract in `DISPATCH-
 - Load `COMPLEX-WORK-SEPARATION.md` only for managed worktree, merge-back, cleanup, role separation, release/cache, or multi-role boundaries.
 - Load `CONFLICT-PREFLIGHT.md` only when dependency barriers, shared files, stale base, or parallel write conflicts affect routing.
 
-Apply non-executor, runtime-capability, cognitive-budget, role-separation, release-evidence, evidence-boundary, wiki, or decision-mapping references only when the active route makes that claim.
+Apply shared non-executor/runtime/role/release/evidence/wiki/decision refs only when the active route makes that claim.
 
 ## Stop Conditions
 

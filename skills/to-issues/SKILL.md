@@ -20,37 +20,23 @@ Route away:
 
 ## Required Evidence
 
-Start from the accepted source. If blockers, source context, contract impact, runtime-routing inputs, Goal Contract inputs, or verification expectations are missing, record them in missing-field buckets; do not fabricate readiness.
+Start from accepted source. Missing blockers, source context, contract impact, runtime inputs, Goal Contract inputs, or verification expectations go into missing-field buckets; do not fabricate readiness.
 
 For Groundwork repo maintenance, apply repo-local `AGENTS.md` before reporting complete.
 
-Load only when needed:
+Load lifecycle/artifact promotion only before splitting source that will drive another session, remote issue creation, implementation, verification, or handoff. Load locale guard for user-visible text. Runtime candidate fields are advisory; final readiness belongs to `triage`, execution routing to `dispatch`.
 
-- `skills/_shared/LIFECYCLE-PREFLIGHT.md` and `ARTIFACT-PROMOTION.md` before splitting source that will drive another session, remote issue creation, implementation, verification, or handoff.
-- `skills/_shared/LOCALE-GUARD.md` for user-visible titles, headings, and issue bodies.
-- Runtime candidate fields are advisory only; final readiness belongs to `triage`, final execution routing to `dispatch`.
-
-`accepted enough` means canonical artifact, accepted PRD/spec/plan, issue-ready artifact, or named external task source with acceptance state/owner; clear acceptance criteria; no unresolved mixed source truth; conversation-only accepted material promoted or tied to an external source before downstream use.
+`accepted enough` means canonical artifact, accepted PRD/spec/plan, issue-ready artifact, or named external task source with owner/authority, clear acceptance criteria, and no unresolved mixed source truth.
 
 ## Runtime Routing Candidate Rules
 
 Emit the advisory block only when the accepted source supports it. It is not a Goal Contract, dispatch package, readiness verdict, or execution proof.
 
-- `read_only_review`: do not suggest `codex_app_managed_worktree_thread`; prefer read-only/subagent/clean-review options.
-- `planning_only`: do not suggest write worktree.
-- `hybrid`: split first or mark `triage_required`; only concrete write subtasks can become managed-worktree candidates.
-- `write_implementation`: managed-worktree candidate only when source context, write boundary, acceptance, and verification are clear enough for later Goal Contract generation.
-- `diagnosis`: may suggest read-only subagent when independent.
+Rules: read-only/planning tasks must not suggest write worktrees; hybrid tasks split first or mark `triage_required`; write tasks can name managed-worktree candidacy only when source context, write boundary, acceptance, and verification are clear enough for later Goal Contract generation; diagnosis may suggest read-only subagent when independence helps.
 
 ## Workflow
 
-1. Confirm source truth and acceptance state.
-2. Stop at source-of-truth or artifact-promotion gate if not accepted enough.
-3. Apply locale guard.
-4. Split vertical behavior-visible slices, not layer buckets.
-5. For each slice include acceptance, blockers, risk, AFK/HITL recommendation, contract impact, verification evidence needed, runtime candidate fields, Goal Contract/runtime/ready-for-agent missing fields, and triage recommendation candidate.
-6. Keep tracker-neutral markdown; do not call tracker APIs.
-7. Recommend `triage` for final readiness or `write-plan` for an accepted slice.
+Confirm source/acceptance, stop if not accepted enough, apply locale, split vertical behavior-visible slices, include acceptance/blockers/risk/AFK-HITL/contract impact/verification/runtime candidate/missing fields/triage candidate, keep tracker-neutral markdown, and recommend `triage` or `write-plan`.
 
 ## Hard Stops
 
@@ -63,43 +49,9 @@ Emit the advisory block only when the accepted source supports it. It is not a G
 
 ## Output Shape
 
-```text
-Issue Set Summary
-Source
-Issue Drafts
-- Title
-- Goal
-- Acceptance Criteria
-- Evidence / Source
-- Blockers
-- Execution: AFK / HITL
-- Contract Impact: API / DB / UI state / docs / verification contract / none
-- Verification Evidence Needed
-- Runtime Routing Candidate
-- Ready-for-Agent Missing Fields
-- Triage Recommendation Candidate: ready-for-agent candidate / needs-info recommendation / ready-for-human recommendation
-Ordering Notes
-Next Action
-Artifact Recommendation
-```
+Use tracker-neutral issue drafts with summary, source, title, goal, ACs, evidence/source, blockers, AFK/HITL, contract impact, verification evidence, runtime candidate, readiness missing fields, triage candidate, ordering, next action, and artifact recommendation.
 
-Runtime candidate block, when used:
-
-```text
-Runtime Routing Candidate
-- recommendation_only: true
-- source_support:
-- implementation_task_type_candidate:
-- runtime_candidate:
-- product_runtime_surface_candidate:
-- isolation_candidate:
-- parallelization_candidate:
-- goal_contract_status: not_generated_by_to_issues / missing_fields / ready_for_triage_contract_generation
-- goal_contract_missing_fields:
-- runtime_missing_fields:
-- not_readiness_evidence: true
-- missing_fields:
-```
+Runtime candidate block, when used, must include `recommendation_only: true`, source support, task type/runtime/isolation/parallelization candidates, Goal Contract status/missing fields, runtime missing fields, `not_readiness_evidence: true`, and missing fields.
 
 ## Stop Condition
 
@@ -107,4 +59,4 @@ Stop when each issue draft has a vertical slice, acceptance criteria, blockers, 
 
 ## Artifact Rule
 
-Follow `skills/_shared/AUDIENCE-FIRST-ARTIFACT.md`, `skills/_shared/ARTIFACT-DIRECTORY-POLICY.md`, and `skills/_shared/ARTIFACT-PROMOTION.md`. Do not call tracker APIs. Write local issue artifacts only when no better source owns the work and durable state is useful. Redact secrets, credentials, PII, sensitive logs, screenshots, private payloads, and database rows.
+Follow audience/artifact promotion policy. Do not call tracker APIs. Write local issue artifacts only when no better source owns the work and durable state is useful. Redact sensitive data.
