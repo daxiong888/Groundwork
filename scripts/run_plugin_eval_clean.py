@@ -22,7 +22,7 @@ NESTED_BENCHMARK_SCRIPT_PATTERN = re.compile(
     r"(^|[\s'\";&|])(?:\./)?(?:scripts|evals)/[^'\"\s;&|]*benchmark[^'\"\s;&|]*"
 )
 PACKAGE_READ_COMMAND_PATTERN = re.compile(
-    r"(^|[\s'\";&|()])(?:awk|cat|grep|head|nl|node|perl|python|python3|rg|sed|tail)(?=$|[\s'\";&|()])"
+    r"(^|[\s'\";&|()])(?:/[A-Za-z0-9_./-]+/)?(?:awk|cat|grep|head|nl|node|perl|python|python3|rg|sed|tail)(?=$|[\s'\";&|()])"
 )
 BROAD_SCAN_PATTERNS = (
     "rg --files",

@@ -297,6 +297,8 @@ class PluginEvalCleanBenchmarkConfigTests(unittest.TestCase):
     def test_package_read_detector_covers_common_read_commands(self):
         commands = [
             "python3 - <<'PY' plugins/groundwork/skills/verify/SKILL.md",
+            "/usr/bin/python3 - <<'PY' plugins/groundwork/skills/verify/SKILL.md",
+            "/bin/cat plugins/groundwork/skills/to-prd/SKILL.md",
             "head -40 plugins/groundwork/skills/to-prd/SKILL.md",
             "tail -20 plugins/groundwork/skills/dispatch/DISPATCH-PACKAGE.md",
             "grep -n scope plugins/groundwork/skills/verify/VERIFY-SCOPE.md",
