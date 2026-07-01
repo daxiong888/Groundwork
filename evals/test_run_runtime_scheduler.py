@@ -1459,6 +1459,61 @@ class RuntimeSchedulerTests(unittest.TestCase):
         self.assertEqual(actual, "direct")
         self.assertEqual(hits, [])
 
+    def test_final_message_route_marker_becomes_actual_route_without_skill_hit(self):
+        actual = run_runtime.classify_actual_route(
+            row(expected_skill="verify"),
+            "direct",
+            [],
+            "Verification Scope\n- In Scope: claim evidence.",
+            [],
+        )
+
+        self.assertEqual(actual, "verify")
+
+    def test_implement_conformance_fields_become_actual_route_without_skill_hit(self):
+        actual = run_runtime.classify_actual_route(
+            row(expected_skill="implement"),
+            "direct",
+            [],
+            "Scope:\nAcceptance Map:\nEvidence Inspected:\nFindings P0/P1/P2:\n",
+            [],
+        )
+
+        self.assertEqual(actual, "implement")
+
+    def test_body_result_package_phrase_does_not_override_handoff_marker(self):
+        actual = run_runtime.classify_actual_route(
+            row(expected_skill="handoff"),
+            "direct",
+            [],
+            "# Handoff\nNo visible v060 case log or last result package was provided.",
+            [],
+        )
+
+        self.assertEqual(actual, "handoff")
+
+    def test_handoff_marker_takes_precedence_over_checks_run_phrase(self):
+        actual = run_runtime.classify_actual_route(
+            row(expected_skill="handoff"),
+            "direct",
+            [],
+            "**Handoff**\n\nChecks run now:\n`git diff --check` passed.",
+            [],
+        )
+
+        self.assertEqual(actual, "handoff")
+
+    def test_implement_marker_wins_over_body_handoff_reference(self):
+        actual = run_runtime.classify_actual_route(
+            row(expected_skill="implement"),
+            "direct",
+            [],
+            "Implementation Summary\n- No handoff package was created.\nChecks Run\n- unit tests passed.",
+            [],
+        )
+
+        self.assertEqual(actual, "implement")
+
     def test_copy_fixture_accepts_single_file_fixture(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             repo = Path(tmpdir) / "repo"

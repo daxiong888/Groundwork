@@ -27,6 +27,8 @@ Safe to Share / Redaction Notes: Safe to share as-is; contains no secrets, crede
 9. If fixing a verify or clean-review failure, record findings addressed and re-QA the original or narrowest failed check.
 10. Run `SELF-REVIEW.md` before final reporting.
 
+For nontrivial bug or mechanism work, load `skills/_shared/FIRST-PRINCIPLES.md` and use the Bug Root-Cause Ladder before edits. For material shared-skill, shared-guardrail, readiness-adjacent, or public-surface work, load `skills/_shared/ADVERSARIAL-REVIEW.md` and record adversarial findings when they affect scope, evidence, or remaining gaps.
+
 ## Conformance Field Set
 
 Use these labels for read-only conformance review and implementation final reports with conformance evidence:

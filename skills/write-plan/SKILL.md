@@ -30,6 +30,8 @@ Load only when needed:
 - `skills/_shared/DECISION-MAPPING.md` only before implementation path acceptance or explicit option comparison.
 - `skills/_shared/LIFECYCLE-STATE.md` only for multi-stage, multi-session, release/UAT-gated, or existing lifecycle-state workstreams.
 - `skills/_shared/CONTRACT-NOTES.md` only when API/DB/state/frontend/docs alignment affects implementation; uninspected contract facts stay unverified. Contract validation/readiness belongs to `verify`; throwaway exploration to `prototype`.
+- `skills/_shared/FIRST-PRINCIPLES.md` only when the plan must establish causal path, constraints, root cause/core bottleneck, smallest sufficient change, or falsifiable verification before edits.
+- `skills/_shared/ADVERSARIAL-REVIEW.md` only when plan risk depends on hidden assumptions, edge states, missing evidence, scope creep, or claim boundaries.
 
 ## Workflow
 

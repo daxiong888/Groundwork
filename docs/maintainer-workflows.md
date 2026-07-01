@@ -24,6 +24,14 @@ Use the full loop when a change affects product behavior, public API/contract, d
 
 Use a smaller path when the request is mechanical, local, and low risk. A typo fix, title rewrite, or direct explanation should stay conversation-first. Groundwork should add structure only when ambiguity, risk, reuse, or evidence needs justify it.
 
+For complex bugs, material workflow changes, or readiness-adjacent claims, maintainers can apply the shared loop:
+
+```text
+Construct -> Attack -> Narrow -> Verify
+```
+
+Construct with [`FIRST-PRINCIPLES.md`](../skills/_shared/FIRST-PRINCIPLES.md): primitive facts, constraints, causal mechanism, root cause or core need, minimal solution, and falsifiable signal. Attack with [`ADVERSARIAL-REVIEW.md`](../skills/_shared/ADVERSARIAL-REVIEW.md): strongest counterexample, missing evidence, hidden assumptions, edge states, scope creep, and claim boundaries. Then narrow unsupported work and verify through the owning Groundwork route. This loop is a shared reference, not a new public skill surface.
+
 ## 1. Clarify With `to-prd`
 
 Use `to-prd` when the request is ambiguous, product-facing, cross-layer, or likely to create downstream implementation risk.
@@ -113,7 +121,7 @@ Every durable artifact should carry the audience-first header fields defined in 
 
 ## v0.3.4 Governance Baseline Boundary
 
-v0.3.4 is a main-chain governance baseline for the current nine public skills, including package-only `dispatch`. It strengthens layered `AGENTS.md`, artifact headers, grill-before-write, prototype contract boundaries, implement planning/TDD-lite, verify scope/lenses, QA-fix-QA, git boundary, handoff review packages, and the shared done definition inherited by `dispatch`.
+v0.3.4 is a main-chain governance baseline for the current public skill surface, including package-only `dispatch`. It strengthens layered `AGENTS.md`, artifact headers, grill-before-write, prototype contract boundaries, implement planning/TDD-lite, verify scope/lenses, QA-fix-QA, git boundary, handoff review packages, and the shared done definition inherited by `dispatch`.
 
 It is not a new runtime, plugin split, automation layer, task database, or subagent spawning system. Runtime evidence still requires installed plugin cache/source equivalence or a supported marketplace refresh before it can be treated as release-gating evidence.
 

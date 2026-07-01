@@ -17,7 +17,7 @@ Hard default for a named small artifact (`TASK.md`, pasted requirements, ticket 
 
 - Read only the named task artifact and this active `to-prd` contract.
 - Do not inspect Groundwork plugin README, `.codex-plugin/plugin.json`, plugin manifests, package internals, unrelated skill files, or shared lifecycle/evidence references.
-- Do not load lifecycle, evidence, grilling, or PRD template references by default.
+- Do not load lifecycle, evidence, grilling, first-principles, adversarial-review, or PRD template references by default.
 - Package self-inspection only when asked to inspect, evaluate, debug, install, package, or prove Groundwork source/package behavior.
 - Use the compact conversation PRD/spec shape below.
 - Mark missing product facts as **NEEDS CLARIFICATION**; do not search package internals or invent truth.
@@ -39,6 +39,8 @@ Use for Groundwork-internal compact drafts/specs, not source-backed proof or dur
 ## Required Evidence
 
 Use user context first. Inspect source/docs/prototypes/tickets/data only for material questions or requested source-backed truth. For Groundwork maintenance, apply repo-local `AGENTS.md`. Load lifecycle for durable/source-backed/accepted workflow truth; Plan Mode for raw PRD/spec/grill intake without write claims; grilling/domain/wiki refs only when material.
+
+Load `skills/_shared/FIRST-PRINCIPLES.md` only when PRD shaping must separate primitive facts, constraints, root cause/core need, minimal valuable scope, and falsifiable success signal. Load `skills/_shared/ADVERSARIAL-REVIEW.md` only when the PRD may turn unsupported wording, prototype labels, glossary terms, or old docs into contract truth, implementation readiness, or stronger evidence than the source supports.
 
 ## Workflow
 

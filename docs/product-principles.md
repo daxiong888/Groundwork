@@ -12,6 +12,8 @@ When the request is based on a suspected issue, first confirm whether the issue 
 
 Evidence can come from source code, docs, tests, API contracts, database schemas, runtime behavior, browser-visible state, UAT records, user-provided artifacts, or command output. The point is not to collect everything; it is to inspect the smallest reliable source of truth before changing code or documents.
 
+For nontrivial bugs, requirements, contracts, or readiness claims, evidence-first work should reduce the problem to first principles: phenomenon, primitive facts, hard constraints, invariants, causal mechanism, root cause or core need, minimal sufficient solution, and falsifiable verification signal. The paired adversarial step is to look for the strongest counterexample, missing evidence, hidden assumption, edge state, scope creep, and claim boundary before upgrading any conclusion.
+
 ## 2. R&D Work Is The Center
 
 Groundwork should optimize for software R&D workflows:

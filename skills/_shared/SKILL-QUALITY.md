@@ -15,6 +15,8 @@ Create `skills/<candidate>/SKILL.md` only when an accepted PRD, scoped issue, or
 
 Prefer a shared reference, branch/workflow lens, router behavior, or one-off guide when there is no distinct public invocation moment.
 
+`FIRST-PRINCIPLES.md` and `ADVERSARIAL-REVIEW.md` are shared lenses by default. Do not promote them to public skills unless later accepted scope proves direct invocation value, route-conflict negatives, hard-negative evals, clean skill-quality review, and maintainer acceptance.
+
 ## Classification
 
 - Public skill: top-level `skills/<name>/SKILL.md` with distinct invocation, trigger/negative cases, failure branches, and evals.
@@ -57,6 +59,7 @@ Hard-negative evals/checks must fail when:
 - `skill-audit` is treated as public before accepted public exposure and maintainer acceptance;
 - wiki synthesis, page source lists, stale pages, uncited claims, missing roots, or search/index/graph output become source/contract/implementation/verification/release/UAT/customer/marketplace/installed-plugin/cache truth;
 - prompt text alone is treated as runtime, selector, browser, UAT, release, customer, marketplace, or installed-plugin/cache evidence;
+- first-principles reasoning or adversarial self-check is treated as clean review, independent verification, runtime/browser/UAT/release/customer/marketplace/installed-plugin/cache evidence, or public-skill authorization;
 - author or same-session implementer approves their own material skill-quality change as final;
 - `low_risk_coordinator_intake` bypasses clean review for material public skill, shared guardrail, adapter contract, package template, schema, fixture, state-machine, or shared-config changes;
 - `low_risk_coordinator_intake` is relabeled as clean review passed or used as approval, readiness, archive, cleanup, merge, commit, push, PR, runtime, browser, marketplace, installed-plugin, or cache-refresh evidence.

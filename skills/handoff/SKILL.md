@@ -37,6 +37,8 @@ Use branch references for full review, native handoff, lifecycle, visual, role-s
 - Native Local/Worktree handoff schema and rules: `NATIVE-HANDOFF-PACKAGE.md`.
 - State freshness algorithm: `STATE-FRESHNESS.md`.
 - Complex role/runtime/cache/release/wiki/visual details: `COMPLEX-HANDOFF-BRANCHES.md`.
+- Root-cause/minimal-solution summary for complex continuation: `skills/_shared/FIRST-PRINCIPLES.md`.
+- Strongest remaining risk, unverified assumptions, or claim-boundary notes: `skills/_shared/ADVERSARIAL-REVIEW.md`.
 - Fresh-context review delegation: `skills/_shared/SUBAGENT-DELEGATION.md`.
 - Managed worktree separation: `skills/dispatch/COMPLEX-WORK-SEPARATION.md`.
 - Git continuation boundary: `skills/_shared/GIT-BOUNDARY.md`.

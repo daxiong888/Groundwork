@@ -9,13 +9,13 @@ except ImportError:  # pragma: no cover - package import path
 
 
 ROUTE_MARKERS = [
-    ("dispatch", re.compile(r"\bDispatch Package\b|\bResult Package\b|Dispatch Runtime Decision|Dispatch Candidate", re.I)),
+    ("dispatch", re.compile(r"^Dispatch Package\b|^Result Package\b|Dispatch Runtime Decision|Dispatch Candidate", re.I | re.M)),
     ("verify", re.compile(r"^Verification Scope\b|^验证范围\b", re.I | re.M)),
-    ("implement", re.compile(r"^Implementation Summary\b|^实现摘要\b|Files Changed|Checks Run", re.I | re.M)),
-    ("write-plan", re.compile(r"Implementation Mini-Plan|实现计划|计划[:：]", re.I)),
-    ("to-issues", re.compile(r"issue-map|Issue Map|Acceptance Criteria|验收标准", re.I)),
+    ("handoff", re.compile(r"^\s*(?:#+\s*)?\*{0,2}(?:handoff(?:\s+package)?|交接)\*{0,2}\b", re.I | re.M)),
+    ("implement", re.compile(r"^Implementation Summary\b|^实现摘要\b|^Files Changed\b|^Checks Run\b|^Scope:\s|^Acceptance Map:\s|^Evidence Inspected:\s|^Findings P0/P1/P2:\s", re.I | re.M)),
+    ("write-plan", re.compile(r"Implementation Mini-Plan|implementation plan|实现计划|计划[:：]|可执行 plan|模板级 plan", re.I)),
+    ("to-issues", re.compile(r"issue-map|Issue Map|Acceptance Criteria|验收标准|不能拆 issues|拆 issues", re.I)),
     ("to-prd", re.compile(r"^# PRD\b|Artifact Type:\s*PRD|产品需求", re.I | re.M)),
-    ("handoff", re.compile(r"Handoff|handoff package|交接", re.I)),
     ("triage", re.compile(r"triage|ready-for-agent|needs-info|blocked", re.I)),
     ("prototype", re.compile(r"prototype|原型", re.I)),
     ("wiki", re.compile(r"LLM Wiki|wiki update candidate|项目 wiki", re.I)),

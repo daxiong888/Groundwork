@@ -1,13 +1,13 @@
 ---
 name: verify
-description: Judge whether a claim, implementation, runtime behavior, release/UAT readiness, UI behavior, or evidence package is supported. Not for code edits, raw requirements, slicing, or conformance review without evidence/readiness judgment.
+description: Use for evidence-sufficiency questions: "验证通过吗?", diff summary sufficiency, whether self-review can count as clean review, readiness/release/UAT/runtime support, UI evidence, and evidence packages. Not for code edits, raw requirements, slicing, or conformance review without evidence/readiness judgment.
 ---
 
 # verify
 
 ## Use When
 
-Use this skill for claim-scoped evidence judgment: readiness, evidence sufficiency, UAT/SIT, runtime behavior, release confidence, source-truth validation, frontend handoff confidence, git-boundary review, QA failure handling, UI evidence/tool choice, or fresh-context review prompt preparation.
+Use this skill for claim-scoped evidence judgment: readiness, evidence sufficiency, diff-summary sufficiency, whether self-review can count as clean review, self-review versus clean-review boundaries, UAT/SIT, runtime behavior, release confidence, source-truth validation, frontend handoff confidence, git-boundary review, QA failure handling, UI evidence/tool choice, or fresh-context review prompt preparation.
 
 Do not use for code edits, raw requirement shaping, task slicing, planning before edits, prototype contract-boundary classification, wiki queries, or implementation conformance review when readiness/evidence judgment is explicitly out of scope.
 
@@ -65,6 +65,7 @@ Do not rename, translate, decorate, or replace that opening block. After it, use
 - Fresh-context subagent review prompts: `SUBAGENT-REVIEW-BRANCH.md` and `skills/_shared/SUBAGENT-DELEGATION.md`.
 - Frontend-facing contract docs: `CONTRACT-DOC-REVIEW.md`.
 - Named lens selection: `LENSES.md`.
+- Adversarial evidence sufficiency, strongest-counterexample, edge-state, or claim-boundary review: `skills/_shared/ADVERSARIAL-REVIEW.md`.
 
 Apply shared evidence, role-separation, runtime, release, wiki, cognitive-budget, or visual-handoff contracts only when the active claim depends on that evidence type.
 

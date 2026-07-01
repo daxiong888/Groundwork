@@ -24,6 +24,8 @@ Start from accepted source. Put missing blockers, source context, contract impac
 
 For Groundwork repo maintenance, apply repo-local `AGENTS.md` before reporting complete.
 
+Load `skills/_shared/FIRST-PRINCIPLES.md` only when accepted source still needs vertical slices tied to the primitive problem, hard constraints, minimal behavior change, and falsifiable verification signal. Load `skills/_shared/ADVERSARIAL-REVIEW.md` only when slicing could hide cross-layer contract risk, unsupported readiness, unverified source truth, or non-independent verification.
+
 Load lifecycle/artifact promotion only before splitting source that will drive another session, remote issue creation, implementation, verification, or handoff. Load locale guard for user-visible text. Runtime candidate fields are advisory; final readiness belongs to `triage`, execution routing to `dispatch`.
 
 `accepted enough` means canonical artifact, accepted PRD/spec/plan, issue-ready artifact, or named external task with owner/authority, clear ACs, and no unresolved mixed source truth.

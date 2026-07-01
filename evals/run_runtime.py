@@ -44,6 +44,11 @@ except ImportError:  # pragma: no cover - package import path
         summarize_routing_results as shared_summarize_routing_results,
     )
 
+try:
+    from route_detection import detect_route_from_text
+except ImportError:  # pragma: no cover - package import path
+    from evals.route_detection import detect_route_from_text
+
 REPO = Path(os.environ.get("GROUNDWORK_REPO", Path(__file__).resolve().parents[1]))
 ROOT = Path(os.environ.get("GROUNDWORK_RUNTIME_ROOT", "/private/tmp/groundwork-runtime-v03"))
 RUN = ROOT / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -1235,6 +1240,10 @@ def classify_actual_route(row, parsed_actual, skill_hits, final_response, change
 
     if skill_hits or parsed_actual != DIRECT_ROUTE:
         return parsed_actual
+
+    detected_route, _source = detect_route_from_text(final_response)
+    if detected_route != DIRECT_ROUTE:
+        return detected_route
 
     if not host_preemption_allowed(row):
         return DIRECT_ROUTE

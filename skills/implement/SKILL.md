@@ -1,13 +1,13 @@
 ---
 name: implement
-description: Scoped code changes, confirmed fixes, diagnose-before-edit work, or read-only implementation conformance review. Not for raw requirements, slicing, readiness/UAT/release verification, handoff, or dispatch.
+description: Use for scoped code changes and bug-fix requests, including "修 bug", "直接 patch", "改代码", confirmed fixes, diagnose-before-edit work, blocked implementation when source truth is missing, or read-only implementation conformance review. Not for raw requirements, slicing, readiness/UAT/release verification, handoff, or dispatch.
 ---
 
 # implement
 
 ## Use When
 
-Use this skill for scoped implementation work: code changes, focused remediation, confirmed bug fixes, diagnose-before-edit, explicit PRD/spec bypass, or read-only implementation conformance review against a TASK/PRD/diff.
+Use this skill for scoped implementation work: code changes, focused remediation, "修 bug", "直接 patch", "改代码", confirmed bug fixes, diagnose-before-edit, explicit PRD/spec bypass, blocked implementation when source truth is missing, or read-only implementation conformance review against a TASK/PRD/diff.
 
 Do not use for raw requirements, task slicing, readiness/UAT/release verification, dispatch routing, compact continuation context, or planning-only requests.
 
@@ -48,6 +48,8 @@ For nontrivial edit paths, include the five-line `Implementation Mini-Plan` from
 - Lightweight edit plan: `LIGHTWEIGHT-PLAN.md`.
 - Behavior-change test loop: `TDD-LITE.md`.
 - Post-edit self-review: `SELF-REVIEW.md`.
+- Root-cause ladder for nontrivial bug or mechanism work: `skills/_shared/FIRST-PRINCIPLES.md`.
+- Adversarial self-check for high-risk, shared-guardrail, public-skill, readiness-adjacent, or material conformance work: `skills/_shared/ADVERSARIAL-REVIEW.md`.
 - Full branch details, conformance fields, gated output, failure branches, review-loop remediation, runtime/cache/release/wiki boundaries, and output skeleton: `IMPLEMENT-BRANCHES.md`.
 - QA failure remediation from verify: `skills/verify/QA-FIX-QA.md`.
 - Git staging/commit boundary: `skills/_shared/GIT-BOUNDARY.md`.
