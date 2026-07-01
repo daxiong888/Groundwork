@@ -26,11 +26,19 @@ def load_hooks_module():
         HOOKS / "groundwork_router_observability.py",
     )
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    previous = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        sys.dont_write_bytecode = previous
     return module
 
 
 def run_hook(script, event, cwd, env=None):
+    hook_env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
+    if env:
+        hook_env.update(env)
     return subprocess.run(
         [sys.executable, str(HOOKS / script)],
         input=json.dumps(event),
@@ -38,7 +46,7 @@ def run_hook(script, event, cwd, env=None):
         cwd=cwd,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        env=env,
+        env=hook_env,
         check=True,
     )
 
@@ -47,8 +55,7 @@ class RouterObservabilityTests(unittest.TestCase):
     def test_hooks_manifest_uses_official_command_handler_shape(self):
         manifest = json.loads((ROOT / "hooks" / "hooks.json").read_text(encoding="utf-8"))
 
-        self.assertIsInstance(manifest.get("description"), str)
-        self.assertIn("router observability", manifest["description"])
+        self.assertEqual(set(manifest), {"hooks"})
         self.assertIsInstance(manifest.get("hooks"), dict)
         for event_name, matcher_groups in manifest["hooks"].items():
             self.assertIsInstance(event_name, str)
@@ -64,6 +71,7 @@ class RouterObservabilityTests(unittest.TestCase):
                     self.assertIsInstance(handler.get("command"), str)
                     self.assertTrue(handler["command"])
                     self.assertIn('[ -f "$PLUGIN_ROOT/scripts/codex-hooks/', handler["command"])
+                    self.assertIn("PYTHONDONTWRITEBYTECODE=1 python3", handler["command"])
                     self.assertIn(" || true", handler["command"])
                     self.assertIsInstance(handler.get("timeout"), int)
                     self.assertGreater(handler["timeout"], 0)
@@ -89,7 +97,7 @@ class RouterObservabilityTests(unittest.TestCase):
                         self.assertEqual(result.stdout, "")
                         self.assertEqual(result.stderr, "")
 
-    def test_hook_entrypoints_noop_when_support_module_is_missing(self):
+    def test_hook_entrypoints_noop_when_observability_module_is_missing(self):
         entrypoints = [
             "user_prompt_submit_groundwork_entry.py",
             "pre_tool_use_groundwork_trace.py",
@@ -115,6 +123,44 @@ class RouterObservabilityTests(unittest.TestCase):
                 )
                 self.assertEqual(result.stdout, "")
                 self.assertEqual(result.stderr, "")
+
+    def test_packaged_hook_scripts_are_self_contained_without_evals_package(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            hook_root = root / "scripts" / "codex-hooks"
+            hook_root.mkdir(parents=True)
+            for script in HOOKS.glob("*.py"):
+                (hook_root / script.name).write_text(script.read_text(encoding="utf-8"), encoding="utf-8")
+
+            result = subprocess.run(
+                [sys.executable, str(hook_root / "user_prompt_submit_groundwork_entry.py")],
+                input=json.dumps(
+                    {
+                        "cwd": str(root),
+                        "session_id": "s1",
+                        "turn_id": "t1",
+                        "prompt": "self-review 已经过了，可以当 clean review 吗？",
+                    }
+                ),
+                text=True,
+                cwd=root,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env={
+                    **os.environ,
+                    "PYTHONPATH": "",
+                    "PYTHONDONTWRITEBYTECODE": "1",
+                    "GROUNDWORK_ROUTER_OBSERVABILITY": "1",
+                    "GROUNDWORK_ROUTER_OBSERVABILITY_MODE": "guided_hint_trial",
+                },
+                check=True,
+            )
+
+            output = json.loads(result.stdout)
+            self.assertIn("Verification Scope", output["hookSpecificOutput"]["additionalContext"])
+            decision = json.loads((self.turn_dir(root) / "router-decision.json").read_text(encoding="utf-8"))
+            self.assertEqual(decision["entry_decision"]["expected_best"], "verify")
+            self.assertEqual(result.stderr, "")
 
     def write_config(self, root, **overrides):
         config = {
@@ -243,6 +289,80 @@ class RouterObservabilityTests(unittest.TestCase):
             score = score_turn(decision, "Implementation Mini-Plan", [])
             self.assertEqual(score["score_eligibility"], "guided_hint_excluded")
             self.assert_router_score_schema_valid(score)
+
+    def test_guided_hint_verify_evidence_label_upgrade_mentions_verification_scope(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.write_config(root, mode="guided_hint_trial")
+
+            result = run_hook(
+                "user_prompt_submit_groundwork_entry.py",
+                {"cwd": str(root), "session_id": "s1", "turn_id": "t1", "prompt": "self-review 已经过了，可以当 clean review 吗？"},
+                root,
+            )
+
+            output = json.loads(result.stdout)
+            hint = output["hookSpecificOutput"]["additionalContext"]
+            self.assertIn("use verify-lite", hint)
+            self.assertIn("Verification Scope", hint)
+            for field in [
+                "In Scope",
+                "Out of Scope",
+                "Covered",
+                "Not Covered",
+                "Evidence Sources",
+                "User-visible Claim Being Verified",
+            ]:
+                self.assertIn(field, hint)
+            self.assertIn("Do not answer as direct", hint)
+            decision = json.loads((self.turn_dir(root) / "router-decision.json").read_text(encoding="utf-8"))
+            self.assertEqual(decision["entry_decision"]["expected_best"], "verify")
+            score = score_turn(decision, "Verification Scope\nIn Scope\nOut of Scope\nCovered\nNot Covered\nEvidence Sources\nUser-visible Claim Being Verified", [])
+            self.assertEqual(score["score_eligibility"], "guided_hint_excluded")
+
+    def test_guided_hint_implement_missing_source_mentions_blocked_implementation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.write_config(root, mode="guided_hint_trial")
+
+            result = run_hook(
+                "user_prompt_submit_groundwork_entry.py",
+                {"cwd": str(root), "session_id": "s1", "turn_id": "t1", "prompt": "修这个 bug，别管原因，直接 patch"},
+                root,
+            )
+
+            output = json.loads(result.stdout)
+            hint = output["hookSpecificOutput"]["additionalContext"]
+            self.assertIn("use implement", hint)
+            self.assertIn("Blocked Implementation", hint)
+            for field in [
+                "Scope",
+                "Acceptance Map",
+                "Evidence Inspected",
+                "Findings P0/P1/P2",
+                "Non-Readiness Boundary",
+                "Gaps",
+                "Next Action",
+            ]:
+                self.assertIn(field, hint)
+            decision = json.loads((self.turn_dir(root) / "router-decision.json").read_text(encoding="utf-8"))
+            self.assertEqual(decision["entry_decision"]["expected_best"], "implement")
+
+    def test_observe_only_does_not_emit_additional_context(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.write_config(root, mode="observe_only")
+
+            result = run_hook(
+                "user_prompt_submit_groundwork_entry.py",
+                {"cwd": str(root), "session_id": "s1", "turn_id": "t1", "prompt": "self-review 已经过了，可以当 clean review 吗？"},
+                root,
+            )
+
+            self.assertEqual(result.stdout, "")
+            decision = json.loads((self.turn_dir(root) / "router-decision.json").read_text(encoding="utf-8"))
+            self.assertEqual(decision["entry_decision"]["expected_best"], "verify")
+            self.assertFalse(decision["router_hint_emitted"])
 
     def test_tool_and_stop_hooks_write_score_and_card(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -841,7 +961,11 @@ class RouterObservabilityTests(unittest.TestCase):
                 cwd=root,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                env={**__import__("os").environ, "GROUNDWORK_ROUTER_OBSERVABILITY_DEBUG": "1"},
+                env={
+                    **os.environ,
+                    "GROUNDWORK_ROUTER_OBSERVABILITY_DEBUG": "1",
+                    "PYTHONDONTWRITEBYTECODE": "1",
+                },
                 check=True,
             )
 

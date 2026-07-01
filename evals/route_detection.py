@@ -31,6 +31,7 @@ ROUTE_MARKERS = [
 
 PROMPT_ROUTE_MARKERS = [
     ("dispatch", re.compile(r"\bdispatch\b|分派|运行时路由", re.I)),
+    ("handoff", re.compile(r"handoff|交接|续上|保存状态", re.I)),
     (
         "verify",
         re.compile(
@@ -55,11 +56,13 @@ PROMPT_ROUTE_MARKERS = [
     ),
     ("to-issues", re.compile(r"拆\s*issues?|拆任务|issue-map|任务切片", re.I)),
     ("to-prd", re.compile(r"\bPRD\b|需求|产品方案|新需求", re.I)),
-    ("handoff", re.compile(r"handoff|交接|续上|保存状态", re.I)),
     ("triage", re.compile(r"triage|判断能不能|是否适合|阻塞", re.I)),
     ("prototype", re.compile(r"prototype|原型", re.I)),
     ("wiki", re.compile(r"wiki|知识库", re.I)),
 ]
+
+CONCEPT_EXPLANATION_RE = re.compile(r"有什么区别|区别是什么|简单解释|概念区别|difference between", re.I)
+EVIDENCE_UPGRADE_RE = re.compile(r"能不能|可以|可否|是否|算|当|作为|证据|evidence|readiness|验收|通过|升级", re.I)
 
 GIT_WRITE_RE = re.compile(r"\bgit\s+(add|commit|push|reset|checkout|switch|clean|merge|rebase)\b")
 FILE_WRITE_RE = re.compile(r"\b(apply_patch|cat\s*>|tee\s+|python\d?\s+.*write_text|rm\s+)", re.I)
@@ -80,10 +83,13 @@ def detect_route_from_text(text):
 def entry_decision_from_prompt(prompt):
     value = str(prompt or "")
     route = UNKNOWN_ROUTE
-    for candidate, pattern in PROMPT_ROUTE_MARKERS:
-        if pattern.search(value):
-            route = candidate
-            break
+    if CONCEPT_EXPLANATION_RE.search(value) and not EVIDENCE_UPGRADE_RE.search(value):
+        route = DIRECT_ROUTE
+    else:
+        for candidate, pattern in PROMPT_ROUTE_MARKERS:
+            if pattern.search(value):
+                route = candidate
+                break
     if route == UNKNOWN_ROUTE and value.strip():
         route = DIRECT_ROUTE
 

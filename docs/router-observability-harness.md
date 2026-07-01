@@ -39,7 +39,7 @@ The repository ships dormant hook definitions at [`hooks/hooks.json`](../hooks/h
 
 Plugin install or update only makes these hook definitions available for review. It does not mean tracking has started, and it does not create marketplace release evidence. The maintainer still needs any Codex-required hook trust review for the current installed plugin version.
 
-Hook commands are self-protecting during plugin cache refresh. Each manifest command first checks whether its entrypoint still exists under the loaded `$PLUGIN_ROOT`, and each entrypoint exits `0` if the support module cannot be imported. This protects an already-running Codex thread that still holds an old versioned plugin-root path while `codex plugin add groundwork@groundwork` refreshes or replaces the installed cache. Missing or partially replaced hook files must no-op; they must not block normal Codex tool execution, Stop handling, or release work. Set `GROUNDWORK_ROUTER_OBSERVABILITY_DEBUG=1` only when locally debugging hook failures.
+Hook commands are self-protecting during plugin cache refresh. Each manifest command first checks whether its entrypoint still exists under the loaded `$PLUGIN_ROOT`, and each entrypoint exits `0` if the main observability module cannot be imported. This protects an already-running Codex thread that still holds an old versioned plugin-root path while `codex plugin add groundwork@groundwork` refreshes or replaces the installed cache. The packaged main module must be self-contained within `scripts/codex-hooks/`; it must not import source-only maintainer packages such as `evals/`. Missing or partially replaced hook files must no-op; they must not block normal Codex tool execution, Stop handling, or release work. Set `GROUNDWORK_ROUTER_OBSERVABILITY_DEBUG=1` only when locally debugging hook failures.
 
 `SessionStart` is intentionally deferred. v0 does not need session-level metadata to prove no-op behavior, route decision capture, tool event capture, or Stop-time scoring.
 
@@ -73,6 +73,14 @@ GROUNDWORK_ROUTER_OBSERVABILITY_MODE=observe_only
 
 `GROUNDWORK_ROUTER_OBSERVABILITY=1` force-enables the hooks for the current process. If a project config exists, the file still supplies settings such as `raw_capture`, `snippet_capture`, and mode defaults, but env activation records `activation_source=env_force_enable_over_config` and overrides `enabled=false`.
 
+Runtime eval automation that needs to exercise plugin-bundled hooks must also satisfy Codex hook trust for the installed plugin version. For controlled local trials, `evals/run_runtime.py` supports the explicit opt-in:
+
+```text
+GROUNDWORK_CODEX_BYPASS_HOOK_TRUST=1
+```
+
+This only inserts `--dangerously-bypass-hook-trust` into the spawned `codex exec` command. It must be paired with the normal harness activation env/config when the trial expects hook output. Do not use this switch for passive baselines, release evidence, or general user workflows.
+
 Disable for one process:
 
 ```text
@@ -83,7 +91,7 @@ GROUNDWORK_ROUTER_OBSERVABILITY_DISABLED=1
 
 `observe_only` is the default v0 mode. It writes local scratch artifacts for opted-in projects only. It does not inject route hints, block prompts, rewrite tool calls, request Stop continuation, spawn subagents, create worktrees, create PRs, commit, push, or mutate trackers.
 
-`guided_hint_trial` is explicit. It may emit compact `additionalContext`, and every score from this mode is marked `guided_hint_excluded`; it must not count toward passive baseline metrics.
+`guided_hint_trial` is explicit. It may emit compact route-specific `additionalContext`, and every score from this mode is marked `guided_hint_excluded`; it must not count toward passive baseline metrics. The hint can name route-specific output contracts, such as `Verification Scope` for `verify-lite` or `Blocked Implementation` fields for missing-source implementation requests, but it is behavior-shaping trial evidence rather than passive route evidence.
 
 Live heuristic `observe_only` scores are `display_only` until a fixture or accepted deterministic classifier supplies stronger expected-route evidence. Display-only scores preserve candidate route verdicts for review, but they do not count as baseline pass/fail evidence.
 
@@ -112,6 +120,8 @@ Opted-in projects write per-turn scratch under:
 `raw_capture=true` remains a separate opt-in, but raw capture is redacted by default. To store unredacted raw prompt/final text, the process must also set `GROUNDWORK_ROUTER_OBSERVABILITY_ALLOW_UNREDACTED_RAW_CAPTURE=1`. This second switch is intended only for local debugging where the operator has already reviewed secret/PII risk. When raw final capture is enabled, `final.raw.meta.json` records whether raw text was redacted or explicitly unredacted.
 
 Coverage is available from `tool-events.jsonl`, `permission-events.jsonl`, `coverage.json`, and `router-score.json`. Tool and permission JSONL rows record `observed_at_ns`, `pid`, and `event_uuid`; Stop-stage scoring sorts those rows by `observed_at_ns,event_uuid` and assigns replay `event_index` values in memory. `coverage.json` records malformed JSONL line counts so replay gaps are visible instead of silently disappearing.
+
+`evals/run_runtime.py` excludes only `.groundwork/harness/router-observability/` from workspace changed-file accounting. This prevents trace scratch from failing read-only route cases, but it does not ignore other `.groundwork` files or lifecycle artifacts.
 
 ## Dispatch And Selector Boundary
 

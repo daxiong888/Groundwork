@@ -16,8 +16,23 @@ PLUGIN_NAME = "groundwork"
 RUNTIME_PACKAGE_ENTRIES = {
     ".codex-plugin": ".codex-plugin",
     "skills": "skills",
+    "hooks": "hooks",
+    "scripts/codex-hooks": "scripts/codex-hooks",
     "README.runtime.md": "README.md",
     "LICENSE": "LICENSE",
+}
+
+RUNTIME_HOOK_FILES = {
+    "hooks.json",
+}
+
+RUNTIME_CODEX_HOOK_FILES = {
+    "groundwork_router_observability.py",
+    "permission_request_groundwork_trace.py",
+    "post_tool_use_groundwork_trace.py",
+    "pre_tool_use_groundwork_trace.py",
+    "stop_groundwork_score.py",
+    "user_prompt_submit_groundwork_entry.py",
 }
 
 FORBIDDEN_PACKAGE_ROOTS = {
@@ -35,10 +50,8 @@ FORBIDDEN_PACKAGE_ROOTS = {
     "docs",
     "evals",
     "examples",
-    "hooks",
     "research",
     "schemas",
-    "scripts",
     "dist",
     "refer",
     "node_modules",
@@ -75,12 +88,36 @@ def copy_path(source: Path, destination: Path) -> None:
     shutil.copy2(source, destination)
 
 
+def file_set(root: Path) -> set[str]:
+    if not root.exists():
+        return set()
+    return {path.relative_to(root).as_posix() for path in root.rglob("*") if path.is_file()}
+
+
+def validate_hooks_config(plugin_root: Path) -> list[str]:
+    hooks_path = plugin_root / "hooks" / "hooks.json"
+    if not hooks_path.is_file():
+        return ["Runtime package hook config is missing: hooks/hooks.json"]
+    try:
+        manifest = json.loads(hooks_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        return [f"Runtime package hook config is invalid JSON: {exc}"]
+    if set(manifest) != {"hooks"}:
+        return ["Runtime package hook config must contain only the top-level `hooks` field."]
+    if not isinstance(manifest.get("hooks"), dict):
+        return ["Runtime package hook config `hooks` field must be an object."]
+    return []
+
+
 def assert_runtime_package_boundary(plugin_root: Path) -> None:
     expected_roots = sorted({destination.split("/", 1)[0] for destination in RUNTIME_PACKAGE_ENTRIES.values()})
     observed_roots = sorted(path.name for path in plugin_root.iterdir())
     missing = [root for root in expected_roots if not (plugin_root / root).exists()]
     unexpected = [root for root in observed_roots if root not in expected_roots]
     leaked = [root for root in sorted(FORBIDDEN_PACKAGE_ROOTS) if (plugin_root / root).exists()]
+    hook_files = file_set(plugin_root / "hooks")
+    script_entries = sorted(path.name for path in (plugin_root / "scripts").iterdir()) if (plugin_root / "scripts").exists() else []
+    codex_hook_files = file_set(plugin_root / "scripts" / "codex-hooks")
 
     errors = []
     if missing:
@@ -89,6 +126,30 @@ def assert_runtime_package_boundary(plugin_root: Path) -> None:
         errors.append("Runtime package contains unexpected top-level paths:\n" + "\n".join(f"- {path}" for path in unexpected))
     if leaked:
         errors.append("Runtime package contains forbidden repo-only paths:\n" + "\n".join(f"- {path}" for path in leaked))
+    if hook_files != RUNTIME_HOOK_FILES:
+        extra = sorted(hook_files - RUNTIME_HOOK_FILES)
+        missing_hooks = sorted(RUNTIME_HOOK_FILES - hook_files)
+        details = []
+        if missing_hooks:
+            details.append("missing:\n" + "\n".join(f"- hooks/{path}" for path in missing_hooks))
+        if extra:
+            details.append("unexpected:\n" + "\n".join(f"- hooks/{path}" for path in extra))
+        errors.append("Runtime package hook manifest files are not exact:\n" + "\n\n".join(details))
+    if script_entries != ["codex-hooks"]:
+        errors.append(
+            "Runtime package scripts/ must contain only codex-hooks/:\n"
+            + "\n".join(f"- scripts/{path}" for path in script_entries)
+        )
+    if codex_hook_files != RUNTIME_CODEX_HOOK_FILES:
+        extra = sorted(codex_hook_files - RUNTIME_CODEX_HOOK_FILES)
+        missing_hooks = sorted(RUNTIME_CODEX_HOOK_FILES - codex_hook_files)
+        details = []
+        if missing_hooks:
+            details.append("missing:\n" + "\n".join(f"- scripts/codex-hooks/{path}" for path in missing_hooks))
+        if extra:
+            details.append("unexpected:\n" + "\n".join(f"- scripts/codex-hooks/{path}" for path in extra))
+        errors.append("Runtime package codex hook files are not exact:\n" + "\n\n".join(details))
+    errors.extend(validate_hooks_config(plugin_root))
     if errors:
         raise SystemExit("\n\n".join(errors))
 

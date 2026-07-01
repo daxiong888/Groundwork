@@ -801,6 +801,11 @@ def load_failure_ids(path):
     return ids
 
 
+def is_ignored_runtime_scratch(rel):
+    parts = rel.parts if isinstance(rel, Path) else Path(str(rel)).parts
+    return parts[:3] == (".groundwork", "harness", "router-observability")
+
+
 def snapshot(path):
     state = {}
     if not path.exists():
@@ -808,6 +813,8 @@ def snapshot(path):
     for p in path.rglob("*"):
         rel = p.relative_to(path)
         if rel.parts and rel.parts[0] == ".git":
+            continue
+        if is_ignored_runtime_scratch(rel):
             continue
         if p.is_file():
             h = hashlib.sha256()
@@ -828,6 +835,34 @@ def changed_files(before, after):
             else:
                 changed.append("M " + key)
     return changed
+
+
+def hook_trust_bypass_enabled():
+    return os.environ.get("GROUNDWORK_CODEX_BYPASS_HOOK_TRUST") == "1"
+
+
+def codex_exec_command(cwd, sandbox, last_path, prompt):
+    cmd = ["codex"]
+    if hook_trust_bypass_enabled():
+        cmd.append("--dangerously-bypass-hook-trust")
+    cmd.extend(
+        [
+            "-a",
+            "never",
+            "exec",
+            "--ephemeral",
+            "--json",
+            "-o",
+            str(last_path),
+            "-C",
+            str(cwd),
+            "--skip-git-repo-check",
+            "-s",
+            sandbox,
+            prompt,
+        ]
+    )
+    return cmd
 
 
 def run_fixture_command(cwd, cmd):
@@ -2238,22 +2273,7 @@ def run_row(row, timeout_s=None, attempt=1):
     attempt_suffix = "" if attempt == 1 else f"-attempt{attempt}"
     log_path = LOGS / f"{row_id}{attempt_suffix}.jsonl"
     last_path = LAST / f"{row_id}{attempt_suffix}.txt"
-    cmd = [
-        "codex",
-        "-a",
-        "never",
-        "exec",
-        "--ephemeral",
-        "--json",
-        "-o",
-        str(last_path),
-        "-C",
-        str(cwd),
-        "--skip-git-repo-check",
-        "-s",
-        sandbox,
-        prompt,
-    ]
+    cmd = codex_exec_command(cwd, sandbox, last_path, prompt)
 
     started = datetime.now(timezone.utc).isoformat()
     try:
@@ -2323,6 +2343,7 @@ def run_row(row, timeout_s=None, attempt=1):
         "attempt": attempt,
         "cwd": str(cwd),
         "sandbox": sandbox,
+        "hook_trust_bypass": hook_trust_bypass_enabled(),
         "workspace_note": workspace_note,
         "returncode": rc,
         "changed_files": changes,

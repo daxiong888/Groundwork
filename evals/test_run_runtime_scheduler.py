@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import route_detection
 import run_runtime
@@ -173,6 +175,36 @@ class RuntimeSchedulerTests(unittest.TestCase):
                 run_runtime.load_failure_ids(Path(tmp)),
                 ["fail-001", "timeout-001"],
             )
+
+    def test_codex_exec_command_adds_hook_trust_bypass_only_when_opted_in(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            last_path = root / "last.txt"
+
+            with mock.patch.dict(os.environ, {"GROUNDWORK_CODEX_BYPASS_HOOK_TRUST": "0"}):
+                default_cmd = run_runtime.codex_exec_command(root, "read-only", last_path, "prompt")
+            with mock.patch.dict(os.environ, {"GROUNDWORK_CODEX_BYPASS_HOOK_TRUST": "1"}):
+                bypass_cmd = run_runtime.codex_exec_command(root, "read-only", last_path, "prompt")
+
+        self.assertNotIn("--dangerously-bypass-hook-trust", default_cmd)
+        self.assertEqual(bypass_cmd[0:2], ["codex", "--dangerously-bypass-hook-trust"])
+        self.assertIn("exec", bypass_cmd)
+        self.assertIn("prompt", bypass_cmd)
+
+    def test_snapshot_ignores_router_observability_runtime_scratch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            before = run_runtime.snapshot(root)
+
+            scratch = root / ".groundwork" / "harness" / "router-observability" / "s1" / "t1"
+            scratch.mkdir(parents=True)
+            (scratch / "router-score.json").write_text("{}", encoding="utf-8")
+            other = root / ".groundwork" / "state.json"
+            other.write_text("{}", encoding="utf-8")
+
+            changes = run_runtime.changed_files(before, run_runtime.snapshot(root))
+
+        self.assertEqual(changes, ["A .groundwork/state.json"])
 
     def test_write_summary_creates_result_layout(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1520,6 +1552,19 @@ class RuntimeSchedulerTests(unittest.TestCase):
 
         self.assertEqual(decision["expected_best"], "verify")
         self.assertIn("direct", decision["forbidden_routes"])
+
+    def test_self_review_difference_question_routes_direct(self):
+        decision = route_detection.entry_decision_from_prompt("self-review 和 clean review 有什么区别？简单解释一下")
+
+        self.assertEqual(decision["expected_best"], "direct")
+        self.assertEqual(decision["forbidden_routes"], [])
+
+    def test_handoff_prompt_outprioritizes_evidence_field_words(self):
+        decision = route_detection.entry_decision_from_prompt(
+            "这个复杂 bug 已修，给下个 session 做 handoff。当前只有一句总结，没有根因、证据、风险或未验证假设。"
+        )
+
+        self.assertEqual(decision["expected_best"], "handoff")
 
     def test_prompt_bug_direct_patch_routes_implement(self):
         decision = route_detection.entry_decision_from_prompt("修这个 bug，别管原因，直接 patch")
