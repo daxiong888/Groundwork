@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import run_plugin_eval_clean  # noqa: E402
+import check_plugin_eval_clean_regression  # noqa: E402
 
 
 def write_runtime_log(result_root: Path, events: list[dict]) -> Path:
@@ -78,6 +79,40 @@ def write_benchmark_result(
     result_path = result_root / "benchmark-result.json"
     result_path.write_text(json.dumps(result) + "\n", encoding="utf-8")
     return result_path
+
+
+def scenario_result(
+    name: str,
+    input_tokens: int,
+    package_files_read: list[str] | None = None,
+    status: str = "completed",
+    valid_for_usage_regression: bool = True,
+    turns: int = 1,
+    nested: int = 0,
+    forbidden_scans: int = 0,
+) -> dict:
+    return {
+        "scenario": name,
+        "result_root": f"/tmp/{name}",
+        "benchmark": {
+            "status": status,
+            "valid_for_usage_regression": valid_for_usage_regression,
+            "observed_usage": {
+                "status": "present",
+                "input_tokens": input_tokens,
+                "output_tokens": 100,
+                "total_tokens": input_tokens + 100,
+            },
+            "runtime_trace": {
+                "model_turn_count": turns,
+                "command_execution_count": 2,
+                "nested_command_count": nested,
+                "forbidden_source_scan_count": forbidden_scans,
+                "broad_scan_count": 0,
+                "package_files_read": package_files_read or [],
+            },
+        },
+    }
 
 
 class PluginEvalCleanBenchmarkConfigTests(unittest.TestCase):
@@ -437,6 +472,86 @@ class PluginEvalCleanBenchmarkConfigTests(unittest.TestCase):
         self.assertEqual([item["scenario"] for item in categories["discarded_runs"]], ["verify"])
         self.assertEqual([item["scenario"] for item in categories["failed_plugin_runs"]], ["dispatch"])
         self.assertFalse(categories["discarded_runs"][0]["valid_for_usage_regression"])
+
+    def test_clean_regression_gate_accepts_threshold_baseline(self):
+        scenarios = {
+            "to-prd": scenario_result(
+                "to-prd",
+                24493,
+                ["plugins/groundwork/skills/to-prd/SKILL.md"],
+            ),
+            "verify": scenario_result(
+                "verify",
+                39702,
+                [
+                    "plugins/groundwork/skills/verify/SKILL.md",
+                    "plugins/groundwork/skills/verify/VERIFY-SCOPE.md",
+                ],
+            ),
+            "dispatch": scenario_result(
+                "dispatch",
+                36333,
+                [
+                    "plugins/groundwork/skills/dispatch/SKILL.md",
+                    "plugins/groundwork/skills/dispatch/DISPATCH-PACKAGE.md",
+                ],
+            ),
+        }
+
+        result = check_plugin_eval_clean_regression.validate_scenarios(scenarios)
+
+        self.assertEqual(result["status"], "pass")
+        self.assertEqual(result["total_input_tokens"], 100528)
+        self.assertEqual(result["failures"], [])
+
+    def test_clean_regression_gate_rejects_token_regression(self):
+        scenarios = {
+            "to-prd": scenario_result("to-prd", 35001),
+            "verify": scenario_result("verify", 39702),
+            "dispatch": scenario_result("dispatch", 36333),
+        }
+
+        result = check_plugin_eval_clean_regression.validate_scenarios(scenarios)
+
+        self.assertEqual(result["status"], "fail")
+        self.assertIn("to-prd: input_tokens 35001 exceeds threshold 35000", result["failures"])
+
+    def test_clean_regression_gate_rejects_forbidden_read_paths(self):
+        scenarios = {
+            "to-prd": scenario_result(
+                "to-prd",
+                24493,
+                ["plugins/groundwork/README.md"],
+            ),
+            "verify": scenario_result("verify", 39702),
+            "dispatch": scenario_result(
+                "dispatch",
+                36333,
+                ["plugins/groundwork/skills/dispatch/DISPATCH-PACKAGE-DETAILS.md"],
+            ),
+        }
+
+        result = check_plugin_eval_clean_regression.validate_scenarios(scenarios)
+
+        self.assertEqual(result["status"], "fail")
+        self.assertIn("to-prd: forbidden package reads: plugins/groundwork/README.md", result["failures"])
+        self.assertIn(
+            "dispatch: forbidden package reads: plugins/groundwork/skills/dispatch/DISPATCH-PACKAGE-DETAILS.md",
+            result["failures"],
+        )
+
+    def test_clean_regression_gate_collects_multiple_manifests(self):
+        manifests = [
+            {"_manifest_path": "/tmp/to-prd/results/run-manifest.json", "scenarios": [scenario_result("to-prd", 24493)]},
+            {"_manifest_path": "/tmp/verify/results/run-manifest.json", "scenarios": [scenario_result("verify", 39702)]},
+            {"_manifest_path": "/tmp/dispatch/results/run-manifest.json", "scenarios": [scenario_result("dispatch", 36333)]},
+        ]
+
+        scenarios = check_plugin_eval_clean_regression.collect_scenarios(manifests)
+        result = check_plugin_eval_clean_regression.validate_scenarios(scenarios)
+
+        self.assertEqual(sorted(scenarios), ["dispatch", "to-prd", "verify"])
+        self.assertEqual(result["status"], "pass")
 
     def test_runtime_trace_summary_fails_nested_benchmark_command(self):
         with tempfile.TemporaryDirectory() as tmp:

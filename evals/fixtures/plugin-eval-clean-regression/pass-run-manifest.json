@@ -1,0 +1,79 @@
+{
+  "scenarios": [
+    {
+      "scenario": "to-prd",
+      "result_root": "/tmp/plugin-eval-clean-regression/to-prd",
+      "benchmark": {
+        "status": "completed",
+        "valid_for_usage_regression": true,
+        "observed_usage": {
+          "status": "present",
+          "input_tokens": 24493,
+          "output_tokens": 3306,
+          "total_tokens": 27799
+        },
+        "runtime_trace": {
+          "model_turn_count": 1,
+          "command_execution_count": 2,
+          "nested_command_count": 0,
+          "forbidden_source_scan_count": 0,
+          "broad_scan_count": 0,
+          "package_files_read": [
+            "plugins/groundwork/skills/to-prd/SKILL.md"
+          ]
+        }
+      }
+    },
+    {
+      "scenario": "verify",
+      "result_root": "/tmp/plugin-eval-clean-regression/verify",
+      "benchmark": {
+        "status": "completed",
+        "valid_for_usage_regression": true,
+        "observed_usage": {
+          "status": "present",
+          "input_tokens": 39702,
+          "output_tokens": 4335,
+          "total_tokens": 44037
+        },
+        "runtime_trace": {
+          "model_turn_count": 1,
+          "command_execution_count": 7,
+          "nested_command_count": 0,
+          "forbidden_source_scan_count": 0,
+          "broad_scan_count": 1,
+          "package_files_read": [
+            "plugins/groundwork/skills/verify/SKILL.md",
+            "plugins/groundwork/skills/verify/VERIFY-SCOPE.md",
+            "plugins/groundwork/skills/verify/SCOPE-EVIDENCE-TEMPLATE.md"
+          ]
+        }
+      }
+    },
+    {
+      "scenario": "dispatch",
+      "result_root": "/tmp/plugin-eval-clean-regression/dispatch",
+      "benchmark": {
+        "status": "completed",
+        "valid_for_usage_regression": true,
+        "observed_usage": {
+          "status": "present",
+          "input_tokens": 36333,
+          "output_tokens": 3177,
+          "total_tokens": 39510
+        },
+        "runtime_trace": {
+          "model_turn_count": 1,
+          "command_execution_count": 4,
+          "nested_command_count": 0,
+          "forbidden_source_scan_count": 0,
+          "broad_scan_count": 0,
+          "package_files_read": [
+            "plugins/groundwork/skills/dispatch/SKILL.md",
+            "plugins/groundwork/skills/dispatch/DISPATCH-PACKAGE.md"
+          ]
+        }
+      }
+    }
+  ]
+}
