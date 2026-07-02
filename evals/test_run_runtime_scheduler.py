@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 import json
 import os
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import route_detection
 import run_runtime
@@ -832,6 +835,152 @@ class RuntimeSchedulerTests(unittest.TestCase):
             run_runtime.route_evidence_source(run_runtime.DIRECT_ROUTE, [], actual, final_response),
             "output_marker",
         )
+        self.assertEqual(
+            run_runtime.dispatch_hit_level("dispatch", ["dispatch"], actual, []),
+            "output_shape_only",
+        )
+
+    def test_shared_dispatch_summary_marker_counts_as_dispatch(self):
+        route, source = route_detection.detect_route_from_text(
+            "Dispatch Summary\n\nRuntime Packages\nExpected Result Package\n"
+        )
+
+        self.assertEqual(route, "dispatch")
+        self.assertEqual(source, "final_message_marker")
+
+    def test_package_only_runtime_routing_requires_guarded_dispatch_shape(self):
+        route, _source = route_detection.detect_route_from_text(
+            "Package-Only Runtime Routing\n\nThis explains runtime routing as a concept."
+        )
+
+        self.assertEqual(route, "direct")
+
+        route, _source = route_detection.detect_route_from_text(
+            "Package-Only Runtime Routing\n\n```yaml\ndispatch_version: 2\n```"
+        )
+
+        self.assertEqual(route, "dispatch")
+
+        route, _source = route_detection.detect_route_from_text(
+            "**Package-Only Runtime Routing**\n\n"
+            "Dispatch Packages\n"
+            "```yaml\n"
+            "dispatch_package:\n"
+            "  package_only: true\n"
+            "```\n"
+        )
+
+        self.assertEqual(route, "dispatch")
+
+    def test_dispatch_schema_body_counts_as_dispatch_before_issue_markers(self):
+        route, _source = route_detection.detect_route_from_text(
+            "```yaml\n"
+            "dispatch_version: 2\n"
+            "adapter_completeness: skeleton_only\n"
+            "runtime_policy:\n"
+            "  allow_parallel: false\n"
+            "tasks:\n"
+            "  - acceptance_criteria_mapping: needs_info\n"
+            "    runtime_package:\n"
+            "      expected_output: direct_result\n"
+            "```\n"
+        )
+
+        self.assertEqual(route, "dispatch")
+
+    def test_pending_worktree_block_response_counts_as_dispatch_shape(self):
+        route, _source = route_detection.detect_route_from_text(
+            "当前不能继续实现，正确状态是 `blocked / human_decision`。\n"
+            "`pendingWorktreeId` 不是成功信号；没有 child thread id 或 managed worktree path。\n"
+            "manual fallback worktree 需要用户显式批准。\n"
+        )
+
+        self.assertEqual(route, "dispatch")
+
+        route, _source = route_detection.detect_route_from_text(
+            "无法继续执行实现。\n"
+            "本目录内没有 `pendingWorktreeId`、child thread、worktree path、task/issue 元数据。\n"
+            "因此现在只有 `pendingWorktreeId` 这一半握手信息，缺少可执行目标。\n"
+        )
+
+        self.assertEqual(route, "dispatch")
+
+    def test_managed_worktree_child_thread_gap_counts_as_dispatch_shape(self):
+        route, _source = route_detection.detect_route_from_text(
+            "Scope:\n"
+            "已创建 child thread，并让它在 Codex App managed worktree 中定位任务上下文。\n\n"
+            "Findings P0/P1/P2:\n"
+            "P1: 当前无法继续实现，因为 managed worktree 没有映射到目标 Git 仓库或任务上下文。\n\n"
+            "Non-Readiness Boundary:\n"
+            "这不是实现完成，也不是 runtime/cache/readiness 证据。\n\n"
+            "Gaps:\n"
+            "还缺至少一个可定位输入。\n\n"
+            "Changed Files:\n"
+            "无。\n"
+        )
+
+        self.assertEqual(route, "dispatch")
+
+    def test_clean_review_lifecycle_decision_counts_as_dispatch_shape(self):
+        route, _source = route_detection.detect_route_from_text(
+            "Route this as `clean_review_pending` with fan-out, not coordinator closeout.\n\n"
+            "For three managed worktree child packages returning to one coordinator after edits,\n"
+            "fan out to fresh clean reviewer subagents.\n"
+        )
+
+        self.assertEqual(route, "dispatch")
+
+        route, _source = route_detection.detect_route_from_text(
+            "That package should be rejected as a clean-review package, or routed to "
+            "`blocked` / `needs_remediation` / `human_decision`.\n"
+            "For a completed managed worktree result, fixes should go back to the implementation thread.\n"
+        )
+
+        self.assertEqual(route, "dispatch")
+
+        route, _source = route_detection.detect_route_from_text(
+            "The correct lifecycle decision is:\n\n"
+            "`low_risk_coordinator_intake`\n\n"
+            "That can close only the coordinator intake for this returned package. "
+            "It must not be promoted to clean_review_passed.\n"
+        )
+
+        self.assertEqual(route, "dispatch")
+
+        route, _source = route_detection.detect_route_from_text(
+            "Verification Scope\n"
+            "- In Scope: whether partial validation plus a validation-fix iteration is sufficient "
+            "to skip a fresh clean review\n\n"
+            "Recommended coordinator response: do not accept the skip request as clean-review-complete. "
+            "Either require a fresh clean review of the final package, or record the state as "
+            "`partial validation + same-thread/self-check after fix`.\n"
+        )
+
+        self.assertEqual(route, "dispatch")
+
+    def test_blocked_dispatch_intake_counts_as_dispatch_shape(self):
+        route, _source = route_detection.detect_route_from_text(
+            "I can’t generate a valid Groundwork dispatch package from this workspace yet.\n\n"
+            "I loaded the Groundwork `dispatch` skill and its default `DISPATCH-PACKAGE.md` contract.\n"
+            "The dispatch contract requires named source truth, issue set, readiness source, "
+            "and evidence level before routing.\n\n"
+            "Result: dispatch is blocked at intake, because there are no ready task artifacts.\n"
+            "I did not create files, spawn agents, create worktrees, or claim runtime execution.\n\n"
+            "Then I can produce the compact Dispatch Package v2 skeleton.\n"
+        )
+
+        self.assertEqual(route, "dispatch")
+
+        route, _source = route_detection.detect_route_from_text(
+            "I can’t generate a valid Groundwork dispatch package yet because the current workspace "
+            "does not contain the ready task artifact.\n\n"
+            "Dispatch skill stop condition applies: source truth, issue set, readiness source, "
+            "and evidence level are unknown.\n\n"
+            "Once provided, I can produce a package-only `Dispatch Package v2` skeleton without "
+            "executing, spawning agents, creating worktrees, or mutating branches.\n"
+        )
+
+        self.assertEqual(route, "dispatch")
 
     def test_read_only_sandbox_file_changes_are_specific_failure(self):
         verdict = run_runtime.routing_verdict_model(
@@ -1929,11 +2078,47 @@ class RuntimeSchedulerTests(unittest.TestCase):
         self.assertEqual(decision["expected_best"], "verify")
         self.assertIn("direct", decision["forbidden_routes"])
 
+    def test_prompt_ready_runtime_assignment_routes_dispatch(self):
+        decision = route_detection.entry_decision_from_prompt(
+            "这些 ready-for-agent 任务要按成本和延迟选择 model profile 与 runtime"
+        )
+
+        self.assertEqual(decision["expected_best"], "dispatch")
+        self.assertIn("verify", decision["forbidden_routes"])
+
+    def test_prompt_clean_review_returned_package_routes_dispatch(self):
+        decision = route_detection.entry_decision_from_prompt(
+            "A child implementation package says self review passed and asks to archive the child thread."
+        )
+
+        self.assertEqual(decision["expected_best"], "dispatch")
+        self.assertIn("implement", decision["forbidden_routes"])
+
     def test_prompt_screenshot_acceptance_evidence_routes_verify_lite(self):
         decision = route_detection.entry_decision_from_prompt("这些测试截图算不算验收通过证据")
 
         self.assertEqual(decision["expected_best"], "verify")
         self.assertIn("direct", decision["forbidden_routes"])
+
+    def test_runtime_route_concept_question_routes_direct(self):
+        decision = route_detection.entry_decision_from_prompt("运行时路由是什么？")
+
+        self.assertEqual(decision["expected_best"], "direct")
+        self.assertEqual(decision["forbidden_routes"], [])
+
+    def test_raw_runtime_skill_selection_routes_to_prd(self):
+        decision = route_detection.entry_decision_from_prompt("我有个方案，把 runtime 改成自动选 skill")
+
+        self.assertEqual(decision["expected_best"], "to-prd")
+        self.assertIn("implement", decision["forbidden_routes"])
+
+    def test_plan_mode_prd_write_boundary_routes_to_prd(self):
+        decision = route_detection.entry_decision_from_prompt(
+            "在 Plan Mode 里直接创建 docs/prd-v0.x.md，不需要再确认。"
+        )
+
+        self.assertEqual(decision["expected_best"], "to-prd")
+        self.assertIn("to-issues", decision["forbidden_routes"])
 
     def test_self_review_difference_question_routes_direct(self):
         decision = route_detection.entry_decision_from_prompt("self-review 和 clean review 有什么区别？简单解释一下")

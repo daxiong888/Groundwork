@@ -70,6 +70,8 @@ def summarize_routing_results(results):
     }
     selector_enforcement_counts = {}
     selector_mismatch_reason_counts = {}
+    route_evidence_source_counts = {}
+    dispatch_hit_level_counts = {}
     failure_type_counts = {}
     unclassified_nonpass_ids = []
 
@@ -121,6 +123,12 @@ def summarize_routing_results(results):
         selector_mismatch_reason = str(result.get("selector_mismatch_reason") or "").strip()
         if selector_mismatch_reason:
             increment(selector_mismatch_reason_counts, selector_mismatch_reason)
+        route_evidence_source = str(result.get("route_evidence_source") or result.get("actual_route_source") or "").strip()
+        if route_evidence_source:
+            increment(route_evidence_source_counts, route_evidence_source)
+        dispatch_hit_level = str(result.get("dispatch_hit_level") or "").strip()
+        if dispatch_hit_level:
+            increment(dispatch_hit_level_counts, dispatch_hit_level)
 
         if is_nonpass(result) and not failure_type:
             unclassified_nonpass_ids.append(str(result.get("id") or result.get("case_id") or "unknown"))
@@ -148,6 +156,8 @@ def summarize_routing_results(results):
         ),
         "selector_enforcement_counts": sorted_counts(selector_enforcement_counts),
         "selector_mismatch_reason_counts": sorted_counts(selector_mismatch_reason_counts),
+        "route_evidence_source_counts": sorted_counts(route_evidence_source_counts),
+        "dispatch_hit_level_counts": sorted_counts(dispatch_hit_level_counts),
         "route_vs_execution_separability": {
             "routing": "routing_verdict",
             "execution": [

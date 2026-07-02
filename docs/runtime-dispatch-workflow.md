@@ -28,7 +28,7 @@ flowchart LR
   O --> D
 ```
 
-`dispatch` is the routing boundary. It consumes accepted, ready task inputs and produces Dispatch Package v2 plus expected Result Package requirements. It does not execute the package, create a Codex App worktree, or create/update automations.
+`dispatch` is the post-readiness runtime/package decision boundary. It consumes accepted, ready, or returned runtime-material task inputs and produces Dispatch Package v2 plus expected Result Package requirements. It is not the upstream raw-intent classifier for `to-prd`, `to-issues`, `triage`, `verify`, `implement`, `handoff`, `wiki`, or direct answers. It does not execute the package, create a Codex App worktree, or create/update automations.
 
 ## Phase 1 Boundaries
 
@@ -46,7 +46,7 @@ flowchart LR
 1. `to-prd` establishes accepted source truth.
 2. `to-issues` turns accepted source truth into vertical work units with acceptance criteria, non-goals, blockers, verification evidence, AFK/HITL classification, and runtime candidate fields.
 3. `triage` decides whether the work is `ready_for_agent`, `ready_for_human`, `needs_info`, or blocked. Ready agent work may include a Goal Contract and Preferred Runtime recommendation.
-4. `dispatch` makes the final v0.4.0 route decision before runtime selection. Preferred Runtime is an input signal, not an execution command.
+4. `dispatch` makes the post-readiness runtime/package route decision before runtime selection. Preferred Runtime is an input signal, not an execution command, and Dispatch must not replace upstream raw-intent routing.
 5. Conflict preflight blocks dependent write dispatch when prerequisite merge-back, verification, or base refresh is missing.
 6. Runtime adapters return a Result Package or review package. Groundwork coordinator intake records package completeness and obvious blockers; it is not deep review and does not create readiness approval.
 7. `triage` records the next lifecycle state as `clean_review_pending`, `needs_remediation`, `blocked`, or another legal state from `THREAD-LIFECYCLE.md`.

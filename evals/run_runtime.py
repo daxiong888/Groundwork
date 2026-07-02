@@ -46,8 +46,10 @@ except ImportError:  # pragma: no cover - package import path
 
 try:
     from route_detection import detect_route_from_text
+    from route_detection import has_dispatch_route_marker as shared_has_dispatch_route_marker
 except ImportError:  # pragma: no cover - package import path
     from evals.route_detection import detect_route_from_text
+    from evals.route_detection import has_dispatch_route_marker as shared_has_dispatch_route_marker
 
 REPO = Path(os.environ.get("GROUNDWORK_REPO", Path(__file__).resolve().parents[1]))
 ROOT = Path(os.environ.get("GROUNDWORK_RUNTIME_ROOT", "/private/tmp/groundwork-runtime-v03"))
@@ -1258,6 +1260,17 @@ def route_evidence_source(parsed_actual, skill_hits, actual, final_response):
     return "final_message_marker"
 
 
+def dispatch_hit_level(expected, acceptable_routes, actual, skill_hits):
+    dispatch_relevant = expected == "dispatch" or "dispatch" in acceptable_routes or actual == "dispatch"
+    if "dispatch" in skill_hits:
+        return "skill_loaded"
+    if actual == "dispatch":
+        return "output_shape_only"
+    if dispatch_relevant:
+        return "missed"
+    return "not_applicable"
+
+
 def has_host_preemption_intent(row):
     risk_gate = str(row.get("risk_gate") or "").strip()
     intent_kind = str(row.get("intent_kind") or "").strip()
@@ -1362,15 +1375,7 @@ def has_gate_fields_or_direct_runtime_equivalent(row, actual, text):
 
 
 def has_dispatch_route_marker(text):
-    first = first_nonempty_line(text)
-    lowered = text.lower()
-    if first in {"Dispatch Runtime Decision", "Dispatch Summary"}:
-        return True
-    return "dispatch summary" in lowered and (
-        "runtime packages" in lowered
-        or "expected result package" in lowered
-        or "dispatch_version: 2" in lowered
-    )
+    return shared_has_dispatch_route_marker(text)
 
 
 def has_blocked_implementation_conformance(text):
@@ -2575,6 +2580,7 @@ def run_row(row, timeout_s=None, attempt=1):
     changes = changed_files(before, after)
     parsed_actual, skill_hits = parse_actual_skill(stdout, last, expected)
     actual = classify_actual_route(row, parsed_actual, skill_hits, last, changes)
+    acceptable_routes = acceptable_routes_for_row(row)
     if runtime_failed_without_final_response(rc, last):
         actual = UNKNOWN_ROUTE
     multi_skill_hit = len(skill_hits) > 1
@@ -2607,6 +2613,7 @@ def run_row(row, timeout_s=None, attempt=1):
         "multi_skill_hit": multi_skill_hit,
         "warnings": warnings,
         "route_evidence_source": route_evidence_source(parsed_actual, skill_hits, actual, last),
+        "dispatch_hit_level": dispatch_hit_level(expected, acceptable_routes, actual, skill_hits),
         "legacy_verdict": legacy_verdict,
         "legacy_notes": legacy_notes,
         "legacy_override": legacy_override,
@@ -2623,6 +2630,7 @@ def run_row(row, timeout_s=None, attempt=1):
         "hook_trust_bypass": hook_trust_bypass_enabled(),
         "runtime_mode": runtime_mode,
         "score_eligibility": score_eligibility_for_runtime_mode(runtime_mode),
+        "acceptable_routes": acceptable_routes,
         "workspace_note": workspace_note,
         "returncode": rc,
         "changed_files": changes,
@@ -2717,14 +2725,18 @@ def exception_result(row, exc):
     row_id = row.get("id", "unknown")
     metadata = case_metadata(row)
     runtime_mode = router_observability_runtime_mode()
+    expected = expected_skill_for_row(row)
+    acceptable_routes = acceptable_routes_for_row(row)
     result = {
         "id": row_id,
         "suite": row.get("_suite"),
-        "expected": expected_skill_for_row(row),
+        "expected": expected,
         "actual": "unknown",
         "skill_hits": [],
         "multi_skill_hit": False,
         "warnings": ["runner_exception"],
+        "route_evidence_source": "unknown",
+        "dispatch_hit_level": dispatch_hit_level(expected, acceptable_routes, UNKNOWN_ROUTE, []),
         "verdict": "blocked",
         "notes": f"runner exception: {type(exc).__name__}: {exc}",
         "parallel_safe": metadata["parallel_safe"],
@@ -2735,6 +2747,7 @@ def exception_result(row, exc):
         "returncode": None,
         "runtime_mode": runtime_mode,
         "score_eligibility": score_eligibility_for_runtime_mode(runtime_mode),
+        "acceptable_routes": acceptable_routes,
         "changed_files": [],
         "lifecycle_state_files": [],
         "lifecycle_artifact_errors": [],

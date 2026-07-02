@@ -2,15 +2,17 @@
 
 Target Reader: Codex running `dispatch` after selecting lite matrix, full package, clean review fanout, or complex separation.
 Reader Action Needed: Apply runtime routing behavior, selector honesty, route constraints, and hard stops without loading them in the active `SKILL.md` entry.
-Decision Supported: Which runtime route is appropriate, what package is emitted, and which tasks must stop, split, or return to triage.
+Decision Supported: Which post-readiness runtime/package route is appropriate, what package is emitted, and which tasks must stop, split, or return to triage.
 Artifact Type: branch-specific dispatch reference
 Source of Truth: `skills/dispatch/SKILL.md`, `DISPATCH-PACKAGE.md`, `RESULT-PACKAGE.md`, and shared runtime/evidence contracts.
-Scope: Dispatch route behavior, package-only boundaries, selector honesty, split rules, and execution gates.
-Out of Scope: Runtime execution, thread/worktree creation, remote writes, tracker mutation, final readiness, release, UAT, or customer acceptance.
+Scope: Dispatch-internal package task classification, post-readiness runtime/package route behavior, package-only boundaries, selector honesty, split rules, and execution gates.
+Out of Scope: Upstream raw-intent classification, raw requirement intake, draft PRD intake, ordinary implementation, ordinary verification, runtime execution, thread/worktree creation, remote writes, tracker mutation, final readiness, release, UAT, or customer acceptance.
 Evidence Level: Source-validation rule only.
 Safe to Share / Redaction Notes: Safe to share as-is; contains no secrets, credentials, PII, private logs, or production payloads.
 
 ## Required Routing Behavior
+
+Dispatch task classification happens only after the active entry route already has accepted, ready, or returned runtime-material work. It must not decide whether raw user intent belongs to `to-prd`, `to-issues`, `triage`, `verify`, `implement`, `handoff`, `wiki`, or direct response.
 
 Dispatch must:
 

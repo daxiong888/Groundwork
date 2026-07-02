@@ -9,6 +9,7 @@
   "expected_route_source": "fixture",
   "actual_route_source": "final_message_marker",
   "skill_hit_source": "final_message_marker",
+  "dispatch_hit_level": "not_applicable",
   "tool_coverage_status": "supported_events_observed",
   "score_eligibility": "ready",
   "acceptable_routes": [

@@ -16,6 +16,7 @@
     "expected_route_source",
     "actual_route_source",
     "skill_hit_source",
+    "dispatch_hit_level",
     "tool_coverage_status",
     "score_eligibility",
     "acceptable_routes",
@@ -79,6 +80,15 @@
     },
     "skill_hit_source": {
       "$ref": "groundwork-common.schema.json#/$defs/non_empty_string"
+    },
+    "dispatch_hit_level": {
+      "type": "string",
+      "enum": [
+        "skill_loaded",
+        "output_shape_only",
+        "missed",
+        "not_applicable"
+      ]
     },
     "tool_coverage_status": {
       "type": "string",

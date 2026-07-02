@@ -379,6 +379,12 @@ def score_turn(decision, final_message="", events=None, dispatch_decision=None, 
             (dispatch_decision.get("execution_profile") or {}).get("selector_enforcement")
             or "unknown"
         )
+    if actual == "dispatch":
+        dispatch_hit_level = "output_shape_only"
+    elif expected == "dispatch" or "dispatch" in acceptable:
+        dispatch_hit_level = "missed"
+    else:
+        dispatch_hit_level = "not_applicable"
 
     output_contract_verdict, output_checker, output_failure_type, output_fix_locus = output_contract_check(expected, final_message)
     checker_results = checker_results_for_score(expected, actual, final_message, decision)
@@ -398,6 +404,7 @@ def score_turn(decision, final_message="", events=None, dispatch_decision=None, 
         "expected_route_source": decision.get("decision_source", "unknown"),
         "actual_route_source": actual_source,
         "skill_hit_source": actual_source,
+        "dispatch_hit_level": dispatch_hit_level,
         "tool_coverage_status": tool_coverage_status(events),
         "score_eligibility": "insufficient_evidence",
         "acceptable_routes": acceptable,
@@ -448,6 +455,9 @@ def render_router_card(score, decision=None, dispatch_decision=None):
         "",
         "## Actual Route Source",
         f"- `{score.get('actual_route_source', 'unknown')}`",
+        "",
+        "## Dispatch Hit Level",
+        f"- `{score.get('dispatch_hit_level', 'unknown')}`",
         "",
         "## Tool Coverage",
         f"- `{score.get('tool_coverage_status', 'unknown')}`",
