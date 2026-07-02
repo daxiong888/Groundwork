@@ -3,10 +3,10 @@
 from datetime import datetime, timezone
 
 try:
-    from route_detection import detect_route_from_text
+    from route_detection import detect_route_from_text, has_dispatch_route_marker
     from routing_schema import as_list, normalize_route
 except ImportError:  # pragma: no cover - package import path
-    from evals.route_detection import detect_route_from_text
+    from evals.route_detection import detect_route_from_text, has_dispatch_route_marker
     from evals.routing_schema import as_list, normalize_route
 
 
@@ -287,6 +287,11 @@ def score_turn(decision, final_message="", events=None, dispatch_decision=None, 
     forbidden = as_list(entry.get("forbidden_routes"))
     actual, actual_source = detect_route_from_text(final_message)
     actual = normalize_route(actual)
+    route_evidence_source = actual_source
+    if actual == "unknown":
+        route_evidence_source = "unknown"
+    elif actual == "dispatch" and has_dispatch_route_marker(final_message):
+        route_evidence_source = "output_marker"
     dispatches = [dispatch_decision] if dispatch_decision else []
     profile_verdict, selector_mismatch_reason = execution_profile_verdict(dispatch_decision)
 
@@ -341,7 +346,8 @@ def score_turn(decision, final_message="", events=None, dispatch_decision=None, 
         "route_boundary": entry.get("route_boundary", "entry-contract"),
         "expected_route_source": decision.get("decision_source", "unknown"),
         "actual_route_source": actual_source,
-        "skill_hit_source": actual_source,
+        "route_evidence_source": route_evidence_source,
+        "skill_hit_source": "unknown",
         "dispatch_hit_level": dispatch_hit_level,
         "tool_coverage_status": tool_coverage_status(events),
         "score_eligibility": "insufficient_evidence",
@@ -362,7 +368,7 @@ def score_turn(decision, final_message="", events=None, dispatch_decision=None, 
         "failure_type": failure_type,
         "fix_locus": fix_locus,
         "changed_files": changed_files,
-        "skill_hits": [] if actual == "unknown" else [actual],
+        "skill_hits": [],
         "dispatch_decisions": dispatches,
         "router_hint_emitted": bool(decision.get("router_hint_emitted")),
         "prompt_enhancement_emitted": bool(decision.get("prompt_enhancement_emitted")),
@@ -393,6 +399,9 @@ def render_router_card(score, decision=None, dispatch_decision=None):
         "",
         "## Actual Route Source",
         f"- `{score.get('actual_route_source', 'unknown')}`",
+        "",
+        "## Route Evidence Source",
+        f"- `{score.get('route_evidence_source', 'unknown')}`",
         "",
         "## Dispatch Hit Level",
         f"- `{score.get('dispatch_hit_level', 'unknown')}`",

@@ -8,7 +8,8 @@
   "route_boundary": "entry-contract",
   "expected_route_source": "fixture",
   "actual_route_source": "final_message_marker",
-  "skill_hit_source": "final_message_marker",
+  "route_evidence_source": "final_message_marker",
+  "skill_hit_source": "unknown",
   "dispatch_hit_level": "not_applicable",
   "tool_coverage_status": "supported_events_observed",
   "score_eligibility": "baseline_eligible",
@@ -33,9 +34,7 @@
   "failure_type": "none",
   "fix_locus": "unknown",
   "changed_files": [],
-  "skill_hits": [
-    "implement"
-  ],
+  "skill_hits": [],
   "dispatch_decisions": [],
   "router_hint_emitted": false,
   "checker_results": [

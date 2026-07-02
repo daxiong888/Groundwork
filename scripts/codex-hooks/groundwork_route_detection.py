@@ -52,7 +52,11 @@ PLANMODE_PRD_RE = re.compile(
     r"(?:PRD|需求|新需求|产品方案|方案|workflow|流程).{0,80}(?:草稿|draft|新|设计|新增|创建|收敛|改成)",
     re.I,
 )
-ACCEPTED_SOURCE_RE = re.compile(r"已接受|accepted|确认跳过|明确跳过|ready[-_ ]?for[-_ ]?agent|ready issue|任务已经确认", re.I)
+ACCEPTED_SOURCE_RE = re.compile(
+    r"已接受|accepted|accepted[- ]ready|ready[-_ ]?for[-_ ]?agent|"
+    r"ready issue(?:s)?|ready task(?:s)?|ready work|ready package|任务已经确认",
+    re.I,
+)
 DOWNSTREAM_MATERIAL_RE = re.compile(
     r"completed .{0,40}(?:package|result|review)|"
     r"(?:returned|return|返回).{0,40}(?:package|result|review)|"
@@ -75,6 +79,7 @@ IMPLEMENT_RE = re.compile(
     r"(bug|问题).{0,12}(修|改|patch|补丁)",
     re.I,
 )
+IMPLEMENT_BYPASS_RE = re.compile(r"确认跳过|明确跳过|skip(?:ped)?\s+(?:PRD|planning|plan)", re.I)
 SELF_REVIEW_CLEAN_REVIEW_QUESTION_RE = re.compile(
     r"(self[- ]?review|self[- ]?check|自查|自审|same[- ]?session|同一\s*session).{0,40}"
     r"(?:能不能|可不可以|可以|可否|是否|算不算|算|当|作为|吗|\\?)"
@@ -176,18 +181,21 @@ def first_nonempty_line(text):
     return next((line.strip() for line in str(text or "").splitlines() if line.strip()), "")
 
 
-def has_dispatch_route_marker(text):
+def has_anchored_dispatch_marker(text):
     value = str(text or "")
-    first = first_nonempty_line(value)
-    first_marker = re.sub(r"^[#*\s]+|[*\s]+$", "", first).lower()
     anchored_marker = re.compile(
         r"^\s*(?:#+\s*)?\*{0,2}"
         r"(?:Dispatch Summary|Dispatch Package|Result Package|Dispatch Runtime Decision|Dispatch Candidate)"
         r"\*{0,2}\b",
         re.I | re.M,
     )
-    if anchored_marker.search(value):
-        return True
+    return bool(anchored_marker.search(value))
+
+
+def has_legacy_dispatch_shape(text):
+    value = str(text or "")
+    first = first_nonempty_line(value)
+    first_marker = re.sub(r"^[#*\s]+|[*\s]+$", "", first).lower()
     if first_marker.startswith("package-only runtime routing"):
         lowered = value.lower()
         return (
@@ -293,13 +301,19 @@ def has_dispatch_route_marker(text):
     return False
 
 
+def has_dispatch_route_marker(text):
+    return has_anchored_dispatch_marker(text) or has_legacy_dispatch_shape(text)
+
+
 def detect_route_from_text(text):
     value = str(text or "")
-    if has_dispatch_route_marker(value):
+    if has_anchored_dispatch_marker(value):
         return "dispatch", "final_message_marker"
     for route, pattern in ROUTE_MARKERS:
         if pattern.search(value):
             return route, "final_message_marker"
+    if has_legacy_dispatch_shape(value):
+        return "dispatch", "final_message_marker"
     if value.strip():
         return DIRECT_ROUTE, "final_message_marker"
     return UNKNOWN_ROUTE, "unknown"
@@ -312,7 +326,7 @@ def is_direct_plain_text(value):
 
 
 def is_raw_or_planmode_prd_intake(value):
-    if ACCEPTED_SOURCE_RE.search(value):
+    if ACCEPTED_SOURCE_RE.search(value) or is_implement_bypass(value):
         return False
     return bool(PLANMODE_PRD_RE.search(value))
 
@@ -331,11 +345,17 @@ def is_dispatch_ready_package_cue(value):
     )
 
 
+def is_implement_bypass(value):
+    return bool(IMPLEMENT_BYPASS_RE.search(value) and IMPLEMENT_RE.search(value))
+
+
 def prompt_route(value):
     if not str(value or "").strip():
         return UNKNOWN_ROUTE
     if is_direct_plain_text(value):
         return DIRECT_ROUTE
+    if is_implement_bypass(value):
+        return "implement"
     if is_raw_or_planmode_prd_intake(value):
         return "to-prd"
     if re.search(r"handoff|交接|续上|保存状态", value, re.I):
@@ -439,6 +459,8 @@ __all__ = [
     "normalize_route",
     "as_list",
     "detect_route_from_text",
+    "has_anchored_dispatch_marker",
+    "has_legacy_dispatch_shape",
     "has_dispatch_route_marker",
     "entry_decision_from_prompt",
     "classify_command",

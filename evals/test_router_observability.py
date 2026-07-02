@@ -817,6 +817,10 @@ class RouterObservabilityTests(unittest.TestCase):
         self.assertEqual(score["execution_profile_verdict"], "insufficient_evidence")
         self.assertEqual(score["selector_mismatch_reason"], "selector_unverified")
         self.assertEqual(score["score_eligibility"], "insufficient_evidence")
+        self.assertEqual(score["route_evidence_source"], "output_marker")
+        self.assertEqual(score["dispatch_hit_level"], "output_shape_only")
+        self.assertEqual(score["skill_hit_source"], "unknown")
+        self.assertEqual(score["skill_hits"], [])
 
     def test_tool_enforced_selector_requires_runtime_evidence_layer(self):
         decision = {

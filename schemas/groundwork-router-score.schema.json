@@ -15,6 +15,7 @@
     "route_boundary",
     "expected_route_source",
     "actual_route_source",
+    "route_evidence_source",
     "skill_hit_source",
     "dispatch_hit_level",
     "tool_coverage_status",
@@ -77,6 +78,15 @@
     },
     "actual_route_source": {
       "$ref": "groundwork-common.schema.json#/$defs/non_empty_string"
+    },
+    "route_evidence_source": {
+      "type": "string",
+      "enum": [
+        "output_marker",
+        "final_message_marker",
+        "route_detector",
+        "unknown"
+      ]
     },
     "skill_hit_source": {
       "$ref": "groundwork-common.schema.json#/$defs/non_empty_string"

@@ -905,7 +905,7 @@ class RuntimeSchedulerTests(unittest.TestCase):
 
         self.assertEqual(route, "dispatch")
 
-    def test_managed_worktree_child_thread_gap_counts_as_dispatch_shape(self):
+    def test_managed_worktree_child_thread_gap_with_implementation_shape_stays_implement(self):
         route, _source = route_detection.detect_route_from_text(
             "Scope:\n"
             "已创建 child thread，并让它在 Codex App managed worktree 中定位任务上下文。\n\n"
@@ -919,7 +919,7 @@ class RuntimeSchedulerTests(unittest.TestCase):
             "无。\n"
         )
 
-        self.assertEqual(route, "dispatch")
+        self.assertEqual(route, "implement")
 
     def test_clean_review_lifecycle_decision_counts_as_dispatch_shape(self):
         route, _source = route_detection.detect_route_from_text(
@@ -956,7 +956,7 @@ class RuntimeSchedulerTests(unittest.TestCase):
             "`partial validation + same-thread/self-check after fix`.\n"
         )
 
-        self.assertEqual(route, "dispatch")
+        self.assertEqual(route, "verify")
 
     def test_blocked_dispatch_intake_counts_as_dispatch_shape(self):
         route, _source = route_detection.detect_route_from_text(
@@ -2086,6 +2086,14 @@ class RuntimeSchedulerTests(unittest.TestCase):
         self.assertEqual(decision["expected_best"], "dispatch")
         self.assertIn("verify", decision["forbidden_routes"])
 
+    def test_prompt_ready_tasks_dispatch_package_routes_dispatch(self):
+        decision = route_detection.entry_decision_from_prompt(
+            "Use Groundwork dispatch to route these ready tasks and generate a dispatch package."
+        )
+
+        self.assertEqual(decision["expected_best"], "dispatch")
+        self.assertIn("verify", decision["forbidden_routes"])
+
     def test_prompt_clean_review_returned_package_routes_dispatch(self):
         decision = route_detection.entry_decision_from_prompt(
             "A child implementation package says self review passed and asks to archive the child thread."
@@ -2111,6 +2119,12 @@ class RuntimeSchedulerTests(unittest.TestCase):
 
         self.assertEqual(decision["expected_best"], "to-prd")
         self.assertIn("implement", decision["forbidden_routes"])
+
+    def test_skip_prd_runtime_package_implementation_routes_implement(self):
+        decision = route_detection.entry_decision_from_prompt("明确跳过 PRD，直接实现 runtime package 相关小改")
+
+        self.assertEqual(decision["expected_best"], "implement")
+        self.assertIn("dispatch", decision["forbidden_routes"])
 
     def test_plan_mode_prd_write_boundary_routes_to_prd(self):
         decision = route_detection.entry_decision_from_prompt(
