@@ -61,6 +61,7 @@ SUMMARY = RUN / "summary.json"
 FAILURES = RUN / "failures.md"
 COMPARISON_JSON = RUN / "comparison.json"
 COMPARISON_MD = RUN / "comparison.md"
+RUNTIME_SELECTOR = {"model": "", "profile": "", "codex_config": []}
 
 DEFAULT_SUITES = [
     "smoke.csv",
@@ -195,9 +196,9 @@ EVIDENCE_REQUIRED_IMPLEMENTED_TOKENS = {
     "source_or_unverified",
     "tests_or_unverified",
     "browser_or_unverified",
+    "runtime_or_unverified",
 }
 EVIDENCE_REQUIRED_FUTURE_TOKENS = {
-    "runtime_or_unverified",
     "cache_equivalence",
 }
 NOT_APPLICABLE = "not_applicable"
@@ -844,10 +845,14 @@ def hook_trust_bypass_enabled():
 
 
 ROUTER_OBSERVABILITY_CONFIG = Path(".groundwork") / "harness" / "router-observability" / "config.json"
-ROUTER_OBSERVABILITY_MODES = {"observe_only", "guided_hint_trial"}
+ROUTER_OBSERVABILITY_MODES = {"observe_only", "thin_prompt_trial", "guided_hint_trial"}
 GUIDED_HINT_TRIAL_BOUNDARY = (
     "behavior-shaping guided trial; not passive baseline, release, UAT, marketplace, "
     "cache-refresh, hook-trust, or customer readiness evidence"
+)
+THIN_PROMPT_TRIAL_BOUNDARY = (
+    "behavior-shaping thin prompt trial; route-agnostic guardrail lens only; not passive baseline, "
+    "release, UAT, marketplace, cache-refresh, hook-trust, or customer readiness evidence"
 )
 OBSERVE_ONLY_BOUNDARY = (
     "observe-only router observability run; no route hints injected; local eval evidence only, "
@@ -933,6 +938,8 @@ def normalize_router_observability_mode(value):
 def router_observability_evidence_boundary(mode):
     if mode == "guided_hint_trial":
         return GUIDED_HINT_TRIAL_BOUNDARY
+    if mode == "thin_prompt_trial":
+        return THIN_PROMPT_TRIAL_BOUNDARY
     if mode == "observe_only":
         return OBSERVE_ONLY_BOUNDARY
     return DISABLED_ROUTER_OBSERVABILITY_BOUNDARY
@@ -991,6 +998,8 @@ def score_eligibility_for_runtime_mode(runtime_mode):
     mode = str((runtime_mode or {}).get("router_observability_mode") or "disabled")
     if mode == "guided_hint_trial":
         return "guided_hint_excluded"
+    if mode == "thin_prompt_trial":
+        return "thin_prompt_excluded"
     if mode == "observe_only":
         return "baseline_eligible"
     return "insufficient_evidence"
@@ -1008,6 +1017,8 @@ def aggregate_runtime_mode(results):
     modes = sorted({str(item.get("router_observability_mode") or "disabled") for item in observed})
     if "guided_hint_trial" in modes:
         primary_mode = "guided_hint_trial"
+    elif "thin_prompt_trial" in modes:
+        primary_mode = "thin_prompt_trial"
     elif "observe_only" in modes:
         primary_mode = "observe_only"
     elif len(modes) == 1:
@@ -1029,6 +1040,8 @@ def codex_exec_command(cwd, sandbox, last_path, prompt):
     cmd = ["codex"]
     if hook_trust_bypass_enabled():
         cmd.append("--dangerously-bypass-hook-trust")
+    for item in RUNTIME_SELECTOR.get("codex_config") or []:
+        cmd.extend(["-c", str(item)])
     cmd.extend(
         [
             "-a",
@@ -1043,9 +1056,13 @@ def codex_exec_command(cwd, sandbox, last_path, prompt):
             "--skip-git-repo-check",
             "-s",
             sandbox,
-            prompt,
         ]
     )
+    if RUNTIME_SELECTOR.get("model"):
+        cmd.extend(["--model", str(RUNTIME_SELECTOR["model"])])
+    if RUNTIME_SELECTOR.get("profile"):
+        cmd.extend(["--profile", str(RUNTIME_SELECTOR["profile"])])
+    cmd.append(prompt)
     return cmd
 
 
@@ -1338,7 +1355,7 @@ def has_customer_visible_triage_gate_equivalent(row, actual, text):
 
 def has_gate_fields_or_direct_runtime_equivalent(row, actual, text):
     return (
-        all(field in text for field in GATE_FIELDS)
+        not missing_required_fields(text, GATE_FIELDS)
         or has_direct_runtime_gate_equivalent(row, actual, text)
         or has_customer_visible_triage_gate_equivalent(row, actual, text)
     )
@@ -1486,9 +1503,11 @@ def acceptable_routes_for_row(row):
 
 
 DIRECT_FALLBACK_CEREMONY_MARKERS = [
-    "PRD",
+    "# PRD",
+    "Artifact Type: PRD",
     "issue pack",
-    "issues",
+    "Issue Map",
+    "issue-map",
     "Implementation Mini-Plan",
     "Lifecycle Preflight",
     "STATE.md",
@@ -1590,6 +1609,70 @@ def has_browser_or_unverified_evidence(text):
     )
 
 
+def has_runtime_or_unverified_evidence(text):
+    runtime_markers = [
+        "runtime",
+        "runtime evidence",
+        "codex exec",
+        "run_runtime",
+        "exit code",
+        "command output",
+        "运行时",
+        "运行证据",
+        "运行结果",
+        "执行证据",
+        "执行结果",
+        "命令输出",
+        "日志",
+    ]
+    runtime_observed_markers = [
+        "exit code",
+        "command output",
+        "run_root",
+        "log:",
+        "logs/",
+        "passed",
+        "pass",
+        "ok",
+        "执行通过",
+        "运行通过",
+        "命令输出",
+    ]
+    unverified_markers = [
+        "not run",
+        "not covered",
+        "not provided",
+        "unverified",
+        "missing",
+        "blocked",
+        "no runtime",
+        "without runtime",
+        "cannot count",
+        "cannot prove",
+        "does not prove",
+        "insufficient",
+        "无法运行",
+        "无法验证",
+        "未运行",
+        "未验证",
+        "未覆盖",
+        "未提供",
+        "缺少",
+        "不能证明",
+        "不能作为",
+        "不足以",
+    ]
+    for line in str(text or "").splitlines():
+        lowered = line.lower()
+        if not any(marker in lowered for marker in runtime_markers):
+            continue
+        if any(marker in lowered for marker in unverified_markers):
+            return True
+        if any(marker in lowered for marker in runtime_observed_markers):
+            return True
+    return False
+
+
 def append_failure(failures, notes, failure_type, fix_locus, note):
     failures.append((failure_type, fix_locus))
     notes.append(note)
@@ -1633,7 +1716,7 @@ def output_contract_verdict(row, schema, actual, final_response):
                 )
         elif token == "gate_fields":
             if not has_gate_fields_or_direct_runtime_equivalent(row, actual, final_response):
-                missing = [field for field in GATE_FIELDS if field not in final_response]
+                missing = missing_required_fields(final_response, GATE_FIELDS)
                 append_failure(
                     failures,
                     notes,
@@ -1815,6 +1898,15 @@ def evidence_verdict(row, schema, actual, final_response, changes, stdout):
                     "evidence_failure",
                     "evidence_collection",
                     "missing browser evidence or explicit unverified browser boundary",
+                )
+        elif token == "runtime_or_unverified":
+            if not has_runtime_or_unverified_evidence(combined):
+                append_failure(
+                    failures,
+                    notes,
+                    "evidence_failure",
+                    "evidence_collection",
+                    "missing runtime evidence or explicit unverified runtime boundary",
                 )
 
     if future_tokens:
@@ -2328,7 +2420,7 @@ def quick_verdict(row, actual, last, rc, changes, lifecycle_errors, stdout=""):
 
     if boolish(row.get("gate_required")):
         if not has_gate_fields_or_direct_runtime_equivalent(row, actual, last):
-            missing = [field for field in GATE_FIELDS if field not in last]
+            missing = missing_required_fields(last, GATE_FIELDS)
             verdict = "fail"
             notes.append("missing gate fields: " + ", ".join(missing))
         if forbidden_git_add_dot_suggestion(last):
@@ -2769,6 +2861,7 @@ def write_summary(results, jobs, suites, resource_policy, group=None):
         "jobs": jobs,
         "resource_policy": resource_policy,
         "group": group,
+        "runtime_selector": dict(RUNTIME_SELECTOR),
         "suites": suites,
         "runtime_mode": runtime_mode,
         "rows": len(ordered),
@@ -2792,6 +2885,7 @@ def write_summary(results, jobs, suites, resource_policy, group=None):
         "",
         "## Evidence Boundary",
         "",
+        f"- Runtime selector: `{json.dumps(RUNTIME_SELECTOR, ensure_ascii=False, sort_keys=True)}`",
         f"- Runtime mode: `{runtime_mode['router_observability_mode']}`",
         f"- Router observability enabled: `{str(runtime_mode['router_observability_enabled']).lower()}`",
         f"- Hook trust bypass: `{str(runtime_mode['hook_trust_bypass']).lower()}`",
@@ -2891,8 +2985,10 @@ def comparison_row(row, passive, guided):
         "improved": verdict_rank(guided_verdict) < verdict_rank(passive_verdict),
         "guided_regression": guided_regression,
         "direct_negative_regression": direct_negative_regression,
-        "guided_evidence_classification": "guided_hint_excluded",
-        "guided_evidence_boundary": GUIDED_HINT_TRIAL_BOUNDARY,
+        "guided_evidence_classification": score_eligibility_for_runtime_mode(guided.get("runtime_mode")),
+        "guided_evidence_boundary": router_observability_evidence_boundary(
+            str((guided.get("runtime_mode") or {}).get("router_observability_mode") or "disabled")
+        ),
         "passive_case_result": passive.get("case_result") or "",
         "guided_case_result": guided.get("case_result") or "",
     }
@@ -2922,11 +3018,14 @@ def write_comparison_report(rows, passive_results, guided_results, passive_summa
     report = {
         "run_root": str(RUN),
         "suites": suites,
-        "compared_modes": ["observe_only", "guided_hint_trial"],
+        "compared_modes": ["observe_only", "thin_prompt_trial"],
         "evidence_boundary": {
             "passive": OBSERVE_ONLY_BOUNDARY,
-            "guided": GUIDED_HINT_TRIAL_BOUNDARY,
-            "baseline_policy": "guided passes are guided_hint_excluded behavior-shaping trial evidence and are not passive baseline evidence",
+            "guided": THIN_PROMPT_TRIAL_BOUNDARY,
+            "baseline_policy": (
+                "thin prompt passes are thin_prompt_excluded behavior-shaping trial evidence and are not "
+                "passive baseline evidence"
+            ),
         },
         "passive_summary": passive_summary,
         "guided_summary": guided_summary,
@@ -2936,7 +3035,7 @@ def write_comparison_report(rows, passive_results, guided_results, passive_summa
             "comparison_json": str(COMPARISON_JSON),
             "comparison_md": str(COMPARISON_MD),
             "passive_run_root": str(Path(RUN) / "observe_only"),
-            "guided_run_root": str(Path(RUN) / "guided_hint_trial"),
+            "guided_run_root": str(Path(RUN) / "thin_prompt_trial"),
         },
         "finished": datetime.now(timezone.utc).isoformat(),
     }
@@ -2948,8 +3047,8 @@ def write_comparison_report(rows, passive_results, guided_results, passive_summa
         "## Evidence Boundary",
         "",
         f"- Passive mode: `{OBSERVE_ONLY_BOUNDARY}`",
-        f"- Guided mode: `{GUIDED_HINT_TRIAL_BOUNDARY}`",
-        "- Baseline policy: guided passes are `guided_hint_excluded` behavior-shaping trial evidence and are not passive baseline evidence.",
+        f"- Trial mode: `{THIN_PROMPT_TRIAL_BOUNDARY}`",
+        "- Baseline policy: thin prompt passes are `thin_prompt_excluded` behavior-shaping trial evidence and are not passive baseline evidence.",
         "",
         "## Counts",
         "",
@@ -3014,7 +3113,7 @@ def run_router_mode_comparison(rows, jobs, suites, resource_policy, retry_timeou
         group,
     )
     guided = run_router_mode_pass(
-        "guided_hint_trial",
+        "thin_prompt_trial",
         rows,
         jobs,
         suites,
@@ -3051,6 +3150,14 @@ def parse_args(argv=None):
     )
     parser.add_argument("--jobs", type=int, default=1, help="Maximum concurrent safe cases. Default: 1.")
     parser.add_argument("--serial", action="store_true", help="Force serial execution, equivalent to --jobs 1.")
+    parser.add_argument("--model", help="Optional model selector passed through to codex exec, for example gpt-5.4-mini.")
+    parser.add_argument("--profile", help="Optional Codex config profile passed through to codex exec.")
+    parser.add_argument(
+        "--codex-config",
+        action="append",
+        default=[],
+        help="Optional codex exec -c key=value override. May be repeated.",
+    )
     parser.add_argument(
         "--resource-policy",
         choices=["auto", "none"],
@@ -3063,7 +3170,7 @@ def parse_args(argv=None):
     parser.add_argument(
         "--compare-router-modes",
         action="store_true",
-        help="Run the selected rows once as observe_only and once as guided_hint_trial, then write comparison.json/md.",
+        help="Run the selected rows once as observe_only and once as thin_prompt_trial, then write comparison.json/md.",
     )
     parser.add_argument(
         "--retry-timeouts",
@@ -3148,6 +3255,9 @@ def main(argv=None):
     CASES.mkdir(parents=True, exist_ok=True)
 
     jobs = 1 if args.serial else max(1, args.jobs)
+    RUNTIME_SELECTOR["model"] = str(args.model or "")
+    RUNTIME_SELECTOR["profile"] = str(args.profile or "")
+    RUNTIME_SELECTOR["codex_config"] = [str(item) for item in (args.codex_config or [])]
 
     if target_ids:
         rows = [row for row in rows if row["id"] in target_ids]
@@ -3165,6 +3275,7 @@ def main(argv=None):
     print(f"rows={len(rows)}", flush=True)
     print(f"jobs={jobs}", flush=True)
     print(f"resource_policy={args.resource_policy}", flush=True)
+    print("runtime_selector=" + json.dumps(RUNTIME_SELECTOR, ensure_ascii=False, sort_keys=True), flush=True)
     if args.group:
         print(f"group={args.group}", flush=True)
 

@@ -92,7 +92,7 @@ Install/update in v0 means the maintainer uses an existing local plugin install 
 
 In `observe_only`, hooks may write scratch artifacts and cards for opted-in projects, but they must not inject route hints, block prompts, rewrite tool calls, request Stop continuation, create warnings in normal passing cases, or change model behavior.
 
-Route hints are allowed only as a later explicit `guided_hint_trial` mode. Guided trials must be labeled separately and must not be mixed into passive observability baselines, because the hint changes the behavior being measured.
+Behavior-shaping prompt context is allowed only in explicit trial modes. `thin_prompt_trial` may add route-agnostic Groundwork guardrails without naming routes or skills. `guided_hint_trial` may add allowlisted route-specific hints only when the route has a stable output contract. Both trial modes must be labeled separately and must not be mixed into passive observability baselines, because the context changes the behavior being measured.
 
 The recommended harness order is:
 
@@ -326,7 +326,7 @@ Minimum shape:
 
 ```json
 {
-  "decision_mode": "observe_only | guided_hint_trial",
+  "decision_mode": "observe_only | thin_prompt_trial | guided_hint_trial",
   "decision_source": "fixture | deterministic_entry_classifier | heuristic | unknown",
   "route": "direct | to-prd | to-issues | triage | write-plan | prototype | implement | verify | handoff | dispatch | wiki",
   "requirement_state": "raw | grilled | prd_draft | prd_accepted | issue_ready | implementation_ready | verified | blocked",
@@ -598,17 +598,27 @@ Hooks must remain conservative:
 - keep `observe_only` as the default mode;
 - use `systemMessage` or additional context only for opt-in guided trials and warnings.
 
-### 9.3.1 Observe-Only vs Guided Hint Trial
+### 9.3.1 Observe-Only vs Prompt Trial Modes
 
 `observe_only` is the v0 default and the only mode eligible for the first passive baseline. It writes trace artifacts and cards but does not change the model's prompt context.
 
 `dormant` is the default state for every project that has not opted in. Dormant hooks must return success without writing trace artifacts, emitting context, blocking prompts, or surfacing warnings.
 
-`guided_hint_trial` is optional and explicit. It may emit compact `additionalContext` route hints, but every artifact from that mode must record:
+`thin_prompt_trial` is optional and explicit. It may emit compact route-agnostic `additionalContext` guardrails for non-direct routes. Every artifact from that mode must record the mode and baseline exclusion. `prompt_enhancement_emitted` records whether that turn actually received injected route-agnostic context:
+
+```text
+decision_mode = thin_prompt_trial
+router_hint_emitted = false
+prompt_enhancement_emitted = true|false
+score_eligibility = thin_prompt_excluded
+```
+
+`guided_hint_trial` is optional, explicit, and allowlisted. It may emit compact route-specific `additionalContext` hints only for stable output contracts such as `verify` scope-first output. Every artifact from that mode must record the mode and baseline exclusion. `router_hint_emitted` records whether that turn actually received an allowlisted route-specific hint:
 
 ```text
 decision_mode = guided_hint_trial
-router_hint_emitted = true
+router_hint_emitted = true|false
+prompt_enhancement_emitted = false
 score_eligibility = guided_hint_excluded
 ```
 
@@ -730,12 +740,12 @@ Output:
 - no output and no trace write when the project has not opted in;
 - `router-decision.json` in local scratch;
 - no hook output by default in `observe_only`;
-- optional JSON hook output with `hookSpecificOutput.additionalContext` only when `guided_hint_trial` is explicitly enabled.
+- optional JSON hook output with `hookSpecificOutput.additionalContext` only when `thin_prompt_trial` or allowlisted `guided_hint_trial` is explicitly enabled.
 
-When guided hint mode is enabled, the additional context must be short and bounded, for example:
+When thin prompt mode is enabled, the additional context must be short, bounded, and route-agnostic, for example:
 
 ```text
-Groundwork route hint: expected first route write-plan; no file edits expected; use scope, assumptions, steps, verification, risks, handoff boundary.
+Groundwork context: Preserve evidence boundaries. Keep the user's requested task primary.
 ```
 
 Acceptance criteria:
@@ -746,7 +756,7 @@ Acceptance criteria:
 - Hook does not block normal prompts by default.
 - Hook can be disabled by config or environment variable.
 - In default `observe_only`, hook does not emit `additionalContext`.
-- Guided hints are opt-in, recorded with `decision_mode=guided_hint_trial`, and excluded from passive baseline metrics.
+- Trial prompt context is opt-in, recorded with `decision_mode=thin_prompt_trial` or `decision_mode=guided_hint_trial`, and excluded from passive baseline metrics.
 - Hook records `expected_best` candidate, `acceptable_routes`, `forbidden_routes`, `route_boundary`, `decision_source`, and source of inference when known.
 
 ### FR-4: Tool and Permission Event Capture
@@ -1189,7 +1199,7 @@ Each row:
   "actual_route_source": "hook_event | final_message_marker | codex_exec_json | changed_file_snapshot | unknown",
   "skill_hit_source": "hook_event | codex_exec_json | final_message_marker | unknown",
   "tool_coverage_status": "supported_events_observed | partial | unsupported | unknown",
-  "score_eligibility": "baseline_eligible | display_only | guided_hint_excluded | insufficient_evidence",
+  "score_eligibility": "baseline_eligible | display_only | guided_hint_excluded | thin_prompt_excluded | insufficient_evidence",
   "acceptable_routes": ["write-plan"],
   "forbidden_routes": ["implement", "verify", "direct"],
   "routing_verdict": "fail",
@@ -1455,7 +1465,7 @@ Promoted artifacts must not include:
 
 Hook traces, score JSON, router cards, and reports are review evidence. They are not release, runtime, UAT, customer, marketplace, or cache-refresh evidence unless separate evidence is named.
 
-Hook traces with `decision_mode=guided_hint_trial` are behavior-shaping trial evidence. They must not be counted as passive observability baseline evidence.
+Hook traces with `decision_mode=thin_prompt_trial` or `decision_mode=guided_hint_trial` are behavior-shaping trial evidence. They must not be counted as passive observability baseline evidence.
 
 ---
 
@@ -1594,7 +1604,7 @@ Acceptance criteria:
 - Documents that plugin install/update uses an existing local install or supported update path and does not create marketplace release packaging.
 - Documents that `SessionStart` is deferred unless session-level metadata is accepted as necessary.
 - Documents scratch layout and redaction boundary.
-- Documents default `observe_only`, optional `guided_hint_trial`, raw-capture opt-in, and snippet-capture opt-in.
+- Documents default `observe_only`, optional `thin_prompt_trial`, optional allowlisted `guided_hint_trial`, raw-capture opt-in, and snippet-capture opt-in.
 - Documents how to disable hooks.
 - Does not require global Codex config mutation in repo tests.
 
@@ -1622,7 +1632,7 @@ Acceptance criteria:
 - No-ops when project opt-in is absent.
 - Writes `router-decision.json` to local scratch.
 - Does not produce `additionalContext` in default `observe_only`.
-- Produces compact additional context only when explicit `guided_hint_trial` mode is enabled.
+- Produces compact additional context only when explicit `thin_prompt_trial` or allowlisted `guided_hint_trial` mode is enabled.
 - Records `decision_mode`, `decision_source`, `router_hint_emitted`, and raw-capture status.
 - Has dry-run tests with fixture prompts.
 - Does not modify source files or committed artifacts at runtime.
@@ -1828,11 +1838,11 @@ Trial evidence must record:
 
 The trial succeeds when cards make route uncertainty visible, not when every live turn receives a known actual route.
 
-### Phase 3A: Optional Guided Hint Trial
+### Phase 3A: Optional Prompt Trial
 
-Only after an observe-only baseline exists, run an explicit `guided_hint_trial` if the maintainer wants to test route hints.
+Only after an observe-only baseline exists, run an explicit `thin_prompt_trial` if the maintainer wants to test route-agnostic guardrail context. Use `guided_hint_trial` only for allowlisted route-specific contracts after thin prompt evidence is reviewed.
 
-Guided hint evidence must be separated from passive baseline evidence and must record `router_hint_emitted=true`.
+Prompt trial evidence must be separated from passive baseline evidence. `thin_prompt_trial` artifacts must record `prompt_enhancement_emitted=true` only when route-agnostic context was actually injected, and `guided_hint_trial` artifacts must record `router_hint_emitted=true` only when an allowlisted route-specific hint was actually injected.
 
 ### Phase 4: Replay and Backfill
 
@@ -1858,9 +1868,9 @@ Mitigation: Every hook writes transparent JSON and a card. Hook failures are rec
 
 Mitigation: Every event-derived score records coverage status and source strength. Unsupported or unobserved paths become `unknown`, `partial`, or `insufficient_evidence`, never silent pass evidence.
 
-### Risk: Route Hints Change the Thing Being Measured
+### Risk: Prompt Context Changes the Thing Being Measured
 
-Mitigation: v0 defaults to `observe_only`. `guided_hint_trial` is explicit, recorded, and excluded from passive baseline metrics.
+Mitigation: v0 defaults to `observe_only`. `thin_prompt_trial` and `guided_hint_trial` are explicit, recorded, and excluded from passive baseline metrics.
 
 ### Risk: Hook Overhead Slows Codex
 
@@ -1904,7 +1914,7 @@ Deferred implementation questions:
 
 1. Whether live-only `case_kind` / `case_source` tokens should be added to schema or kept outside eval rows until backfill.
 2. Whether later general-user rollout should keep local-only opt-in, support committed project policy, or add a UI/config helper.
-3. Whether `guided_hint_trial` should graduate into a supported mode after passive baseline evidence exists.
+3. Whether `thin_prompt_trial` or any allowlisted `guided_hint_trial` should graduate into a supported mode after passive baseline evidence exists.
 4. Whether Stop hook warnings should use `systemMessage` for severe failures after observe-only scoring is stable.
 5. Whether changed-file snapshots should be path-only by default or include hashes for stronger evidence.
 6. Whether Automation summaries should run in local project mode or dedicated background worktree mode.

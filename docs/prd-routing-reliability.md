@@ -581,15 +581,15 @@ gate_observed
 git_status
 raw_intent_no_implementation
 direct_fallback_no_artifact
+source_or_unverified
+tests_or_unverified
+runtime_or_unverified
+browser_or_unverified
 ```
 
 Allowed future `evidence_required` tokens:
 
 ```text
-source_or_unverified
-tests_or_unverified
-runtime_or_unverified
-browser_or_unverified
 cache_equivalence
 ```
 

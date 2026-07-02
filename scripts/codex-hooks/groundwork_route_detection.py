@@ -23,6 +23,25 @@ UNKNOWN_ROUTE = "unknown"
 HOST_PREEMPTION_ROUTE = "runtime-safety-gate"
 WORKFLOW_ROUTES = PUBLIC_SKILL_ROUTES | {DIRECT_ROUTE, UNKNOWN_ROUTE, HOST_PREEMPTION_ROUTE}
 
+CONCEPT_EXPLANATION_RE = re.compile(r"有什么区别|区别是什么|简单解释|概念区别|difference between", re.I)
+EVIDENCE_UPGRADE_RE = re.compile(r"能不能|可以|可否|是否|算|当|作为|证据|evidence|readiness|验收|通过|升级", re.I)
+EVIDENCE_BOUNDARY_QUESTION_PATTERN = (
+    r"("
+    r"(?:runtime|test(?:s)?|screenshot(?:s)?|source|cache|evidence|运行时|测试|截图|源码|源代码|缓存|证据)"
+    r".{0,40}"
+    r"(?:能不能|可不可以|可以|可否|是否|算不算|算|当|作为|升级|count(?:s)? as|satisf(?:y|ies)|support|prove)"
+    r".{0,40}"
+    r"(?:readiness|ready|release|UAT|acceptance|验收|通过|就绪|发布|clean[- ]?review|证据)"
+    r")|("
+    r"(?:readiness|ready|release|UAT|acceptance|验收|通过|就绪|发布|clean[- ]?review)"
+    r".{0,40}"
+    r"(?:能不能|可不可以|可以|可否|是否|算不算|算|当|作为|升级|count(?:s)? as|satisf(?:y|ies)|support|prove)"
+    r".{0,40}"
+    r"(?:runtime|test(?:s)?|screenshot(?:s)?|source|cache|evidence|运行时|测试|截图|源码|源代码|缓存|证据)"
+    r")"
+)
+EVIDENCE_BOUNDARY_QUESTION_RE = re.compile(EVIDENCE_BOUNDARY_QUESTION_PATTERN, re.I)
+
 ROUTE_MARKERS = [
     ("dispatch", re.compile(r"^Dispatch Package\b|^Result Package\b|Dispatch Runtime Decision|Dispatch Candidate", re.I | re.M)),
     ("verify", re.compile(r"^Verification Scope\b|^验证范围\b", re.I | re.M)),
@@ -37,9 +56,17 @@ ROUTE_MARKERS = [
         ),
     ),
     ("write-plan", re.compile(r"Implementation Mini-Plan|implementation plan|实现计划|计划[:：]|可执行 plan|模板级 plan", re.I)),
+    (
+        "triage",
+        re.compile(
+            r"^Triage\b|^Triage Verdict\b|^State Transition\b|"
+            r"^(?:State|Status|Decision|状态|决策|Next State)\s*[:：].*"
+            r"(?:ready-for-agent|needs-info|AFK|HITL|blocked)",
+            re.I | re.M,
+        ),
+    ),
     ("to-issues", re.compile(r"issue-map|Issue Map|Acceptance Criteria|验收标准|不能拆 issues|拆 issues", re.I)),
     ("to-prd", re.compile(r"^# PRD\b|Artifact Type:\s*PRD|产品需求", re.I | re.M)),
-    ("triage", re.compile(r"^Triage\b|^Triage Verdict\b|ready-for-agent|needs-info|AFK|HITL|State Transition", re.I | re.M)),
     ("prototype", re.compile(r"prototype|原型", re.I)),
     ("wiki", re.compile(r"LLM Wiki|wiki update candidate|项目 wiki", re.I)),
 ]
@@ -51,6 +78,8 @@ PROMPT_ROUTE_MARKERS = [
         "verify",
         re.compile(
             r"\bverify\b|验证|ready|就绪|UAT|release|发布|"
+            + EVIDENCE_BOUNDARY_QUESTION_PATTERN
+            + r"|"
             r"(self[- ]?review|self[- ]?check|自查|自审|same[- ]?session|同一\s*session).{0,30}"
             r"(clean[- ]?review|独立(?:审查|review|验证)|readiness|证据|evidence|验收)|"
             r"(clean[- ]?review|独立(?:审查|review|验证)).{0,30}"
@@ -75,9 +104,6 @@ PROMPT_ROUTE_MARKERS = [
     ("prototype", re.compile(r"prototype|原型", re.I)),
     ("wiki", re.compile(r"wiki|知识库", re.I)),
 ]
-
-CONCEPT_EXPLANATION_RE = re.compile(r"有什么区别|区别是什么|简单解释|概念区别|difference between", re.I)
-EVIDENCE_UPGRADE_RE = re.compile(r"能不能|可以|可否|是否|算|当|作为|证据|evidence|readiness|验收|通过|升级", re.I)
 
 GIT_WRITE_RE = re.compile(r"\bgit\s+(add|commit|push|reset|checkout|switch|clean|merge|rebase)\b")
 FILE_WRITE_RE = re.compile(r"\b(apply_patch|cat\s*>|tee\s+|python\d?\s+.*write_text|rm\s+)", re.I)
@@ -118,7 +144,9 @@ def detect_route_from_text(text):
 def entry_decision_from_prompt(prompt):
     value = str(prompt or "")
     route = UNKNOWN_ROUTE
-    if CONCEPT_EXPLANATION_RE.search(value) and not EVIDENCE_UPGRADE_RE.search(value):
+    if CONCEPT_EXPLANATION_RE.search(value) and not (
+        EVIDENCE_UPGRADE_RE.search(value) or EVIDENCE_BOUNDARY_QUESTION_RE.search(value)
+    ):
         route = DIRECT_ROUTE
     else:
         for candidate, pattern in PROMPT_ROUTE_MARKERS:

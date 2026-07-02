@@ -270,10 +270,10 @@ class RouterObservabilityTests(unittest.TestCase):
             decision = json.loads((self.turn_dir(root) / "router-decision.json").read_text(encoding="utf-8"))
             self.assertEqual(decision["activation_source"], "invalid_config_env_force_enable")
 
-    def test_guided_hint_mode_emits_context_and_excludes_baseline(self):
+    def test_thin_prompt_mode_emits_route_agnostic_context_and_excludes_baseline(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            self.write_config(root, mode="guided_hint_trial")
+            self.write_config(root, mode="thin_prompt_trial")
 
             result = run_hook(
                 "user_prompt_submit_groundwork_entry.py",
@@ -283,11 +283,41 @@ class RouterObservabilityTests(unittest.TestCase):
 
             output = json.loads(result.stdout)
             self.assertEqual(output["hookSpecificOutput"]["hookEventName"], "UserPromptSubmit")
-            self.assertIn("additionalContext", output["hookSpecificOutput"])
+            context = output["hookSpecificOutput"]["additionalContext"]
+            self.assertIn("Preserve evidence boundaries", context)
+            self.assertIn("Keep the user's requested task primary", context)
+            self.assertNotIn("expected first route", context)
+            self.assertNotIn("use verify", context)
             decision = json.loads((self.turn_dir(root) / "router-decision.json").read_text(encoding="utf-8"))
+            self.assertEqual(decision["decision_mode"], "thin_prompt_trial")
             self.assertEqual(decision["entry_decision"]["expected_best"], "write-plan")
+            self.assertFalse(decision["router_hint_emitted"])
+            self.assertTrue(decision["prompt_enhancement_emitted"])
             score = score_turn(decision, "Implementation Mini-Plan", [])
-            self.assertEqual(score["score_eligibility"], "guided_hint_excluded")
+            self.assertFalse(score["router_hint_emitted"])
+            self.assertTrue(score["prompt_enhancement_emitted"])
+            self.assertEqual(score["score_eligibility"], "thin_prompt_excluded")
+            self.assert_router_score_schema_valid(score)
+
+    def test_thin_prompt_mode_does_not_emit_context_for_direct_prompts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.write_config(root, mode="thin_prompt_trial")
+
+            result = run_hook(
+                "user_prompt_submit_groundwork_entry.py",
+                {"cwd": str(root), "session_id": "s1", "turn_id": "t1", "prompt": "改一下这句话里的错别字"},
+                root,
+            )
+
+            self.assertEqual(result.stdout, "")
+            decision = json.loads((self.turn_dir(root) / "router-decision.json").read_text(encoding="utf-8"))
+            self.assertEqual(decision["decision_mode"], "thin_prompt_trial")
+            self.assertEqual(decision["entry_decision"]["expected_best"], "direct")
+            self.assertFalse(decision["router_hint_emitted"])
+            self.assertFalse(decision["prompt_enhancement_emitted"])
+            score = score_turn(decision, "Direct answer.", [])
+            self.assertFalse(score["prompt_enhancement_emitted"])
             self.assert_router_score_schema_valid(score)
 
     def test_guided_hint_verify_evidence_label_upgrade_mentions_verification_scope(self):
@@ -320,7 +350,7 @@ class RouterObservabilityTests(unittest.TestCase):
             score = score_turn(decision, "Verification Scope\nIn Scope\nOut of Scope\nCovered\nNot Covered\nEvidence Sources\nUser-visible Claim Being Verified", [])
             self.assertEqual(score["score_eligibility"], "guided_hint_excluded")
 
-    def test_guided_hint_implement_missing_source_mentions_blocked_implementation(self):
+    def test_guided_hint_non_allowlisted_routes_do_not_emit_context(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             self.write_config(root, mode="guided_hint_trial")
@@ -331,22 +361,11 @@ class RouterObservabilityTests(unittest.TestCase):
                 root,
             )
 
-            output = json.loads(result.stdout)
-            hint = output["hookSpecificOutput"]["additionalContext"]
-            self.assertIn("use implement", hint)
-            self.assertIn("Blocked Implementation", hint)
-            for field in [
-                "Scope",
-                "Acceptance Map",
-                "Evidence Inspected",
-                "Findings P0/P1/P2",
-                "Non-Readiness Boundary",
-                "Gaps",
-                "Next Action",
-            ]:
-                self.assertIn(field, hint)
+            self.assertEqual(result.stdout, "")
             decision = json.loads((self.turn_dir(root) / "router-decision.json").read_text(encoding="utf-8"))
             self.assertEqual(decision["entry_decision"]["expected_best"], "implement")
+            self.assertFalse(decision["router_hint_emitted"])
+            self.assertFalse(decision["prompt_enhancement_emitted"])
 
     def test_observe_only_does_not_emit_additional_context(self):
         with tempfile.TemporaryDirectory() as tmp:

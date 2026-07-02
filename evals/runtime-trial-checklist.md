@@ -150,7 +150,7 @@ Do not treat this suite as a new runtime or evaluation method. It extends the ex
 
 ## Routing Reliability Targeted Trial
 
-`evals/prompts/routing-reliability.csv` is part of `DEFAULT_SUITES` starting in v0.3.1 for personal and team-internal regression coverage. Continue using it as a targeted suite before future promotion, release-gate, or public-surface decisions that go beyond this internal default coverage.
+`evals/prompts/routing-reliability.csv` is part of `DEFAULT_SUITES` starting in v0.3.1 for personal and team-internal regression coverage. Continue using it as a targeted suite before any future promotion, release-gate, or public-surface decision that goes beyond this internal default coverage. Do not infer default-promotion from this checklist alone.
 
 This suite validates the internal Groundwork Entry Contract and route judgment behavior. It must not create a public `routing`, `router`, `groundwork-entry`, `preflight`, or `runtime-safety-gate` skill. Direct fallback remains a valid first route for small low-risk prompts and host/runtime safety preemption remains an eval-only actual-route classification.
 
@@ -168,6 +168,11 @@ Before using a routing runtime result as gate evidence, record runtime truth ali
 - whether runner execution mutated the source repository.
 
 If the installed plugin cache cannot be proven equivalent to the source package and was not refreshed through the supported install path, the run is diagnostic evidence only. It is not release-gate proof.
+
+Treat the routing trial as a two-step gate:
+
+1. Run targeted routing checks first and keep the result scoped to the targeted suite.
+2. Record a separate default-promotion decision only after targeted evidence is stable and cache/source alignment is proven.
 
 Run targeted routing checks before default suites:
 
@@ -189,6 +194,8 @@ Focused remediation evidence is enough when all of the following are true:
 - the affected row or rows pass with routing, output, evidence, behavior, and overall verdicts all green;
 - the change does not add a public skill, broaden the runtime-visible skill surface, or make another default-suite promotion decision;
 - the review explicitly states that full targeted release-gating evidence is not being claimed.
+
+If a targeted rerun uncovers a regression, record the regression owner, action, and sample-backfill decision in the follow-up note or baseline. Keep the row-level failure classification aligned with `docs/skill-success-metrics.md`.
 
 Run a full targeted rerun before any future default-suite promotion decision, after broad public skill routing changes, after measurement-token semantics change across row groups, or when focused evidence exposes a new cross-boundary regression.
 
@@ -217,6 +224,8 @@ Default-promotion decisions must be recorded before changing default-suite membe
 - `promote_to_default`: targeted gate is stable, cache/source evidence is valid, no blocking default-suite regression appears, and both runner entrypoints will be updated together.
 
 Do not create baseline notes, runtime-surface edits, or default promotion decisions as part of a docs-only checklist update. Those belong to the targeted baseline, evidence-justified surface adjustment, and promotion review slices.
+
+Deferred pilot boundaries stay out of this checklist until targeted evidence proves they belong here. That includes learned routing, retrieval or rerank pilots, MCP/A2A pilots, observability dashboards, and error-budget programs.
 
 ## Checks To Record
 

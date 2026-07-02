@@ -238,6 +238,9 @@ def apply_live_score_authority_gate(score, decision):
     if decision.get("decision_mode") == "guided_hint_trial" or score.get("router_hint_emitted"):
         score["score_eligibility"] = "guided_hint_excluded"
         return score
+    if decision.get("decision_mode") == "thin_prompt_trial" or score.get("prompt_enhancement_emitted"):
+        score["score_eligibility"] = "thin_prompt_excluded"
+        return score
     if decision.get("decision_mode") != "observe_only":
         blockers.append("decision_mode")
     if score.get("expected_route_source") not in {"fixture", "deterministic_entry_classifier"}:
@@ -355,6 +358,7 @@ def score_turn(decision, final_message="", events=None, dispatch_decision=None, 
         "skill_hits": [] if actual == "unknown" else [actual],
         "dispatch_decisions": dispatches,
         "router_hint_emitted": bool(decision.get("router_hint_emitted")),
+        "prompt_enhancement_emitted": bool(decision.get("prompt_enhancement_emitted")),
         "checker_results": checker_results,
         "notes": "",
         "evidence_boundary": "local hook score only; not release, runtime, cache, UAT, or customer readiness evidence",

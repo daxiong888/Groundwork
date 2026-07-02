@@ -91,7 +91,9 @@ GROUNDWORK_ROUTER_OBSERVABILITY_DISABLED=1
 
 `observe_only` is the default v0 mode. It writes local scratch artifacts for opted-in projects only. It does not inject route hints, block prompts, rewrite tool calls, request Stop continuation, spawn subagents, create worktrees, create PRs, commit, push, or mutate trackers.
 
-`guided_hint_trial` is explicit. It may emit compact route-specific `additionalContext`, and every score from this mode is marked `guided_hint_excluded`; it must not count toward passive baseline metrics. The hint can name route-specific output contracts, such as `Verification Scope` for `verify-lite` or `Blocked Implementation` fields for missing-source implementation requests, but it is behavior-shaping trial evidence rather than passive route evidence.
+`thin_prompt_trial` is explicit. It may emit route-agnostic `additionalContext` that preserves Groundwork evidence boundaries and the user's requested answer shape without naming skills, expected routes, gate fields, or route-specific output contracts. Every score from this mode is marked `thin_prompt_excluded`; it must not count toward passive baseline metrics.
+
+`guided_hint_trial` is explicit and allowlisted. It may emit compact route-specific `additionalContext` only when the route has a stable output contract, such as `Verification Scope` for `verify-lite`. Every score from this mode is marked `guided_hint_excluded`; it must not count toward passive baseline metrics. Generic route hints are not allowed because they can compete with natural skill triggers.
 
 Live heuristic `observe_only` scores are `display_only` until a fixture or accepted deterministic classifier supplies stronger expected-route evidence. Display-only scores preserve candidate route verdicts for review, but they do not count as baseline pass/fail evidence.
 

@@ -155,6 +155,10 @@ Plan and final report follow session locale. File paths and identifiers remain l
 
 For `verify`, the opening six-field `Verification Scope` block is a stable contract and must remain literal English. The report body and user-visible findings follow session locale. In Chinese reports, explain once that the opening field names are contract labels.
 
+### Gate Fields
+
+For gated, blocked, HITL, risky approval, missing-source, or pre-remote responses, the labels `Proposed Action`, `Target`, `Risk`, `Rollback/Undo`, and `Approval Needed` are stable contract fields and must remain literal English. The field values and surrounding explanation follow session locale.
+
 ### `handoff`
 
 Resume-ready summary follows the handoff audience language. Do not copy English templates into a Chinese handoff.

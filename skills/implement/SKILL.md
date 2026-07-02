@@ -39,9 +39,17 @@ Findings P0/P1/P2:
 Non-Readiness Boundary:
 Gaps:
 Next Action:
+Unverified Claims:
+Proposed Action:
+Target:
+Risk:
+Rollback/Undo:
+Approval Needed:
 ```
 
 For nontrivial edit paths, include the five-line `Implementation Mini-Plan` from `LIGHTWEIGHT-PLAN.md`.
+
+The gate field labels (`Proposed Action`, `Target`, `Risk`, `Rollback/Undo`, and `Approval Needed`) are stable machine-readable contract labels. Keep the labels in English even when the report body follows a non-English session locale.
 
 ## Load Only What Fits
 

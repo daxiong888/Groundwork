@@ -66,6 +66,16 @@ DEFAULT_CONFIG = {
     "raw_capture": False,
     "snippet_capture": False,
 }
+ROUTER_OBSERVABILITY_MODES = {"observe_only", "thin_prompt_trial", "guided_hint_trial"}
+THIN_PROMPT_CONTEXT = (
+    "Groundwork context: Preserve evidence boundaries. Do not upgrade local, source, runtime, "
+    "test, screenshot, cache, or self-check evidence into readiness, release, UAT, customer "
+    "acceptance, or clean-review claims unless the user asks for that scope and evidence is "
+    "present. Keep the user's requested task primary and preserve the requested answer shape. If "
+    "information is missing, say what is unknown without inventing source truth or escalating the "
+    "claim. Do not create artifacts or change files unless the user explicitly requested that action "
+    "and the available evidence supports it."
+)
 
 NOT_APPLICABLE = "not_applicable"
 VERIFY_SCOPE_FIELDS = [
@@ -290,6 +300,9 @@ def apply_live_score_authority_gate(score, decision):
     if decision.get("decision_mode") == "guided_hint_trial" or score.get("router_hint_emitted"):
         score["score_eligibility"] = "guided_hint_excluded"
         return score
+    if decision.get("decision_mode") == "thin_prompt_trial" or score.get("prompt_enhancement_emitted"):
+        score["score_eligibility"] = "thin_prompt_excluded"
+        return score
     if decision.get("decision_mode") != "observe_only":
         blockers.append("decision_mode")
     if score.get("expected_route_source") not in {"fixture", "deterministic_entry_classifier"}:
@@ -407,6 +420,7 @@ def score_turn(decision, final_message="", events=None, dispatch_decision=None, 
         "skill_hits": [] if actual == "unknown" else [actual],
         "dispatch_decisions": dispatches,
         "router_hint_emitted": bool(decision.get("router_hint_emitted")),
+        "prompt_enhancement_emitted": bool(decision.get("prompt_enhancement_emitted")),
         "checker_results": checker_results,
         "notes": "",
         "evidence_boundary": "local hook score only; not release, runtime, cache, UAT, or customer readiness evidence",
@@ -566,6 +580,13 @@ def load_config(cwd):
     if config_source != "absent":
         return config, config_source
     return None, "absent"
+
+
+def normalize_mode(value):
+    mode = str(value or "observe_only").strip()
+    if mode in ROUTER_OBSERVABILITY_MODES:
+        return mode
+    return "observe_only"
 
 
 def ids_from_event_with_sources(event):
@@ -788,16 +809,18 @@ def guided_route_hint(decision):
             "`Verification Scope`, followed by all six fields: In Scope, Out of Scope, Covered, "
             "Not Covered, Evidence Sources, User-visible Claim Being Verified. Do not answer as direct."
         )
-    if route == "implement":
-        return (
-            "Groundwork route hint: use implement. For missing source truth, return `Blocked Implementation` "
-            "with Scope, Acceptance Map, Evidence Inspected, Findings P0/P1/P2, Non-Readiness Boundary, "
-            "Gaps, Next Action."
-        )
-    return (
-        f"Groundwork route hint: expected first route {route}; "
-        "keep scope, evidence, verification, and stop-condition boundaries explicit."
-    )
+    return ""
+
+
+def additional_context_for_mode(mode, decision):
+    if mode == "thin_prompt_trial":
+        route = str((decision or {}).get("expected_best") or "unknown")
+        if route == DIRECT_ROUTE:
+            return ""
+        return THIN_PROMPT_CONTEXT
+    if mode == "guided_hint_trial":
+        return guided_route_hint(decision)
+    return ""
 
 
 def handle_user_prompt_submit(event):
@@ -806,12 +829,14 @@ def handle_user_prompt_submit(event):
     if not is_enabled(config):
         return None
     session_id, turn_id, session_id_source, turn_id_source = ids_from_event_with_sources(event)
-    mode = str(config.get("mode") or "observe_only")
+    mode = normalize_mode(config.get("mode"))
     raw_capture = bool(config.get("raw_capture"))
     snippet_capture = bool(config.get("snippet_capture"))
     prompt = prompt_from_event(event)
     decision = entry_decision_from_prompt(prompt)
-    router_hint_emitted = mode == "guided_hint_trial"
+    additional_context = additional_context_for_mode(mode, decision)
+    router_hint_emitted = mode == "guided_hint_trial" and bool(additional_context)
+    prompt_enhancement_emitted = mode == "thin_prompt_trial" and bool(additional_context)
     out_dir = turn_dir(cwd, event)
     prompt_metadata = {
         "schema_version": "router_observability.prompt_metadata.v0",
@@ -840,6 +865,7 @@ def handle_user_prompt_submit(event):
         "activation_source": source,
         "decision_mode": mode,
         "router_hint_emitted": router_hint_emitted,
+        "prompt_enhancement_emitted": prompt_enhancement_emitted,
         "raw_prompt_storage": "enabled" if raw_capture else "disabled",
         "snippet_capture": "enabled" if snippet_capture else "disabled",
         "entry_decision": decision,
@@ -864,9 +890,8 @@ def handle_user_prompt_submit(event):
         write_json(out_dir / "dispatch-decision.json", dispatch_decision)
     if raw_capture:
         write_json(out_dir / "prompt.raw.json", raw_capture_payload("prompt", prompt))
-    if router_hint_emitted:
-        hint = guided_route_hint(decision)
-        return {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": hint}}
+    if additional_context:
+        return {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": additional_context}}
     return None
 
 

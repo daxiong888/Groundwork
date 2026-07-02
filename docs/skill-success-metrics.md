@@ -23,6 +23,8 @@ Record these fields for each evaluated prompt:
 - `patch_proposal_generated`: `true` when the run suggests a skill/doc/eval patch.
 - `human_decision`: `accepted`, `rejected`, `needs-info`, `quarantined`, or `none`.
 
+Normalize `blocked` as a stop state, not as evidence of success. A blocked row means the harness could not establish the requested behavior, even when the selected skill and prompt shape were otherwise correct.
+
 ## Routing Reliability Targeted Gate Metrics
 
 Routing reliability metrics are targeted internal gate guardrails, not public SLA, customer SLA, or numeric first-slice SLO commitments.
@@ -44,6 +46,9 @@ Per-row routing fields:
 - `overall_verdict`: `pass`, `partial`, `fail`, `blocked`, or timeout-equivalent failure.
 - `failure_type`: the classified reason, such as `forbidden_route`, `invalid_host_preemption`, `output_contract_failure`, `evidence_failure`, `direct_fallback_ceremony`, or `premature_implementation`.
 - `fix_locus`: likely owner layer, such as routing surface, runtime safety gate, skill output contract, evidence collection, requirement-state gate, or direct fallback boundary.
+- `owner`: the team or maintainer responsible for the regression record.
+- `action`: one of `fix_now`, `defer_with_reason`, `accept_as_expected`, or `needs_more_evidence`.
+- `sample_backfill`: one of `add_row`, `update_row`, `covered_by_existing_row`, or `no_backfill_with_reason`.
 
 Summary metrics in `routing_summary`:
 
@@ -58,6 +63,8 @@ Summary metrics in `routing_summary`:
 - `verdict_dimension_counts`: counts for routing, host-preemption, output, evidence, behavior, and overall verdict dimensions.
 - `failure_type_counts`: classified non-pass reasons.
 - `unclassified_nonpass`: non-pass ids that lack `failure_type`.
+
+Use these fields to keep regression handling concrete: every accepted routing failure should say who owns it, what action is taken, whether the row set needs backfill, and why.
 
 Targeted gate interpretation:
 
@@ -162,6 +169,10 @@ Current implemented `evidence_required` tokens:
 - `git_status`
 - `raw_intent_no_implementation`
 - `direct_fallback_no_artifact`
+- `source_or_unverified`
+- `tests_or_unverified`
+- `runtime_or_unverified`
+- `browser_or_unverified`
 
 `no_file_changes` means no production/source changes for rows that require no artifact evidence. It may ignore narrowly recognized throwaway prototype artifacts when `artifact_allowed=true` and the actual route is `prototype`, such as `prototype.html`, root `index.html`, or `artifacts/*prototype*/index.html`. This is not a general source-change waiver.
 
@@ -169,10 +180,6 @@ Current implemented `evidence_required` tokens:
 
 Current allowed future `evidence_required` tokens:
 
-- `source_or_unverified`
-- `tests_or_unverified`
-- `runtime_or_unverified`
-- `browser_or_unverified`
 - `cache_equivalence`
 
 Unknown measurement tokens block the row. Allowed future tokens are schema-valid but return `blocked` until a deterministic checker exists.
@@ -180,6 +187,8 @@ Unknown measurement tokens block the row. Allowed future tokens are schema-valid
 `blocked` is a verdict, stop condition, or normalization outcome. It is not a route-list token and must not appear in `expected_best`, `acceptable_routes`, or `forbidden_routes`.
 
 `runtime-safety-gate` is an eval-only actual-route classification for strict host/runtime preemption. It is never `expected_best` and is not a public skill route. Direct fallback remains the default no-skill route when strict host-preemption conditions are not met.
+
+Deferred pilot boundaries remain deferred until a targeted gate proves otherwise. Do not use these metrics to imply learned routing, retrieval/rerank pilots, MCP/A2A pilots, public SLA commitments, or a broader runtime-visible surface.
 
 ## Deferred Boundaries
 

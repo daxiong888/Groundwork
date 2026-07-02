@@ -1,6 +1,6 @@
 ---
 name: to-issues
-description: Slice accepted PRD/spec/plan into vertical task drafts with acceptance, blockers, state, and verification expectations. Not for raw/ambiguous requirements, implementation, readiness, or one-off planning.
+description: Slice accepted PRD/spec/plan into vertical task drafts with acceptance, blockers, state, and verification expectations. Not for raw/ambiguous requirements, incomplete-info blocked/handoff judgment, implementation, readiness, or one-off planning.
 ---
 
 # to-issues
@@ -12,6 +12,7 @@ Use when accepted PRD/spec/plan intent needs vertical work units or paste-ready 
 Route away:
 
 - Raw/draft/conversation-only intent without acceptance -> `to-prd`.
+- Incomplete-info blocker, readiness, or whether-to-handoff/blocked judgment -> `triage` or `handoff`.
 - Existing task readiness -> `triage`.
 - Implementation steps for one accepted task -> `write-plan`.
 - Code edits -> `implement`.

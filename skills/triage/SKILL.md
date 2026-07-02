@@ -1,13 +1,13 @@
 ---
 name: triage
-description: Classify readiness, blockers, severity, AFK/HITL, lifecycle-state need, or closeout. Not for shaping, slicing, code edits, planning, verification reports, dispatch packages, or wiki.
+description: Classify readiness, blockers, severity, AFK/HITL, lifecycle-state need, closeout, or whether incomplete information should be blocked or handed off. Not for shaping, slicing, code edits, planning, verification reports, dispatch packages, or wiki.
 ---
 
 # triage
 
 ## Trigger Contract
 
-Use for task state, readiness, blockers, AFK/HITL, lifecycle-state, or closeout classification.
+Use for task state, readiness, blockers, AFK/HITL, lifecycle-state, closeout classification, or deciding whether incomplete information should stop as blocked, continue as needs-info, or be preserved for handoff.
 
 Route away:
 
@@ -53,6 +53,18 @@ Gather source/outcome; classify state; assign severity and transition reason; se
 ## Output Shape
 
 Use `Triage Verdict` with state, severity, AFK/HITL, previous state, transition reason, evidence added/missing, blockers, readiness check, lifecycle recommendation, agent brief or human decision, next action, and artifact recommendation.
+
+For `needs-info`, `blocked`, HITL, risky approval, or any other gate-bearing triage, include these exact machine-readable gate labels before the next action detail:
+
+```text
+Proposed Action:
+Target:
+Risk:
+Rollback/Undo:
+Approval Needed:
+```
+
+Keep these gate labels in English even when the report body follows a non-English session locale.
 
 ## Stop Condition
 

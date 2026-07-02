@@ -191,6 +191,29 @@ class RuntimeSchedulerTests(unittest.TestCase):
         self.assertIn("exec", bypass_cmd)
         self.assertIn("prompt", bypass_cmd)
 
+    def test_codex_exec_command_accepts_runtime_selector(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            last_path = root / "last.txt"
+            old_selector = dict(run_runtime.RUNTIME_SELECTOR)
+            try:
+                run_runtime.RUNTIME_SELECTOR["model"] = "gpt-5.4-mini"
+                run_runtime.RUNTIME_SELECTOR["profile"] = "runtime-eval-low"
+                run_runtime.RUNTIME_SELECTOR["codex_config"] = ["model_reasoning_effort=\"low\""]
+
+                cmd = run_runtime.codex_exec_command(root, "read-only", last_path, "prompt")
+            finally:
+                run_runtime.RUNTIME_SELECTOR.clear()
+                run_runtime.RUNTIME_SELECTOR.update(old_selector)
+
+        self.assertIn("-c", cmd)
+        self.assertIn("model_reasoning_effort=\"low\"", cmd)
+        self.assertIn("--model", cmd)
+        self.assertIn("gpt-5.4-mini", cmd)
+        self.assertIn("--profile", cmd)
+        self.assertIn("runtime-eval-low", cmd)
+        self.assertEqual(cmd[-1], "prompt")
+
     def test_snapshot_ignores_router_observability_runtime_scratch(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -238,12 +261,26 @@ class RuntimeSchedulerTests(unittest.TestCase):
         self.assertTrue(mode["hook_trust_bypass"])
         self.assertIn("behavior-shaping guided trial; not passive baseline", mode["evidence_boundary"])
 
+    def test_router_observability_runtime_mode_thin_prompt_records_boundary(self):
+        env = {
+            "GROUNDWORK_ROUTER_OBSERVABILITY": "1",
+            "GROUNDWORK_ROUTER_OBSERVABILITY_MODE": "thin_prompt_trial",
+        }
+        with mock.patch.dict(os.environ, env, clear=True):
+            mode = run_runtime.router_observability_runtime_mode()
+
+        self.assertTrue(mode["router_observability_enabled"])
+        self.assertEqual(mode["router_observability_mode"], "thin_prompt_trial")
+        self.assertEqual(run_runtime.score_eligibility_for_runtime_mode(mode), "thin_prompt_excluded")
+        self.assertIn("route-agnostic guardrail lens", mode["evidence_boundary"])
+
     def test_write_summary_records_runtime_mode_and_failure_boundary(self):
         with tempfile.TemporaryDirectory() as tmp:
             old_results = run_runtime.RESULTS
             old_summary = run_runtime.SUMMARY
             old_failures = run_runtime.FAILURES
             old_cases = run_runtime.CASES
+            old_selector = dict(run_runtime.RUNTIME_SELECTOR)
             env = {
                 "GROUNDWORK_ROUTER_OBSERVABILITY": "1",
                 "GROUNDWORK_ROUTER_OBSERVABILITY_MODE": "guided_hint_trial",
@@ -256,6 +293,9 @@ class RuntimeSchedulerTests(unittest.TestCase):
                 run_runtime.FAILURES = root / "failures.md"
                 run_runtime.CASES = root / "cases"
                 run_runtime.CASES.mkdir()
+                run_runtime.RUNTIME_SELECTOR["model"] = "gpt-5.4-mini"
+                run_runtime.RUNTIME_SELECTOR["profile"] = ""
+                run_runtime.RUNTIME_SELECTOR["codex_config"] = []
 
                 with mock.patch.dict(os.environ, env, clear=True):
                     summary = run_runtime.write_summary(
@@ -274,6 +314,7 @@ class RuntimeSchedulerTests(unittest.TestCase):
                     )
 
                 runtime_mode = summary["runtime_mode"]
+                self.assertEqual(summary["runtime_selector"]["model"], "gpt-5.4-mini")
                 self.assertEqual(runtime_mode["router_observability_mode"], "guided_hint_trial")
                 self.assertTrue(runtime_mode["router_observability_enabled"])
                 self.assertTrue(runtime_mode["hook_trust_bypass"])
@@ -281,6 +322,7 @@ class RuntimeSchedulerTests(unittest.TestCase):
 
                 failures = run_runtime.FAILURES.read_text(encoding="utf-8")
                 self.assertIn("## Evidence Boundary", failures)
+                self.assertIn('"model": "gpt-5.4-mini"', failures)
                 self.assertIn("- Runtime mode: `guided_hint_trial`", failures)
                 self.assertIn("- Hook trust bypass: `true`", failures)
                 self.assertIn("behavior-shaping guided trial; not passive baseline", failures)
@@ -289,6 +331,8 @@ class RuntimeSchedulerTests(unittest.TestCase):
                 run_runtime.SUMMARY = old_summary
                 run_runtime.FAILURES = old_failures
                 run_runtime.CASES = old_cases
+                run_runtime.RUNTIME_SELECTOR.clear()
+                run_runtime.RUNTIME_SELECTOR.update(old_selector)
 
     def test_write_summary_creates_result_layout(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -543,6 +587,7 @@ class RuntimeSchedulerTests(unittest.TestCase):
                         "verdict": "fail",
                         "overall_verdict": "fail",
                         "output_contract_verdict": "not_applicable",
+                        "runtime_mode": {"router_observability_mode": "thin_prompt_trial"},
                     },
                     {
                         "id": "rr-improved",
@@ -553,6 +598,7 @@ class RuntimeSchedulerTests(unittest.TestCase):
                         "verdict": "pass",
                         "overall_verdict": "pass",
                         "output_contract_verdict": "pass",
+                        "runtime_mode": {"router_observability_mode": "thin_prompt_trial"},
                     },
                 ]
 
@@ -568,12 +614,12 @@ class RuntimeSchedulerTests(unittest.TestCase):
                 self.assertEqual(report["counts"]["improved"], 1)
                 self.assertEqual(report["counts"]["guided_regressions"], 1)
                 self.assertEqual(report["counts"]["direct_negative_regressions"], 1)
-                self.assertIn("guided_hint_excluded", report["evidence_boundary"]["baseline_policy"])
+                self.assertIn("thin_prompt_excluded", report["evidence_boundary"]["baseline_policy"])
                 direct_row = report["rows"][0]
                 self.assertTrue(direct_row["direct_negative"])
                 self.assertTrue(direct_row["direct_negative_regression"])
-                self.assertEqual(direct_row["guided_evidence_classification"], "guided_hint_excluded")
-                self.assertIn("behavior-shaping guided trial", direct_row["guided_evidence_boundary"])
+                self.assertEqual(direct_row["guided_evidence_classification"], "thin_prompt_excluded")
+                self.assertIn("behavior-shaping thin prompt trial", direct_row["guided_evidence_boundary"])
                 self.assertEqual(report["rows"][1]["output_contract_verdict"], "passive:fail; guided:pass")
                 self.assertTrue(run_runtime.COMPARISON_JSON.exists())
                 self.assertTrue(run_runtime.COMPARISON_MD.exists())
@@ -685,15 +731,15 @@ class RuntimeSchedulerTests(unittest.TestCase):
                     self.assertIsNone(os.environ.get("GROUNDWORK_ROUTER_OBSERVABILITY_MODE"))
 
                 self.assertEqual(exit_code, 0)
-                self.assertEqual(seen_modes, ["observe_only", "guided_hint_trial"])
+                self.assertEqual(seen_modes, ["observe_only", "thin_prompt_trial"])
                 comparison_path = repo / "runtime-run" / "comparison.json"
                 comparison = json.loads(comparison_path.read_text(encoding="utf-8"))
                 self.assertEqual(comparison["counts"]["rows"], 1)
-                self.assertIn("guided_hint_excluded", comparison["evidence_boundary"]["baseline_policy"])
+                self.assertIn("thin_prompt_excluded", comparison["evidence_boundary"]["baseline_policy"])
                 self.assertEqual(comparison["passive_summary"]["routing_summary"]["baseline_eligible_rows"], 1)
                 self.assertEqual(comparison["guided_summary"]["routing_summary"]["baseline_eligible_rows"], 0)
                 self.assertTrue((repo / "runtime-run" / "observe_only" / "summary.json").exists())
-                self.assertTrue((repo / "runtime-run" / "guided_hint_trial" / "summary.json").exists())
+                self.assertTrue((repo / "runtime-run" / "thin_prompt_trial" / "summary.json").exists())
             finally:
                 run_runtime.REPO = old_repo
                 run_runtime.restore_runtime_path_state(old_state)
@@ -1840,8 +1886,51 @@ class RuntimeSchedulerTests(unittest.TestCase):
 
         self.assertEqual(actual, "implement")
 
+    def test_triage_marker_wins_over_body_acceptance_criteria_reference(self):
+        actual = run_runtime.classify_actual_route(
+            row(expected_skill="triage"),
+            "direct",
+            [],
+            (
+                "Triage Verdict\n"
+                "State: `needs-info`\n"
+                "Evidence Missing: task source, acceptance criteria, 验收标准, expected output.\n"
+            ),
+            [],
+        )
+
+        self.assertEqual(actual, "triage")
+
+    def test_issue_map_marker_wins_over_body_triage_state_reference(self):
+        actual = run_runtime.classify_actual_route(
+            row(expected_skill="to-issues"),
+            "direct",
+            [],
+            (
+                "Issue Map\n"
+                "Acceptance Criteria\n"
+                "- Task state: needs-info until API owner confirms scope.\n"
+                "- Blocker: HITL may be needed for final approval.\n"
+            ),
+            [],
+        )
+
+        self.assertEqual(actual, "to-issues")
+
     def test_prompt_self_review_clean_review_routes_verify_lite(self):
         decision = route_detection.entry_decision_from_prompt("self-review 已经过了，可以当 clean review 吗？")
+
+        self.assertEqual(decision["expected_best"], "verify")
+        self.assertIn("direct", decision["forbidden_routes"])
+
+    def test_prompt_runtime_evidence_release_readiness_routes_verify_lite(self):
+        decision = route_detection.entry_decision_from_prompt("runtime evidence 能不能作为 release readiness 证据")
+
+        self.assertEqual(decision["expected_best"], "verify")
+        self.assertIn("direct", decision["forbidden_routes"])
+
+    def test_prompt_screenshot_acceptance_evidence_routes_verify_lite(self):
+        decision = route_detection.entry_decision_from_prompt("这些测试截图算不算验收通过证据")
 
         self.assertEqual(decision["expected_best"], "verify")
         self.assertIn("direct", decision["forbidden_routes"])
@@ -1870,6 +1959,23 @@ class RuntimeSchedulerTests(unittest.TestCase):
 
         self.assertEqual(decision["expected_best"], "direct")
         self.assertEqual(decision["expected_stop_condition"], "direct_answer")
+
+    def test_direct_concept_answer_can_mention_prd_without_ceremony_failure(self):
+        verdict = run_runtime.routing_verdict_model(
+            routing_row(expected_best="direct", acceptable_routes="direct", forbidden_routes="implement"),
+            actual="direct",
+            last=(
+                "`runtime evidence` 是实际运行后的证据。\n"
+                "- spec evidence: PRD 或设计文档说明应该怎样。\n"
+                "- source evidence: 源码说明代码看起来会怎样。\n"
+            ),
+            rc=0,
+            changes=[],
+            lifecycle_errors=[],
+        )
+
+        self.assertEqual(verdict["overall_verdict"], "pass")
+        self.assertNotIn("direct fallback used Groundwork ceremony", verdict["notes"])
 
     def test_entry_classifier_uses_runtime_hook_source_module(self):
         self.assertTrue(
@@ -2157,7 +2263,7 @@ class RuntimeSchedulerTests(unittest.TestCase):
         self.assertEqual(verdict["overall_verdict"], "blocked")
         self.assertEqual(verdict["failure_type"], "future_output_contract")
 
-    def test_source_tests_and_browser_or_unverified_tokens_are_deterministic(self):
+    def test_source_tests_browser_and_runtime_or_unverified_tokens_are_deterministic(self):
         source = run_runtime.routing_verdict_model(
             routing_row(evidence_required="source_or_unverified"),
             actual="direct",
@@ -2182,10 +2288,64 @@ class RuntimeSchedulerTests(unittest.TestCase):
             changes=[],
             lifecycle_errors=[],
         )
+        runtime = run_runtime.routing_verdict_model(
+            routing_row(evidence_required="runtime_or_unverified"),
+            actual="verify",
+            last="Runtime Evidence: not run; release readiness not covered without runtime output.",
+            rc=0,
+            changes=[],
+            lifecycle_errors=[],
+        )
 
         self.assertEqual(source["evidence_verdict"], "pass")
         self.assertEqual(tests["evidence_verdict"], "pass")
         self.assertEqual(browser["evidence_verdict"], "pass")
+        self.assertEqual(runtime["evidence_verdict"], "pass")
+
+    def test_runtime_or_unverified_requires_runtime_or_unverified_boundary(self):
+        verdict = run_runtime.routing_verdict_model(
+            routing_row(
+                expected_best="verify",
+                acceptable_routes="verify",
+                evidence_required="runtime_or_unverified",
+            ),
+            actual="verify",
+            last="Release readiness: pass.",
+            rc=0,
+            changes=[],
+            lifecycle_errors=[],
+        )
+
+        self.assertEqual(verdict["evidence_verdict"], "fail")
+        self.assertEqual(verdict["failure_type"], "evidence_failure")
+        self.assertIn(
+            "missing runtime evidence or explicit unverified runtime boundary",
+            verdict["notes"],
+        )
+
+    def test_runtime_or_unverified_rejects_unscoped_missing_marker(self):
+        verdict = run_runtime.routing_verdict_model(
+            routing_row(
+                expected_best="verify",
+                acceptable_routes="verify",
+                evidence_required="runtime_or_unverified",
+            ),
+            actual="verify",
+            last=(
+                "Verification Scope\n"
+                "Runtime Capability: available in this harness.\n"
+                "Gaps: source truth missing.\n"
+            ),
+            rc=0,
+            changes=[],
+            lifecycle_errors=[],
+        )
+
+        self.assertEqual(verdict["evidence_verdict"], "fail")
+        self.assertIn(
+            "missing runtime evidence or explicit unverified runtime boundary",
+            verdict["notes"],
+        )
 
     def test_code_diff_only_readiness_pass_claim_fails_behavior(self):
         verdict = run_runtime.routing_verdict_model(
@@ -2342,6 +2502,22 @@ class RuntimeSchedulerTests(unittest.TestCase):
 
         self.assertEqual(verdict["output_contract_verdict"], "pass")
         self.assertNotIn("forbidden git add . suggestion", verdict["notes"])
+
+    def test_gate_fields_require_labels_not_inline_mentions(self):
+        verdict = run_runtime.routing_verdict_model(
+            routing_row(output_contract="gate_fields"),
+            actual="direct",
+            last=(
+                "The Proposed Action is to stop. Target is repo. Risk is unknown. "
+                "Rollback/Undo is no-op. Approval Needed is no."
+            ),
+            rc=0,
+            changes=[],
+            lifecycle_errors=[],
+        )
+
+        self.assertEqual(verdict["output_contract_verdict"], "fail")
+        self.assertIn("missing gate fields", verdict["notes"])
 
     def test_git_add_dot_command_is_forbidden_suggestion(self):
         verdict = run_runtime.routing_verdict_model(

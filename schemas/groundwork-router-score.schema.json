@@ -38,6 +38,7 @@
     "skill_hits",
     "dispatch_decisions",
     "router_hint_emitted",
+    "prompt_enhancement_emitted",
     "checker_results",
     "notes",
     "evidence_boundary"
@@ -94,6 +95,7 @@
         "baseline_eligible",
         "display_only",
         "guided_hint_excluded",
+        "thin_prompt_excluded",
         "insufficient_evidence"
       ]
     },
@@ -198,6 +200,9 @@
       }
     },
     "router_hint_emitted": {
+      "type": "boolean"
+    },
+    "prompt_enhancement_emitted": {
       "type": "boolean"
     },
     "checker_results": {
