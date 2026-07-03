@@ -1488,6 +1488,10 @@ def is_direct_negative_plain_answer(row, final_response, changes):
         "Issue Draft",
         "# PRD",
         "# Compact PRD",
+        "Recommended route:",
+        "Route:",
+        "Expected route:",
+        "Owner:",
     )
     return not any(first.startswith(marker) for marker in structured_workflow_headings)
 

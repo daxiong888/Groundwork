@@ -2224,6 +2224,17 @@ class RuntimeSchedulerTests(unittest.TestCase):
 
         self.assertEqual(actual, "direct")
 
+    def test_direct_negative_recommended_route_heading_is_not_plain_answer(self):
+        actual = run_runtime.classify_actual_route(
+            row(expected_skill="direct", route_boundary="direct-negative"),
+            "direct",
+            [],
+            "Recommended route: to-prd\n\nThis is only a concept question.",
+            [],
+        )
+
+        self.assertNotEqual(actual, "direct")
+
     def test_compressed_prd_spec_marker_wins_over_issue_slicing_words(self):
         actual = run_runtime.classify_actual_route(
             row(expected_skill="to-prd"),
