@@ -9,6 +9,8 @@ description: Classify readiness, blockers, severity, AFK/HITL, lifecycle-state n
 
 Use for task state, readiness, blockers, AFK/HITL, existing issue ready-for-agent/ready-for-human classification, lifecycle-state, closeout classification, or deciding whether incomplete information should stop as blocked, continue as needs-info, or be preserved for handoff.
 
+Use `triage` when the prompt says verify/tests/done evidence already passed and asks whether an issue/task can be closed. That is a closeout state transition decision; do not route it to `verify` unless the user is asking to first verify whether the evidence passes.
+
 Route away:
 
 - New PRD/spec -> `to-prd`.

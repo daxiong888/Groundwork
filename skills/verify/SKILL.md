@@ -11,6 +11,8 @@ Use this skill for claim-scoped evidence judgment: readiness, evidence sufficien
 
 Do not use for code edits, raw requirement shaping, task slicing, planning before edits, prototype contract-boundary classification, wiki queries, or implementation conformance review when readiness/evidence judgment is explicitly out of scope.
 
+Route issue closeout state decisions to `triage` when the prompt asks whether an issue/task can be closed based on already completed verify, tests, done evidence, or explicit wontfix owner evidence. `verify` may recommend triage closeout after a verification report, but it does not own the closeout state transition.
+
 ## Route First
 
 Choose the lightest branch that can answer the claim:

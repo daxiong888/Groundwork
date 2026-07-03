@@ -2136,6 +2136,21 @@ class RuntimeSchedulerTests(unittest.TestCase):
 
         self.assertEqual(actual, "to-prd")
 
+    def test_new_feature_idea_concept_answer_stays_direct(self):
+        actual = run_runtime.classify_actual_route(
+            row(expected_skill="direct"),
+            "direct",
+            [],
+            (
+                "新功能想法通常指尚未收敛成需求或 PRD 的产品/工程想法。"
+                "在 Groundwork 语境里，这类输入通常更接近 `to-prd` / 需求成形，"
+                "而不是 `implement` / 直接开发。"
+            ),
+            [],
+        )
+
+        self.assertEqual(actual, "direct")
+
     def test_to_prd_recommendation_not_implement_when_files_changed_none(self):
         actual = run_runtime.classify_actual_route(
             row(expected_skill="to-prd"),
@@ -2233,6 +2248,30 @@ class RuntimeSchedulerTests(unittest.TestCase):
 
         self.assertEqual(decision["expected_best"], "triage")
         self.assertIn("to-issues", decision["forbidden_routes"])
+
+    def test_closeout_decision_routes_triage_before_verify(self):
+        decision = route_detection.entry_decision_from_prompt(
+            "verify 和测试都通过了，判断这个 issue 能不能 close，不要继续实现"
+        )
+
+        self.assertEqual(decision["expected_best"], "triage")
+        self.assertIn("verify", decision["forbidden_routes"])
+
+    def test_verify_then_closeout_recommendation_stays_verify(self):
+        decision = route_detection.entry_decision_from_prompt(
+            "验证这个任务是否通过 如果 pass 且没有 material gap 请说明后续是否进入 triage closeout"
+        )
+
+        self.assertEqual(decision["expected_best"], "verify")
+        self.assertIn("direct", decision["forbidden_routes"])
+
+    def test_readonly_multi_perspective_audit_routes_dispatch(self):
+        decision = route_detection.entry_decision_from_prompt(
+            "对整个代码库做大规模只读 audit，多个角度交叉验证，不要改文件，也不要开 worktree"
+        )
+
+        self.assertEqual(decision["expected_best"], "dispatch")
+        self.assertIn("implement", decision["forbidden_routes"])
 
     def test_skip_prd_runtime_package_implementation_routes_implement(self):
         decision = route_detection.entry_decision_from_prompt("明确跳过 PRD，直接实现 runtime package 相关小改")

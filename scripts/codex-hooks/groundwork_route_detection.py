@@ -65,6 +65,21 @@ EXISTING_ISSUE_READINESS_RE = re.compile(
     r"(?:给\s*(?:子\s*)?agent\s*做|ready[-_ ]?for[-_ ]?agent|ready[-_ ]?for[-_ ]?human|AFK|HITL|人决定|blocked|blocker|阻塞)",
     re.I,
 )
+CLOSEOUT_DECISION_RE = re.compile(
+    r"(?:verify|测试|checks?|验证|done|wontfix).{0,80}(?:通过|pass(?:ed)?|完成|证据|evidence|owner).{0,80}"
+    r"(?:判断|能不能|是否|可不可以).{0,50}(?:close|关闭|关掉|closeout|结案|关\s*issue)|"
+    r"(?:判断|能不能|是否|可不可以).{0,50}(?:close|关闭|关掉|closeout|结案|关\s*issue).{0,80}"
+    r"(?:verify|测试|checks?|验证|done|wontfix|通过|pass(?:ed)?|证据|evidence)",
+    re.I,
+)
+READONLY_AUDIT_ROUTING_RE = re.compile(
+    r"(?:大规模|multi[- ]?perspective|多个角度|交叉).{0,50}(?:只读|read[- ]?only).{0,50}"
+    r"(?:audit|审查|审核|review|验证).{0,80}(?:不要|不).{0,20}(?:改文件|写文件|开\s*worktree|create worktree)|"
+    r"(?:只读|read[- ]?only).{0,50}(?:audit|审查|审核|review).{0,80}"
+    r"(?:多个角度|交叉|subagent|clean reviewer|main_thread_readonly).{0,80}"
+    r"(?:不要|不).{0,20}(?:改文件|写文件|开\s*worktree|create worktree)",
+    re.I,
+)
 ACCEPTED_SOURCE_RE = re.compile(
     r"已接受|accepted|accepted[- ]ready|ready[-_ ]?for[-_ ]?agent|"
     r"ready issue(?:s)?|ready task(?:s)?|ready work|ready package|任务已经确认",
@@ -128,8 +143,12 @@ ROUTE_MARKERS = [
     (
         "to-prd",
         re.compile(
-            r"^# PRD\b|Artifact Type:\s*PRD|产品需求|\bto-prd\b|"
-            r"\braw idea\b|\bnot issue-ready\b|新功能想法|不是 accepted PRD/spec/plan",
+            r"^# PRD\b|Artifact Type:\s*PRD|产品需求|"
+            r"^\s*(?:Recommended route|Route|Owner|Expected route)\s*[:：].*\bto-prd\b|"
+            r"(?:raw/draft intent|raw intent|draft intent).{0,80}\bto-prd\b|"
+            r"\braw idea\b|\bnot issue-ready\b|不是 accepted PRD/spec/plan|"
+            r"(?:没有给出|只有|仅有).{0,30}新功能想法|"
+            r"新功能想法.{0,80}(?:accepted source|不能拆|还不能拆|先走)",
             re.I | re.M,
         ),
     ),
@@ -383,6 +402,16 @@ def is_existing_issue_readiness(value):
     return bool(EXISTING_ISSUE_READINESS_RE.search(value))
 
 
+def is_closeout_decision(value):
+    if re.search(r"^\s*(?:验证|verify).{0,50}(?:是否|能不能|can).{0,30}(?:通过|pass)", str(value or ""), re.I):
+        return False
+    return bool(CLOSEOUT_DECISION_RE.search(value))
+
+
+def is_readonly_audit_routing(value):
+    return bool(READONLY_AUDIT_ROUTING_RE.search(value))
+
+
 def prompt_route(value):
     if not str(value or "").strip():
         return UNKNOWN_ROUTE
@@ -394,6 +423,10 @@ def prompt_route(value):
         return "to-prd"
     if re.search(r"handoff|交接|续上|保存状态", value, re.I):
         return "handoff"
+    if is_closeout_decision(value):
+        return "triage"
+    if is_readonly_audit_routing(value):
+        return "dispatch"
     if is_evidence_boundary_verify(value):
         return "verify"
     if WRITE_PLAN_RE.search(value):
@@ -425,7 +458,7 @@ def entry_decision_from_prompt(prompt):
     elif route == "to-prd":
         forbidden = ["implement", "to-issues"]
     elif route == "triage":
-        forbidden = ["dispatch", "implement", "to-issues"]
+        forbidden = ["dispatch", "implement", "to-issues", "verify"]
     elif route == "dispatch":
         forbidden = ["verify", "implement", "direct"]
 

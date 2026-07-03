@@ -1,13 +1,13 @@
 ---
 name: dispatch
-description: Package-only routing for accepted ready tasks: model/profile, matrix, Dispatch Package, result expectations. Not for execution, worktrees, subagents, branch mutation, readiness, or raw tasks.
+description: Package-only routing for accepted ready tasks or large read-only multi-perspective audit routing: model/profile, matrix, Dispatch Package, result expectations. Not for execution, worktrees, subagents, branch mutation, readiness, raw tasks, or doing the audit itself.
 ---
 
 # dispatch
 
 ## Use When
 
-Use when accepted, ready work needs package-only runtime routing: recommendation, model/profile choice, matrix, Dispatch Package v2, clean-review fanout, or expected Result Package. Do not use for raw/unsliced/unknown-readiness work, implementation, planning-only requests, or readiness verification.
+Use when accepted, ready work needs package-only runtime routing: recommendation, model/profile choice, matrix, Dispatch Package v2, clean-review fanout, or expected Result Package. Also use when the user asks for a large read-only multi-perspective audit with no file edits and no worktree creation; in that case, produce a routing recommendation or blocked dispatch intake, not the audit findings themselves. Do not use for raw/unsliced/unknown-readiness work, implementation, planning-only requests, or readiness verification.
 
 ## Route First
 
@@ -23,7 +23,7 @@ Do not load result, adapter, profile, examples, complex, clean-review, or confli
 
 ## Evidence Boundary
 
-Confirm source truth, issue set, readiness source, and evidence level. Recommend only from named evidence. Never claim runtime execution, selector enforcement, cache refresh, clean review, closeout, branch cleanup, UAT, release, or customer readiness from package text alone.
+Confirm source truth, issue set or audit scope, readiness source, and evidence level. Recommend only from named evidence. Never claim runtime execution, selector enforcement, cache refresh, clean review, closeout, branch cleanup, UAT, release, customer readiness, or completed audit findings from package text alone.
 
 If runtime/model selection is material, prefer `model_profile` before concrete models and label selector enforcement as `tool_enforced`, `prompt_preference`, `unavailable`, or `unknown` from current tool evidence.
 
@@ -50,7 +50,7 @@ Apply shared non-executor/runtime/role/release/evidence/wiki/decision refs only 
 
 ## Stop Conditions
 
-- Stop before routing when source truth, issue set, readiness source, or evidence level is unknown.
+- Stop before routing when source truth, issue set or audit scope, readiness source, or evidence level is unknown.
 - Split hybrid work before emitting a write worktree package.
 - Route read-only and planning-only tasks away from `worktree_isolated`.
 - If asked to execute, stop at the package plus approval gate and route execution to the owning runtime, thread/worktree tool, or implementation owner.
