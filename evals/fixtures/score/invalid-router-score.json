@@ -37,6 +37,7 @@
   "skill_hits": [],
   "dispatch_decisions": [],
   "router_hint_emitted": false,
+  "prompt_enhancement_emitted": false,
   "checker_results": [
     {
       "checker_id": "router_observability.actual_route_marker",

@@ -332,11 +332,12 @@ Minimum shape:
   "requirement_state": "raw | grilled | prd_draft | prd_accepted | issue_ready | implementation_ready | verified | blocked",
   "source_truth": "conversation | accepted_prd | local_artifact | external_issue | source_code | test_evidence | runtime_evidence | state_md | mixed | unknown",
   "stop_condition": "continue | ask_clarification | require_prd_acceptance | require_artifact_promotion | require_gate | direct_answer | blocked",
-  "router_hint_emitted": false
+  "router_hint_emitted": false,
+  "prompt_enhancement_emitted": false
 }
 ```
 
-In `observe_only`, `router_hint_emitted` must be `false`.
+In `observe_only`, `router_hint_emitted` and `prompt_enhancement_emitted` must both be `false`.
 
 ### 8.2 Intent Frame
 
@@ -1082,6 +1083,7 @@ Acceptance criteria:
   "activation_source": ".groundwork/harness/router-observability/config.json | env | env_force_enable_over_config | invalid_config_env_force_enable | local_config | unknown",
   "decision_mode": "observe_only",
   "router_hint_emitted": false,
+  "prompt_enhancement_emitted": false,
   "raw_prompt_storage": "disabled",
   "entry_decision": {
     "expected_best": "write-plan",
@@ -1218,6 +1220,7 @@ Each row:
   "skill_hits": [],
   "dispatch_decisions": [],
   "router_hint_emitted": false,
+  "prompt_enhancement_emitted": false,
   "checker_results": [
     {
       "checker_id": "verify_scope_full",
@@ -1292,6 +1295,7 @@ A live score is `baseline_eligible` only when all of these are true:
 
 - `decision_mode = observe_only`;
 - `router_hint_emitted = false`;
+- `prompt_enhancement_emitted = false`;
 - `expected_route_source` is `fixture` or `deterministic_entry_classifier`;
 - if `expected_route_source = deterministic_entry_classifier`, the classifier version has accepted fixture or eval evidence;
 - `actual_route_source` is not `unknown`;
@@ -1633,7 +1637,7 @@ Acceptance criteria:
 - Writes `router-decision.json` to local scratch.
 - Does not produce `additionalContext` in default `observe_only`.
 - Produces compact additional context only when explicit `thin_prompt_trial` or allowlisted `guided_hint_trial` mode is enabled.
-- Records `decision_mode`, `decision_source`, `router_hint_emitted`, and raw-capture status.
+- Records `decision_mode`, `decision_source`, `router_hint_emitted`, `prompt_enhancement_emitted`, and raw-capture status.
 - Has dry-run tests with fixture prompts.
 - Does not modify source files or committed artifacts at runtime.
 
