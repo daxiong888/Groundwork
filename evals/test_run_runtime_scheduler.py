@@ -848,6 +848,25 @@ class RuntimeSchedulerTests(unittest.TestCase):
         self.assertEqual(route, "dispatch")
         self.assertEqual(source, "final_message_marker")
 
+    def test_dispatch_heading_inside_other_skill_output_does_not_override_primary_route(self):
+        route, _source = route_detection.detect_route_from_text(
+            "Verification Scope\n"
+            "- In Scope: local diff only\n\n"
+            "Dispatch Package\n"
+            "This section describes a package-shaped artifact referenced by the verification.\n"
+        )
+
+        self.assertEqual(route, "verify")
+
+        route, _source = route_detection.detect_route_from_text(
+            "Implementation Summary\n"
+            "Changed the local classifier.\n\n"
+            "Dispatch Package\n"
+            "Referenced package notes remain supporting context, not the primary route.\n"
+        )
+
+        self.assertEqual(route, "implement")
+
     def test_package_only_runtime_routing_requires_guarded_dispatch_shape(self):
         route, _source = route_detection.detect_route_from_text(
             "Package-Only Runtime Routing\n\nThis explains runtime routing as a concept."

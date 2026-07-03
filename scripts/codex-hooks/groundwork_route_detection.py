@@ -182,14 +182,14 @@ def first_nonempty_line(text):
 
 
 def has_anchored_dispatch_marker(text):
-    value = str(text or "")
+    first = first_nonempty_line(text)
     anchored_marker = re.compile(
         r"^\s*(?:#+\s*)?\*{0,2}"
         r"(?:Dispatch Summary|Dispatch Package|Result Package|Dispatch Runtime Decision|Dispatch Candidate)"
         r"\*{0,2}\b",
-        re.I | re.M,
+        re.I,
     )
-    return bool(anchored_marker.search(value))
+    return bool(anchored_marker.search(first))
 
 
 def has_legacy_dispatch_shape(text):
