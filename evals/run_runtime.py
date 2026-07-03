@@ -1467,6 +1467,31 @@ def has_requirement_state_gate_response_shape(row, final_response, changes):
     return has_blocked_implementation_conformance(final_response)
 
 
+def is_direct_negative_plain_answer(row, final_response, changes):
+    if expected_skill_for_row(row) != DIRECT_ROUTE:
+        return False
+    if str(row.get("route_boundary") or "").strip() != "direct-negative":
+        return False
+    if changes:
+        return False
+    if direct_fallback_ceremony_present(final_response):
+        return False
+    first = first_nonempty_line(str(final_response or ""))
+    structured_workflow_headings = (
+        "Verification Scope",
+        "Implementation Summary",
+        "Blocked Implementation",
+        "Triage Verdict",
+        "Dispatch Summary",
+        "Dispatch Package",
+        "Issue Map",
+        "Issue Draft",
+        "# PRD",
+        "# Compact PRD",
+    )
+    return not any(first.startswith(marker) for marker in structured_workflow_headings)
+
+
 def classify_actual_route(row, parsed_actual, skill_hits, final_response, changes):
     if has_host_preemption_response_shape(row, final_response, changes):
         return HOST_PREEMPTION_ROUTE
@@ -1481,6 +1506,9 @@ def classify_actual_route(row, parsed_actual, skill_hits, final_response, change
 
     if skill_hits or parsed_actual != DIRECT_ROUTE:
         return parsed_actual
+
+    if is_direct_negative_plain_answer(row, final_response, changes):
+        return DIRECT_ROUTE
 
     detected_route, _source = detect_route_from_text(final_response)
     if detected_route != DIRECT_ROUTE:

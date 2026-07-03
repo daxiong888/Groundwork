@@ -130,7 +130,15 @@ ROUTE_MARKERS = [
             re.I | re.M,
         ),
     ),
-    ("write-plan", re.compile(r"Implementation Mini-Plan|implementation plan|实现计划|计划[:：]|可执行 plan|模板级 plan", re.I)),
+    (
+        "write-plan",
+        re.compile(
+            r"^Implementation Mini-Plan\b|^Implementation Plan\b|"
+            r"^\s*(?:#+\s*)?\*{0,2}(?:实现计划|可执行 plan|模板级 plan)\*{0,2}\b|"
+            r"^\s*计划[:：]",
+            re.I | re.M,
+        ),
+    ),
     (
         "triage",
         re.compile(
@@ -143,10 +151,11 @@ ROUTE_MARKERS = [
     (
         "to-prd",
         re.compile(
-            r"^# PRD\b|Artifact Type:\s*PRD|产品需求|"
+            r"^# PRD\b|^# Compact PRD\b|\bCompact PRD\b|压缩版 PRD/spec|Artifact Type:\s*PRD|产品需求|"
             r"^\s*(?:Recommended route|Route|Owner|Expected route)\s*[:：].*\bto-prd\b|"
-            r"(?:raw/draft intent|raw intent|draft intent).{0,80}\bto-prd\b|"
-            r"\braw idea\b|\bnot issue-ready\b|不是 accepted PRD/spec/plan|"
+            r"(?:raw/draft intent|raw intent|draft intent).{0,80}(?:应先走|先走|route(?:s)? to).{0,40}\bto-prd\b|"
+            r"\braw idea\b.{0,80}(?:not issue-ready|to-prd|accepted source)|"
+            r"\bnot issue-ready\b|不是 accepted PRD/spec/plan|"
             r"(?:没有给出|只有|仅有).{0,30}新功能想法|"
             r"新功能想法.{0,80}(?:accepted source|不能拆|还不能拆|先走)",
             re.I | re.M,

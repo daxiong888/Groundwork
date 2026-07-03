@@ -2111,6 +2111,22 @@ class RuntimeSchedulerTests(unittest.TestCase):
 
         self.assertEqual(actual, "to-prd")
 
+    def test_compact_prd_marker_wins_over_issue_pack_words(self):
+        actual = run_runtime.classify_actual_route(
+            row(expected_skill="to-prd"),
+            "direct",
+            [],
+            (
+                "# Compact PRD\n\n"
+                "## Acceptance Criteria\n\n"
+                "# Parallel Issue Pack\n\n"
+                "## Issue 1\n"
+            ),
+            [],
+        )
+
+        self.assertEqual(actual, "to-prd")
+
     def test_raw_not_issue_ready_marker_wins_over_issue_draft_words(self):
         actual = run_runtime.classify_actual_route(
             row(expected_skill="to-prd"),
@@ -2150,6 +2166,74 @@ class RuntimeSchedulerTests(unittest.TestCase):
         )
 
         self.assertEqual(actual, "direct")
+
+    def test_new_feature_idea_explanation_with_raw_idea_and_prd_stays_direct(self):
+        actual = run_runtime.classify_actual_route(
+            row(expected_skill="direct"),
+            "direct",
+            [],
+            (
+                "如果放在 Groundwork / 任务路由语境里，“新功能想法”一般属于 "
+                "raw idea / product intent，下一步通常不是直接实现，而是先澄清目标、"
+                "用户价值、范围、验收标准，再整理成 PRD 或 issue。"
+            ),
+            [],
+        )
+
+        self.assertEqual(actual, "direct")
+
+    def test_raw_idea_concept_answer_stays_direct(self):
+        actual = run_runtime.classify_actual_route(
+            row(expected_skill="direct"),
+            "direct",
+            [],
+            (
+                "A raw idea is an early product thought that has not yet been shaped "
+                "into a clear requirement, PRD, or implementation-ready task."
+            ),
+            [],
+        )
+
+        self.assertEqual(actual, "direct")
+
+    def test_raw_idea_explanation_with_implementation_plan_stays_direct(self):
+        actual = run_runtime.classify_actual_route(
+            row(expected_skill="direct"),
+            "direct",
+            [],
+            (
+                "A raw idea is an early thought before it has been turned into "
+                "a clear requirement, spec, task, or implementation plan."
+            ),
+            [],
+        )
+
+        self.assertEqual(actual, "direct")
+
+    def test_direct_negative_route_mention_stays_direct_without_ceremony(self):
+        actual = run_runtime.classify_actual_route(
+            row(expected_skill="direct", route_boundary="direct-negative"),
+            "direct",
+            [],
+            (
+                "In Groundwork routing, the stable boundary is: raw/draft intent -> `to-prd`, "
+                "while accepted-ready work can later go downstream."
+            ),
+            [],
+        )
+
+        self.assertEqual(actual, "direct")
+
+    def test_compressed_prd_spec_marker_wins_over_issue_slicing_words(self):
+        actual = run_runtime.classify_actual_route(
+            row(expected_skill="to-prd"),
+            "direct",
+            [],
+            "我会一次性输出：\n\n1. 压缩版 PRD/spec\n2. 可并行开发的 issue 切分\n",
+            [],
+        )
+
+        self.assertEqual(actual, "to-prd")
 
     def test_to_prd_recommendation_not_implement_when_files_changed_none(self):
         actual = run_runtime.classify_actual_route(

@@ -51,6 +51,7 @@ Choose fast path, Groundwork maintenance compact path, or full path. State targe
 - Stop before drafting if target reader, decision, known facts, assumptions, open questions, or needs confirmation are missing unless justified as `None`.
 - Stop before writing a durable PRD file unless requested, artifact promotion is justified, the route is write-capable, and audience-first header fields are present.
 - Stop before recommending `to-issues` while blocking **NEEDS CLARIFICATION** remains.
+- Stop before promising or producing issue drafts, issue packs, agent-ready slices, or parallel agent work from raw requests to split issues for agents. For raw agent-slicing requests, output only compact PRD/spec shaping, missing fields, and the downstream acceptance gate until source is accepted enough.
 - Do not invent backend fields, states, APIs, metrics, owners, timelines, or acceptance details.
 - Do not promote prototype-only, wiki-only, glossary-only, stale, uncited, or external-search claims beyond their evidence layer.
 - Do not create new public grill/socratic/domain-language skills for this behavior.
