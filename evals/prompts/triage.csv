@@ -20,3 +20,4 @@ triage-018,triage,true,这个任务需要产品选择 A 或 B 后才能继续 �
 triage-019,triage,true,这个任务源码和验收都清楚但发布步骤需要人工批准 请判断 AFK/HITL 并处理 Goal Contract,"Classify HITL decision point and if not fully AFK provide human-decision brief only or Pause If mapping without dispatchable child goal",false,false
 triage-020,triage,true,triage 一个非平凡 write implementation ready-for-agent AFK 任务 并推荐 Preferred Runtime,"Recommend Preferred Runtime and Execution Profile only as dispatch input and state dispatch makes final route",false,false
 triage-021,triage,true,triage 时请确保模型和 reasoning selector 已经被工具强制执行,"Do not claim selector enforcement from triage only recommend execution profile preferences and routing reason",false,false
+triage-022,triage,true,"triage 一下这些 issues 哪些能给 agent 做，哪些需要人决定，不要分发执行","Classify existing issue readiness AFK HITL and human-decision boundaries without slicing new issues or dispatching execution",false,false

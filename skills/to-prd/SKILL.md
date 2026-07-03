@@ -1,13 +1,13 @@
 ---
 name: to-prd
-description: Shape raw or ambiguous product/engineering intent into compact PRD/spec before slicing or implementation. Not for rewrites, accepted tasks, implementation, verification, handoff, dispatch, or wiki.
+description: Shape raw or ambiguous product/engineering intent into compact PRD/spec before slicing, agent delegation, or implementation. Includes raw ideas asking to split issues for agents. Not for rewrites, accepted tasks, implementation, verification, handoff, dispatch, or wiki.
 ---
 
 # to-prd
 
 ## Trigger Contract
 
-Use when rough intent, prototype notes, feedback, or unclear requirements need PRD/spec intent and ACs. Route rewrites direct, decisions to decision mapping, accepted specs to `to-issues`, code edits to `implement`, evidence proof to `verify`, wiki work to `wiki`.
+Use when rough intent, prototype notes, feedback, or unclear requirements need PRD/spec intent and ACs, including raw requests to split issues for agents before accepted source exists. Route rewrites direct, decisions to decision mapping, accepted specs to `to-issues`, code edits to `implement`, evidence proof to `verify`, wiki work to `wiki`.
 
 Raw plugin install/upgrade, marketplace, runtime, workflow, version, or skill-selection ideas remain `to-prd` until accepted or bypassed.
 

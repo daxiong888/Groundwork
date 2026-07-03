@@ -52,6 +52,19 @@ PLANMODE_PRD_RE = re.compile(
     r"(?:PRD|需求|新需求|产品方案|方案|workflow|流程).{0,80}(?:草稿|draft|新|设计|新增|创建|收敛|改成)",
     re.I,
 )
+RAW_DELEGATION_RE = re.compile(
+    r"(?:我有个|有个|新的?|new).{0,30}(?:想法|idea|新功能|feature|需求|方案).{0,80}"
+    r"(?:直接|先)?\s*(?:拆(?:成)?\s*issues?|拆任务|issue drafts?|任务切片).{0,80}"
+    r"(?:agent|并行|不要先问|不要问|不问问题)",
+    re.I,
+)
+EXISTING_ISSUE_READINESS_RE = re.compile(
+    r"(?:triage|判断|能不能|是否|哪些能|哪些需要).{0,80}(?:issue|issues|任务).{0,80}"
+    r"(?:给\s*(?:子\s*)?agent\s*做|ready[-_ ]?for[-_ ]?agent|ready[-_ ]?for[-_ ]?human|AFK|HITL|人决定|blocked|blocker|阻塞)|"
+    r"(?:issue|issues|任务).{0,80}(?:triage|判断|能不能|是否|哪些能|哪些需要).{0,80}"
+    r"(?:给\s*(?:子\s*)?agent\s*做|ready[-_ ]?for[-_ ]?agent|ready[-_ ]?for[-_ ]?human|AFK|HITL|人决定|blocked|blocker|阻塞)",
+    re.I,
+)
 ACCEPTED_SOURCE_RE = re.compile(
     r"已接受|accepted|accepted[- ]ready|ready[-_ ]?for[-_ ]?agent|"
     r"ready issue(?:s)?|ready task(?:s)?|ready work|ready package|任务已经确认",
@@ -97,7 +110,7 @@ ROUTE_MARKERS = [
         "implement",
         re.compile(
             r"^Implementation Summary\b|^Blocked Implementation\b|^Implementation Blocked\b|"
-            r"^实现受阻\b|^阻塞实现\b|^实现摘要\b|^Files Changed\b|^Checks Run\b|"
+            r"^实现受阻\b|^阻塞实现\b|^实现摘要\b|"
             r"^Scope:\s|^Acceptance Map:\s|^Evidence Inspected:\s|^Findings P0/P1/P2:\s",
             re.I | re.M,
         ),
@@ -106,14 +119,29 @@ ROUTE_MARKERS = [
     (
         "triage",
         re.compile(
-            r"^Triage\b|^Triage Verdict\b|^State Transition\b|"
+            r"^\s*(?:#+\s*)?\*{0,2}Triage(?: Verdict)?\*{0,2}\b|^State Transition\b|"
             r"^(?:State|Status|Decision|状态|决策|Next State)\s*[:：].*"
             r"(?:ready-for-agent|needs-info|AFK|HITL|blocked)",
             re.I | re.M,
         ),
     ),
-    ("to-issues", re.compile(r"issue-map|Issue Map|Acceptance Criteria|验收标准|不能拆 issues|拆 issues", re.I)),
-    ("to-prd", re.compile(r"^# PRD\b|Artifact Type:\s*PRD|产品需求", re.I | re.M)),
+    (
+        "to-prd",
+        re.compile(
+            r"^# PRD\b|Artifact Type:\s*PRD|产品需求|\bto-prd\b|"
+            r"\braw idea\b|\bnot issue-ready\b|新功能想法|不是 accepted PRD/spec/plan",
+            re.I | re.M,
+        ),
+    ),
+    (
+        "to-issues",
+        re.compile(
+            r"^\s*(?:#+\s*)?\*{0,2}(?:Issue Map|Issue Drafts?)\*{0,2}\b|"
+            r"^\s*(?:#+\s*)?\*{0,2}Acceptance Criteria\*{0,2}\b|"
+            r"\bissue drafts?\b|tracker-neutral issue drafts",
+            re.I | re.M,
+        ),
+    ),
     ("prototype", re.compile(r"prototype|原型", re.I)),
     ("wiki", re.compile(r"LLM Wiki|wiki update candidate|项目 wiki", re.I)),
 ]
@@ -328,7 +356,7 @@ def is_direct_plain_text(value):
 def is_raw_or_planmode_prd_intake(value):
     if ACCEPTED_SOURCE_RE.search(value) or is_implement_bypass(value):
         return False
-    return bool(PLANMODE_PRD_RE.search(value))
+    return bool(PLANMODE_PRD_RE.search(value) or RAW_DELEGATION_RE.search(value))
 
 
 def is_evidence_boundary_verify(value):
@@ -349,6 +377,12 @@ def is_implement_bypass(value):
     return bool(IMPLEMENT_BYPASS_RE.search(value) and IMPLEMENT_RE.search(value))
 
 
+def is_existing_issue_readiness(value):
+    if is_dispatch_ready_package_cue(value):
+        return False
+    return bool(EXISTING_ISSUE_READINESS_RE.search(value))
+
+
 def prompt_route(value):
     if not str(value or "").strip():
         return UNKNOWN_ROUTE
@@ -364,6 +398,8 @@ def prompt_route(value):
         return "verify"
     if WRITE_PLAN_RE.search(value):
         return "write-plan"
+    if is_existing_issue_readiness(value):
+        return "triage"
     if is_dispatch_ready_package_cue(value):
         return "dispatch"
     if IMPLEMENT_RE.search(value):
@@ -388,6 +424,8 @@ def entry_decision_from_prompt(prompt):
         forbidden = ["implement", "direct"]
     elif route == "to-prd":
         forbidden = ["implement", "to-issues"]
+    elif route == "triage":
+        forbidden = ["dispatch", "implement", "to-issues"]
     elif route == "dispatch":
         forbidden = ["verify", "implement", "direct"]
 

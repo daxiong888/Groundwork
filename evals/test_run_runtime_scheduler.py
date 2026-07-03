@@ -2069,6 +2069,21 @@ class RuntimeSchedulerTests(unittest.TestCase):
 
         self.assertEqual(actual, "triage")
 
+    def test_bold_triage_marker_wins_over_missing_acceptance_words(self):
+        actual = run_runtime.classify_actual_route(
+            row(expected_skill="triage"),
+            "direct",
+            [],
+            (
+                "**Triage Verdict**\n"
+                "- State: `needs-info`\n"
+                "- Evidence Missing: issue 原文、acceptance criteria、验收标准、stop condition.\n"
+            ),
+            [],
+        )
+
+        self.assertEqual(actual, "triage")
+
     def test_issue_map_marker_wins_over_body_triage_state_reference(self):
         actual = run_runtime.classify_actual_route(
             row(expected_skill="to-issues"),
@@ -2080,6 +2095,70 @@ class RuntimeSchedulerTests(unittest.TestCase):
                 "- Task state: needs-info until API owner confirms scope.\n"
                 "- Blocker: HITL may be needed for final approval.\n"
             ),
+            [],
+        )
+
+        self.assertEqual(actual, "to-issues")
+
+    def test_to_prd_marker_wins_over_negative_issue_slicing_words(self):
+        actual = run_runtime.classify_actual_route(
+            row(expected_skill="to-prd"),
+            "direct",
+            [],
+            "不能直接拆成 issues；raw/draft intent 应先走 `to-prd` acceptance gate。",
+            [],
+        )
+
+        self.assertEqual(actual, "to-prd")
+
+    def test_raw_not_issue_ready_marker_wins_over_issue_draft_words(self):
+        actual = run_runtime.classify_actual_route(
+            row(expected_skill="to-prd"),
+            "direct",
+            [],
+            (
+                "如果 source 还只是 raw idea，我会明确标成 `not issue-ready`，"
+                "但仍尽量给出 draft issue pack 和 tracker-neutral issue drafts。"
+            ),
+            [],
+        )
+
+        self.assertEqual(actual, "to-prd")
+
+    def test_chinese_raw_feature_marker_wins_over_to_issues_boundary_words(self):
+        actual = run_runtime.classify_actual_route(
+            row(expected_skill="to-prd"),
+            "direct",
+            [],
+            "当前没有给出新功能想法的内容；按 Groundwork `to-issues` 边界还不能拆成 issue drafts。",
+            [],
+        )
+
+        self.assertEqual(actual, "to-prd")
+
+    def test_to_prd_recommendation_not_implement_when_files_changed_none(self):
+        actual = run_runtime.classify_actual_route(
+            row(expected_skill="to-prd"),
+            "direct",
+            [],
+            (
+                "当前输入只有新功能想法，没有 accepted source。\n\n"
+                "```md\n"
+                "Recommended route: to-prd first, then to-issues\n"
+                "Files changed: none\n"
+                "```"
+            ),
+            [],
+        )
+
+        self.assertEqual(actual, "to-prd")
+
+    def test_to_issues_hard_stop_with_issue_drafts_routes_to_issues(self):
+        actual = run_runtime.classify_actual_route(
+            row(expected_skill="to-issues"),
+            "direct",
+            [],
+            "按 `to-issues` 的 hard stop，只有 accepted source 才能拆成 issue drafts。",
             [],
         )
 
@@ -2138,6 +2217,22 @@ class RuntimeSchedulerTests(unittest.TestCase):
 
         self.assertEqual(decision["expected_best"], "to-prd")
         self.assertIn("implement", decision["forbidden_routes"])
+
+    def test_raw_agent_issue_slicing_routes_to_prd(self):
+        decision = route_detection.entry_decision_from_prompt(
+            "我有个新功能想法，直接拆成 issues 给 agent 并行做，不要先问问题"
+        )
+
+        self.assertEqual(decision["expected_best"], "to-prd")
+        self.assertIn("to-issues", decision["forbidden_routes"])
+
+    def test_existing_issue_readiness_routes_triage_before_to_issues(self):
+        decision = route_detection.entry_decision_from_prompt(
+            "triage 一下这些 issues 哪些能给 agent 做，哪些需要人决定，不要分发执行"
+        )
+
+        self.assertEqual(decision["expected_best"], "triage")
+        self.assertIn("to-issues", decision["forbidden_routes"])
 
     def test_skip_prd_runtime_package_implementation_routes_implement(self):
         decision = route_detection.entry_decision_from_prompt("明确跳过 PRD，直接实现 runtime package 相关小改")

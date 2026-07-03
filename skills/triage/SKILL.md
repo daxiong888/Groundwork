@@ -7,7 +7,7 @@ description: Classify readiness, blockers, severity, AFK/HITL, lifecycle-state n
 
 ## Trigger Contract
 
-Use for task state, readiness, blockers, AFK/HITL, lifecycle-state, closeout classification, or deciding whether incomplete information should stop as blocked, continue as needs-info, or be preserved for handoff.
+Use for task state, readiness, blockers, AFK/HITL, existing issue ready-for-agent/ready-for-human classification, lifecycle-state, closeout classification, or deciding whether incomplete information should stop as blocked, continue as needs-info, or be preserved for handoff.
 
 Route away:
 

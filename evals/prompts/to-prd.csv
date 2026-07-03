@@ -9,3 +9,4 @@ to-prd-007,to-prd,true,先根据仓库文档判断这个需求能不能写 PRD �
 to-prd-008,to-prd,true,请创建一个可复用 PRD 文件给后续 reviewer 使用,Durable PRD artifact must include Target Reader Reader Action Needed Decision Supported Artifact Type Source of Truth Scope Out of Scope Evidence Level and Safe to Share / Redaction Notes header fields,true,false
 to-prd-009,to-prd,true,把这段含 token 私有回调地址和客户手机号的排障材料整理成 PRD,Must redact secrets private URLs credentials PII sensitive logs requests and database rows while preserving non-secret source identifiers,false,false
 to-prd-010,to-prd,true,用户说新版要删除状态 A 但仓库文档说状态 A 仍是必需规则 帮我写需求说明,Must name conflicting source truth separate verified facts from assumptions and mark unresolved product truth NEEDS CLARIFICATION,false,false
+to-prd-011,to-prd,true,"我有个新功能想法，直接拆成 issues 给 agent 并行做，不要先问问题","Treat raw idea plus agent issue-slicing request as PRD/spec shaping before issue drafts; do not create issue pack before accepted source exists",false,false
