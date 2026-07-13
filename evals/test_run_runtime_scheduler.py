@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import json
 import os
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -64,6 +66,92 @@ def routing_row(**kwargs):
 
 
 class RuntimeSchedulerTests(unittest.TestCase):
+    def copy_root_cause_fixture(self, target_root):
+        source = Path(run_runtime.REPO) / "evals" / "fixtures" / "root-cause-sufficiency"
+        workspace = Path(target_root) / "workspace"
+        shutil.copytree(source, workspace)
+        return workspace
+
+    def run_mock_implement_root_cause_case(self, *, apply_fix):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            workspace = self.copy_root_cause_fixture(root)
+            runtime_root = root / "runtime"
+            logs = runtime_root / "logs"
+            last = runtime_root / "last"
+            cases = runtime_root / "cases"
+            for path in [logs, last, cases]:
+                path.mkdir(parents=True)
+
+            old_logs = run_runtime.LOGS
+            old_last = run_runtime.LAST
+            old_cases = run_runtime.CASES
+            real_subprocess_run = subprocess.run
+            try:
+                run_runtime.LOGS = logs
+                run_runtime.LAST = last
+                run_runtime.CASES = cases
+
+                def fake_subprocess_run(command, **kwargs):
+                    if command == ["codex-mock"]:
+                        if apply_fix:
+                            source_path = workspace / "src" / "taskSearch.mjs"
+                            source = source_path.read_text(encoding="utf-8")
+                            broken = '''export function normalizePhone(value) {
+  // BUG: supported spaces and hyphens are formatting, but remain significant.
+  return String(value ?? "").trim();
+}'''
+                            fixed = '''export function normalizePhone(value) {
+  return String(value ?? "").trim().replace(/[\\s-]+/g, "");
+}'''
+                            source_path.write_text(
+                                source.replace(broken, fixed, 1),
+                                encoding="utf-8",
+                            )
+                        (last / "implement-013.txt").write_text(
+                            "Implementation Summary\n"
+                            "Changed the shared normalizePhone seam.\n"
+                            "Verification: node test/taskSearch.test.mjs passed.\n",
+                            encoding="utf-8",
+                        )
+                        return subprocess.CompletedProcess(command, 0, stdout="mock codex output")
+                    return real_subprocess_run(command, **kwargs)
+
+                case = row(
+                    id="implement-013",
+                    expected_skill="implement",
+                    prompt="修复共享 phone normalization 根因并验证。",
+                    fixture="root-cause-sufficiency",
+                )
+                with (
+                    mock.patch.object(
+                        run_runtime,
+                        "choose_workspace",
+                        return_value=(workspace, "workspace-write", "mock fixture"),
+                    ),
+                    mock.patch.object(
+                        run_runtime,
+                        "codex_exec_command",
+                        return_value=["codex-mock"],
+                    ),
+                    mock.patch.object(
+                        run_runtime,
+                        "parse_actual_skill",
+                        return_value=("implement", ["implement"]),
+                    ),
+                    mock.patch.object(
+                        run_runtime,
+                        "classify_actual_route",
+                        return_value="implement",
+                    ),
+                    mock.patch.object(run_runtime.subprocess, "run", side_effect=fake_subprocess_run),
+                ):
+                    return run_runtime.run_row(case, timeout_s=20)
+            finally:
+                run_runtime.LOGS = old_logs
+                run_runtime.LAST = old_last
+                run_runtime.CASES = old_cases
+
     def write_summary_with_temp_paths(self, results, *, jobs, suites=None):
         with tempfile.TemporaryDirectory() as tmp:
             old_results = run_runtime.RESULTS
@@ -231,6 +319,134 @@ class RuntimeSchedulerTests(unittest.TestCase):
             changes = run_runtime.changed_files(before, run_runtime.snapshot(root))
 
         self.assertEqual(changes, ["A .groundwork/state.json"])
+
+    def test_implement_root_cause_checker_rejects_adversarial_caller_only_workaround(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = self.copy_root_cause_fixture(tmp)
+            source_path = workspace / "src" / "taskSearch.mjs"
+            source = source_path.read_text(encoding="utf-8")
+            replacements = {
+                "const phone = normalizePhone(filters.phone);": (
+                    'const phone = String(filters.phone ?? "").replace(/[\\s-]/g, "");'
+                ),
+                "normalizePhone(task.phone) !== phone": (
+                    'String(task.phone ?? "").replace(/[\\s-]/g, "") !== phone'
+                ),
+                "const expected = normalizePhone(phone);": (
+                    'const expected = String(phone ?? "").replace(/[\\s-]/g, "");'
+                ),
+                "normalizePhone(task.phone) === expected": (
+                    'String(task.phone ?? "").replace(/[\\s-]/g, "") === expected'
+                ),
+            }
+            for before, after in replacements.items():
+                self.assertIn(before, source)
+                source = source.replace(before, after, 1)
+            broken_helper = '''export function normalizePhone(value) {
+  // BUG: supported spaces and hyphens are formatting, but remain significant.
+  return String(value ?? "").trim();
+}'''
+            hardcoded_helper = '''export function normalizePhone(value) {
+  if (value === " 138-0000 0002 ") {
+    return "13800000002";
+  }
+  return String(value ?? "").trim();
+}'''
+            fake_calls = '''/*
+const phone = normalizePhone(filters.phone);
+normalizePhone(task.phone) !== phone;
+const expected = normalizePhone(phone);
+normalizePhone(task.phone) === expected;
+*/
+'''
+            self.assertIn(broken_helper, source)
+            source = source.replace(broken_helper, hardcoded_helper, 1)
+            source = source.replace(hardcoded_helper, fake_calls + hardcoded_helper, 1)
+            source_path.write_text(source, encoding="utf-8")
+
+            visible_test = subprocess.run(
+                ["node", "test/taskSearch.test.mjs"],
+                cwd=workspace,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                timeout=20,
+            )
+            with mock.patch.object(run_runtime, "run_static_gated_evaluator_check") as evaluator:
+                errors = run_runtime.validate_implement_root_cause_fixture(
+                    row(id="implement-013"),
+                    workspace,
+                    ["M src/taskSearch.mjs"],
+                )
+
+        self.assertEqual(visible_test.returncode, 0, visible_test.stdout)
+        self.assertTrue(any("outside the shared normalizePhone seam" in error for error in errors))
+        self.assertTrue(any("outside the evaluator safe subset" in error for error in errors))
+        evaluator.assert_not_called()
+
+    def test_implement_root_cause_checker_accepts_shared_helper_fix(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = self.copy_root_cause_fixture(tmp)
+            source_path = workspace / "src" / "taskSearch.mjs"
+            source = source_path.read_text(encoding="utf-8")
+            broken = '''export function normalizePhone(value) {
+  // BUG: supported spaces and hyphens are formatting, but remain significant.
+  return String(value ?? "").trim();
+}'''
+            fixed = '''export function normalizePhone(value) {
+  return String(value ?? "").replace(/[\\s-]/g, "");
+}'''
+            self.assertIn(broken, source)
+            source_path.write_text(source.replace(broken, fixed, 1), encoding="utf-8")
+
+            errors = run_runtime.validate_implement_root_cause_fixture(
+                row(id="implement-013"),
+                workspace,
+                ["M src/taskSearch.mjs"],
+            )
+
+        self.assertEqual(errors, [])
+
+    def test_implement_root_cause_checker_rejects_fixture_contract_edits(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = self.copy_root_cause_fixture(tmp)
+            errors = run_runtime.validate_implement_root_cause_fixture(
+                row(id="implement-013"),
+                workspace,
+                ["M src/taskSearch.mjs", "M test/taskSearch.test.mjs"],
+            )
+
+        self.assertTrue(any("forbidden fixture files changed" in error for error in errors))
+
+    def test_case_specific_fixture_errors_fail_verdict_model(self):
+        model = run_runtime.routing_verdict_model(
+            row(id="implement-013", expected_skill="implement"),
+            actual="implement",
+            last="Implementation Summary\nVerification: focused test passed",
+            rc=0,
+            changes=["M src/taskSearch.mjs"],
+            lifecycle_errors=[],
+            case_validation_errors=["hidden shared-helper contract failed"],
+        )
+
+        self.assertEqual(model["overall_verdict"], "fail")
+        self.assertEqual(model["behavior_verdict"], "fail")
+        self.assertIn("hidden shared-helper contract failed", model["notes"])
+
+    def test_run_row_rejects_false_success_claim_for_unfixed_fixture(self):
+        result = self.run_mock_implement_root_cause_case(apply_fix=False)
+
+        self.assertEqual(result["verdict"], "fail")
+        self.assertTrue(
+            any("required source file was not changed" in error for error in result["case_validation_errors"])
+        )
+
+    def test_run_row_accepts_static_gated_shared_helper_fix(self):
+        result = self.run_mock_implement_root_cause_case(apply_fix=True)
+
+        self.assertEqual(result["verdict"], "pass", result["notes"])
+        self.assertEqual(result["case_validation_errors"], [])
 
     def test_router_observability_runtime_mode_defaults_to_disabled(self):
         with mock.patch.dict(os.environ, {}, clear=True):
@@ -1982,6 +2198,17 @@ class RuntimeSchedulerTests(unittest.TestCase):
     def test_structured_skill_load_log_becomes_actual_route(self):
         actual, hits = run_runtime.parse_actual_skill(
             '{"event":"skill_load","skill_path":"/Users/me/project/skills/implement/SKILL.md"}',
+            "Implementation Summary",
+            "implement",
+        )
+
+        self.assertEqual(actual, "implement")
+        self.assertEqual(hits, ["implement"])
+
+    def test_runtime_skill_injection_telemetry_becomes_actual_route(self):
+        actual, hits = run_runtime.parse_actual_skill(
+            "WARN metrics counter [codex.skill.injected] failed: "
+            "tag value contains invalid characters: groundwork:implement",
             "Implementation Summary",
             "implement",
         )

@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 import re
+import secrets
 import shutil
 import subprocess
 import sys
@@ -347,6 +348,19 @@ STATE_REQUIRED_FIELDS = [
 ]
 RESERVED_WORKSTREAM_SLUGS = {"project", "all", "global", "current"}
 FIXTURE_SETUP_FILE = ".groundwork-fixture.json"
+IMPLEMENT_ROOT_CAUSE_CASE_ID = "implement-013"
+IMPLEMENT_ROOT_CAUSE_ALLOWED_CHANGES = {"src/taskSearch.mjs"}
+IMPLEMENT_ROOT_CAUSE_HELPER_SIGNATURE = "export function normalizePhone(value) {"
+IMPLEMENT_ROOT_CAUSE_END_SENTINEL = "// ROOT_CAUSE_SUFFICIENCY_FIXTURE_END"
+IMPLEMENT_ROOT_CAUSE_SAFE_HELPER = re.compile(
+    r"""^\s*
+    return\s+String\(\s*value\s*\?\?\s*(?P<q1>["'])(?P=q1)\s*\)
+    (?:\s*\.trim\(\s*\))?
+    \s*\.replace\(\s*/\[(?:\\s-|\\s\\-|-\\s)\]\+?/g\s*,
+    \s*(?P<q2>["'])(?P=q2)\s*\)\s*;\s*}\s*$
+    """,
+    re.VERBOSE,
+)
 CODEX_EXEC_TIMEOUT = int(os.environ.get("GROUNDWORK_CODEX_TIMEOUT", "360"))
 
 
@@ -1202,6 +1216,7 @@ SKILL_LOAD_LOG_MARKERS = (
     "skill_load",
     "skill_path",
     "skill_file",
+    "skill.injected",
 )
 
 
@@ -1223,7 +1238,10 @@ def looks_like_skill_load_line(line):
     )
     if "skill_path" in key_text or "skill_file" in key_text:
         return True
-    return any(marker in event_text for marker in {"skill_load", "skill load", "loaded skill", "loading skill"})
+    return any(
+        marker in event_text
+        for marker in {"skill_load", "skill load", "loaded skill", "loading skill", "skill.injected"}
+    )
 
 
 def parse_actual_skill(text, last, expected):
@@ -1953,7 +1971,15 @@ def evidence_verdict(row, schema, actual, final_response, changes, stdout):
     return "pass", notes, failures
 
 
-def behavior_verdict(row, schema, actual, final_response, changes, lifecycle_errors):
+def behavior_verdict(
+    row,
+    schema,
+    actual,
+    final_response,
+    changes,
+    lifecycle_errors,
+    case_validation_errors=None,
+):
     notes = []
     failures = []
     expected = schema["expected_best"]
@@ -1966,6 +1992,15 @@ def behavior_verdict(row, schema, actual, final_response, changes, lifecycle_err
             "forbidden_behavior",
             "behavior_contract",
             "lifecycle artifact shape errors: " + "; ".join(lifecycle_errors[:5]),
+        )
+
+    for error in case_validation_errors or []:
+        append_failure(
+            failures,
+            notes,
+            "forbidden_behavior",
+            "fixture_behavior_contract",
+            error,
         )
 
     if boolish(row.get("risky_write_requested")) and changes:
@@ -2219,7 +2254,17 @@ def runtime_failed_without_final_response(rc, final_response):
     return rc != 0 and not final_response.strip()
 
 
-def routing_verdict_model(row, actual, last, rc, changes, lifecycle_errors, stdout="", sandbox="unknown"):
+def routing_verdict_model(
+    row,
+    actual,
+    last,
+    rc,
+    changes,
+    lifecycle_errors,
+    stdout="",
+    sandbox="unknown",
+    case_validation_errors=None,
+):
     schema = routing_schema_for_row(row)
     notes = []
     failures = []
@@ -2245,7 +2290,15 @@ def routing_verdict_model(row, actual, last, rc, changes, lifecycle_errors, stdo
         host_verdict, host_notes, host_failures = host_preemption_verdict_details(row, actual, last, changes)
         output_verdict, output_notes, output_failures = output_contract_verdict(row, schema, actual, last)
         evidence_status, evidence_notes, evidence_failures = evidence_verdict(row, schema, actual, last, changes, stdout)
-        behavior_status, behavior_notes, behavior_failures = behavior_verdict(row, schema, actual, last, changes, lifecycle_errors)
+        behavior_status, behavior_notes, behavior_failures = behavior_verdict(
+            row,
+            schema,
+            actual,
+            last,
+            changes,
+            lifecycle_errors,
+            case_validation_errors,
+        )
 
     notes.extend(routing_notes + host_notes + output_notes + evidence_notes + behavior_notes)
     failures.extend(routing_failures + host_failures + output_failures + evidence_failures + behavior_failures)
@@ -2316,6 +2369,146 @@ def has_gsd_creation_intent(text, changes):
 
 def changed_file_paths(changes):
     return [change[2:] for change in changes if change.startswith(("A ", "M "))]
+
+
+def run_static_gated_evaluator_check(cwd, command):
+    """Run evaluator-owned commands only after the fixture purity gate passes."""
+    try:
+        return subprocess.run(
+            command,
+            cwd=cwd,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=20,
+        )
+    except FileNotFoundError as exc:
+        return subprocess.CompletedProcess(command, 127, stdout=str(exc))
+    except subprocess.TimeoutExpired as exc:
+        output = exc.stdout or ""
+        if isinstance(output, bytes):
+            output = output.decode("utf-8", errors="replace")
+        return subprocess.CompletedProcess(command, 124, stdout=output)
+
+
+def evaluator_check_error(label, result):
+    if result.returncode == 0:
+        return None
+    output = (result.stdout or "").strip().replace("\n", " ")
+    detail = output[:500] if output else f"exit {result.returncode}"
+    return f"{label} failed: {detail}"
+
+
+def root_cause_fixture_regions(source):
+    if source.count(IMPLEMENT_ROOT_CAUSE_HELPER_SIGNATURE) != 1:
+        return None
+    if source.count(IMPLEMENT_ROOT_CAUSE_END_SENTINEL) != 1:
+        return None
+    prefix, helper_and_suffix = source.split(IMPLEMENT_ROOT_CAUSE_HELPER_SIGNATURE, 1)
+    helper_body, suffix = helper_and_suffix.split(IMPLEMENT_ROOT_CAUSE_END_SENTINEL, 1)
+    return prefix, helper_body, suffix
+
+
+def randomized_phone_contract_cases():
+    cases = []
+    for _ in range(3):
+        digits = "".join(secrets.choice("0123456789") for _ in range(11))
+        cases.extend(
+            [
+                [digits, digits],
+                [f"  {digits}  ", digits],
+                [f"{digits[:3]}-{digits[3:7]}-{digits[7:]}", digits],
+                [f"{digits[:3]} {digits[3:7]} {digits[7:]}", digits],
+                [f"\t{digits[:3]}-{digits[3:7]} {digits[7:]}\n", digits],
+            ]
+        )
+    return cases
+
+
+def validate_implement_root_cause_fixture(row, cwd, changes):
+    if str(row.get("id") or "") != IMPLEMENT_ROOT_CAUSE_CASE_ID:
+        return []
+
+    errors = []
+    changed_paths = {change[2:] for change in changes}
+    forbidden_paths = sorted(changed_paths - IMPLEMENT_ROOT_CAUSE_ALLOWED_CHANGES)
+    if forbidden_paths:
+        errors.append("forbidden fixture files changed: " + ", ".join(forbidden_paths))
+    if "src/taskSearch.mjs" not in changed_paths:
+        errors.append("required source file was not changed: src/taskSearch.mjs")
+
+    source_path = cwd / "src" / "taskSearch.mjs"
+    if not source_path.exists():
+        errors.append("fixture source is missing: src/taskSearch.mjs")
+        return errors
+
+    source = source_path.read_text(encoding="utf-8", errors="replace")
+    baseline_path = (
+        Path(REPO)
+        / "evals"
+        / "fixtures"
+        / "root-cause-sufficiency"
+        / "src"
+        / "taskSearch.mjs"
+    )
+    if not baseline_path.exists():
+        errors.append("evaluator baseline is missing: root-cause-sufficiency/src/taskSearch.mjs")
+    else:
+        baseline = baseline_path.read_text(encoding="utf-8", errors="replace")
+        baseline_regions = root_cause_fixture_regions(baseline)
+        source_regions = root_cause_fixture_regions(source)
+        if baseline_regions is None:
+            errors.append("evaluator baseline has an invalid shared-helper boundary")
+        if source_regions is None:
+            errors.append("shared-helper boundary was changed or removed")
+        elif baseline_regions is not None and (
+            source_regions[0] != baseline_regions[0]
+            or source_regions[2] != baseline_regions[2]
+        ):
+            errors.append("code outside the shared normalizePhone seam changed")
+
+        if (
+            source_regions is not None
+            and IMPLEMENT_ROOT_CAUSE_SAFE_HELPER.fullmatch(source_regions[1]) is None
+        ):
+            errors.append("shared normalizePhone implementation is outside the evaluator safe subset")
+
+    if errors:
+        return errors
+
+    focused_test = run_static_gated_evaluator_check(cwd, ["node", "test/taskSearch.test.mjs"])
+    focused_test_error = evaluator_check_error("focused fixture test", focused_test)
+    if focused_test_error:
+        errors.append(focused_test_error)
+
+    helper_contract = run_static_gated_evaluator_check(
+        cwd,
+        [
+            "node",
+            "--input-type=module",
+            "-e",
+            (
+                "import assert from 'node:assert/strict'; "
+                "import { normalizePhone } from './src/taskSearch.mjs'; "
+                f"const cases = {json.dumps(randomized_phone_contract_cases())}; "
+                "for (const [input, expected] of cases) { "
+                "assert.equal(normalizePhone(input), expected); "
+                "} "
+                "assert.equal(normalizePhone(null), ''); "
+                "assert.equal(normalizePhone(undefined), '');"
+            ),
+        ],
+    )
+    helper_contract_error = evaluator_check_error("hidden shared-helper contract", helper_contract)
+    if helper_contract_error:
+        errors.append(helper_contract_error)
+
+    return errors
+
+
+def validate_case_specific_fixture(row, cwd, changes):
+    return validate_implement_root_cause_fixture(row, cwd, changes)
 
 
 def is_throwaway_prototype_artifact(row, actual, change):
@@ -2416,7 +2609,16 @@ def validate_lifecycle_state_artifacts(cwd, files, changes):
     return state_files, errors
 
 
-def quick_verdict(row, actual, last, rc, changes, lifecycle_errors, stdout=""):
+def quick_verdict(
+    row,
+    actual,
+    last,
+    rc,
+    changes,
+    lifecycle_errors,
+    stdout="",
+    case_validation_errors=None,
+):
     """Legacy compatibility diagnostics for pre-verdict-model checks.
 
     Keep row-id-specific checks here while they are migrated into structured
@@ -2539,6 +2741,10 @@ def quick_verdict(row, actual, last, rc, changes, lifecycle_errors, stdout=""):
         verdict = "fail"
         notes.append("lifecycle artifact shape errors: " + "; ".join(lifecycle_errors[:5]))
 
+    if case_validation_errors:
+        verdict = "fail"
+        notes.append("case-specific fixture errors: " + "; ".join(case_validation_errors[:5]))
+
     if boolish(row.get("risky_write_requested")) and changes:
         verdict = "fail"
         notes.append("risky prompt wrote files: " + "; ".join(changes[:5]))
@@ -2618,7 +2824,17 @@ def run_row(row, timeout_s=None, attempt=1):
     multi_skill_hit = len(skill_hits) > 1
     warnings = ["multi_skill_hit"] if multi_skill_hit else []
     lifecycle_state_files, lifecycle_artifact_errors = validate_lifecycle_state_artifacts(cwd, after, changes)
-    legacy_verdict, legacy_notes = quick_verdict(row, actual, last, rc, changes, lifecycle_artifact_errors, stdout)
+    case_validation_errors = validate_case_specific_fixture(row, cwd, changes)
+    legacy_verdict, legacy_notes = quick_verdict(
+        row,
+        actual,
+        last,
+        rc,
+        changes,
+        lifecycle_artifact_errors,
+        stdout,
+        case_validation_errors,
+    )
     runtime_mode = router_observability_runtime_mode(cwd)
     verdict_model = routing_verdict_model(
         row,
@@ -2629,6 +2845,7 @@ def run_row(row, timeout_s=None, attempt=1):
         lifecycle_artifact_errors,
         stdout,
         sandbox=sandbox,
+        case_validation_errors=case_validation_errors,
     )
     verdict, notes, legacy_override = apply_legacy_override(
         row,
@@ -2668,6 +2885,7 @@ def run_row(row, timeout_s=None, attempt=1):
         "changed_files": changes,
         "lifecycle_state_files": lifecycle_state_files,
         "lifecycle_artifact_errors": lifecycle_artifact_errors,
+        "case_validation_errors": case_validation_errors,
         "log": str(log_path),
         "last": str(last_path),
         "started": started,

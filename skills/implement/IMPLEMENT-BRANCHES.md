@@ -16,18 +16,26 @@ Safe to Share / Redaction Notes: Safe to share as-is; contains no secrets, crede
 2. Run lifecycle preflight and git topology gate when the task may write files, create artifacts, or mutate git/remote state.
 3. Inspect current branch, dirty state, relevant diffs, and whether branch/worktree is required before editing.
 4. Choose the implementation branch:
-   - `diagnose-before-edit`: reproduce or inspect first, separate confirmed cause from hypothesis, then continue only with the minimum scoped fix or stop with diagnosis evidence.
+   - `diagnose-before-edit`: reproduce or inspect first, separate confirmed cause from hypothesis, then continue only with a sufficient root-cause fix inside accepted scope or stop with diagnosis evidence.
    - `read-only-conformance`: inspect task/PRD, source, tests, and git boundary; output conformance findings and stop without edits.
    - `gated-implementation`: run git topology and remote-write gates before editing or remote action.
    - `ordinary-implementation`: continue with the lightweight plan and focused edit path.
 5. Inspect relevant code, tests, config, and shared helpers before editing.
 6. Use TDD-lite where feasible; otherwise name the no-test justification.
-7. Make minimal focused changes.
+7. Make the lowest-blast-radius change set that is sufficient for the confirmed cause and affected invariants.
 8. Run the fastest relevant checks, including original failing checks when applicable.
 9. If fixing a verify or clean-review failure, record findings addressed and re-QA the original or narrowest failed check.
 10. Run `SELF-REVIEW.md` before final reporting.
 
 For nontrivial bug or mechanism work, load `skills/_shared/FIRST-PRINCIPLES.md` and use the Bug Root-Cause Ladder before edits. For material shared-skill, shared-guardrail, readiness-adjacent, or public-surface work, load `skills/_shared/ADVERSARIAL-REVIEW.md` and record adversarial findings when they affect scope, evidence, or remaining gaps.
+
+## Solution Sufficiency
+
+Implementation minimality is a two-stage decision: establish causal sufficiency first, then minimize delivery scope. Do not compare candidate fixes by line count, file count, or implementation convenience until they address the confirmed cause, restore the affected invariants, cover known affected paths, and have a falsifiable check.
+
+Reject a smaller candidate when it only masks the visible symptom, adds caller-specific duplication around a broken shared mechanism, transfers the failure to another layer, leaves a confirmed stopgap in place, or tests presentation while the mechanism remains broken. Unrelated refactors still remain out of scope.
+
+If a sufficient fix needs broader scope, authority, migration, dependency, or risk approval than the task grants, stop and report the required decision. Do not silently ship the superficial candidate as the “minimal fix.”
 
 ## Conformance Field Set
 
@@ -95,6 +103,7 @@ If fixing clean-review or verify findings:
 | Dirty worktree state is present or unclear | Inspect relevant diffs before edits and decide whether current worktree is safe. | List intended files, unrelated dirty/untracked files, and whether edits are blocked, scoped, or need separate topology. |
 | Unrelated files appear in the diff or staged set | Stop staging/commit work until the boundary is explicit. | Report allowlist, denylist, `git diff --name-only`, and `git diff --cached --name-only`; leave unrelated files unstaged. |
 | Acceptance criteria or source truth is unclear | Stop before implementation or ask the highest-impact clarification question. | Do not infer product behavior; state what is known, missing, and needed. |
+| Only a superficial workaround fits the accepted scope | Stop before under-fixing and surface the root-cause solution's required scope, authority, or risk decision. | Name why the smaller patch is insufficient, which invariant or affected path would remain broken, and the narrowest sufficient alternative. |
 | Code edit or bug patch is requested but no source truth, workspace file, task artifact, reproduction path, or test seam is available | Route to `blocked implementation`; do not answer as ordinary direct Q&A and do not patch speculatively. | Output exact implement field labels: `Scope`, `Acceptance Map`, `Evidence Inspected`, `Findings P0/P1/P2`, `Non-Readiness Boundary`, `Gaps`, `Next Action`, `Unverified Claims`; include `Proposed Action`, `Target`, `Risk`, `Rollback/Undo`, and `Approval Needed` when the stop is gate-bearing; for nontrivial bug intent include `Bug Root-Cause Ladder` with unavailable fields marked `not provided` or `unverified`. |
 
 ## Full Output Skeleton

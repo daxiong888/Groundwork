@@ -123,6 +123,7 @@ public_skills:
       - evals/prompts/implement.csv::implement-001
       - evals/prompts/implement.csv::implement-002
       - evals/prompts/implement.csv::implement-003
+      - evals/prompts/implement.csv::implement-013
     route_negatives:
       - evals/prompts/implement.csv::implement-007
       - evals/prompts/implement.csv::implement-008

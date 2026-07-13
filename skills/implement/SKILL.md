@@ -13,13 +13,19 @@ Do not use for raw requirements, task slicing, readiness/UAT/release verificatio
 
 ## Route First
 
-Choose the smallest branch that matches the request:
+Choose the branch that matches the current decision and risk. Gating overrides ordinary execution; branch selection limits procedure loading, not solution depth:
 
 - `diagnose-before-edit`: inspect or reproduce first; edit only after a confirmed cause, failing check, or concrete test seam exists.
 - `ordinary-implementation`: accepted task or explicit PRD/spec bypass; inspect source and write the five-line mini-plan before editing.
 - `read-only-conformance`: inspect task/PRD, source, tests, and git boundary; report implementation conformance only and do not edit.
 - `gated-implementation`: push, PR, issue closeout, customer-visible, destructive, data-write, deploy, publish, migration, remote mutation, or shared-skill mutation.
 - `review-loop-remediation`: fix only cited verification or clean-review findings; rerun the original or narrowest relevant check and mark prior review stale when material files change.
+
+## Solution Depth
+
+Minimize unrelated scope, not the depth required to solve the confirmed cause. For nontrivial bug or mechanism work, apply `skills/_shared/FIRST-PRINCIPLES.md` before choosing a fix. A fix is minimal only among solutions that address the confirmed cause, restore affected invariants, cover known affected paths, and have a falsifiable verification signal.
+
+Do not substitute a smaller symptom mask, local duplication, fallback, or workaround while leaving the confirmed cause intact. If the sufficient root-cause fix exceeds accepted scope or authority, stop and surface the required expansion instead of silently under-fixing.
 
 ## Evidence Boundary
 
