@@ -4,13 +4,15 @@ from datetime import datetime, timezone
 
 try:
     from route_detection import detect_route_from_text, has_dispatch_route_marker
-    from routing_schema import as_list, normalize_route
+    from routing_schema import SELECTOR_ENFORCEMENT, SELECTOR_POLICIES, as_list, normalize_route
 except ImportError:  # pragma: no cover - package import path
     from evals.route_detection import detect_route_from_text, has_dispatch_route_marker
-    from evals.routing_schema import as_list, normalize_route
+    from evals.routing_schema import SELECTOR_ENFORCEMENT, SELECTOR_POLICIES, as_list, normalize_route
 
 
 NOT_APPLICABLE = "not_applicable"
+RETURNED_SELECTOR_EVIDENCE_SOURCES = {"result_package", "runtime_adapter", "tool_report"}
+TOOL_ENFORCEMENT_SOURCES = {"runtime_adapter", "tool_report"}
 VERIFY_SCOPE_FIELD_ALIASES = {
     "Claim": ["Claim", "User-visible Claim Being Verified", "In Scope"],
     "Covered": ["Covered"],
@@ -31,7 +33,9 @@ def utc_now():
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def normalize_execution_profile(source_value="", *, task_shape="", selector_enforcement="prompt_preference"):
+def normalize_execution_profile(
+    source_value="", *, task_shape="", selector_policy="tool_if_available_else_prompt_preference"
+):
     text = f"{source_value} {task_shape}".lower()
     profile_options = {"model_profiles": [], "reasoning_efforts": [], "cost_latency_biases": []}
 
@@ -94,8 +98,7 @@ def normalize_execution_profile(source_value="", *, task_shape="", selector_enfo
         ),
         "concrete_model": "",
         "capability_status": "known" if source_value else "unknown",
-        "selector_enforcement": selector_enforcement,
-        "selector_enforcement_policy": "tool_if_available_else_prompt_preference",
+        "selector_policy": selector_policy,
         "evidence_layer": "prompt_preference",
     }
 
@@ -153,22 +156,44 @@ def dispatch_requires_strong_profile(dispatch_decision):
     return route_decision in {"clean_review", "worktree_clean_review", "readonly_clean_review"}
 
 
+def selector_enforcement_from_result(dispatch_decision):
+    if not dispatch_decision:
+        return "unknown"
+    selector_evidence = dispatch_decision.get("selector_evidence") or {}
+    if not isinstance(selector_evidence, dict):
+        return "unknown"
+    if selector_evidence.get("source") not in RETURNED_SELECTOR_EVIDENCE_SOURCES:
+        return "unknown"
+    selector_enforcement = str(selector_evidence.get("selector_enforcement") or "").strip()
+    if selector_enforcement not in SELECTOR_ENFORCEMENT:
+        return "unknown"
+    return selector_enforcement
+
+
 def execution_profile_verdict(dispatch_decision):
     if not dispatch_decision:
         return "not_applicable", "none"
     profile = dispatch_decision.get("execution_profile") or {}
     if not isinstance(profile, dict):
         return "insufficient_evidence", "selector_unverified"
-    required = ["model_profile", "reasoning_effort", "cost_latency_bias", "selector_enforcement", "evidence_layer"]
+    required = ["model_profile", "reasoning_effort", "cost_latency_bias", "selector_policy"]
     if any(not str(profile.get(field) or "").strip() for field in required):
         return "insufficient_evidence", "selector_unverified"
-    if profile.get("selector_enforcement") == "tool_enforced":
-        selector_evidence = dispatch_decision.get("selector_evidence") or {}
+    if profile.get("selector_policy") not in SELECTOR_POLICIES:
+        return "insufficient_evidence", "selector_unverified"
+    selector_evidence = dispatch_decision.get("selector_evidence") or {}
+    claimed_enforcement = str(selector_evidence.get("selector_enforcement") or "").strip()
+    selector_enforcement = selector_enforcement_from_result(dispatch_decision)
+    if claimed_enforcement and claimed_enforcement not in SELECTOR_ENFORCEMENT:
+        return "insufficient_evidence", "selector_unverified"
+    if claimed_enforcement not in {"", "unknown"} and selector_enforcement == "unknown":
+        return "insufficient_evidence", "selector_unverified"
+    if selector_enforcement == "tool_enforced":
         if not selector_evidence.get("runtime_reported"):
             return "insufficient_evidence", "selector_unverified"
-        if profile.get("evidence_layer") != "runtime_tool_evidence":
+        if selector_evidence.get("evidence_layer") != "runtime_tool_evidence":
             return "insufficient_evidence", "selector_unverified"
-        if selector_evidence.get("source") not in {"runtime_adapter", "tool_report"}:
+        if selector_evidence.get("source") not in TOOL_ENFORCEMENT_SOURCES:
             return "insufficient_evidence", "selector_unverified"
     if profile.get("model_profile") in {"fast_scan", "spark_iteration"} and dispatch_requires_strong_profile(dispatch_decision):
         return "mismatch", "profile_too_weak_for_risk"
@@ -325,12 +350,7 @@ def score_turn(
         failure_type = "route_miss"
         fix_locus = "routing_surface"
 
-    selector_enforcement = "unknown"
-    if dispatch_decision:
-        selector_enforcement = (
-            (dispatch_decision.get("execution_profile") or {}).get("selector_enforcement")
-            or "unknown"
-        )
+    selector_enforcement = selector_enforcement_from_result(dispatch_decision)
     if actual == "dispatch":
         dispatch_hit_level = "skill_loaded"
     elif response_shape_candidate == "dispatch":
@@ -424,6 +444,7 @@ def render_router_card(score, decision=None, dispatch_decision=None):
     ]
     if dispatch_decision:
         profile = dispatch_decision.get("execution_profile") or {}
+        selector_evidence = dispatch_decision.get("selector_evidence") or {}
         lines.extend(
             [
                 "",
@@ -438,10 +459,12 @@ def render_router_card(score, decision=None, dispatch_decision=None):
                 f"- Model profile: `{profile.get('model_profile', 'unknown')}`",
                 f"- Reasoning effort: `{profile.get('reasoning_effort', 'unknown')}`",
                 f"- Cost/latency bias: `{profile.get('cost_latency_bias', 'unknown')}`",
+                f"- Selector request policy: `{profile.get('selector_policy', 'unknown')}`",
                 "",
                 "## Selector Enforcement Evidence",
-                f"- Selector enforcement: `{profile.get('selector_enforcement', 'unknown')}`",
-                f"- Evidence layer: `{profile.get('evidence_layer', 'unknown')}`",
+                f"- Selector enforcement: `{score.get('selector_enforcement', 'unknown')}`",
+                f"- Evidence layer: `{selector_evidence.get('evidence_layer', 'unknown')}`",
+                f"- Evidence source: `{selector_evidence.get('source', 'unknown')}`",
             ]
         )
     lines.extend(

@@ -6,7 +6,7 @@ Groundwork dispatch users, coordinator threads, runtime adapter authors, and rev
 
 ## Reader Action Needed
 
-Choose the lightest appropriate runtime, execution profile, and selector enforcement statement before generating Dispatch Package v2.
+Choose the lightest appropriate runtime, execution profile, and selector request policy before generating Dispatch Package v2.
 
 ## Decision Supported
 
@@ -19,6 +19,22 @@ Default routing and execution profile recommendations. This document does not ex
 ## Out of Scope
 
 Calling thread tools, spawning subagents, creating worktrees, mutating remotes/trackers/data/runtime state, or claiming selectors were applied.
+
+## Artifact Type
+
+Dispatch routing reference.
+
+## Source of Truth
+
+`skills/dispatch/RUNTIME-ADAPTERS.md`, `skills/_shared/COGNITIVE-BUDGET.md`, `skills/_shared/RUNTIME-CAPABILITY.md`, and `skills/_shared/REVIEW-LOOP.md`.
+
+## Evidence Level
+
+Source-validation routing guidance only; runtime availability and selector application require adapter/tool evidence.
+
+## Safe to Share / Redaction Notes
+
+Safe to share as-is; generated packages still require source and payload redaction.
 
 ## Routing Table
 
@@ -38,23 +54,23 @@ Calling thread tools, spawning subagents, creating worktrees, mutating remotes/t
 
 | Task Shape | Model Profile | Reasoning | Bias |
 | --- | --- | --- | --- |
-| tiny direct/doc/config | fast coding model | low | fast |
-| normal clear feature | balanced coding model | medium | balanced |
-| cross-cutting, migration, schema, API, security | strongest coding/reasoning available | high | quality |
-| read-only multi-perspective or high-risk review | reviewer/strongest reasoning profile | medium/high | balanced/quality |
-| exploration/diagnosis | fast/balanced reasoning profile | medium | balanced |
+| tiny direct/doc/config | `fast_scan` | low | fast |
+| normal clear feature | `balanced_work` | medium | balanced |
+| cross-cutting, migration, schema, API, security | `strong_reasoning` | high | quality |
+| independent high-risk review | `exhaustive_review` | high or xhigh when available | quality |
+| bounded exploration/diagnosis | `fast_scan` or `balanced_work` | low or medium | fast or balanced |
 
-Each task includes `model_profile`, `reasoning_effort`, `cost_latency_bias`, and `routing_reason`. Reason must connect task shape, risk, source truth, and validation expectation to runtime/profile.
+`skills/_shared/COGNITIVE-BUDGET.md` owns the allowed `model_profile`, `reasoning_effort`, and `cost_latency_bias` values. Each task adds `routing_reason`, connecting task shape, risk, source truth, and validation expectation to the requested profile.
 
-## Selector Enforcement
+## Selector Request And Evidence
 
-Selector enforcement is evidence. Use `tool_enforced` only when the runtime adapter confirms selectors were applied. Otherwise report `prompt_preference`, `unavailable`, or `unknown`. Package preferences such as "strongest available" are not enforcement proof.
+Dispatch records a request-side `selector_policy`; it does not predeclare execution. Result packages use the canonical `selector_enforcement` evidence status from `skills/_shared/RUNTIME-CAPABILITY.md`. Package preferences such as "strongest available" are not enforcement proof.
 
 ## Write Routing Defaults
 
 Default write work to managed worktree only when accepted write source, readiness evidence, source package, complete Goal Contract, validation package, and released conflict/dependency barrier are present. Otherwise return `needs_info`, `needs_split`, `main_thread_readonly`, serialization, or human decision.
 
-Fresh role separation is required for P0/P1, public API, migration, schema, security, privacy, auth, permissions, data correctness, shared contract, adapter contract, package schema, state machine, cross-cutting, dependent-chain, weak-validation, multi-package, or stale-context work. Implementer self-check is not clean review.
+Fresh role separation is required when `skills/_shared/REVIEW-LOOP.md` says materiality or fan-out triggers apply. Implementer self-check is not clean review.
 
 ## Read-only / Hybrid / Conflict Defaults
 

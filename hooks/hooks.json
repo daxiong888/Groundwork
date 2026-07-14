@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex-hooks/user_prompt_submit_groundwork_entry.py\" ]; then PYTHONDONTWRITEBYTECODE=1 python3 \"$PLUGIN_ROOT/scripts/codex-hooks/user_prompt_submit_groundwork_entry.py\" || true; fi",
+            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex-hooks/groundwork_router_event.py\" ]; then PYTHONDONTWRITEBYTECODE=1 python3 \"$PLUGIN_ROOT/scripts/codex-hooks/groundwork_router_event.py\" UserPromptSubmit || true; fi",
             "timeout": 10
           }
         ]
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex-hooks/pre_tool_use_groundwork_trace.py\" ]; then PYTHONDONTWRITEBYTECODE=1 python3 \"$PLUGIN_ROOT/scripts/codex-hooks/pre_tool_use_groundwork_trace.py\" || true; fi",
+            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex-hooks/groundwork_router_event.py\" ]; then PYTHONDONTWRITEBYTECODE=1 python3 \"$PLUGIN_ROOT/scripts/codex-hooks/groundwork_router_event.py\" PreToolUse || true; fi",
             "timeout": 10
           }
         ]
@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex-hooks/permission_request_groundwork_trace.py\" ]; then PYTHONDONTWRITEBYTECODE=1 python3 \"$PLUGIN_ROOT/scripts/codex-hooks/permission_request_groundwork_trace.py\" || true; fi",
+            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex-hooks/groundwork_router_event.py\" ]; then PYTHONDONTWRITEBYTECODE=1 python3 \"$PLUGIN_ROOT/scripts/codex-hooks/groundwork_router_event.py\" PermissionRequest || true; fi",
             "timeout": 10
           }
         ]
@@ -40,7 +40,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex-hooks/post_tool_use_groundwork_trace.py\" ]; then PYTHONDONTWRITEBYTECODE=1 python3 \"$PLUGIN_ROOT/scripts/codex-hooks/post_tool_use_groundwork_trace.py\" || true; fi",
+            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex-hooks/groundwork_router_event.py\" ]; then PYTHONDONTWRITEBYTECODE=1 python3 \"$PLUGIN_ROOT/scripts/codex-hooks/groundwork_router_event.py\" PostToolUse || true; fi",
             "timeout": 10
           }
         ]
@@ -51,7 +51,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex-hooks/stop_groundwork_trace.py\" ]; then PYTHONDONTWRITEBYTECODE=1 python3 \"$PLUGIN_ROOT/scripts/codex-hooks/stop_groundwork_trace.py\" || true; fi",
+            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex-hooks/groundwork_router_event.py\" ]; then PYTHONDONTWRITEBYTECODE=1 python3 \"$PLUGIN_ROOT/scripts/codex-hooks/groundwork_router_event.py\" Stop || true; fi",
             "timeout": 30
           }
         ]

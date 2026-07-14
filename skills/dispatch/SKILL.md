@@ -29,7 +29,7 @@ For lite routes and the default skeleton-only package, target at most 2,800 char
 
 Confirm source truth, issue set or audit scope, readiness source, and evidence level. When there is missing source truth or audit scope, emit only a lite `needs_info` decision with missing inputs and next action; do not invent generic task lenses. Recommend only from named evidence. Never claim runtime execution, selector enforcement, cache refresh, clean review, closeout, branch cleanup, UAT, release, customer readiness, or completed audit findings from package text alone.
 
-If runtime/model selection is material, prefer `model_profile` before concrete models and label selector enforcement as `tool_enforced`, `prompt_preference`, `unavailable`, or `unknown` from current tool evidence.
+If runtime/model selection is material, prefer `model_profile` before concrete models, record a request-side selector policy, and reserve selector-enforcement claims for returned runtime/tool evidence.
 
 ## Required Output
 

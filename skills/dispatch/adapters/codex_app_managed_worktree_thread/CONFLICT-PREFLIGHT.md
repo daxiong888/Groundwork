@@ -24,9 +24,9 @@ conflict_preflight:
   dependency_barrier:
     depends_on_task_ids: []
     blocked_until:
-      result_package_status: ready_for_review | not_required
-      clean_review: passed | not_required
-      merge_back: completed | not_required
+      result_outcome: ready_for_review | no_execution_needed | not_required
+      review_status: passed | not_required
+      merge_back_status: applied | discarded | not_required
       verification: pass | partial_allowed | not_required
       base_refresh: completed | not_required
     required_base:

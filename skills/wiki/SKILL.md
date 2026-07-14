@@ -23,9 +23,7 @@ Route away:
 
 Load `skills/_shared/LLM-WIKI.md` before wiki IO; it owns storage, frontmatter, citations, stale/conflict handling, raw sources, external-tool boundary, and output shape.
 
-For Groundwork repo maintenance, apply repo-local `AGENTS.md` before reporting complete.
-
-Load only when material: lifecycle for durable create/update; audience-first for reports/audits/contracts; domain language for truth-bearing terms; evidence/role/runtime/non-executor refs only for readiness/runtime/cache/release/UAT/customer claims.
+Load only when material: `skills/_shared/LIFECYCLE-PREFLIGHT.md` for durable create/update; audience-first for reports/audits/contracts; domain language for truth-bearing terms; evidence/role/runtime/non-executor refs only for readiness/runtime/cache/release/UAT/customer claims.
 
 Wiki synthesis is orientation unless claim-level citations and source checks support a stronger boundary.
 

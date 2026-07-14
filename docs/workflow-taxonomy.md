@@ -1,6 +1,6 @@
 # Workflow Taxonomy
 
-For v0.1, `docs/prd.md` is the product source of truth. This taxonomy explains workflow boundaries and trigger policy, but it does not expand MVP scope beyond the PRD.
+This taxonomy explains current workflow boundaries and trigger policy. `docs/plugin-architecture.md`, the route registry, and public skill contracts are canonical for current behavior; scoped historical PRDs remain decision evidence only.
 
 This taxonomy defines Groundwork's internal workflow modes and the public action-named skills that expose them. It is derived from the R&D scenario model in `research/user-work-scenarios.md` and the peer-framework comparison in `research/framework-comparison.md`.
 
@@ -17,7 +17,9 @@ to-issues
   -> vertical slice with task-state fields
 triage
   -> needs-info / ready-for-agent / ready-for-human
-write-plan or implement
+dispatch when package routing is requested
+  -> runtime/package decision only
+write-plan, implement, or approved runtime owner
   -> execution evidence
 verify
   -> pass / partial / fail / blocked
@@ -43,6 +45,8 @@ Do not force every issue into `STATE.md`. Lifecycle state remains opt-in and wor
 | P0 | `implement` | Execute or review code changes against PRD, source, diff, tests, and verification evidence. |
 | P0 | `verify` | Verify tests, runtime behavior, UAT/SIT readiness, release acceptance, and customer-safe evidence. |
 | P0 | `handoff` | Preserve long-running R&D state across interruptions. |
+| P0 | `dispatch` | Produce package-only runtime/adapter routing for accepted ready work without execution claims. |
+| P0 | `wiki` | Maintain explicit source-cited project knowledge without promoting synthesis into product or readiness truth. |
 | P0 branch | `contract` | Align API, DB, state, frontend behavior, and documentation when planning, prototype, implementation, or verification needs cross-layer truth. |
 | P1 | `scope` | Convert ambiguity into scope and acceptance criteria. |
 | P1 | `artifact` | Keep target reader, source evidence, and downstream action explicit. |
@@ -102,13 +106,11 @@ Stop when:
 
 Use for:
 
-- creating a managed task from PRD/spec, bug, prototype, UAT signal, or implementation request
-- resuming or updating a task
-- deciding whether a task deserves durable state
-- linking an external task source such as GitHub, GitLab, Linear, Jira, TaskRepo, or future Symphony run
 - splitting PRD/spec/plan into independently verifiable vertical slices
-- deciding whether a slice is AFK or HITL
-- linking PRD, plan, prototype, contract, verification, release, and handoff artifacts
+- producing paste-ready, tracker-neutral issue drafts from accepted source
+- preserving acceptance criteria, blockers/dependencies, contract impact, and verification expectations for each slice
+- recording AFK/HITL as candidate metadata only when it changes downstream triage
+- linking the accepted source and relevant existing artifacts without mutating an external tracker
 
 Required evidence:
 
@@ -119,19 +121,17 @@ Required evidence:
 
 Output:
 
-- task id or external reference
-- title, status, priority, type, source, and AFK/HITL classification
+- tracker-neutral issue drafts with title, goal, accepted source, and acceptance criteria
 - vertical slices with blockers and acceptance criteria when splitting work
 - contract impact, verification evidence needed, and ready-for-agent missing fields for each slice
-- linked artifact list
-- current state and next action
-- verification expectation
-- close recommendation when verification and handoff are complete
+- optional AFK/HITL candidate, ordering, linked-artifact references, and next action when they change execution or review
+- a `triage` candidate when final readiness, lifecycle state, or closeout judgment is needed
 
 Stop when:
 
 - the work is too small to benefit from durable state
-- another task source already covers the same scope and should be linked or updated instead
+- accepted source or acceptance criteria are missing; route back to `to-prd`
+- final readiness, lifecycle state, or closeout must be decided; route to `triage`
 - a state transition would mutate an external tracker without explicit user intent
 
 ## `triage`
@@ -142,6 +142,7 @@ Stop when:
 - existing issue/task lacks enough information for agent work
 - work needs `ready-for-agent` / `ready-for-human` judgment
 - slices need AFK/HITL review
+- work needs lifecycle-state or closeout classification
 - task state changed after implementation, verification, or handoff
 
 ### Inputs

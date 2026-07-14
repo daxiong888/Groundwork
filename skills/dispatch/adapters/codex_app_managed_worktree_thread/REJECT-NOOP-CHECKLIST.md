@@ -69,12 +69,11 @@ Return:
 
 Never silently coerce a branch cleanup package into managed worktree execution or destructive git cleanup.
 
-## Status Mapping
+## Outcome Mapping
 
-- Use `no_worktree_needed` for non-managed, read-only, planning-only, or pre-split hybrid work.
+- Use `no_execution_needed` for non-managed, read-only, planning-only, pre-split hybrid, or otherwise intentionally non-executed work, and preserve the non-admission reason.
 - Use `blocked` when source truth, approval, required tools, conflict resolution, or required package fields are missing.
 - Use `needs_remediation` when the package is close but must be corrected before execution.
-- Use `no_execution_needed` when the package intentionally required no runtime execution.
 - Use `human_decision` when branch cleanup risk requires explicit approval, human retention/deletion choice, or a proposed fallback would change the requested managed-worktree/thread topology.
 
-Never silently coerce a rejected package into managed worktree execution.
+Emit canonical `result_package.outcome`; do not add adapter-only status values. Never silently coerce a rejected package into managed worktree execution.

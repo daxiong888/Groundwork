@@ -5,7 +5,7 @@ Purpose: branch details for routed `implement` work; source-validation guidance 
 ## Source And Gate Workflow
 
 1. Confirm source task, scope, and stop condition.
-2. Run lifecycle preflight and git topology gate when the task may write files, create artifacts, or mutate git/remote state.
+2. Run `skills/_shared/LIFECYCLE-PREFLIGHT.md` and the git topology gate when the task may write files, create artifacts, or mutate git/remote state.
 3. Inspect current branch, dirty state, relevant diffs, and whether branch/worktree is required before editing.
 4. Choose the implementation branch:
    - `diagnose-before-edit`: reproduce or inspect first, separate confirmed cause from hypothesis, then continue only with a sufficient root-cause fix inside accepted scope or stop with diagnosis evidence.

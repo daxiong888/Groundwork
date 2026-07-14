@@ -155,4 +155,4 @@ Do not use empty or generic hints such as "merge carefully" for conflicting writ
 
 ## Selector Boundary
 
-Conflict preflight may influence `reasoning_effort` and `cost_latency_bias`, but it does not prove selector enforcement. Selector status must still follow `ROUTING-PROFILES.md` and runtime adapter evidence.
+Conflict preflight may influence `reasoning_effort` and `cost_latency_bias`, but it does not prove selector enforcement. Selector status follows `skills/_shared/RUNTIME-CAPABILITY.md` and runtime adapter evidence.

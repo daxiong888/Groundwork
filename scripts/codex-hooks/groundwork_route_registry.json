@@ -1,74 +1,18 @@
 {
   "version": 1,
   "public_routes": {
-    "to-prd": {
-      "accepted_pre_states": ["raw", "grilled", "prd_draft", "blocked"],
-      "produced_states": ["grilled", "prd_draft", "prd_accepted", "blocked"],
-      "description_fragments": ["raw or ambiguous", "Not for rewrites", "implementation"]
-    },
-    "to-issues": {
-      "accepted_pre_states": ["prd_accepted", "issue_ready"],
-      "produced_states": ["issue_ready", "blocked"],
-      "description_fragments": ["accepted PRD/spec/plan", "Not for raw/ambiguous", "implementation"]
-    },
-    "triage": {
-      "accepted_pre_states": ["any"],
-      "produced_states": ["raw", "prd_draft", "issue_ready", "implementation_ready", "verified", "blocked"],
-      "description_fragments": ["readiness", "blockers", "Not for shaping"]
-    },
-    "write-plan": {
-      "accepted_pre_states": ["prd_accepted", "issue_ready", "implementation_ready"],
-      "produced_states": ["implementation_ready", "blocked"],
-      "description_fragments": ["implementation plan", "before edits", "Not for raw requirements"]
-    },
-    "prototype": {
-      "accepted_pre_states": ["raw", "grilled", "prd_draft", "prd_accepted", "issue_ready"],
-      "produced_states": ["raw", "grilled", "prd_draft", "blocked"],
-      "description_fragments": ["Throwaway", "Not production code", "readiness"]
-    },
-    "implement": {
-      "accepted_pre_states": ["implementation_ready"],
-      "produced_states": ["implementation_ready", "blocked"],
-      "description_fragments": ["bug fixes", "code edits", "raw requirements", "readiness"]
-    },
-    "verify": {
-      "accepted_pre_states": ["prd_draft", "prd_accepted", "issue_ready", "implementation_ready", "verified"],
-      "produced_states": ["verified", "blocked"],
-      "description_fragments": ["evidence-sufficiency", "readiness", "Not for code edits"]
-    },
-    "handoff": {
-      "accepted_pre_states": ["prd_draft", "prd_accepted", "issue_ready", "implementation_ready", "verified", "blocked"],
-      "produced_states": ["same", "blocked"],
-      "description_fragments": ["continuation state", "Not for one-offs", "code edits"]
-    },
-    "dispatch": {
-      "accepted_pre_states": ["issue_ready", "implementation_ready", "verified"],
-      "produced_states": ["issue_ready", "implementation_ready", "blocked"],
-      "description_fragments": ["Package-only routing", "Not for execution", "ordinary audits"]
-    },
-    "wiki": {
-      "accepted_pre_states": ["prd_accepted", "issue_ready", "implementation_ready", "verified", "blocked"],
-      "produced_states": ["same", "blocked"],
-      "description_fragments": ["Explicit project-level LLM Wiki", "Not for direct answers", "implementation"]
-    }
+    "to-prd": {"accepted_pre_states": ["raw", "grilled", "prd_draft", "blocked"], "produced_states": ["grilled", "prd_draft", "prd_accepted", "blocked"], "description_fragments": ["raw or ambiguous", "Not for rewrites", "implementation"]},
+    "to-issues": {"accepted_pre_states": ["prd_accepted", "issue_ready"], "produced_states": ["issue_ready", "blocked"], "description_fragments": ["accepted PRD/spec/plan", "Not for raw/ambiguous", "implementation"]},
+    "triage": {"accepted_pre_states": ["any"], "produced_states": ["raw", "prd_draft", "issue_ready", "implementation_ready", "verified", "blocked"], "description_fragments": ["readiness", "blockers", "Not for shaping"]},
+    "write-plan": {"accepted_pre_states": ["prd_accepted", "issue_ready", "implementation_ready"], "produced_states": ["implementation_ready", "blocked"], "description_fragments": ["implementation plan", "before edits", "Not for raw requirements"]},
+    "prototype": {"accepted_pre_states": ["raw", "grilled", "prd_draft", "prd_accepted", "issue_ready"], "produced_states": ["raw", "grilled", "prd_draft", "blocked"], "description_fragments": ["Throwaway", "Not production code", "readiness"]},
+    "implement": {"accepted_pre_states": ["implementation_ready"], "produced_states": ["implementation_ready", "blocked"], "description_fragments": ["bug fixes", "code edits", "raw requirements", "readiness"]},
+    "verify": {"accepted_pre_states": ["prd_draft", "prd_accepted", "issue_ready", "implementation_ready", "verified"], "produced_states": ["verified", "blocked"], "description_fragments": ["evidence-sufficiency", "readiness", "Not for code edits"]},
+    "handoff": {"accepted_pre_states": ["prd_draft", "prd_accepted", "issue_ready", "implementation_ready", "verified", "blocked"], "produced_states": ["same", "blocked"], "description_fragments": ["continuation state", "Not for one-offs", "code edits"]},
+    "dispatch": {"accepted_pre_states": ["issue_ready", "implementation_ready", "verified"], "produced_states": ["issue_ready", "implementation_ready", "blocked"], "description_fragments": ["Package-only routing", "Not for execution", "ordinary audits"]},
+    "wiki": {"accepted_pre_states": ["prd_accepted", "issue_ready", "implementation_ready", "verified", "blocked"], "produced_states": ["same", "blocked"], "description_fragments": ["Explicit project-level LLM Wiki", "Not for direct answers", "implementation"]}
   },
-  "prompt_precedence": [
-    "direct_plain_text",
-    "implement_bypass",
-    "raw_prd_intake",
-    "handoff",
-    "closeout_triage",
-    "plan_then_implement",
-    "ordinary_audit_direct",
-    "evidence_verify",
-    "write_plan",
-    "issue_readiness_triage",
-    "explicit_audit_dispatch",
-    "ready_package_dispatch",
-    "implement",
-    "fallback_markers",
-    "direct_fallback"
-  ],
+  "prompt_precedence": ["direct_plain_text", "implement_bypass", "raw_prd_intake", "handoff", "closeout_triage", "plan_then_implement", "ordinary_audit_direct", "evidence_verify", "write_plan", "issue_readiness_triage", "explicit_audit_dispatch", "ready_package_dispatch", "implement", "fallback_markers", "direct_fallback"],
   "default_forbidden_routes": {
     "write-plan": ["implement", "verify", "direct"],
     "implement": ["verify", "dispatch"],

@@ -22,13 +22,6 @@ Goal Contract
 Use the exact Required Shape from `skills/_shared/GOAL-CONTRACT.md`.
 Do not duplicate, omit, or rename Goal Contract fields here.
 
-Execution Profile Recommendation
-- Runtime Candidate:
-- Model Profile:
-- Reasoning Effort:
-- Cost/Latency Bias:
-- Routing Reason:
-
 Next Action
 ```
 
@@ -38,4 +31,4 @@ Include `Goal Contract` only for executable `ready-for-agent + AFK` tasks. `Goal
 
 Do not emit an executable child goal for `needs-info`, `ready-for-human`, or HITL-only tasks. HITL tasks may include a human-decision brief that names the decision, options, risks, and next human action, but not a dispatchable `/goal`.
 
-`Preferred Runtime` and `Execution Profile Recommendation` are recommendations for later `dispatch` routing. `triage` may recommend runtime candidate, model profile, reasoning effort, cost/latency bias, and routing reason, but must not claim selector enforcement or final routing.
+Set Goal Contract `Preferred Runtime` to `dispatch_may_choose`. `triage` establishes readiness and the executable goal; it must not select or recommend runtime, model profile, reasoning effort, worktree, isolation, parallelization, or selector enforcement. Those are owned by `dispatch` after readiness.

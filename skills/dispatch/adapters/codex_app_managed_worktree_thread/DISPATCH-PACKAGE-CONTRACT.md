@@ -24,99 +24,56 @@ Task routing, readiness decisions, runtime tool calls, manual worktree creation,
 
 Derived from Groundwork Dispatch Package v2, Goal Contract requirements, conflict preflight rules, and the prior managed-worktree adapter contract.
 
-## Accepted Runtime
+## Base Contract And Adapter Delta
 
-This adapter handles only:
+Start with the canonical task schema in `../../DISPATCH-PACKAGE-DETAILS.md`. This adapter does not redefine package metadata, task identity, route, source, policy, handoff, closeout, verification, approval, Goal Contract, Goal Mode, execution profile, or runtime-package fields.
+
+The following base fields have fixed values or additional constraints for this adapter:
+
+| Base Field | Required Value Or Constraint |
+| --- | --- |
+| `task_type` | `write_implementation` |
+| `readiness` | `ready_for_agent` |
+| `runtime_id` | `codex_app_managed_worktree_thread` |
+| `route_decision.route` | `worktree_isolated` with a concrete isolation reason and touched-file/risk inputs |
+| `runtime_identity.runtime_correlation_id` | present; cross-package identity |
+| `isolation` | `context: thread`, `filesystem: codex_managed_worktree`, `diff_surface: required` |
+| `source_package` | self-contained source truth, including PRD/issue context or an explicit equivalent accepted source |
+| `verification_expectation` | `fastest_signal` and `required_evidence` present |
+| `goal_contract` | complete; `preferred_runtime` names this adapter and `result_package_expected: review_package` |
+| `goal_mode` | required, both lints passed before delivery, first non-empty rendered line starts with `/goal` |
+| `runtime_package` | this adapter, `can_write_files: true`, `expected_output: review_package` |
+
+Only managed-worktree-specific dispatch fields belong in the delta:
 
 ```yaml
-runtime_id: codex_app_managed_worktree_thread
+adapter_extension:
+  codex_app_managed_worktree_thread:
+    parent_thread_identifier: ""
+    initial_thread_title: ""
+    current_thread_title: ""
+    title_mutation_detected: true | false | unknown
+    worktree_init:
+      starting_state: working-tree | existing-branch
+      dirty_base_required: true | false
+      branch_name: ""
+      branch_resolved: true | false | not_applicable
+      branch_evidence: ""
+      pending_worktree_id: ""
+      child_thread_identifier: ""
+      worktree_path: ""
+      init_status: not_started | pending | child_thread_created | failed | blocked
+      failure_action: retry_with_corrected_state | needs_remediation | blocked | human_decision | none
+      evidence: ""
+    legacy_compatibility:
+      status: deprecated_in_place_for_v0_3_3_compatibility
+      runtime_identity: {runtime_correlation_id, dispatch_id, task_id, parent_thread_identifier, child_thread_identifier, title_mutation_detected}
+      worktree_registry: {base_ref, branch, artifact_path, owner_skill: dispatch, current_status: legacy_compatibility_only}
 ```
 
-## Required Package Shape
+Do not duplicate canonical base fields inside `adapter_extension`. The adapter's initial/current title fields are display-only and must never replace `runtime_identity.runtime_correlation_id`.
 
-An executable managed worktree package must include:
-
-```yaml
-dispatch_version: 2
-runtime_policy:
-  remote_writes_allowed: false
-  destructive_actions_allowed: false
-model_policy:
-  selector_enforcement: tool_if_available_else_prompt_preference
-tasks:
-  - task_id: present
-    title: present
-    task_type: write_implementation
-    readiness: ready_for_agent
-    runtime_id: codex_app_managed_worktree_thread
-    runtime_reason: present
-    runtime_identity:
-      runtime_correlation_id: present
-      dispatch_id: present_or_empty
-      task_id: present_or_empty
-      parent_thread_identifier: present_or_empty
-      child_thread_identifier: present_or_empty
-      initial_thread_title: present_or_empty
-      current_thread_title: present_or_empty
-      title_mutation_detected: true | false | unknown
-    isolation:
-      context: thread
-      filesystem: codex_managed_worktree
-      diff_surface: required
-    parallelization:
-      eligible: true | false
-      conflict_group: present_or_empty
-      dependency_group: present_or_empty
-      merge_order_hint: present_or_empty
-    source_package:
-      prd_excerpt: present
-      issue_body: present
-      known_source_or_first_inspection_step: present
-      redactions_applied: present
-    goal_contract:
-      goal_command: present
-      outcome: present
-      source_truth: present
-      acceptance_criteria_mapping: present
-      verification: present
-      constraints: present
-      boundaries: present
-      iteration_policy: present
-      stop_when: present
-      pause_if: present
-      non_goals: present
-      risk_gate: present
-      preferred_runtime: present
-      result_package_expected: review_package
-    goal_mode:
-      required: true
-      goal_contract_lint: passed_before_delivery
-      child_prompt_lint: passed_before_delivery
-      rendered_prompt_first_non_empty_line: starts_with_goal
-    execution_profile:
-      model_profile: present_or_empty
-      reasoning_effort: low | medium | high
-      cost_latency_bias: fast | balanced | quality
-      routing_reason: present
-      selector_enforcement: tool_if_available_else_prompt_preference
-    validation:
-      fastest_signal: present
-      required_evidence: present
-    runtime_package:
-      adapter: codex_app_managed_worktree_thread
-      thread_title: present_or_derivable
-      can_write_files: true
-      expected_output: review_package
-    approval:
-      required: false_or_package_gate_satisfied
-      reason: present_or_empty
-```
-
-`approval.required = false` is sufficient only for package generation. It is not execution approval and must not be treated as permission to create a child thread.
-
-`runtime_identity.runtime_correlation_id` is the source-of-truth identity for correlating dispatch, child runtime, review, result wrapping, merge-back, closeout, and branch cleanup packages. `runtime_package.thread_title` is a display-only, derivable label and must never be used as source-of-truth identity.
-
-Older v0.3.2 packages without `runtime_identity` remain readable. If managed worktree lifecycle closeout or runtime correlation is requested and `runtime_identity.runtime_correlation_id` is absent, route to remediation, block, or human decision rather than inferring identity from `thread_title`.
+Older packages without canonical runtime identity remain readable at intake. If correlation or closeout is required and the correlation id is absent, route to `needs_remediation`, `blocked`, or `human_decision` instead of inferring identity from a title.
 
 Thread creation also requires a separate execution gate outside the Dispatch Package fields:
 
@@ -128,22 +85,7 @@ worktree_init_preflight = passed
 
 ## Worktree Initialization Preflight
 
-Before calling Codex App worktree or child-thread tools, the execution-capable adapter must record the intended start state and evidence:
-
-```yaml
-worktree_init:
-  starting_state: working-tree | existing-branch
-  dirty_base_required: true | false
-  branch_name: ""
-  branch_resolved: true | false | not_applicable
-  branch_evidence: ""
-  pending_worktree_id: ""
-  child_thread_identifier: ""
-  worktree_path: ""
-  init_status: not_started | pending | child_thread_created | failed | blocked
-  failure_action: retry_with_corrected_state | needs_remediation | blocked | human_decision | none
-  evidence: ""
-```
+Before calling Codex App worktree or child-thread tools, the execution-capable adapter must fill the delta's `worktree_init` object and record the intended start state and evidence.
 
 Rules:
 
@@ -168,13 +110,12 @@ All checks must pass before creating a child thread:
 - `isolation.context = thread`
 - `isolation.filesystem = codex_managed_worktree`
 - `isolation.diff_surface = required`
-- `source_package.prd_excerpt` is present.
-- `source_package.issue_body` is present.
+- `source_package` contains the accepted source truth needed to execute without hidden context.
 - `source_package.known_source_or_first_inspection_step` is present.
 - Goal Contract is present and complete enough to execute, including `preferred_runtime` and `result_package_expected = review_package`.
 - `goal_contract.goal_command` starts with `/goal`, is not a placeholder such as `/goal <one executable task>`, and passes `python3 skills/_shared/tools/lint_goal_contract.py <goal-contract-file>` before delivery. Source-repo maintainers may use the compatibility wrapper `python3 scripts/lint_goal_contract.py <goal-contract-file>`.
-- The rendered child prompt passes `python3 scripts/lint_child_goal_prompt.py <rendered-child-prompt-file>` before delivery: its first non-empty line starts with `/goal`, `/goal` is not wrapped in a fenced code block, and no prose precedes `/goal`.
-- Validation package includes `fastest_signal` and `required_evidence`.
+- The rendered child prompt passes `python3 skills/_shared/tools/lint_child_goal_prompt.py <rendered-child-prompt-file>` before delivery: its first non-empty line starts with `/goal`, `/goal` is not wrapped in a fenced code block, and no prose precedes `/goal`.
+- `verification_expectation` includes `fastest_signal` and `required_evidence`.
 - `runtime_package.expected_output = review_package`
 - `runtime_package.can_write_files = true`
 - explicit execution approval is present; package-level `approval.required = false` is not enough to create a child thread
@@ -197,6 +138,6 @@ Executed packages must produce:
 - a child review package using `REVIEW-PACKAGE-TEMPLATE.md`
 - an adapter Result Package using `RESULT-PACKAGE-TEMPLATE.md`
 
-Rejected or no-op packages must still produce a Result Package with task identity, the rejected field or policy reason, empty changed files, validation-not-run reason, selector enforcement status, remaining risks or blockers, and a recommended next route.
+Rejected or no-op packages must still produce the canonical Result Package with task identity, `outcome`, the rejected field or policy reason, empty changed files, validation-not-run reason, selector enforcement status, remaining risks or blockers, and a recommended next route. Adapter-only evidence stays under the adapter delta.
 
 If Goal Mode is required and either Goal Contract lint or rendered child prompt lint fails, do not create the child thread. Return `blocked` or `needs_remediation` with the failing field and remediation path.

@@ -29,13 +29,13 @@ Derived from Groundwork Dispatch Package v2, Goal Contract fields, and managed w
 Before delivery, lint the rendered prompt with:
 
 ```bash
-python3 scripts/lint_child_goal_prompt.py <rendered-child-prompt-file>
+python3 skills/_shared/tools/lint_child_goal_prompt.py <rendered-child-prompt-file>
 ```
 
 For this Markdown template, validate the prompt body with:
 
 ```bash
-python3 scripts/lint_child_goal_prompt.py --template skills/dispatch/adapters/codex_app_managed_worktree_thread/THREAD-PROMPT-TEMPLATE.md
+python3 skills/_shared/tools/lint_child_goal_prompt.py --template skills/dispatch/adapters/codex_app_managed_worktree_thread/THREAD-PROMPT-TEMPLATE.md
 ```
 
 ```text
@@ -45,11 +45,11 @@ Runtime identity:
 - Runtime Correlation ID: {runtime_identity.runtime_correlation_id}
 - Dispatch ID: {runtime_identity.dispatch_id}
 - Task ID: {task_id}
-- Parent Thread Identifier: {runtime_identity.parent_thread_identifier}
-- Child Thread Identifier: {runtime_identity.child_thread_identifier}
-- Initial Thread Title: {runtime_package.thread_title_or_task_id_title}
-- Current Thread Title: {runtime_identity.current_thread_title}
-- Title Mutation Detected: {runtime_identity.title_mutation_detected}
+- Parent Thread Identifier: {adapter_extension.codex_app_managed_worktree_thread.parent_thread_identifier}
+- Child Thread Identifier: {adapter_extension.codex_app_managed_worktree_thread.worktree_init.child_thread_identifier}
+- Initial Thread Title: {adapter_extension.codex_app_managed_worktree_thread.initial_thread_title}
+- Current Thread Title: {adapter_extension.codex_app_managed_worktree_thread.current_thread_title}
+- Title Mutation Detected: {adapter_extension.codex_app_managed_worktree_thread.title_mutation_detected}
 - Thread title is display-only and is never source-of-truth identity.
 - Do not rename this thread. If the visible title changes anyway, keep using Runtime Correlation ID in every review or result package.
 
@@ -67,7 +67,7 @@ Task identity:
 - Title: {title}
 - Task type: write_implementation
 - Readiness: ready_for_agent
-- Thread title display label: {runtime_package.thread_title_or_task_id_title}
+- Thread title display label: {adapter_extension.codex_app_managed_worktree_thread.current_thread_title}
 
 Source package:
 {source_package}
@@ -75,14 +75,14 @@ Source package:
 Goal Contract:
 {goal_contract}
 
-Validation package:
-{validation}
+Verification expectation:
+{verification_expectation}
 
 Execution profile:
 - Requested model profile: {execution_profile.model_profile}
 - Requested reasoning effort: {execution_profile.reasoning_effort}
 - Requested cost/latency bias: {execution_profile.cost_latency_bias}
-- Selector enforcement expectation: {execution_profile.selector_enforcement}
+- Selector request policy: {execution_profile.selector_policy}
 - Routing reason: {execution_profile.routing_reason}
 
 Scope controls:

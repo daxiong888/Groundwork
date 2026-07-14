@@ -3,7 +3,7 @@ import re
 import unittest
 from pathlib import Path
 
-from evals import route_detection
+from evals import route_detection, routing_schema
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -17,7 +17,9 @@ class RouteRegistryTests(unittest.TestCase):
 
     def test_registry_is_runtime_classifier_source(self):
         self.assertEqual(Path(route_detection.ROUTE_REGISTRY_PATH), REGISTRY_PATH)
+        self.assertEqual(Path(routing_schema.ROUTE_REGISTRY_PATH), REGISTRY_PATH)
         self.assertEqual(set(self.registry["public_routes"]), route_detection.PUBLIC_SKILL_ROUTES)
+        self.assertEqual(set(self.registry["public_routes"]), routing_schema.PUBLIC_SKILL_ROUTES)
         self.assertEqual(tuple(self.registry["prompt_precedence"]), route_detection.PROMPT_PRECEDENCE)
 
     def test_registry_matches_public_skill_directories_and_descriptions(self):

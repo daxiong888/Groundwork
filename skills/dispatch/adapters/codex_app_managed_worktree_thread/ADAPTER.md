@@ -60,7 +60,8 @@ This adapter owns:
 - review package requirements
 - rejection and no-op Result Package requirements
 - selector enforcement evidence requirements
-- managed worktree lifecycle state and archive-readiness gates
+- managed worktree thread lifecycle state
+- adapter-only Dispatch/Result delta fields
 - closeout package requirements after review/result package intake
 - runtime evidence fields when an execution-capable Codex App thread adapter runs
 
@@ -75,7 +76,7 @@ Load only the reference needed for the current step:
 - `REJECT-NOOP-CHECKLIST.md` when an input must not create a managed worktree.
 - `CONFLICT-PREFLIGHT.md` when a write task may overlap another task or depends on prerequisite merge-back/base refresh before child thread creation.
 - `SELECTOR-ENFORCEMENT.md` when model or reasoning selector status is reported.
-- `THREAD-LIFECYCLE.md` when reporting lifecycle state, archive readiness, or legal next transitions.
+- `THREAD-LIFECYCLE.md` when reporting thread-only runtime state and legal thread transitions.
 - `MERGE-BACK-PROTOCOL.md` when applying clean-reviewed child worktree changes back into the main worktree.
 - `CLOSEOUT-PACKAGE-TEMPLATE.md` after review/result package intake and before any archive recommendation.
 - `BRANCH-CLEANUP-CHECKLIST.md` when branch state is known or unknown after closeout/archive and cleanup must be recommended, retained, or routed to human decision.
@@ -110,16 +111,15 @@ Creating a manual git worktree, switching to a subagent, or otherwise moving imp
 
 ## Lifecycle And Closeout Boundary
 
-Use `THREAD-LIFECYCLE.md` to report the current managed worktree state and legal next transition. A child implementation thread must not archive itself and must not delete local or remote branches.
+Use `THREAD-LIFECYCLE.md` only for managed-worktree thread execution state. A child implementation thread must not archive itself and must not delete local or remote branches.
 
-Before a child thread enters active work, preserve the worktree registry record and state event described in `THREAD-LIFECYCLE.md`. The registry must map task id, runtime correlation id, branch, base ref, worktree path, artifact path, owner skill, current status, created timestamp, and last checked timestamp. Missing registry evidence blocks active execution or closeout recovery.
+Before a child thread enters active work, preserve the registry record and state event described there. The registry maps task id, runtime correlation id, branch, base ref, worktree path, artifact path, owner skill, thread status, created timestamp, and last checked timestamp. It must not carry review, merge, archive, or branch-cleanup status.
 
-Use `CLOSEOUT-PACKAGE-TEMPLATE.md` after review/result package intake. Archive readiness is blocked until one of these has evidence:
+After result intake, use the independent `review`, `merge_back`, `archive`, and `branch_cleanup` axes in the canonical Result Package plus `CLOSEOUT-PACKAGE-TEMPLATE.md`. Each axis advances only with its own evidence:
 
-- merge-back completed into the main worktree;
-- child work intentionally discarded with reason;
-- blocked state has preserved review/result evidence and a human decision that worktree retention is not needed.
+- runtime result return does not mean review passed;
+- review pass does not mean merge-back occurred;
+- merge-back or discard does not mean archive occurred;
+- archive does not mean branch cleanup occurred.
 
-`review_package_returned`, `clean_review_pending`, `needs_remediation`, `merge_pending`, and `discard_pending` are not archive-ready by themselves.
-
-Archive and branch cleanup remain separate. `archived` does not imply branch cleanup, and branch deletion requires a later branch-cleanup checklist and the relevant approval gates.
+Archive readiness requires merge-back, discard, or blocked-with-human-decision retention evidence. Branch cleanup remains a later, separately approved decision using `BRANCH-CLEANUP-CHECKLIST.md`.

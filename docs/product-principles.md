@@ -1,6 +1,6 @@
 # Product Principles
 
-For v0.1, `docs/prd.md` is the product source of truth. These principles guide interpretation, but they do not expand MVP scope beyond the PRD.
+These principles guide current product interpretation. `docs/plugin-architecture.md`, public skill contracts, and accepted scoped PRDs own concrete current behavior; historical PRDs do not globally override newer canonical contracts.
 
 Groundwork is a Codex-native personal base for R&D work. It helps turn ambiguous product, code, prototype, integration, data, and UAT signals into verified engineering decisions, implementation-ready artifacts, safe code changes, and resumable handoffs.
 
@@ -110,9 +110,9 @@ Codex-specific workflow behavior should live in the Groundwork plugin or repo-lo
 
 If Groundwork needs repo-local durable files, prefer the real task source first: an issue, PRD/spec file, current conversation, or future orchestration context. Use `artifacts/<workstream-slug>/STATE.md` only when lifecycle-state thresholds are met for one resumable workstream, and optional `artifacts/<workstream-slug>/ROADMAP.md` only for true multi-milestone work. Older `.groundwork/tasks/<task-id>/` language is local scratch or fallback context, not lifecycle state, not the default durable artifact location, and not a project task database. Do not mirror `.trellis/`, `.planning/`, `.scratch/`, or `.gsd/` structures.
 
-## MVP Principles
+## Public Workflow Principles
 
-The first useful Groundwork cut should be a small complete workflow, not a skill-only bundle. User-visible skill names should be action-oriented and allowed to borrow mattpocock naming when the name is clearer. Do not repeat a `groundwork-` prefix inside the plugin; the plugin already provides the namespace.
+Groundwork should remain a small complete workflow, not a skill-only bundle. User-visible skill names stay action-oriented. Do not repeat a `groundwork-` prefix inside the plugin; the plugin already provides the namespace.
 
 1. `to-prd` for turning conversation, evidence, prototype notes, UAT feedback, or rough requirements into PRD/spec intent and acceptance.
 2. `to-issues` for splitting PRD/spec/plan into vertical slices with task-state fields and linking them to the best task source.
@@ -122,6 +122,8 @@ The first useful Groundwork cut should be a small complete workflow, not a skill
 6. `implement` for code execution or implementation review.
 7. `verify` for tests, runtime checks, UAT readiness, and release acceptance.
 8. `handoff` for continuation and cross-session state.
+9. `dispatch` for package-only runtime and adapter routing after readiness.
+10. `wiki` for explicit source-cited project knowledge maintenance.
 
 Supporting behaviors can remain internal at first:
 
@@ -134,7 +136,7 @@ Supporting behaviors can remain internal at first:
 The core task-state chain is:
 
 ```text
-to-prd -> to-issues -> triage -> write-plan/implement -> verify -> triage closeout/gap closure -> handoff when needed
+to-prd -> to-issues -> triage -> dispatch when runtime packaging is requested -> implement/runtime owner -> verify -> triage closeout/gap closure -> handoff when needed
 ```
 
 This chain stays tracker-neutral by default. It can produce paste-ready text for external issues, but it does not call GitHub, Linear, Jira, or other tracker APIs unless the user explicitly requests and approves that remote write. It also does not force every task into lifecycle state; `STATE.md` is reserved for workstream-scoped continuation under the lifecycle-state thresholds.

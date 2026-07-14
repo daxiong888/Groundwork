@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import route_detection
 import run_runtime
 import run_runtime_parallel
+from case_oracles import implement_root_cause
 
 
 def row(**kwargs):
@@ -194,7 +195,7 @@ class RuntimeSchedulerTests(unittest.TestCase):
 
     def test_browser_and_shared_cases_are_serial_groups(self):
         browser = row(id="browser", prompt="Use Browser to inspect this UI. 不要编辑文件")
-        repo_root = row(id="gr-008b", prompt="repo-root git boundary review")
+        repo_root = row(fixture="repo-root", prompt="repo-root git boundary review")
 
         self.assertFalse(run_runtime.case_metadata(browser)["parallel_safe"])
         self.assertEqual(run_runtime.case_metadata(browser)["group"], "browser")
@@ -203,6 +204,10 @@ class RuntimeSchedulerTests(unittest.TestCase):
         self.assertFalse(run_runtime.case_metadata(repo_root)["parallel_safe"])
         self.assertEqual(run_runtime.case_metadata(repo_root)["group"], "shared")
         self.assertIn("repo:groundwork", run_runtime.case_metadata(repo_root)["resource_keys"])
+        self.assertEqual(
+            run_runtime.choose_workspace(repo_root),
+            (run_runtime.REPO, "read-only", "repo-root-git-boundary"),
+        )
 
     def test_partition_keeps_unsafe_rows_out_of_parallel_pool(self):
         safe = row(id="safe")
@@ -395,10 +400,11 @@ normalizePhone(task.phone) === expected;
                 timeout=20,
             )
             with mock.patch.object(run_runtime, "run_static_gated_evaluator_check") as evaluator:
-                errors = run_runtime.validate_implement_root_cause_fixture(
-                    row(id="implement-013"),
+                errors = implement_root_cause.validate(
                     workspace,
                     ["M src/taskSearch.mjs"],
+                    repo=run_runtime.REPO,
+                    run_check=run_runtime.run_static_gated_evaluator_check,
                 )
 
         self.assertEqual(visible_test.returncode, 0, visible_test.stdout)
@@ -421,10 +427,11 @@ normalizePhone(task.phone) === expected;
             self.assertIn(broken, source)
             source_path.write_text(source.replace(broken, fixed, 1), encoding="utf-8")
 
-            errors = run_runtime.validate_implement_root_cause_fixture(
-                row(id="implement-013"),
+            errors = implement_root_cause.validate(
                 workspace,
                 ["M src/taskSearch.mjs"],
+                repo=run_runtime.REPO,
+                run_check=run_runtime.run_static_gated_evaluator_check,
             )
 
         self.assertEqual(errors, [])
@@ -432,10 +439,11 @@ normalizePhone(task.phone) === expected;
     def test_implement_root_cause_checker_rejects_fixture_contract_edits(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = self.copy_root_cause_fixture(tmp)
-            errors = run_runtime.validate_implement_root_cause_fixture(
-                row(id="implement-013"),
+            errors = implement_root_cause.validate(
                 workspace,
                 ["M src/taskSearch.mjs", "M test/taskSearch.test.mjs"],
+                repo=run_runtime.REPO,
+                run_check=run_runtime.run_static_gated_evaluator_check,
             )
 
         self.assertTrue(any("forbidden fixture files changed" in error for error in errors))
@@ -1862,6 +1870,24 @@ normalizePhone(task.phone) === expected;
         self.assertEqual(model["behavior_verdict"], "fail")
         self.assertEqual(model["fix_locus"], "lifecycle_artifact_boundary")
 
+    def test_forbidden_output_markers_are_declarative_not_case_id_specific(self):
+        case = row(
+            id="any-direct-case",
+            forbidden_output_markers="STATE.md|ROADMAP.md",
+        )
+
+        verdict, _, failures = run_runtime.behavior_verdict(
+            case,
+            run_runtime.routing_schema_for_row(case),
+            "direct",
+            "Create STATE.md to preserve this one-off answer.",
+            [],
+            [],
+        )
+
+        self.assertEqual(verdict, "fail")
+        self.assertIn("lifecycle_artifact_boundary", {item[1] for item in failures})
+
     def test_missing_route_trace_blocks_routing_but_preserves_output_pass(self):
         case = routing_row(
             expected_best="verify",
@@ -2465,7 +2491,8 @@ normalizePhone(task.phone) === expected;
         decision = route_detection.entry_decision_from_prompt("报一下当前时间，不要写文件")
 
         self.assertEqual(decision["expected_best"], "direct")
-        self.assertEqual(decision["expected_stop_condition"], "direct_answer")
+        self.assertEqual(decision["candidate_scope"], "route_only")
+        self.assertNotIn("expected_stop_condition", decision)
 
     def test_direct_concept_answer_can_mention_prd_without_ceremony_failure(self):
         verdict = run_runtime.routing_verdict_model(

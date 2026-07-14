@@ -15,12 +15,8 @@
     "scripts/codex-hooks": [
       "groundwork_route_registry.json",
       "groundwork_route_detection.py",
-      "groundwork_router_telemetry.py",
-      "permission_request_groundwork_trace.py",
-      "post_tool_use_groundwork_trace.py",
-      "pre_tool_use_groundwork_trace.py",
-      "stop_groundwork_trace.py",
-      "user_prompt_submit_groundwork_entry.py"
+      "groundwork_router_event.py",
+      "groundwork_router_telemetry.py"
     ]
   },
   "forbidden_roots": [
@@ -49,8 +45,8 @@
     "max_runtime_lines_excluding_generated_manifest": 9800,
     "max_skill_files": 112,
     "max_skill_lines": 8400,
-    "max_codex_hook_files": 8,
+    "max_codex_hook_files": 4,
     "max_codex_hook_lines": 1200,
-    "max_skill_reference_depth": 24
+    "max_public_entry_reference_depth": 20
   }
 }

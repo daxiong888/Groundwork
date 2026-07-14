@@ -21,25 +21,17 @@ Route away:
 
 ## Required Evidence
 
-Start from accepted source. Put missing blockers, source context, contract impact, runtime inputs, Goal Contract inputs, or verification expectations into missing-field buckets; do not fabricate readiness.
-
-For Groundwork repo maintenance, apply repo-local `AGENTS.md` before reporting complete.
+Start from accepted source. Put missing blockers, source context, contract impact, acceptance details, or verification expectations into missing-field buckets; do not fabricate readiness.
 
 Load `skills/_shared/FIRST-PRINCIPLES.md` only when accepted source still needs vertical slices tied to the primitive problem, hard constraints, minimal behavior change, and falsifiable verification signal. Load `skills/_shared/ADVERSARIAL-REVIEW.md` only when slicing could hide cross-layer contract risk, unsupported readiness, unverified source truth, or non-independent verification.
 
-Load lifecycle/artifact promotion only before splitting source that will drive another session, remote issue creation, implementation, verification, or handoff. Load locale guard for user-visible text. Runtime candidate fields are advisory; final readiness belongs to `triage`, execution routing to `dispatch`.
+Load `skills/_shared/LIFECYCLE-PREFLIGHT.md` and artifact promotion only before splitting source that will drive another session, remote issue creation, implementation, verification, or handoff. Load locale guard for user-visible text. Final readiness belongs to `triage`; runtime and package routing belong to `dispatch` after readiness.
 
 `accepted enough` means canonical artifact, accepted PRD/spec/plan, issue-ready artifact, or named external task with owner/authority, clear ACs, and no unresolved mixed source truth.
 
-## Runtime Routing Candidate Rules
-
-Emit the advisory block only when source supports it. It is not a Goal Contract, dispatch package, readiness verdict, or execution proof.
-
-Rules: read-only/planning tasks must not suggest write worktrees; hybrid tasks split first or mark `triage_required`; write tasks can name managed-worktree candidacy only when source context, write boundary, acceptance, and verification can support later Goal Contract generation; diagnosis may suggest read-only subagent when independence helps.
-
 ## Workflow
 
-Confirm source/acceptance, stop if not accepted enough, apply locale, split vertical behavior-visible slices, include acceptance/blockers/risk/AFK-HITL/contract impact/verification/runtime candidate/missing fields/triage candidate, keep tracker-neutral markdown, and recommend `triage` or `write-plan`.
+Confirm source/acceptance, stop if not accepted enough, apply locale, split vertical behavior-visible slices, include acceptance/blockers/risk/AFK-HITL/contract impact/verification/missing fields/triage candidate, keep tracker-neutral markdown, and recommend `triage` or `write-plan`.
 
 ## Hard Stops
 
@@ -52,13 +44,11 @@ Confirm source/acceptance, stop if not accepted enough, apply locale, split vert
 
 ## Output Shape
 
-Default to tracker-neutral drafts containing title/goal, ACs, blockers or dependencies, and verification expectation. State the accepted source once for the package. Add AFK/HITL, contract impact, runtime candidate, missing fields, triage candidate, ordering, next action, or artifact recommendation only when it changes execution or review.
-
-Runtime candidate block, when used, must include `recommendation_only: true`, source support, task/runtime/isolation/parallelization candidates, Goal Contract status/missing fields, runtime missing fields, `not_readiness_evidence: true`.
+Default to tracker-neutral drafts containing title/goal, ACs, blockers or dependencies, and verification expectation. State the accepted source once for the package. Add AFK/HITL, contract impact, missing fields, triage candidate, ordering, next action, or artifact recommendation only when it changes execution or review. Do not add runtime, model, worktree, isolation, or parallelization candidates; `dispatch` owns those decisions after `triage` establishes readiness.
 
 ## Stop Condition
 
-Stop when each draft has a vertical slice, ACs, material blockers/dependencies, and verification evidence needed. Require execution type, contract impact, runtime candidate, triage recommendation, or next action only when applicable.
+Stop when each draft has a vertical slice, ACs, material blockers/dependencies, and verification evidence needed. Require execution type, contract impact, triage recommendation, or next action only when applicable.
 
 ## Artifact Rule
 

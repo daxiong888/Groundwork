@@ -1,6 +1,6 @@
 # Managed Worktree Branch Cleanup Checklist
 
-Target Reader: Groundwork coordinators, runtime adapter authors, and reviewers deciding whether branch cleanup evidence can support `native_closeout_package.cleanup_decision.branch_action`.
+Target Reader: Groundwork coordinators, runtime adapter authors, and reviewers deciding whether branch cleanup evidence can support `native_closeout_package.branch_cleanup`.
 Reader Action Needed: Fill this checklist after closeout/archive/merge/discard evidence has been preserved and before any branch cleanup recommendation.
 Decision Supported: Whether branch action should be `not_applicable`, `retain_branch`, `delete_local_branch`, or `human_decision`.
 Artifact Type: branch cleanup checklist
@@ -23,6 +23,8 @@ Branch cleanup must not imply merge readiness, thread archive, worktree cleanup,
 
 ```yaml
 branch_cleanup:
+  status: not_applicable | pending | cleaned | retained | blocked | human_decision | unverified
+  recommendation: delete_local_branch | retain_branch | human_decision | not_applicable
   runtime_correlation_id: ""
   task_id: ""
   branch_detected: true | false | unknown
@@ -32,14 +34,10 @@ branch_cleanup:
   branch_checked_out_in_worktree: true | false | unknown
   merged_to_target: true | false | unknown
   protected_or_default_branch: true | false | unknown
-  cleanup_recommendation: delete_local | delete_remote | retain | human_decision | no_branch_detected
   approval_required: true | false
   evidence: {status_command, branch_command, merge_check, worktree_status}
   risk: {reason_to_retain, blockers}
-  native_closeout_mapping: {branch_action, mapping_reason, completed_cleanup_evidence}
 ```
-
-`cleanup_recommendation` is legacy compatibility. Native closeout consumes `native_closeout_mapping.branch_action`.
 
 ## Deletion Rules
 
@@ -53,7 +51,7 @@ Remote deletion is never automatic. It requires explicit approval, remote branch
 
 | Evidence | Native closeout mapping |
 | --- | --- |
-| No associated branch exists | `cleanup_decision.branch_action: not_applicable` |
+| No associated branch exists | `branch_cleanup.status: not_applicable`, `recommendation: not_applicable` |
 | Unknown branch existence, owner, scope, merge state, protection, or worktree status | `human_decision` or `retain_branch` |
 | Local task branch, merged/discarded, not checked out, not protected/default/base | `delete_local_branch` |
 | Branch unmerged, checked out, shared, protected/default/base, or still needed | `retain_branch` or `human_decision` |
@@ -62,4 +60,4 @@ Remote deletion is never automatic. It requires explicit approval, remote branch
 
 ## Reporting And Eval Hooks
 
-Report whether this is a recommendation, approval gate, or completed runtime action; cite branch/protection/merge/worktree evidence; keep archive, branch cleanup, and merge decision separate. Reject packages that treat archive as branch cleanup, delete unknown/high-risk branches, delete remote branches without approval, force-delete without human decision, or use broad `cleanup_action` instead of `cleanup_decision.branch_action`.
+Report whether this is a recommendation, approval gate, or completed runtime action; cite branch/protection/merge/worktree evidence; keep archive, worktree cleanup, branch cleanup, and merge-back separate. Reject packages that treat archive as branch cleanup, delete unknown/high-risk branches, delete remote branches without approval, force-delete without human decision, or use broad `cleanup_action` instead of `branch_cleanup`.

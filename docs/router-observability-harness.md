@@ -69,7 +69,7 @@ Prompt stage records:
 
 - prompt hash and length;
 - optional redacted snippet;
-- `prompt_route_candidate` from the deterministic classifier;
+- `prompt_route_candidate` from the deterministic route-only classifier; it does not infer requirement state, source truth, risk, lifecycle state, or actual skill loading;
 - classifier source and explicit candidate-only limitation.
 
 Tool and permission stages record:
@@ -95,6 +95,8 @@ These are three distinct concepts:
 prompt_route_candidate != authoritative_skill_load_trace != response_shape_candidate
 ```
 
+When the host does not provide a native `turn_id` or request-scoped id, `UserPromptSubmit` creates a unique fallback turn id and later tool, permission, and stop events reuse the session's active fallback id. A later prompt advances the active id without overwriting the earlier turn directory. Event-local ids are not promoted into turn identity.
+
 No hit rate may treat them as interchangeable.
 
 ## Scratch Layout
@@ -116,7 +118,7 @@ Runtime hooks do not write `dispatch-decision.json`, `router-score.json`, or `ro
 
 ## Privacy
 
-`snippet_capture` and `raw_capture` default to `false`. Raw capture, when explicitly enabled, is redacted by default. Unredacted capture additionally requires `GROUNDWORK_ROUTER_OBSERVABILITY_ALLOW_UNREDACTED_RAW_CAPTURE=1` and should be used only in a reviewed private environment.
+`enabled`, `snippet_capture`, and `raw_capture` must use JSON booleans; string values such as `"false"` make the project config invalid and keep hooks disabled unless the process-level force-enable variable is explicitly set. The project config file and every path component below the project root must not be symlinks; a symlinked config path is invalid, and process-level force-enable ignores its capture options. `snippet_capture` and `raw_capture` default to `false`. Raw capture, when explicitly enabled, is always redacted by runtime hooks. Unredacted semantic reproduction is not a runtime-hook capability; it requires a separately approved maintainer-only workflow with its own retention and deletion controls.
 
 Hashes reduce exposure but do not make an artifact public. Keep `.groundwork/harness/` ignored and local.
 

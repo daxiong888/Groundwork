@@ -23,8 +23,6 @@ Route away:
 
 Use accepted task/PRD/spec/issue, source refs, relevant lifecycle state/roadmap, and verification expectations. Do not invent exact paths, APIs, schemas, owners, commands, dependencies, or tests before inspection; plan the first inspection step instead.
 
-For Groundwork repo maintenance, apply repo-local `AGENTS.md` before reporting complete.
-
 Load only when needed:
 
 - `skills/_shared/DECISION-MAPPING.md` only before implementation path acceptance or explicit option comparison.

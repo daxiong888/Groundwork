@@ -8,7 +8,7 @@ Decision Supported: Which signals belong in the installed runtime, which analyse
 
 Artifact Type: accepted product and architecture contract.
 
-Source of Truth: `scripts/codex-hooks/groundwork_route_registry.json`, `scripts/codex-hooks/groundwork_route_detection.py`, `scripts/codex-hooks/groundwork_router_telemetry.py`, `hooks/hooks.json`, `docs/router-observability-harness.md`, and `evals/verdict_model.py`.
+Source of Truth: `scripts/codex-hooks/groundwork_router_event.py`, `scripts/codex-hooks/groundwork_route_registry.json`, `scripts/codex-hooks/groundwork_route_detection.py`, `scripts/codex-hooks/groundwork_router_telemetry.py`, `hooks/hooks.json`, `docs/router-observability-harness.md`, and `evals/verdict_model.py`.
 
 Scope: dormant observe-only hooks, project opt-in, privacy controls, minimized telemetry, candidate signal separation, offline evaluation, human-reviewed regression promotion, and runtime complexity limits.
 
@@ -20,7 +20,7 @@ Safe to Share / Redaction Notes: Safe to share as architecture. Local telemetry 
 
 Status: implemented source contract; installed runtime verification remains a separate gate.
 
-Last Updated: 2026-07-13.
+Last Updated: 2026-07-14.
 
 ## Problem
 
@@ -49,13 +49,16 @@ The required product is therefore telemetry, not a live evaluator.
 ### Activation
 
 - Hooks are dormant unless project config enables them or `GROUNDWORK_ROUTER_OBSERVABILITY=1` is set.
+- All supported events use one lightweight entrypoint. Unless the environment force-enable is set, absent, invalid, or disabled config exits after parsing the event and checking activation, before importing telemetry or the route classifier.
 - Installed hook availability is not hook trust or proof of execution.
 - The only supported runtime behavior is `observe_only`.
 - Runtime hooks never emit `additionalContext`.
 
 ### Prompt Signal
 
-The prompt hook records a deterministic `prompt_route_candidate`. It is a hypothesis from the shared registry/classifier, not evidence that the host loaded a skill.
+The prompt hook records a deterministic `prompt_route_candidate`. It is a route-only hypothesis from the shared registry/classifier, not evidence about requirement state, source truth, risk, lifecycle transition, actual route, or host skill loading.
+
+When native turn identity is unavailable, prompt submission creates a unique session-scoped fallback turn id and subsequent captured events reuse it. Event-local ids must not fragment one turn or merge multiple prompts into one transcript-level record.
 
 ### Skill-Load Signal
 
@@ -76,12 +79,12 @@ The Stop hook may classify visible response shape, but must name it `response_sh
 
 ### Tool And Permission Signals
 
-Hooks may record minimized event metadata, hashes, command classes, risk/evidence markers, and coverage status. They must record unsupported/malformed coverage rather than silently promoting partial traces.
+Hooks may record minimized event metadata, hashes, command classes, risk/evidence markers, and per-record observation status. The resulting counts describe only records captured by the configured hook registrations and matchers. Among parsed records, `observed_supported` and `unsupported` form the classified-event denominator; malformed records and parsed records without a recognized status are counted separately. These counts must not be presented as all-host-event coverage, hook execution coverage, or host capability coverage.
 
 ### Privacy
 
 - `snippet_capture=false` and `raw_capture=false` by default.
-- Raw capture requires explicit project/process opt-in and remains redacted by default.
+- Raw capture requires explicit project/process opt-in and is always redacted by runtime hooks; semantic reproduction that truly needs unredacted input belongs in a separately approved maintainer-only workflow.
 - Local scratch stays under ignored `.groundwork/harness/router-observability/`.
 - Secrets, credentials, cookies, PII, private payloads, and unreviewed raw text must not be promoted.
 
@@ -128,7 +131,7 @@ The telemetry layer should make these raw, non-judgmental measurements available
 - response-shape candidate distribution;
 - authoritative skill-trace availability rate;
 - tool/permission event counts;
-- supported, unsupported, and malformed coverage counts;
+- captured-record, parsed-event, classified-event, observed-supported, observed-unsupported, unclassified, and malformed counts, scoped to captured hook records only;
 - capture/redaction mode distribution.
 
 Routing accuracy, false-positive rate, profile quality, or pass/fail verdicts are offline derived metrics and require evidence appropriate to their claim.
@@ -136,11 +139,12 @@ Routing accuracy, false-positive rate, profile quality, or pass/fail verdicts ar
 ## Acceptance Criteria
 
 - Hooks no-op without opt-in and do not create `.groundwork` scratch.
+- Unless environment force-enable is set, disabled, absent, or invalid activation exits before importing runtime telemetry or the route classifier.
 - Observe-only prompt hooks emit no model-visible context.
 - Candidate fields are distinctly named and do not use `actual_route`.
 - Missing skill-load evidence is represented as unavailable with empty hits.
 - Stop hooks write metadata and coverage, not live scores/cards/profile recommendations.
-- Tool and permission events have deterministic replay ordering and malformed-line diagnostics.
+- Tool and permission events have deterministic replay ordering plus captured-record diagnostics that separate observed-supported, observed-unsupported, unclassified, and malformed records.
 - Secret redaction covers supported token/password/key patterns.
 - Runtime hook files import no source-only `evals` package.
 - Package boundary checks include every runtime telemetry dependency.
@@ -163,7 +167,7 @@ Source validation must cover:
 - no additional context for historical behavior-shaping mode values;
 - hash/redaction behavior;
 - candidate naming and unavailable skill trace;
-- tool/permission ordering and coverage;
+- tool/permission ordering and captured-record diagnostics, without host-wide coverage claims;
 - absence of runtime score/card/profile artifacts;
 - route registry parity;
 - generated runtime package contents.

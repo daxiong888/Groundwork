@@ -6,7 +6,7 @@ reader_action: "Check recurring wiki mistakes before changing wiki structure, ev
 default_evidence_layer: unknown
 confidence: low
 sources: []
-last_updated: 2026-06-26
+last_updated: "<YYYY-MM-DD>"
 stale_risk: medium
 aliases: []
 supersedes: []

@@ -42,8 +42,9 @@ main_thread_direct / main_thread_readonly / clean_reviewer
   - `ROUTING-PROFILES.md`
   - `CONFLICT-PREFLIGHT.md`
 
-- Groundwork 扩展 `triage` 的 Agent Brief，使 ready-for-agent 任务可携带 Goal Contract 和 Preferred Runtime。
-- Groundwork 扩展 `to-issues` 输出，让 issue draft 带 runtime candidate / isolation / parallelization 字段。
+- Groundwork 扩展 `triage` 的 Agent Brief，使 `ready-for-agent + AFK` 任务携带 Goal Contract，并将 `Preferred Runtime` 固定为 `dispatch_may_choose`。
+- Groundwork 保持 `to-issues` 为 tracker-neutral task slicing：输出 vertical slices、acceptance、blockers/dependencies 和 verification expectations，不选择 runtime、model、worktree、isolation 或 parallelization。
+- Groundwork `dispatch` 是唯一的 post-readiness runtime/package owner，负责 runtime、isolation、parallelization、execution profile 和 adapter package 决策。
 - `codex-managed-worktree-threads` 瘦身为只消费 `runtime_id = codex_app_managed_worktree_thread` 的 runtime adapter。
 - Dispatch 支持 subagent route，但第一阶段不强制自动 spawn subagent，只输出 Subagent Package 和能力检测/执行建议。
 - 借鉴 `qiaomu-goal-meta-skill` 的强 `/goal` 合同思想。
@@ -70,15 +71,15 @@ main_thread_direct / main_thread_readonly / clean_reviewer
 
 Groundwork 当前已经有清晰的任务状态主干：`to-prd -> to-issues -> triage -> write-plan or implement -> verify -> triage -> handoff`，并且明确保持 tracker-neutral，不做外部 tracker integration 或 task database。
 
-`to-issues` 的职责是从 accepted PRD/spec/plan 生成 vertical work units，并携带 acceptance criteria、blockers、risk、AFK/HITL、contract impact、verification evidence needed、ready-for-agent missing fields；但它只产生 recommendation candidate，最终 readiness 属于 `triage`。
+`to-issues` 的职责是从 accepted PRD/spec/plan 生成 tracker-neutral vertical work units，并携带 acceptance criteria、blockers/dependencies 和 verification expectations；只有在影响执行或复核时才补充 AFK/HITL、contract impact、missing fields、triage candidate、ordering 或 next action。它不产生 runtime、model、worktree、isolation 或 parallelization candidate，最终 readiness 属于 `triage`。
 
-`triage` 的 ready-for-agent gate 已经要求 acceptance criteria、source/evidence 或 first inspection step、expected output、stop condition、AFK/HITL decision points、blockers、out-of-scope boundaries 都明确。
+`triage` 的 ready-for-agent gate 已经要求 acceptance criteria、source/evidence 或 first inspection step、expected output、stop condition、AFK/HITL decision points、blockers、out-of-scope boundaries 都明确。对于 `ready-for-agent + AFK`，它生成 Goal Contract，但必须保留 `Preferred Runtime: dispatch_may_choose`，不得选择 runtime、model、worktree、isolation、parallelization 或 selector enforcement。
 
-Groundwork 当前 Agent Brief 已包含 Task、Source/Evidence、Known Source、Key Interfaces、Acceptance Criteria、Out Of Scope、Risk/Gate、Execution、Stop Condition、Verification Expectations 等字段，适合扩展为 Goal Contract 和 runtime routing 输入。
+Groundwork 当前 Agent Brief 已包含 Task、Source/Evidence、Known Source、Key Interfaces、Acceptance Criteria、Out Of Scope、Risk/Gate、Execution、Stop Condition、Verification Expectations 等字段，适合作为 Goal Contract 和后续 dispatch 的 readiness/source 输入；runtime/package 字段由 `dispatch` 在 readiness 之后补充。
 
 Groundwork plugin architecture 强调 supporting behaviors 应先嵌入现有 skills，只有反复使用证明必要后再成为 public skill，并要求 skills 保持窄触发、证据先行、避免过宽 public surface。
 
-本 workstream 将 `dispatch` 升级为 public skill 是有意例外：运行时路由不是单一现有 skill 的内部 supporting behavior，而是 `to-issues` 候选字段、`triage` ready-for-agent gate、Goal Contract、runtime adapter package、Result Package、冲突预检和后续验证之间的交接边界。若继续嵌入 `triage` 或 `implement`，会扩大现有 skill 触发面并模糊“package-only routing”和“execution”的责任边界。因此 `dispatch` 必须保持窄触发、只输出 package、不执行 runtime。
+本 workstream 将 `dispatch` 升级为 public skill 是有意例外：运行时路由是 accepted tracker-neutral slices、`triage` ready-for-agent gate、Goal Contract、runtime adapter package、Result Package、冲突预检和后续验证之间的独立交接边界。若继续嵌入 `to-issues`、`triage` 或 `implement`，会扩大这些 skill 的触发面并产生重复 owner。因此 `dispatch` 必须保持窄触发，作为唯一的 post-readiness runtime/package owner，只输出 package、不执行 runtime。
 
 Codex App 官方介绍强调它是面向多个 agents 的 command center，支持 multiple agents 并行工作、separate threads、thread 内 diff review、以及内置 worktrees，让多个 agents 在同一 repo 的 isolated copies 上工作。([OpenAI][1])
 
@@ -145,7 +146,8 @@ parallel conflict preflight
 这需要更硬的结构边界：
 
 ```text
-Groundwork triage/dispatch 生成 Goal Contract
+Groundwork triage 为 ready-for-agent + AFK 生成 Goal Contract，并保留 Preferred Runtime: dispatch_may_choose
+Groundwork dispatch 消费 Goal Contract，选择 runtime/package
 runtime adapter 只把 Goal Contract 投递给被选中的 child runtime
 main/coordinator thread 永远不执行 child goal
 ```
@@ -169,15 +171,15 @@ Groundwork to-prd
 
 Layer 2 · Task Slicing
 Groundwork to-issues
-  -> vertical issues / task slices with runtime candidates
+  -> tracker-neutral vertical issues / task slices with acceptance, blockers, dependencies, and verification expectations
 
 Layer 3 · Readiness + Goal Contract
 Groundwork triage + GOAL-CONTRACT
-  -> ready-for-agent Agent Brief + strong /goal contract + preferred runtime candidate
+  -> ready-for-agent Agent Brief + strong /goal contract + Preferred Runtime: dispatch_may_choose
 
 Layer 4 · Dispatch / Runtime Router
 Groundwork dispatch
-  -> runtime_id, isolation level, parallel group, execution profile, adapter package
+  -> sole post-readiness owner of runtime_id, isolation level, parallel group, execution profile, and adapter package
 
 Layer 5 · Runtime Adapters
 - codex_app_managed_worktree_thread
@@ -204,21 +206,14 @@ Runtime adapters execute only packages for their supported runtime.
 
 # 4. Final Architecture Decision
 
-## 4.1 Groundwork owns
+## 4.1 Groundwork pipeline ownership
 
 ```text
-- PRD truth
-- issue slicing
-- readiness
-- AFK/HITL
-- Goal Contract
-- runtime routing
-- isolation-level choice
-- parallelization / conflict preflight
-- execution profile decision
-- adapter package generation
-- expected result package definition
-- verification / closeout recommendation
+- to-prd owns PRD truth.
+- to-issues owns tracker-neutral issue slicing and does not select execution topology.
+- triage owns readiness, AFK/HITL, and executable Goal Contract creation with Preferred Runtime: dispatch_may_choose.
+- dispatch is the sole post-readiness runtime/package owner: runtime routing, isolation-level choice, parallelization/conflict preflight, execution profile, adapter package, and expected result package.
+- verify / triage / handoff own their respective evidence, state, and continuation decisions after result return.
 ```
 
 ## 4.2 `codex-managed-worktree-threads` owns
@@ -628,7 +623,7 @@ runtime_policy:
     - clean_reviewer
 
 model_policy:
-  selector_enforcement: tool_if_available_else_prompt_preference
+  selector_policy: tool_if_available_else_prompt_preference
 
 tasks:
   - task_id: ""
@@ -676,7 +671,7 @@ tasks:
       reasoning_effort: low | medium | high
       cost_latency_bias: fast | balanced | quality
       routing_reason: ""
-      selector_enforcement: tool_if_available_else_prompt_preference
+      selector_policy: tool_if_available_else_prompt_preference
 
     validation:
       fastest_signal: ""
@@ -903,13 +898,13 @@ Result Package Expected
 
 ```text
 to-issues:
-  identifies missing Goal Contract fields but does not final-mark ready.
+  supplies accepted tracker-neutral slices, acceptance, blockers/dependencies, and verification inputs; it does not create Goal Contracts or select execution topology.
 
 triage:
-  creates Goal Contract for ready-for-agent tasks.
+  creates Goal Contract only for executable ready-for-agent + AFK tasks and sets Preferred Runtime to dispatch_may_choose.
 
 dispatch:
-  consumes Goal Contract and may reject tasks with missing required fields.
+  consumes Goal Contract, may reject tasks with missing required fields, and is the sole owner that resolves runtime/package decisions.
 
 runtime adapters:
   receive Goal Contract but do not generate product truth.
@@ -928,7 +923,7 @@ A strong Goal Contract:
 - defines iteration policy
 - defines stop evidence
 - defines pause conditions
-- names preferred runtime or lets dispatch choose one
+- leaves Preferred Runtime as dispatch_may_choose until dispatch owns package routing
 ```
 
 Reject or revise if it:
@@ -997,7 +992,7 @@ Findings:
 
 ---
 
-## FR-9：扩展 `triage` Agent Brief
+## FR-9：扩展 `triage` Agent Brief，同时保留 dispatch ownership
 
 ### Required Files
 
@@ -1042,13 +1037,6 @@ Goal Contract
 - Preferred Runtime:
 - Result Package Expected:
 
-Execution Profile Recommendation
-- Runtime Candidate:
-- Model Profile:
-- Reasoning Effort:
-- Cost/Latency Bias:
-- Routing Reason:
-
 Next Action
 ```
 
@@ -1060,12 +1048,14 @@ Next Action
 - needs-info must not include fake executable goal.
 - HITL tasks may include human-decision brief, not dispatchable child goal.
 - Pause If must cover AFK/HITL Decision Points.
-- Preferred Runtime is a recommendation; dispatch makes final route.
+- Preferred Runtime must be dispatch_may_choose for every upstream executable Goal Contract.
+- triage must not select or recommend runtime, model profile, reasoning effort, worktree, isolation, parallelization, selector policy, or adapter package.
+- dispatch is the sole post-readiness runtime/package owner.
 ```
 
 ---
 
-## FR-10：扩展 `to-issues` 输出
+## FR-10：保持 `to-issues` tracker-neutral
 
 ### Required Files
 
@@ -1075,48 +1065,30 @@ Groundwork/
   evals/prompts/to-issues.csv
 ```
 
-### New Fields Per Issue Draft
+### Default Issue Draft Shape
 
 ```text
-Task Type Candidate:
-  write_implementation / read_only_review / planning_only / hybrid / diagnosis / verification / direct
+Title / Goal
+Acceptance Criteria
+Blockers / Dependencies
+Verification Expectations
 
-Runtime Candidate:
-  codex_app_managed_worktree_thread / codex_subagent / main_thread_direct / main_thread_readonly / clean_reviewer / triage_required
-
-Isolation Needed:
-  context: none / subagent_prompt / thread / review_package
-  filesystem: none / current_workspace / codex_managed_worktree / unknown
-  diff surface: required / optional / not_required
-
-Parallelization Candidate:
-  eligible: yes / no / unknown
-  conflict group:
-  dependency group:
-  merge order hint:
-
-Goal Contract Missing Fields:
-  - ...
-
-Runtime Missing Fields:
-  - ...
-
-Verification Evidence Needed:
-  - ...
-
-Triage Recommendation Candidate:
-  ready-for-agent candidate / needs-info recommendation / ready-for-human recommendation
+Conditional fields only when they change execution or review:
+- AFK / HITL
+- Contract Impact
+- Missing Fields
+- Triage Candidate
+- Ordering
+- Next Action
 ```
 
 ### Rules
 
 ```text
-- to-issues still must not final-mark ready-for-agent.
-- read_only_review must not suggest codex_app_managed_worktree_thread.
-- planning_only must not suggest codex_app_managed_worktree_thread.
-- hybrid must suggest split_first or triage_required.
-- write_implementation can suggest codex_app_managed_worktree_thread when verification and source context are clear.
-- diagnosis can suggest codex_subagent if independent and read-only.
+- to-issues must remain tracker-neutral and must not final-mark ready-for-agent.
+- to-issues must not emit runtime, model, worktree, isolation, parallelization, selector, execution-profile, or adapter-package candidates.
+- to-issues supplies accepted task slices and verification inputs to triage; triage owns readiness.
+- runtime/package decisions begin only after readiness and belong exclusively to dispatch.
 ```
 
 ---
@@ -1285,7 +1257,7 @@ codex-subagents-adapter/
 
 ## US-1：PRD 到 issue 到 runtime route
 
-作为用户，我希望 Groundwork 能从 accepted PRD 拆出 issues，再根据每个 issue 的任务性质选择合适 runtime，而不是默认全部开 worktree。
+作为用户，我希望 `to-issues` 先从 accepted PRD 生成 tracker-neutral slices，`triage` 再确认 readiness，最后由 `dispatch` 根据每个 ready task 的性质选择合适 runtime，而不是默认全部开 worktree。
 
 ## US-2：只读多视角评审走 subagent 或 clean reviewer
 
@@ -1391,8 +1363,10 @@ And not claim execution happened
 
 ```text
 Given task is ready_for_agent and executable
-When triage or dispatch prepares it
+When triage prepares it
 Then Goal Contract must include /goal, verification, constraints, boundaries, iteration policy, stop_when, pause_if
+And Preferred Runtime must equal dispatch_may_choose
+And dispatch consumes that contract without asking to-issues or triage to choose runtime/package fields
 ```
 
 ## AC-10：no product truth invention
@@ -1453,6 +1427,9 @@ Given accepted PRD with:
 - one high-risk migration issue
 When local Codex runs to-issues -> triage -> dispatch
 Then:
+- to-issues emits tracker-neutral slices without runtime/isolation/parallelization/profile/package candidates
+- triage establishes readiness and leaves Preferred Runtime as dispatch_may_choose
+- dispatch alone chooses runtime, isolation, parallelization, execution profile, and adapter package
 - write implementation routes to managed worktree
 - read-only review routes to subagent or clean reviewer
 - hybrid routes to diagnosis first
@@ -1483,7 +1460,7 @@ Acceptance:
 - Preferred Runtime and Result Package Expected included.
 ```
 
-## Issue 2：Extend triage Agent Brief with Goal Contract and Preferred Runtime
+## Issue 2：Extend triage Agent Brief with Goal Contract and dispatch handoff
 
 Files:
 
@@ -1498,11 +1475,12 @@ Acceptance:
 ```text
 - ready-for-agent + AFK emits Goal Contract.
 - needs-info and ready-for-human do not emit executable child goals.
-- Preferred Runtime is recommendation only.
+- Preferred Runtime is always dispatch_may_choose upstream.
+- triage does not emit runtime, model, worktree, isolation, parallelization, selector, execution-profile, or adapter-package recommendations.
 - Pause If maps to HITL decision points.
 ```
 
-## Issue 3：Extend to-issues with runtime candidate fields
+## Issue 3：Keep to-issues tracker-neutral
 
 Files:
 
@@ -1514,11 +1492,10 @@ evals/prompts/to-issues.csv
 Acceptance:
 
 ```text
-- Each issue has Task Type Candidate.
-- Each issue has Runtime Candidate.
-- Each issue has Isolation Needed.
-- Each issue has Parallelization Candidate.
-- to-issues still does not final-mark ready-for-agent.
+- Each issue has a title/goal, acceptance criteria, blockers/dependencies, and verification expectations.
+- Conditional AFK/HITL, contract impact, missing fields, triage candidate, ordering, and next action appear only when they change execution or review.
+- No issue contains runtime, model, worktree, isolation, parallelization, selector, execution-profile, or adapter-package candidates.
+- to-issues does not final-mark ready-for-agent; triage owns readiness and dispatch owns post-readiness runtime/package decisions.
 ```
 
 ## Issue 4：Add dispatch runtime router skill
@@ -1627,20 +1604,20 @@ Constraints:
 Do not push, commit, open PRs, close issues, or mutate remote state. Do not invent product truth. Do not make Groundwork execute runtime tools. Do not make codex-managed-worktree-threads decide PRD acceptance, issue slicing, readiness, runtime routing, or Goal Contract generation.
 
 Boundaries:
-In Groundwork, modify only skills/docs/evals/scripts related to Goal Contract, triage Agent Brief, to-issues runtime candidate fields, and dispatch runtime router. In codex-managed-worktree-threads, modify only SKILL/templates/README/rationale/contract references needed to make it a managed worktree adapter. Do not add tracker APIs, task databases, hooks, MCP servers, or unrelated runtime code.
+In Groundwork, modify only skills/docs/evals/scripts related to Goal Contract, triage Agent Brief/readiness handoff, tracker-neutral to-issues slices, and dispatch runtime router. Preserve this ownership boundary: to-issues slices accepted work without execution-topology candidates; triage establishes readiness and emits dispatch_may_choose; dispatch alone selects runtime/package fields. In codex-managed-worktree-threads, modify only SKILL/templates/README/rationale/contract references needed to make it a managed worktree adapter. Do not add tracker APIs, task databases, hooks, MCP servers, or unrelated runtime code.
 
 Iteration policy:
 Implement in slices:
 1. Goal Contract + linter.
-2. triage Agent Brief extension.
-3. to-issues candidate fields.
+2. triage Agent Brief + dispatch_may_choose handoff.
+3. tracker-neutral to-issues slices.
 4. dispatch runtime router docs/contracts.
 5. codex-managed-worktree-threads adapter slimming.
 6. end-to-end scenario.
 After each slice, run the smallest available check and inspect diffs before continuing.
 
 Stop when:
-The repositories contain a coherent to-prd -> to-issues -> triage -> dispatch -> runtime adapter flow; dispatch can route different task types to different runtimes; managed worktree adapter only accepts eligible write implementation packages; subagent route is represented as package-only unless runtime execution is explicitly available; validation evidence and changed files are reported.
+The repositories contain a coherent to-prd -> tracker-neutral to-issues -> readiness-owning triage -> sole runtime/package-owner dispatch -> runtime adapter flow; dispatch can route different task types to different runtimes; managed worktree adapter only accepts eligible write implementation packages; subagent route is represented as package-only unless runtime execution is explicitly available; validation evidence and changed files are reported.
 
 Pause if:
 A decision is needed about publishing a new public skill name, physically merging codex-managed-worktree-threads into Groundwork, enabling automatic subagent spawn, remote writes, tracker API integration, or changing Groundwork's task-state spine.
@@ -1664,6 +1641,10 @@ In Phase 1 it is package-only and capability-gated, not automatically spawned.
 
 Goal Contract is shared Groundwork execution contract.
 It belongs before runtime selection, not inside one adapter.
+
+to-issues owns tracker-neutral slicing only.
+triage owns readiness and emits Preferred Runtime: dispatch_may_choose.
+dispatch is the sole post-readiness runtime/package owner.
 ```
 
 This gives us a cleaner and more extensible system:

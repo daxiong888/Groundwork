@@ -35,17 +35,19 @@ Default inner shape: `SCHEMA.md`, `index.md`, `log.md`, `error-book.md`, `raw/`,
 
 ## Page Frontmatter
 
+Create typed pages from `skills/wiki/templates/page.md` and apply the selected profile and exact section order from `skills/wiki/templates/PAGE-TYPES.md`.
+
 ```yaml
 ---
-type: concept
+type: "<concept | decision | contract | procedure | summary | query | term>"
 status: draft
-target_reader: "Project maintainers and future agent sessions"
-reader_action: "Use for orientation only; inspect cited source before implementation or verification."
-default_evidence_layer: unknown
+target_reader: "<from PAGE-TYPES.md>"
+reader_action: "<from PAGE-TYPES.md>"
+default_evidence_layer: "<from PAGE-TYPES.md>"
 confidence: low
 sources: []
-last_updated: 2026-06-26
-stale_risk: medium
+last_updated: "<YYYY-MM-DD>"
+stale_risk: "<from PAGE-TYPES.md>"
 aliases: []
 supersedes: []
 superseded_by: []
@@ -148,4 +150,4 @@ Use compact blocks for:
 
 ## Template Set
 
-Starter templates live under `skills/wiki/templates/`: `SCHEMA.md`, `index.md`, `log.md`, `error-book.md`, `page-concept.md`, `page-decision.md`, `page-contract.md`, `page-procedure.md`, `page-summary.md`, `page-query.md`, `page-term.md`. Copy only after selecting storage mode; update dates, sources, and statuses.
+Starter templates live under `skills/wiki/templates/`: `SCHEMA.md`, `index.md`, `log.md`, `error-book.md`, the shared `page.md` base, and `PAGE-TYPES.md` type-profile/section contract. Copy only after selecting storage mode; replace date and profile placeholders, then update sources and statuses.

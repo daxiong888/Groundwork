@@ -4,10 +4,10 @@ Target Reader: Open-source maintainers and reviewers evaluating how Groundwork s
 Reader Action Needed: Decide when to use the full Groundwork loop, when to use a smaller path, and how to preserve evidence without adding ceremony.
 Decision Supported: Whether Groundwork fits maintainer workflows such as PR clarification, implementation, verification, review transfer, and release evidence.
 Artifact Type: maintainer workflow guide.
-Source of Truth: `docs/prd.md`, `docs/product-principles.md`, `docs/prd-v0.5-prototype-first-skill-expansion.md`, public skill contracts, and runtime baseline reports under `evals/baselines/`.
+Source of Truth: `docs/plugin-architecture.md`, `docs/product-principles.md`, public skill contracts, and repo-local `AGENTS.md`.
 Scope: Maintainer-facing use of the public Groundwork skills, especially `to-prd`, `implement`, `verify`, and `handoff`.
 Out of Scope: Replacing GitHub issues, CI, human code review, release ownership, security review, or Codex host approval enforcement.
-Evidence Level: Grounded in `docs/prd.md`, `docs/product-principles.md`, the public skill surface, v0.2.x/v0.3 changelog entries, and runtime baseline reports under `evals/baselines/`.
+Evidence Level: Current maintainer guidance derived from canonical source contracts. Historical PRDs, changelog entries, and eval baselines are supporting snapshots only.
 Safe to Share / Redaction Notes: Safe to share as-is; contains no secrets, credentials, private payloads, or personal data.
 
 Groundwork helps maintainers run evidence-first coding loops with Codex. It is optimized for situations where correctness depends on more than a code diff: PRD/spec clarity, source-code truth, runtime evidence, integration contracts, UAT behavior, and handoff quality.
@@ -119,9 +119,9 @@ Groundwork is conversation-first by default. Write durable artifacts only when t
 
 Every durable artifact should carry the audience-first header fields defined in `skills/_shared/AUDIENCE-FIRST-ARTIFACT.md`: target reader, reader action, decision supported, artifact type, source of truth, scope, out-of-scope boundary, evidence level, and safe-to-share or redaction notes. Sensitive data, credentials, private request payloads, long logs, and unredacted personal data must not be copied into artifacts.
 
-## v0.3.4 Governance Baseline Boundary
+## Historical Governance Baseline
 
-v0.3.4 is a main-chain governance baseline for the current public skill surface, including package-only `dispatch`. It strengthens layered `AGENTS.md`, artifact headers, grill-before-write, prototype contract boundaries, implement planning/TDD-lite, verify scope/lenses, QA-fix-QA, git boundary, handoff review packages, and the shared done definition inherited by `dispatch`.
+v0.3.4 introduced much of the governance vocabulary still used by the current surface, including layered `AGENTS.md`, artifact headers, prototype contract boundaries, implement planning/TDD-lite, verify scope, git boundaries, and handoff review packages. The version label is historical evidence, not the current architecture owner.
 
 It is not a new runtime, plugin split, automation layer, task database, or subagent spawning system. Runtime evidence still requires installed plugin cache/source equivalence or a supported marketplace refresh before it can be treated as release-gating evidence.
 

@@ -12,7 +12,7 @@ Safe to Share / Redaction Notes: Safe to share as a public planning artifact. It
 Status: Draft PRD with maintainer-authorized source implementation for V052-001 through V052-007.
 Public Surface State: source_implemented_for_review; repository-visible public skill surface and source metadata are aligned for review, while installed-plugin runtime, marketplace, cache-refresh, release, UAT, browser, and customer readiness remain unverified.
 Version Track: v0.5.2 source-validation release candidate.
-Last Updated: 2026-06-26.
+Last Updated: 2026-07-14.
 Branch: `prd/v0.5.2-public-wiki-skill`.
 
 ---
@@ -320,19 +320,19 @@ wiki/
 
 ### 9.2 Page Frontmatter
 
-Groundwork wiki pages should use compact, valid YAML frontmatter. The example below uses concrete values; allowed enums are listed separately.
+Groundwork wiki pages should use compact, valid YAML frontmatter. The authoring template uses explicit placeholders; select concrete profile values from `skills/wiki/templates/PAGE-TYPES.md` before creating a page.
 
 ```yaml
 ---
-type: concept
+type: "<concept | decision | contract | procedure | summary | query | term>"
 status: draft
-target_reader: "Project maintainers and future agent sessions"
-reader_action: "Use for orientation only; inspect cited source before implementation or verification."
-default_evidence_layer: unknown
+target_reader: "<from PAGE-TYPES.md>"
+reader_action: "<from PAGE-TYPES.md>"
+default_evidence_layer: "<from PAGE-TYPES.md>"
 confidence: low
 sources: []
-last_updated: 2026-06-26
-stale_risk: medium
+last_updated: "<YYYY-MM-DD>"
+stale_risk: "<from PAGE-TYPES.md>"
 aliases: []
 supersedes: []
 superseded_by: []
@@ -880,7 +880,7 @@ Dependencies: V052-001 or parallel source-review with V052-001.
 
 ### V052-003: Wiki Templates
 
-Goal: Add starter wiki files and typed page templates.
+Goal: Add starter wiki files plus one shared typed-page base and one type-profile/section contract.
 
 Primary files:
 
@@ -889,13 +889,8 @@ skills/wiki/templates/SCHEMA.md
 skills/wiki/templates/index.md
 skills/wiki/templates/log.md
 skills/wiki/templates/error-book.md
-skills/wiki/templates/page-concept.md
-skills/wiki/templates/page-decision.md
-skills/wiki/templates/page-contract.md
-skills/wiki/templates/page-procedure.md
-skills/wiki/templates/page-summary.md
-skills/wiki/templates/page-query.md
-skills/wiki/templates/page-term.md
+skills/wiki/templates/page.md
+skills/wiki/templates/PAGE-TYPES.md
 ```
 
 Dependencies: V052-002.

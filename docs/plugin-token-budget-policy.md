@@ -28,7 +28,7 @@ Public `SKILL.md` entry files should route to shared gates or branch references.
 
 ## Source Gates
 
-`scripts/runtime_package_manifest.json` is the canonical machine-readable package contract. Both the builder and checker load it; do not duplicate package allowlists or complexity ceilings in Python.
+`scripts/runtime_package_manifest.json` is the canonical machine-readable package contract. The checker loads it, and the builder imports the checker contract/helpers and delegates final package validation back to that checker; do not duplicate package allowlists, validation logic, or complexity ceilings.
 
 `scripts/check_runtime_package_boundary.py` builds a fresh local marketplace package and fails when:
 
@@ -37,7 +37,7 @@ Public `SKILL.md` entry files should route to shared gates or branch references.
 - a contract-listed exact directory contains missing or extra files;
 - generated `.codex-plugin/runtime-manifest.json` does not match plugin metadata, the package contract hash, README hash, or content inventory hash;
 - runtime, skill, or hook file/line counts exceed the contract budgets;
-- the maximum local Markdown reference chain under `skills/` exceeds the contract budget.
+- the maximum Markdown reference chain reachable from a public `skills/*/SKILL.md` entry exceeds the contract budget.
 
 The generated runtime manifest makes package provenance checkable after copying or cache installation. It records hashes and counts, not source-checkout paths or user data.
 
@@ -49,9 +49,9 @@ Current structural ceilings are intentionally explicit rather than estimated tok
 | Runtime lines, excluding generated manifest | 9,800 |
 | Skill files | 112 |
 | Skill lines | 8,400 |
-| Codex hook files | 8 |
+| Codex hook files | 4 |
 | Codex hook lines | 1,200 |
-| Skill Markdown reference depth | 24 |
+| Public skill entry Markdown reference depth | 20 |
 
 `scripts/check_skill_entry_budget.py` applies the current approximate budget:
 
@@ -59,12 +59,12 @@ Current structural ceilings are intentionally explicit rather than estimated tok
 | --- | ---: |
 | `skills/verify/SKILL.md` | 140 |
 | `skills/implement/SKILL.md` | 140 |
-| `skills/dispatch/SKILL.md` | 130 |
+| `skills/dispatch/SKILL.md` | 100 |
 | `skills/handoff/SKILL.md` | 120 |
 
 It also fails any public `SKILL.md` with a fenced inline example longer than 40 lines, and it blocks YAML schema-like blocks unless the file carries an explicit `token-budget: allow-full-yaml-schema` exemption.
 
-Line and reference checks are structural guardrails, not tokenizer estimates. They stop unexplained architecture growth and complement observed usage measurements; they do not claim official tokenizer parity.
+Line and reference checks are structural guardrails, not tokenizer estimates. Reference depth begins at the ten public skill entries; standalone shared documents do not inflate an execution-path metric merely because they cite other source contracts. These checks stop unexplained architecture growth and complement observed usage measurements; they do not claim official tokenizer parity.
 
 ## Benchmark Trend
 

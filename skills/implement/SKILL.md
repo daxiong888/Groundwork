@@ -29,7 +29,7 @@ Do not substitute a smaller symptom mask, local duplication, fallback, or workar
 
 ## Evidence Boundary
 
-Before editing, inspect current git state, relevant diffs, source truth, directly affected code/helpers, related tests/checks/config, and the fastest useful verification signal. When maintaining Groundwork itself, apply the repo-local Done Definition before reporting complete.
+Before editing, inspect current git state, relevant diffs, source truth, directly affected code/helpers, related tests/checks/config, and the fastest useful verification signal.
 
 Do not claim runtime/cache/release/UAT/marketplace/cache-refresh, clean-review, independent verification, or customer readiness from implementation self-checks.
 

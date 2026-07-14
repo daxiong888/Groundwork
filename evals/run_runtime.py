@@ -5,7 +5,6 @@ import hashlib
 import json
 import os
 import re
-import secrets
 import shutil
 import subprocess
 import sys
@@ -13,36 +12,133 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 
-from checks.common import has_required_field, missing_required_fields
-from checks.forbidden_patterns import (
-    check_review_loop_claims,
-    forbidden_git_add_dot_suggestion,
-    has_archive_or_branch_cleanup_ready_claim,
-    has_clean_review_blocked_or_unverified_boundary,
-    has_clean_review_nested_delegation_disclosure,
-    has_clean_review_parent_context_fork_disclosure,
-    has_clean_review_pass_claim,
-    has_diff_only_readiness_pass_claim,
-)
-from checks.verify_checks import (
-    ARTIFACT_HEADER_FIELDS,
-    QA_FAILURE_FIELDS,
-    VERIFY_SCOPE_FIELDS,
-    missing_verify_scope_fields,
-)
 try:
-    from routing_schema import ROUTING_SCHEMA_FIELDS, TRACE_READY_SUITES
+    from checks.common import has_required_field, missing_required_fields
+    from checks.forbidden_patterns import (
+        check_review_loop_claims,
+        forbidden_git_add_dot_suggestion,
+        has_archive_or_branch_cleanup_ready_claim,
+        has_clean_review_blocked_or_unverified_boundary,
+        has_clean_review_nested_delegation_disclosure,
+        has_clean_review_parent_context_fork_disclosure,
+        has_clean_review_pass_claim,
+        has_diff_only_readiness_pass_claim,
+    )
+    from checks.verify_checks import (
+        ARTIFACT_HEADER_FIELDS,
+        QA_FAILURE_FIELDS,
+        VERIFY_SCOPE_FIELDS,
+        missing_verify_scope_fields,
+    )
 except ImportError:  # pragma: no cover - package import path
-    from evals.routing_schema import ROUTING_SCHEMA_FIELDS, TRACE_READY_SUITES
+    from evals.checks.common import has_required_field, missing_required_fields
+    from evals.checks.forbidden_patterns import (
+        check_review_loop_claims,
+        forbidden_git_add_dot_suggestion,
+        has_archive_or_branch_cleanup_ready_claim,
+        has_clean_review_blocked_or_unverified_boundary,
+        has_clean_review_nested_delegation_disclosure,
+        has_clean_review_parent_context_fork_disclosure,
+        has_clean_review_pass_claim,
+        has_diff_only_readiness_pass_claim,
+    )
+    from evals.checks.verify_checks import (
+        ARTIFACT_HEADER_FIELDS,
+        QA_FAILURE_FIELDS,
+        VERIFY_SCOPE_FIELDS,
+        missing_verify_scope_fields,
+    )
+try:
+    from routing_schema import (
+        CASE_KIND_TOKENS,
+        CASE_SOURCE_TOKENS,
+        DIRECT_ROUTE,
+        EVIDENCE_REQUIRED_FUTURE_TOKENS,
+        EVIDENCE_REQUIRED_IMPLEMENTED_TOKENS,
+        EXPECTED_BEST_ROUTES,
+        HOST_PREEMPTION_ROUTE,
+        INTENT_KIND_TOKENS,
+        NOT_APPLICABLE,
+        OUTPUT_CONTRACT_FUTURE_TOKENS,
+        OUTPUT_CONTRACT_IMPLEMENTED_TOKENS,
+        PUBLIC_SKILL_ROUTES,
+        REQUIREMENT_STATE_TOKENS,
+        RISK_GATE_TOKENS,
+        ROUTE_LIST_ROUTES,
+        ROUTING_SCHEMA_FIELDS,
+        SOURCE_TRUTH_TOKENS,
+        STATE_TRANSITION_TOKENS,
+        STOP_CONDITION_TOKENS,
+        TRACE_READY_SUITES,
+        UNKNOWN_ROUTE,
+        boolish,
+        expected_skill_for_row,
+        host_preemption_allowed,
+        is_routing_reliability_row,
+        is_trace_ready_row,
+        malformed_csv_errors,
+        measurement_tokens_for_row,
+        parse_pipe_list,
+        route_expectations_for_row,
+        routing_schema_for_row,
+        row_location,
+        validate_routing_schema,
+        validate_token,
+    )
+except ImportError:  # pragma: no cover - package import path
+    from evals.routing_schema import (
+        CASE_KIND_TOKENS,
+        CASE_SOURCE_TOKENS,
+        DIRECT_ROUTE,
+        EVIDENCE_REQUIRED_FUTURE_TOKENS,
+        EVIDENCE_REQUIRED_IMPLEMENTED_TOKENS,
+        EXPECTED_BEST_ROUTES,
+        HOST_PREEMPTION_ROUTE,
+        INTENT_KIND_TOKENS,
+        NOT_APPLICABLE,
+        OUTPUT_CONTRACT_FUTURE_TOKENS,
+        OUTPUT_CONTRACT_IMPLEMENTED_TOKENS,
+        PUBLIC_SKILL_ROUTES,
+        REQUIREMENT_STATE_TOKENS,
+        RISK_GATE_TOKENS,
+        ROUTE_LIST_ROUTES,
+        ROUTING_SCHEMA_FIELDS,
+        SOURCE_TRUTH_TOKENS,
+        STATE_TRANSITION_TOKENS,
+        STOP_CONDITION_TOKENS,
+        TRACE_READY_SUITES,
+        UNKNOWN_ROUTE,
+        boolish,
+        expected_skill_for_row,
+        host_preemption_allowed,
+        is_routing_reliability_row,
+        is_trace_ready_row,
+        malformed_csv_errors,
+        measurement_tokens_for_row,
+        parse_pipe_list,
+        route_expectations_for_row,
+        routing_schema_for_row,
+        row_location,
+        validate_routing_schema,
+        validate_token,
+    )
+
+try:
+    from suite_registry import DEFAULT_SUITES
+except ImportError:  # pragma: no cover - package import path
+    from evals.suite_registry import DEFAULT_SUITES
+
+try:
+    from case_oracles import validate_case as validate_fixture_case
+except ImportError:  # pragma: no cover - package import path
+    from evals.case_oracles import validate_case as validate_fixture_case
 
 try:
     from routing_summary import (
-        routing_outcome as shared_routing_outcome,
         summarize_routing_results as shared_summarize_routing_results,
     )
 except ImportError:  # pragma: no cover - package import path
     from evals.routing_summary import (
-        routing_outcome as shared_routing_outcome,
         summarize_routing_results as shared_summarize_routing_results,
     )
 
@@ -65,150 +161,10 @@ SUMMARY = RUN / "summary.json"
 FAILURES = RUN / "failures.md"
 RUNTIME_SELECTOR = {"model": "", "profile": "", "codex_config": []}
 
-DEFAULT_SUITES = [
-    "smoke.csv",
-    "safety.csv",
-    "reliability.csv",
-    "guardrails-regression.csv",
-    "v0.5.2-wiki.csv",
-    "lifecycle-state.csv",
-    "lifecycle-preflight-regressions.csv",
-    "routing-reliability.csv",
-    "routing-blind.csv",
-    "trace-first-verify-review.csv",
-]
-
-PUBLIC_SKILL_ROUTES = {
-    "dispatch",
-    "to-prd",
-    "to-issues",
-    "triage",
-    "write-plan",
-    "prototype",
-    "implement",
-    "verify",
-    "handoff",
-    "wiki",
-}
-DIRECT_ROUTE = "direct"
-UNKNOWN_ROUTE = "unknown"
-HOST_PREEMPTION_ROUTE = "runtime-safety-gate"
-EXPECTED_BEST_ROUTES = PUBLIC_SKILL_ROUTES | {DIRECT_ROUTE}
-ROUTE_LIST_ROUTES = EXPECTED_BEST_ROUTES | {HOST_PREEMPTION_ROUTE}
 ROUTING_RELIABILITY_SUITE = "routing-reliability.csv"
 TRACE_FIRST_VERIFY_REVIEW_SUITE = "trace-first-verify-review.csv"
 CLEAN_REVIEW_FANOUT_SUITE = "clean-review-fanout.csv"
 ZH_TRIGGER_PARITY_SUITE = "zh-trigger-parity.csv"
-INTENT_KIND_TOKENS = {
-    "direct",
-    "new_requirement",
-    "clarify",
-    "issue_split",
-    "plan",
-    "prototype",
-    "implement",
-    "verify",
-    "handoff",
-    "delivery",
-    "remote_mutation",
-}
-REQUIREMENT_STATE_TOKENS = {
-    "raw",
-    "grilled",
-    "prd_draft",
-    "prd_accepted",
-    "issue_ready",
-    "implementation_ready",
-    "verified",
-    "blocked",
-}
-SOURCE_TRUTH_TOKENS = {
-    "conversation",
-    "accepted_prd",
-    "local_artifact",
-    "external_issue",
-    "pull_request",
-    "source_code",
-    "test_evidence",
-    "runtime_evidence",
-    "state_md",
-    "mixed",
-    "unknown",
-}
-RISK_GATE_TOKENS = {
-    "none",
-    "git_write",
-    "remote_write",
-    "destructive",
-    "customer_visible",
-    "data_write",
-    "secrets_or_pii",
-    "blocked",
-}
-STATE_TRANSITION_TOKENS = {
-    "none",
-    "clarify",
-    "draft",
-    "accept",
-    "split",
-    "plan",
-    "implement",
-    "verify",
-    "handoff",
-    "block",
-    "close",
-}
-STOP_CONDITION_TOKENS = {
-    "continue",
-    "ask_clarification",
-    "require_prd_acceptance",
-    "require_artifact_promotion",
-    "require_gate",
-    "direct_answer",
-    "blocked",
-}
-CASE_KIND_TOKENS = {"positive", "hard_negative", "host_preemption"}
-CASE_SOURCE_TOKENS = {
-    "real_drift",
-    "synthetic_hard_negative",
-    "regression_protection",
-    "unverified_hypothesis",
-}
-OUTPUT_CONTRACT_IMPLEMENTED_TOKENS = {
-    "none",
-    "verify_scope",
-    "gate_fields",
-    "prototype_contract_boundary",
-    "implementation_result",
-    "implementation_conformance",
-    "entry_decision",
-    "trajectory_signal",
-    "qa_fix_qa",
-    "artifact_header",
-    "dispatch_compact_default",
-    "dispatch_complete_or_split",
-}
-OUTPUT_CONTRACT_FUTURE_TOKENS = {
-    "handoff_compact_reference",
-    "route_failure_feedback",
-}
-EVIDENCE_REQUIRED_IMPLEMENTED_TOKENS = {
-    "none",
-    "no_file_changes",
-    "gate_observed",
-    "git_status",
-    "raw_intent_no_implementation",
-    "direct_fallback_no_artifact",
-    "source_or_unverified",
-    "tests_or_unverified",
-    "browser_or_unverified",
-    "runtime_or_unverified",
-    "dispatch_default_read_path",
-}
-EVIDENCE_REQUIRED_FUTURE_TOKENS = {
-    "cache_equivalence",
-}
-NOT_APPLICABLE = "not_applicable"
 
 NO_EDIT_MARKERS = [
     "不要编辑文件",
@@ -304,24 +260,7 @@ STATE_REQUIRED_FIELDS = [
 ]
 RESERVED_WORKSTREAM_SLUGS = {"project", "all", "global", "current"}
 FIXTURE_SETUP_FILE = ".groundwork-fixture.json"
-IMPLEMENT_ROOT_CAUSE_CASE_ID = "implement-013"
-IMPLEMENT_ROOT_CAUSE_ALLOWED_CHANGES = {"src/taskSearch.mjs"}
-IMPLEMENT_ROOT_CAUSE_HELPER_SIGNATURE = "export function normalizePhone(value) {"
-IMPLEMENT_ROOT_CAUSE_END_SENTINEL = "// ROOT_CAUSE_SUFFICIENCY_FIXTURE_END"
-IMPLEMENT_ROOT_CAUSE_SAFE_HELPER = re.compile(
-    r"""^\s*
-    return\s+String\(\s*value\s*\?\?\s*(?P<q1>["'])(?P=q1)\s*\)
-    (?:\s*\.trim\(\s*\))?
-    \s*\.replace\(\s*/\[(?:\\s-|\\s\\-|-\\s)\]\+?/g\s*,
-    \s*(?P<q2>["'])(?P=q2)\s*\)\s*;\s*}\s*$
-    """,
-    re.VERBOSE,
-)
 CODEX_EXEC_TIMEOUT = int(os.environ.get("GROUNDWORK_CODEX_TIMEOUT", "360"))
-
-
-def boolish(value):
-    return str(value).strip().lower() == "true"
 
 
 def optional_boolish(value):
@@ -332,25 +271,6 @@ def optional_boolish(value):
 
 def safe_id(value):
     return re.sub(r"[^A-Za-z0-9_.-]+", "-", str(value)).strip("-") or "case"
-
-
-def expected_skill_for_row(row):
-    expected_best = str(row.get("expected_best") or "").strip()
-    if expected_best:
-        return expected_best
-
-    if row.get("expected_skill"):
-        return str(row["expected_skill"]).strip()
-
-    behavior = row.get("expected_behavior") or ""
-    if not boolish(row.get("should_trigger", True)):
-        route_match = re.search(r"Should route to ([A-Za-z0-9_-]+)", behavior)
-        if route_match:
-            return route_match.group(1)
-        return DIRECT_ROUTE
-
-    expected = str(row.get("skill") or "").strip()
-    return expected or DIRECT_ROUTE
 
 
 def prompt_suites():
@@ -390,240 +310,6 @@ def read_rows(suites, prompt_files=None):
     return out
 
 
-def row_location(row):
-    return f"{row.get('_suite', 'unknown')}:{row.get('_row_number', '?')}:{row.get('id') or '<missing id>'}"
-
-
-def is_trace_ready_row(row):
-    return row.get("_suite") in TRACE_READY_SUITES
-
-
-def is_routing_reliability_row(row):
-    return is_trace_ready_row(row)
-
-
-def host_preemption_allowed(row):
-    return (
-        boolish(row.get("host_preemption_allowed"))
-        or boolish(row.get("host_preemption_classification_allowed"))
-        or str(row.get("case_kind") or "").strip() == "host_preemption"
-    )
-
-
-def parse_pipe_list(value, field, row, *, blank_default=None):
-    text = str(value or "").strip()
-    if not text:
-        return list(blank_default or [])
-    if "," in text or ";" in text:
-        raise ValueError(f"{row_location(row)} {field} must use '|' separators, not commas or semicolons")
-    parts = [part.strip() for part in text.split("|")]
-    if any(not part for part in parts):
-        raise ValueError(f"{row_location(row)} {field} contains an empty list item")
-    if any(re.search(r"\s", part) for part in parts):
-        raise ValueError(f"{row_location(row)} {field} contains whitespace inside a token")
-    return parts
-
-
-def validate_token(value, allowed, field, row, *, required=False, legacy_not_applicable=True):
-    text = str(value or "").strip()
-    if not text:
-        if required:
-            raise ValueError(f"{row_location(row)} missing required {field}")
-        return NOT_APPLICABLE if legacy_not_applicable else ""
-    if text not in allowed:
-        if legacy_not_applicable:
-            return NOT_APPLICABLE
-        raise ValueError(f"{row_location(row)} unknown {field}: {text}")
-    return text
-
-
-def measurement_tokens_for_row(row, field, implemented, future):
-    text = str(row.get(field) or "").strip()
-    if not text:
-        if field == "output_contract" and boolish(row.get("verify_scope_required")):
-            return ["verify_scope"], []
-        return ["none"], []
-
-    tokens = parse_pipe_list(text, field, row)
-    allowed = implemented | future
-    unknown = [token for token in tokens if token not in allowed]
-    if unknown:
-        raise ValueError(f"{row_location(row)} unknown {field}: {', '.join(unknown)}")
-    future_tokens = [token for token in tokens if token in future]
-    return tokens, future_tokens
-
-
-def routing_schema_for_row(row):
-    routing_row = is_trace_ready_row(row)
-    expected_best = expected_skill_for_row(row)
-    acceptable_routes = parse_pipe_list(row.get("acceptable_routes"), "acceptable_routes", row, blank_default=[expected_best])
-    forbidden_routes = parse_pipe_list(row.get("forbidden_routes"), "forbidden_routes", row, blank_default=[])
-    route_lists = acceptable_routes + forbidden_routes
-
-    if not expected_best:
-        raise ValueError(f"{row_location(row)} missing required expected_best")
-    if expected_best == "blocked":
-        raise ValueError(f"{row_location(row)} blocked is not a route")
-    if expected_best == HOST_PREEMPTION_ROUTE:
-        raise ValueError(f"{row_location(row)} runtime-safety-gate is not allowed as expected_best")
-    if expected_best not in EXPECTED_BEST_ROUTES:
-        raise ValueError(f"{row_location(row)} unknown expected_best route: {expected_best}")
-
-    blocked_routes = [route for route in route_lists if route == "blocked"]
-    if blocked_routes:
-        raise ValueError(f"{row_location(row)} blocked is not allowed in route lists")
-
-    unknown_routes = [route for route in route_lists if route not in ROUTE_LIST_ROUTES]
-    if unknown_routes:
-        raise ValueError(f"{row_location(row)} unknown route: {', '.join(sorted(set(unknown_routes)))}")
-
-    if HOST_PREEMPTION_ROUTE in route_lists and not host_preemption_allowed(row):
-        raise ValueError(
-            f"{row_location(row)} runtime-safety-gate route list requires host_preemption_allowed=true or case_kind=host_preemption"
-        )
-
-    overlap = sorted(set(acceptable_routes) & set(forbidden_routes))
-    if overlap:
-        raise ValueError(f"{row_location(row)} acceptable_routes overlaps forbidden_routes: {', '.join(overlap)}")
-
-    legacy_not_applicable = not routing_row
-    intent_kind = validate_token(
-        row.get("intent_kind"),
-        INTENT_KIND_TOKENS,
-        "intent_kind",
-        row,
-        required=routing_row,
-        legacy_not_applicable=legacy_not_applicable,
-    )
-    requirement_state = validate_token(
-        row.get("requirement_state"),
-        REQUIREMENT_STATE_TOKENS,
-        "requirement_state",
-        row,
-        required=routing_row,
-        legacy_not_applicable=legacy_not_applicable,
-    )
-    source_truth = validate_token(
-        row.get("source_truth"),
-        SOURCE_TRUTH_TOKENS,
-        "source_truth",
-        row,
-        required=routing_row,
-        legacy_not_applicable=legacy_not_applicable,
-    )
-    risk_gate = validate_token(
-        row.get("risk_gate"),
-        RISK_GATE_TOKENS,
-        "risk_gate",
-        row,
-        required=routing_row,
-        legacy_not_applicable=legacy_not_applicable,
-    )
-    expected_state_transition = validate_token(
-        row.get("expected_state_transition"),
-        STATE_TRANSITION_TOKENS,
-        "expected_state_transition",
-        row,
-        required=routing_row,
-        legacy_not_applicable=legacy_not_applicable,
-    )
-    expected_stop_condition = validate_token(
-        row.get("expected_stop_condition"),
-        STOP_CONDITION_TOKENS,
-        "expected_stop_condition",
-        row,
-        required=routing_row,
-        legacy_not_applicable=legacy_not_applicable,
-    )
-    route_boundary = str(row.get("route_boundary") or "").strip() or (NOT_APPLICABLE if legacy_not_applicable else "")
-    case_kind = validate_token(
-        row.get("case_kind"),
-        CASE_KIND_TOKENS,
-        "case_kind",
-        row,
-        required=routing_row,
-        legacy_not_applicable=legacy_not_applicable,
-    )
-    case_source = validate_token(
-        row.get("case_source"),
-        CASE_SOURCE_TOKENS,
-        "case_source",
-        row,
-        required=routing_row,
-        legacy_not_applicable=legacy_not_applicable,
-    )
-    output_contract, future_output_contract = measurement_tokens_for_row(
-        row,
-        "output_contract",
-        OUTPUT_CONTRACT_IMPLEMENTED_TOKENS,
-        OUTPUT_CONTRACT_FUTURE_TOKENS,
-    )
-    evidence_required, future_evidence_required = measurement_tokens_for_row(
-        row,
-        "evidence_required",
-        EVIDENCE_REQUIRED_IMPLEMENTED_TOKENS,
-        EVIDENCE_REQUIRED_FUTURE_TOKENS,
-    )
-
-    if routing_row and not route_boundary:
-        raise ValueError(f"{row_location(row)} missing required route_boundary")
-
-    return {
-        "input_scenario": row.get("input_scenario") or row.get("prompt") or "",
-        "expected_best": expected_best,
-        "acceptable_routes": acceptable_routes,
-        "forbidden_routes": forbidden_routes,
-        "host_preemption_allowed": host_preemption_allowed(row),
-        "intent_kind": intent_kind,
-        "requirement_state": requirement_state,
-        "source_truth": source_truth,
-        "risk_gate": risk_gate,
-        "expected_state_transition": expected_state_transition,
-        "expected_stop_condition": expected_stop_condition,
-        "route_boundary": route_boundary,
-        "case_kind": case_kind,
-        "case_source": case_source,
-        "output_contract": output_contract,
-        "output_contract_future_tokens": future_output_contract,
-        "evidence_required": evidence_required,
-        "evidence_required_future_tokens": future_evidence_required,
-        "behavior_assertion": row.get("acceptance_standard") or row.get("expected_behavior") or "",
-    }
-
-
-def malformed_csv_errors(row):
-    errors = []
-    if None in row:
-        errors.append(f"{row_location(row)} malformed CSV row has extra cells: {row.get(None)}")
-    fieldnames = row.get("_fieldnames") or []
-    if any(name is None or str(name).strip() == "" for name in fieldnames):
-        errors.append(f"{row_location(row)} malformed CSV header has blank columns")
-    if not str(row.get("id") or "").strip():
-        errors.append(f"{row_location(row)} missing required id")
-    return errors
-
-
-def validate_routing_schema(rows):
-    errors = []
-    seen_ids = {}
-    normalized = []
-
-    for row in rows:
-        errors.extend(malformed_csv_errors(row))
-        row_id = str(row.get("id") or "").strip()
-        if row_id:
-            if row_id in seen_ids:
-                errors.append(f"{row_location(row)} duplicate row id also seen at {seen_ids[row_id]}")
-            else:
-                seen_ids[row_id] = row_location(row)
-        try:
-            normalized.append(routing_schema_for_row(row))
-        except ValueError as exc:
-            errors.append(str(exc))
-
-    return errors, normalized
-
-
 def is_auto_skipped_row(row):
     return boolish(row.get("targeted_only")) or boolish(row.get("fixture_only"))
 
@@ -652,7 +338,7 @@ def split_resource_keys(value):
             parsed = None
         if isinstance(parsed, list):
             return [str(item).strip() for item in parsed if str(item).strip()]
-    return [item for item in re.split(r"[\s,;]+", text) if item]
+    return [item for item in re.split(r"[\s,;|]+", text) if item]
 
 
 def infer_resource_keys(row):
@@ -665,9 +351,9 @@ def infer_resource_keys(row):
     fixture = row.get("fixture") or "none"
     flake_policy = (row.get("flake_policy") or "").strip().lower()
 
-    if row.get("id") == "gr-008b":
+    if fixture == "repo-root":
         keys.extend(["repo:groundwork", "codex_home"])
-    if fixture and fixture != "none":
+    elif fixture and fixture != "none":
         keys.append("workspace")
     if "browser" in prompt or "devtools" in prompt or "chrome" in prompt:
         keys.append("browser")
@@ -703,8 +389,6 @@ def infer_parallel_safe(row):
     expected = expected_skill_for_row(row)
     fixture = row.get("fixture") or "none"
 
-    if row.get("id") == "gr-008b":
-        return False
     if any(marker in prompt for marker in NO_EDIT_MARKERS):
         return True
     if expected in {"direct", "to-prd", "to-issues", "triage", "write-plan", "prototype", "verify", "handoff"}:
@@ -1103,7 +787,7 @@ def choose_workspace(row):
     artifact_allowed = boolish(row.get("artifact_allowed"))
     expected = expected_skill_for_row(row)
 
-    if row_id == "gr-008b":
+    if fixture == "repo-root":
         return REPO, "read-only", "repo-root-git-boundary"
 
     if fixture and fixture != "none":
@@ -2273,15 +1957,19 @@ def behavior_verdict(
                 "forked or nested reviewer output claimed clean-review pass",
             )
 
-    if str(row.get("id") or "") in {"life-001", "life-002"} and any(
-        marker in final_response for marker in ("STATE.md", "ROADMAP.md")
-    ):
+    forbidden_output_markers = parse_pipe_list(
+        row.get("forbidden_output_markers"),
+        "forbidden_output_markers",
+        row,
+        blank_default=[],
+    )
+    if any(marker.lower() in final_response.lower() for marker in forbidden_output_markers):
         append_failure(
             failures,
             notes,
             "forbidden_behavior",
             "lifecycle_artifact_boundary",
-            "small direct task recommended a lifecycle artifact",
+            "response contains a forbidden output marker",
         )
 
     if has_gsd_creation_intent(final_response, changes):
@@ -2582,123 +2270,14 @@ def run_static_gated_evaluator_check(cwd, command):
         return subprocess.CompletedProcess(command, 124, stdout=output)
 
 
-def evaluator_check_error(label, result):
-    if result.returncode == 0:
-        return None
-    output = (result.stdout or "").strip().replace("\n", " ")
-    detail = output[:500] if output else f"exit {result.returncode}"
-    return f"{label} failed: {detail}"
-
-
-def root_cause_fixture_regions(source):
-    if source.count(IMPLEMENT_ROOT_CAUSE_HELPER_SIGNATURE) != 1:
-        return None
-    if source.count(IMPLEMENT_ROOT_CAUSE_END_SENTINEL) != 1:
-        return None
-    prefix, helper_and_suffix = source.split(IMPLEMENT_ROOT_CAUSE_HELPER_SIGNATURE, 1)
-    helper_body, suffix = helper_and_suffix.split(IMPLEMENT_ROOT_CAUSE_END_SENTINEL, 1)
-    return prefix, helper_body, suffix
-
-
-def randomized_phone_contract_cases():
-    cases = []
-    for _ in range(3):
-        digits = "".join(secrets.choice("0123456789") for _ in range(11))
-        cases.extend(
-            [
-                [digits, digits],
-                [f"  {digits}  ", digits],
-                [f"{digits[:3]}-{digits[3:7]}-{digits[7:]}", digits],
-                [f"{digits[:3]} {digits[3:7]} {digits[7:]}", digits],
-                [f"\t{digits[:3]}-{digits[3:7]} {digits[7:]}\n", digits],
-            ]
-        )
-    return cases
-
-
-def validate_implement_root_cause_fixture(row, cwd, changes):
-    if str(row.get("id") or "") != IMPLEMENT_ROOT_CAUSE_CASE_ID:
-        return []
-
-    errors = []
-    changed_paths = {change[2:] for change in changes}
-    forbidden_paths = sorted(changed_paths - IMPLEMENT_ROOT_CAUSE_ALLOWED_CHANGES)
-    if forbidden_paths:
-        errors.append("forbidden fixture files changed: " + ", ".join(forbidden_paths))
-    if "src/taskSearch.mjs" not in changed_paths:
-        errors.append("required source file was not changed: src/taskSearch.mjs")
-
-    source_path = cwd / "src" / "taskSearch.mjs"
-    if not source_path.exists():
-        errors.append("fixture source is missing: src/taskSearch.mjs")
-        return errors
-
-    source = source_path.read_text(encoding="utf-8", errors="replace")
-    baseline_path = (
-        Path(REPO)
-        / "evals"
-        / "fixtures"
-        / "root-cause-sufficiency"
-        / "src"
-        / "taskSearch.mjs"
-    )
-    if not baseline_path.exists():
-        errors.append("evaluator baseline is missing: root-cause-sufficiency/src/taskSearch.mjs")
-    else:
-        baseline = baseline_path.read_text(encoding="utf-8", errors="replace")
-        baseline_regions = root_cause_fixture_regions(baseline)
-        source_regions = root_cause_fixture_regions(source)
-        if baseline_regions is None:
-            errors.append("evaluator baseline has an invalid shared-helper boundary")
-        if source_regions is None:
-            errors.append("shared-helper boundary was changed or removed")
-        elif baseline_regions is not None and (
-            source_regions[0] != baseline_regions[0]
-            or source_regions[2] != baseline_regions[2]
-        ):
-            errors.append("code outside the shared normalizePhone seam changed")
-
-        if (
-            source_regions is not None
-            and IMPLEMENT_ROOT_CAUSE_SAFE_HELPER.fullmatch(source_regions[1]) is None
-        ):
-            errors.append("shared normalizePhone implementation is outside the evaluator safe subset")
-
-    if errors:
-        return errors
-
-    focused_test = run_static_gated_evaluator_check(cwd, ["node", "test/taskSearch.test.mjs"])
-    focused_test_error = evaluator_check_error("focused fixture test", focused_test)
-    if focused_test_error:
-        errors.append(focused_test_error)
-
-    helper_contract = run_static_gated_evaluator_check(
-        cwd,
-        [
-            "node",
-            "--input-type=module",
-            "-e",
-            (
-                "import assert from 'node:assert/strict'; "
-                "import { normalizePhone } from './src/taskSearch.mjs'; "
-                f"const cases = {json.dumps(randomized_phone_contract_cases())}; "
-                "for (const [input, expected] of cases) { "
-                "assert.equal(normalizePhone(input), expected); "
-                "} "
-                "assert.equal(normalizePhone(null), ''); "
-                "assert.equal(normalizePhone(undefined), '');"
-            ),
-        ],
-    )
-    helper_contract_error = evaluator_check_error("hidden shared-helper contract", helper_contract)
-    if helper_contract_error:
-        errors.append(helper_contract_error)
-
-    return errors
-
-
 def validate_case_specific_fixture(row, cwd, changes):
-    return validate_implement_root_cause_fixture(row, cwd, changes)
+    return validate_fixture_case(
+        row,
+        cwd,
+        changes,
+        repo=REPO,
+        run_check=run_static_gated_evaluator_check,
+    )
 
 
 def is_throwaway_prototype_artifact(row, actual, change):
@@ -3024,54 +2603,6 @@ def exception_result(row, exc):
     result["case_result"] = str(write_case_result(result))
     print(json.dumps({k: result.get(k) for k in ["id", "suite", "verdict", "notes"]}, ensure_ascii=False), flush=True)
     return result
-
-
-def as_list(value):
-    if value is None:
-        return []
-    if isinstance(value, list):
-        return [str(item).strip() for item in value if str(item).strip()]
-    text = str(value).strip()
-    if not text:
-        return []
-    return [item.strip() for item in text.split("|") if item.strip()]
-
-
-def increment(mapping, key, amount=1):
-    mapping[key] = mapping.get(key, 0) + amount
-
-
-def sorted_counts(mapping):
-    return {key: mapping[key] for key in sorted(mapping)}
-
-
-def rate_summary(count, total):
-    return {
-        "count": count,
-        "total": total,
-        "rate": (count / total) if total else 0,
-    }
-
-
-def routing_result_present(result):
-    boundary = str(result.get("route_boundary") or "").strip()
-    return (
-        result.get("suite") in TRACE_READY_SUITES
-        or (boundary and boundary != NOT_APPLICABLE)
-    )
-
-
-def routing_outcome(expected, actual, acceptable_routes, forbidden_routes):
-    return shared_routing_outcome(expected, actual, acceptable_routes, forbidden_routes)
-
-
-def verdict_status(result):
-    verdict = str(result.get("overall_verdict") or result.get("verdict") or "unknown")
-    if verdict in {"pass", "flake"}:
-        return "pass"
-    if verdict == "fail":
-        return "fail"
-    return "blocking"
 
 
 def summarize_routing_results(results):

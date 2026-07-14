@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import hashlib
 import json
 import importlib.util
 import os
@@ -17,6 +18,7 @@ from evals.verdict_model import normalize_execution_profile, render_router_card,
 
 ROOT = Path(__file__).resolve().parents[1]
 HOOKS = ROOT / "scripts" / "codex-hooks"
+HOOK_ENTRYPOINT = "groundwork_router_event.py"
 ROUTER_SCORE_SCHEMA = ROOT / "schemas" / "groundwork-router-score.schema.json"
 
 
@@ -35,12 +37,12 @@ def load_hooks_module():
     return module
 
 
-def run_hook(script, event, cwd, env=None):
+def run_hook(event_name, event, cwd, env=None):
     hook_env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
     if env:
         hook_env.update(env)
     return subprocess.run(
-        [sys.executable, str(HOOKS / script)],
+        [sys.executable, str(HOOKS / HOOK_ENTRYPOINT), event_name],
         input=json.dumps(event),
         text=True,
         cwd=cwd,
@@ -52,6 +54,178 @@ def run_hook(script, event, cwd, env=None):
 
 
 class RouterObservabilityTests(unittest.TestCase):
+    def test_hooks_manifest_routes_all_events_through_one_entrypoint(self):
+        manifest = json.loads((ROOT / "hooks" / "hooks.json").read_text(encoding="utf-8"))
+
+        commands = []
+        for event_name, matcher_groups in manifest["hooks"].items():
+            for group in matcher_groups:
+                for handler in group["hooks"]:
+                    commands.append((event_name, handler["command"]))
+
+        self.assertTrue(commands)
+        for event_name, command in commands:
+            self.assertIn("groundwork_router_event.py", command)
+            self.assertIn(f" {event_name} || true", command)
+
+    def test_absent_invalid_or_disabled_config_exits_before_telemetry_import(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            hook_root = root / "hook-runtime"
+            hook_root.mkdir()
+            entrypoint = hook_root / "groundwork_router_event.py"
+            entrypoint.write_text(
+                (HOOKS / "groundwork_router_event.py").read_text(encoding="utf-8"),
+                encoding="utf-8",
+            )
+            import_marker = root / "telemetry-imported"
+            (hook_root / "groundwork_router_telemetry.py").write_text(
+                f"from pathlib import Path\nPath({str(import_marker)!r}).write_text('imported')\n",
+                encoding="utf-8",
+            )
+
+            for config_state in ("absent", "disabled", "invalid", "string_false", "mixed_invalid"):
+                with self.subTest(config_state=config_state):
+                    if config_state == "disabled":
+                        self.write_config(root, enabled=False)
+                    elif config_state == "invalid":
+                        config = root / ".groundwork" / "harness" / "router-observability" / "config.json"
+                        config.write_text("{not json", encoding="utf-8")
+                    elif config_state == "string_false":
+                        config = root / ".groundwork" / "harness" / "router-observability" / "config.json"
+                        config.write_text(
+                            json.dumps(
+                                {
+                                    "enabled": "false",
+                                    "raw_capture": "false",
+                                    "snippet_capture": "false",
+                                }
+                            ),
+                            encoding="utf-8",
+                        )
+                    elif config_state == "mixed_invalid":
+                        config = root / ".groundwork" / "harness" / "router-observability" / "config.json"
+                        config.write_text(
+                            json.dumps({"enabled": True, "raw_capture": "false"}),
+                            encoding="utf-8",
+                        )
+                    result = subprocess.run(
+                        [sys.executable, str(entrypoint), "UserPromptSubmit"],
+                        input=json.dumps({"cwd": str(root), "prompt": "test"}),
+                        text=True,
+                        cwd=root,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        env={
+                            **{
+                                key: value
+                                for key, value in os.environ.items()
+                                if key != "GROUNDWORK_ROUTER_OBSERVABILITY"
+                            },
+                            "PYTHONDONTWRITEBYTECODE": "1",
+                        },
+                        check=True,
+                    )
+                    self.assertEqual(result.stdout, "")
+                    self.assertEqual(result.stderr, "")
+                    self.assertFalse(import_marker.exists())
+
+    def test_symlinked_config_path_exits_before_telemetry_import(self):
+        for linked_component in ("config", "router-observability-directory"):
+            with self.subTest(linked_component=linked_component), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                hook_root = root / "hook-runtime"
+                hook_root.mkdir()
+                entrypoint = hook_root / HOOK_ENTRYPOINT
+                entrypoint.write_text(
+                    (HOOKS / HOOK_ENTRYPOINT).read_text(encoding="utf-8"),
+                    encoding="utf-8",
+                )
+                import_marker = root / "telemetry-imported"
+                (hook_root / "groundwork_router_telemetry.py").write_text(
+                    f"from pathlib import Path\nPath({str(import_marker)!r}).write_text('imported')\n",
+                    encoding="utf-8",
+                )
+                external = root / "external-config"
+                external.mkdir()
+                (external / "config.json").write_text(
+                    json.dumps({"enabled": True, "raw_capture": True}),
+                    encoding="utf-8",
+                )
+                local_parent = root / ".groundwork" / "harness"
+                if linked_component == "config":
+                    config_parent = local_parent / "router-observability"
+                    config_parent.mkdir(parents=True)
+                    (config_parent / "config.json").symlink_to(external / "config.json")
+                else:
+                    local_parent.mkdir(parents=True)
+                    (local_parent / "router-observability").symlink_to(
+                        external,
+                        target_is_directory=True,
+                    )
+
+                result = subprocess.run(
+                    [sys.executable, str(entrypoint), "UserPromptSubmit"],
+                    input=json.dumps({"cwd": str(root), "prompt": "test"}),
+                    text=True,
+                    cwd=root,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    env={
+                        **{
+                            key: value
+                            for key, value in os.environ.items()
+                            if key != "GROUNDWORK_ROUTER_OBSERVABILITY"
+                        },
+                        "PYTHONDONTWRITEBYTECODE": "1",
+                    },
+                    check=True,
+                )
+
+                self.assertEqual(result.stdout, "")
+                self.assertEqual(result.stderr, "")
+                self.assertFalse(import_marker.exists())
+
+    def test_force_enable_ignores_symlinked_config_capture_options(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            external_config = root / "external-config.json"
+            external_config.write_text(
+                json.dumps(
+                    {
+                        "enabled": True,
+                        "raw_capture": True,
+                        "snippet_capture": True,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            config = root / ".groundwork" / "harness" / "router-observability" / "config.json"
+            config.parent.mkdir(parents=True)
+            config.symlink_to(external_config)
+
+            run_hook(
+                "UserPromptSubmit",
+                {
+                    "cwd": str(root),
+                    "session_id": "s1",
+                    "turn_id": "t1",
+                    "prompt": "private prompt token=secret",
+                },
+                root,
+                env={"GROUNDWORK_ROUTER_OBSERVABILITY": "1"},
+            )
+
+            out_dir = self.turn_dir(root)
+            prompt_metadata = json.loads(
+                (out_dir / "prompt-metadata.json").read_text(encoding="utf-8")
+            )
+            decision = json.loads((out_dir / "router-decision.json").read_text(encoding="utf-8"))
+            self.assertEqual(decision["activation_source"], "invalid_config_env_force_enable")
+            self.assertEqual(prompt_metadata["snippet_capture"], "disabled")
+            self.assertEqual(prompt_metadata["raw_prompt_storage"], "disabled")
+            self.assertFalse((out_dir / "prompt.raw.json").exists())
+
     def test_hooks_manifest_uses_official_command_handler_shape(self):
         manifest = json.loads((ROOT / "hooks" / "hooks.json").read_text(encoding="utf-8"))
 
@@ -97,32 +271,23 @@ class RouterObservabilityTests(unittest.TestCase):
                         self.assertEqual(result.stdout, "")
                         self.assertEqual(result.stderr, "")
 
-    def test_hook_entrypoints_noop_when_observability_module_is_missing(self):
-        entrypoints = [
-            "user_prompt_submit_groundwork_entry.py",
-            "pre_tool_use_groundwork_trace.py",
-            "permission_request_groundwork_trace.py",
-            "post_tool_use_groundwork_trace.py",
-            "stop_groundwork_trace.py",
-        ]
-
+    def test_hook_entrypoint_noops_when_observability_module_is_missing(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            for entrypoint in entrypoints:
-                script = root / entrypoint
-                script.write_text((HOOKS / entrypoint).read_text(encoding="utf-8"), encoding="utf-8")
-                result = subprocess.run(
-                    [sys.executable, str(script)],
-                    input=json.dumps({"cwd": str(root)}),
-                    text=True,
-                    cwd=root,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    env={**os.environ, "PYTHONPATH": ""},
-                    check=True,
-                )
-                self.assertEqual(result.stdout, "")
-                self.assertEqual(result.stderr, "")
+            script = root / HOOK_ENTRYPOINT
+            script.write_text((HOOKS / HOOK_ENTRYPOINT).read_text(encoding="utf-8"), encoding="utf-8")
+            result = subprocess.run(
+                [sys.executable, str(script), "UserPromptSubmit"],
+                input=json.dumps({"cwd": str(root)}),
+                text=True,
+                cwd=root,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env={**os.environ, "PYTHONPATH": "", "GROUNDWORK_ROUTER_OBSERVABILITY": "1"},
+                check=True,
+            )
+            self.assertEqual(result.stdout, "")
+            self.assertEqual(result.stderr, "")
 
     def test_packaged_hook_scripts_are_self_contained_without_evals_package(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -135,7 +300,7 @@ class RouterObservabilityTests(unittest.TestCase):
                 (hook_root / script.name).write_text(script.read_text(encoding="utf-8"), encoding="utf-8")
 
             result = subprocess.run(
-                [sys.executable, str(hook_root / "user_prompt_submit_groundwork_entry.py")],
+                [sys.executable, str(hook_root / HOOK_ENTRYPOINT), "UserPromptSubmit"],
                 input=json.dumps(
                     {
                         "cwd": str(root),
@@ -196,7 +361,7 @@ class RouterObservabilityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             result = run_hook(
-                "user_prompt_submit_groundwork_entry.py",
+                "UserPromptSubmit",
                 {"cwd": str(root), "session_id": "s1", "turn_id": "t1", "prompt": "按 PRD 实施"},
                 root,
             )
@@ -210,7 +375,7 @@ class RouterObservabilityTests(unittest.TestCase):
             self.write_config(root)
 
             result = run_hook(
-                "user_prompt_submit_groundwork_entry.py",
+                "UserPromptSubmit",
                 {
                     "cwd": str(root),
                     "session_id": "s1",
@@ -227,8 +392,24 @@ class RouterObservabilityTests(unittest.TestCase):
             self.assertEqual(decision["decision_source"], "prompt_classifier_candidate")
             self.assertEqual(decision["activation_source"], ".groundwork/harness/router-observability/config.json")
             self.assertEqual(decision["turn_id_source"], "turn_id")
+            self.assertNotIn("cwd", decision)
+            self.assertEqual(
+                decision["cwd_sha256"],
+                hashlib.sha256(str(root.resolve()).encode("utf-8")).hexdigest(),
+            )
             self.assertFalse(decision["router_hint_emitted"])
             self.assertEqual(decision["entry_decision"]["expected_best"], "implement")
+            self.assertEqual(decision["entry_decision"]["candidate_scope"], "route_only")
+            for lifecycle_field in (
+                "route_boundary",
+                "intent_kind",
+                "requirement_state",
+                "source_truth",
+                "risk_gate",
+                "expected_state_transition",
+                "expected_stop_condition",
+            ):
+                self.assertNotIn(lifecycle_field, decision["entry_decision"])
             self.assertEqual(prompt_metadata["raw_prompt_storage"], "disabled")
             self.assertEqual(prompt_metadata["snippet_capture"], "disabled")
             self.assertEqual(prompt_metadata["prompt_snippet"], "")
@@ -236,13 +417,206 @@ class RouterObservabilityTests(unittest.TestCase):
             self.assertNotIn("secret-123", json.dumps(decision))
             self.assertFalse((self.turn_dir(root) / "prompt.raw.json").exists())
 
+    def test_missing_native_turn_id_uses_one_generated_turn_for_prompt_tools_and_stop(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.write_config(root)
+            base = {"cwd": str(root), "session_id": "fallback-session"}
+
+            run_hook("UserPromptSubmit", {**base, "event_id": "prompt-1", "prompt": "按 PRD 实施"}, root)
+            session_dir = root / ".groundwork" / "harness" / "router-observability" / "fallback-session"
+            active = json.loads((session_dir / "active-turn.json").read_text(encoding="utf-8"))
+            first_turn = session_dir / active["turn_id"]
+            run_hook(
+                "PreToolUse",
+                {
+                    **base,
+                    "request_id": "later-tool-request",
+                    "event_id": "tool-event-1",
+                    "tool_use_id": "tool-1",
+                    "tool_name": "Bash",
+                    "tool_input": {"command": "git status --short"},
+                },
+                root,
+            )
+            run_hook(
+                "Stop",
+                {
+                    **base,
+                    "request_id": "later-stop-request",
+                    "event_id": "stop-1",
+                    "final_response": "Implementation Summary",
+                },
+                root,
+            )
+
+            tool_event = json.loads((first_turn / "tool-events.jsonl").read_text(encoding="utf-8"))
+            self.assertEqual(tool_event["turn_id"], active["turn_id"])
+            self.assertEqual(tool_event["turn_id_source"], "active_prompt_fallback")
+            self.assertTrue((first_turn / "router-decision.json").is_file())
+            self.assertTrue((first_turn / "final-metadata.json").is_file())
+
+            run_hook("UserPromptSubmit", {**base, "event_id": "prompt-2", "prompt": "验证这个改动"}, root)
+            next_active = json.loads((session_dir / "active-turn.json").read_text(encoding="utf-8"))
+            self.assertNotEqual(next_active["turn_id"], active["turn_id"])
+            self.assertTrue(first_turn.is_dir())
+
+    def test_prompt_request_id_keeps_active_correlation_for_later_request_ids(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.write_config(root)
+            base = {"cwd": str(root), "session_id": "fallback-session"}
+
+            run_hook(
+                "UserPromptSubmit",
+                {**base, "request_id": "prompt-request", "prompt": "按 PRD 实施"},
+                root,
+            )
+            session_dir = root / ".groundwork" / "harness" / "router-observability" / "fallback-session"
+            active = json.loads((session_dir / "active-turn.json").read_text(encoding="utf-8"))
+            self.assertEqual(active["turn_id"], "prompt-request")
+            prompt_turn = session_dir / active["turn_id"]
+
+            run_hook(
+                "PreToolUse",
+                {
+                    **base,
+                    "request_id": "tool-request",
+                    "tool_use_id": "tool-1",
+                    "tool_name": "Bash",
+                    "tool_input": {"command": "git status --short"},
+                },
+                root,
+            )
+            run_hook(
+                "Stop",
+                {
+                    **base,
+                    "request_id": "stop-request",
+                    "final_response": "Implementation Summary",
+                },
+                root,
+            )
+
+            tool_event = json.loads((prompt_turn / "tool-events.jsonl").read_text(encoding="utf-8"))
+            self.assertEqual(tool_event["turn_id"], "prompt-request")
+            self.assertEqual(tool_event["turn_id_source"], "active_prompt_fallback")
+            self.assertTrue((prompt_turn / "final-metadata.json").is_file())
+            self.assertFalse((session_dir / "tool-request").exists())
+            self.assertFalse((session_dir / "stop-request").exists())
+
+    def test_native_turn_id_clears_stale_active_fallback(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.write_config(root)
+            base = {"cwd": str(root), "session_id": "fallback-session"}
+
+            run_hook("UserPromptSubmit", {**base, "event_id": "prompt-1", "prompt": "按 PRD 实施"}, root)
+            session_dir = root / ".groundwork" / "harness" / "router-observability" / "fallback-session"
+            self.assertTrue((session_dir / "active-turn.json").is_file())
+
+            run_hook(
+                "UserPromptSubmit",
+                {**base, "turn_id": "native-turn", "prompt": "验证这个改动"},
+                root,
+            )
+            run_hook(
+                "PreToolUse",
+                {
+                    **base,
+                    "turn_id": "native-turn",
+                    "request_id": "different-request",
+                    "tool_name": "Bash",
+                    "tool_input": {"command": "git status --short"},
+                },
+                root,
+            )
+
+            self.assertFalse((session_dir / "active-turn.json").exists())
+            self.assertTrue((session_dir / "native-turn" / "tool-events.jsonl").is_file())
+
+    def test_path_components_cannot_escape_router_observability_layout(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.write_config(root)
+
+            run_hook(
+                "UserPromptSubmit",
+                {"cwd": str(root), "session_id": "..", "turn_id": "..", "prompt": "按 PRD 实施"},
+                root,
+            )
+
+            self.assertFalse((root / ".groundwork" / "prompt-metadata.json").exists())
+            telemetry_root = root / ".groundwork" / "harness" / "router-observability"
+            self.assertEqual(len(list(telemetry_root.glob("*/*/prompt-metadata.json"))), 1)
+
+    def test_symlinked_session_or_turn_directory_cannot_escape_router_observability_layout(self):
+        for linked_component in ("session", "turn"):
+            with self.subTest(linked_component=linked_component), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                self.write_config(root)
+                telemetry_root = root / ".groundwork" / "harness" / "router-observability"
+                outside = root / "outside"
+                outside.mkdir()
+                session_dir = telemetry_root / "s1"
+                if linked_component == "session":
+                    session_dir.symlink_to(outside, target_is_directory=True)
+                else:
+                    session_dir.mkdir()
+                    (session_dir / "t1").symlink_to(outside, target_is_directory=True)
+
+                result = run_hook(
+                    "UserPromptSubmit",
+                    {"cwd": str(root), "session_id": "s1", "turn_id": "t1", "prompt": "按 PRD 实施"},
+                    root,
+                )
+
+                self.assertEqual(result.returncode, 0)
+                self.assertEqual(list(outside.iterdir()), [])
+
+    def test_hooks_do_not_follow_symlinked_fixed_output_files(self):
+        with self.subTest(output="prompt-metadata.json"), tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.write_config(root)
+            out_dir = self.turn_dir(root)
+            out_dir.mkdir(parents=True)
+            victim = root / "victim.json"
+            victim.write_text("untouched", encoding="utf-8")
+            (out_dir / "prompt-metadata.json").symlink_to(victim)
+
+            run_hook(
+                "UserPromptSubmit",
+                {"cwd": str(root), "session_id": "s1", "turn_id": "t1", "prompt": "按 PRD 实施"},
+                root,
+            )
+
+            self.assertEqual(victim.read_text(encoding="utf-8"), "untouched")
+
+        with self.subTest(output="final.raw.txt"), tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.write_config(root, raw_capture=True)
+            base_event = {"cwd": str(root), "session_id": "s1", "turn_id": "t1"}
+            run_hook("UserPromptSubmit", {**base_event, "prompt": "按 PRD 实施"}, root)
+            out_dir = self.turn_dir(root)
+            victim = root / "victim.txt"
+            victim.write_text("untouched", encoding="utf-8")
+            (out_dir / "final.raw.txt").symlink_to(victim)
+
+            run_hook(
+                "Stop",
+                {**base_event, "last_assistant_message": "Implementation Summary"},
+                root,
+            )
+
+            self.assertEqual(victim.read_text(encoding="utf-8"), "untouched")
+
     def test_env_force_enable_overrides_disabled_project_config(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             self.write_config(root, enabled=False, mode="observe_only", snippet_capture=True)
 
             result = run_hook(
-                "user_prompt_submit_groundwork_entry.py",
+                "UserPromptSubmit",
                 {"cwd": str(root), "session_id": "s1", "turn_id": "t1", "prompt": "按 PRD 实施 docs/foo.md"},
                 root,
                 env={**os.environ, "GROUNDWORK_ROUTER_OBSERVABILITY": "1"},
@@ -263,7 +637,7 @@ class RouterObservabilityTests(unittest.TestCase):
             config.write_text("{not json", encoding="utf-8")
 
             result = run_hook(
-                "user_prompt_submit_groundwork_entry.py",
+                "UserPromptSubmit",
                 {"cwd": str(root), "session_id": "s1", "turn_id": "t1", "prompt": "按 PRD 实施 docs/foo.md"},
                 root,
                 env={**os.environ, "GROUNDWORK_ROUTER_OBSERVABILITY": "1"},
@@ -279,7 +653,7 @@ class RouterObservabilityTests(unittest.TestCase):
             self.write_config(root, mode="thin_prompt_trial")
 
             result = run_hook(
-                "user_prompt_submit_groundwork_entry.py",
+                "UserPromptSubmit",
                 {"cwd": str(root), "session_id": "s1", "turn_id": "t1", "prompt": "先写实现计划，不要编辑文件"},
                 root,
             )
@@ -299,7 +673,7 @@ class RouterObservabilityTests(unittest.TestCase):
             self.write_config(root, mode="thin_prompt_trial")
 
             result = run_hook(
-                "user_prompt_submit_groundwork_entry.py",
+                "UserPromptSubmit",
                 {"cwd": str(root), "session_id": "s1", "turn_id": "t1", "prompt": "改一下这句话里的错别字"},
                 root,
             )
@@ -318,7 +692,7 @@ class RouterObservabilityTests(unittest.TestCase):
             self.write_config(root, mode="guided_hint_trial")
 
             result = run_hook(
-                "user_prompt_submit_groundwork_entry.py",
+                "UserPromptSubmit",
                 {"cwd": str(root), "session_id": "s1", "turn_id": "t1", "prompt": "self-review 已经过了，可以当 clean review 吗？"},
                 root,
             )
@@ -336,7 +710,7 @@ class RouterObservabilityTests(unittest.TestCase):
             self.write_config(root, mode="guided_hint_trial")
 
             result = run_hook(
-                "user_prompt_submit_groundwork_entry.py",
+                "UserPromptSubmit",
                 {"cwd": str(root), "session_id": "s1", "turn_id": "t1", "prompt": "修这个 bug，别管原因，直接 patch"},
                 root,
             )
@@ -353,7 +727,7 @@ class RouterObservabilityTests(unittest.TestCase):
             self.write_config(root, mode="observe_only")
 
             result = run_hook(
-                "user_prompt_submit_groundwork_entry.py",
+                "UserPromptSubmit",
                 {"cwd": str(root), "session_id": "s1", "turn_id": "t1", "prompt": "self-review 已经过了，可以当 clean review 吗？"},
                 root,
             )
@@ -369,12 +743,12 @@ class RouterObservabilityTests(unittest.TestCase):
             self.write_config(root)
             base_event = {"cwd": str(root), "session_id": "s1", "turn_id": "t1"}
             run_hook(
-                "user_prompt_submit_groundwork_entry.py",
+                "UserPromptSubmit",
                 {**base_event, "prompt": "按 PRD 实施 docs/foo.md"},
                 root,
             )
             run_hook(
-                "post_tool_use_groundwork_trace.py",
+                "PostToolUse",
                 {
                     **base_event,
                     "tool_name": "Bash",
@@ -386,7 +760,7 @@ class RouterObservabilityTests(unittest.TestCase):
                 root,
             )
             result = run_hook(
-                "stop_groundwork_trace.py",
+                "Stop",
                 {**base_event, "last_assistant_message": "Implementation Summary\nFiles Changed\nChecks Run token=secret-456"},
                 root,
             )
@@ -418,12 +792,12 @@ class RouterObservabilityTests(unittest.TestCase):
             base_event = {"cwd": str(root), "session_id": "s1", "tool_use_id": "tool-1"}
 
             run_hook(
-                "pre_tool_use_groundwork_trace.py",
+                "PreToolUse",
                 {**base_event, "tool_name": "Bash", "tool_input": {"command": "git status --short"}},
                 root,
             )
             run_hook(
-                "post_tool_use_groundwork_trace.py",
+                "PostToolUse",
                 {
                     **base_event,
                     "tool_name": "Bash",
@@ -450,7 +824,7 @@ class RouterObservabilityTests(unittest.TestCase):
             base_event = {"cwd": str(root), "session_id": "s1", "turn_id": "t1"}
 
             run_hook(
-                "post_tool_use_groundwork_trace.py",
+                "PostToolUse",
                 {
                     **base_event,
                     "tool_name": "Bash",
@@ -470,7 +844,7 @@ class RouterObservabilityTests(unittest.TestCase):
             base_event = {"cwd": str(root), "session_id": "s1", "turn_id": "t1"}
 
             run_hook(
-                "post_tool_use_groundwork_trace.py",
+                "PostToolUse",
                 {
                     **base_event,
                     "tool_name": "Bash",
@@ -480,7 +854,7 @@ class RouterObservabilityTests(unittest.TestCase):
                 root,
             )
             run_hook(
-                "post_tool_use_groundwork_trace.py",
+                "PostToolUse",
                 {
                     **base_event,
                     "tool_name": "Bash",
@@ -496,13 +870,13 @@ class RouterObservabilityTests(unittest.TestCase):
             ]
             self.assertEqual([row["tool_response_status"] for row in rows], ["7", "8"])
 
-    def test_raw_capture_writes_redacted_raw_by_default(self):
+    def test_raw_capture_is_always_redacted(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             self.write_config(root, raw_capture=True)
             base_event = {"cwd": str(root), "session_id": "s1", "turn_id": "t1"}
             run_hook(
-                "user_prompt_submit_groundwork_entry.py",
+                "UserPromptSubmit",
                 {
                     **base_event,
                     "prompt": (
@@ -512,9 +886,10 @@ class RouterObservabilityTests(unittest.TestCase):
                     ),
                 },
                 root,
+                env={"GROUNDWORK_ROUTER_OBSERVABILITY_ALLOW_UNREDACTED_RAW_CAPTURE": "1"},
             )
             run_hook(
-                "stop_groundwork_trace.py",
+                "Stop",
                 {
                     **base_event,
                     "last_assistant_message": (
@@ -525,6 +900,7 @@ class RouterObservabilityTests(unittest.TestCase):
                     ),
                 },
                 root,
+                env={"GROUNDWORK_ROUTER_OBSERVABILITY_ALLOW_UNREDACTED_RAW_CAPTURE": "1"},
             )
 
             out_dir = self.turn_dir(root)
@@ -544,6 +920,44 @@ class RouterObservabilityTests(unittest.TestCase):
             self.assertEqual(final_metadata["raw_final_storage"], "enabled")
             self.assertEqual(final_raw_metadata["redaction"]["status"], "redacted")
             self.assertEqual(final_raw_metadata["final_sha256"], final_metadata["final_sha256"])
+
+    def test_snippet_and_raw_capture_redact_quoted_credential_assignments(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.write_config(root, raw_capture=True, snippet_capture=True)
+            base_event = {"cwd": str(root), "session_id": "s1", "turn_id": "t1"}
+            prompt_secrets = ("prompt-token-value", "prompt-api-key-value", "prompt-password's-value")
+            final_secrets = ("final-client-secret-value", "final-bearer-value", "final-cookie-value")
+            prompt = json.dumps(
+                {
+                    "token": prompt_secrets[0],
+                    "api_key": prompt_secrets[1],
+                    "password": prompt_secrets[2],
+                }
+            )
+            final = json.dumps(
+                {
+                    "client_secret": final_secrets[0],
+                    "Authorization": f"Bearer {final_secrets[1]}",
+                    "cookie": final_secrets[2],
+                }
+            )
+
+            run_hook("UserPromptSubmit", {**base_event, "prompt": prompt}, root)
+            run_hook("Stop", {**base_event, "last_assistant_message": final}, root)
+
+            out_dir = self.turn_dir(root)
+            captured = "\n".join(
+                (
+                    (out_dir / "prompt-metadata.json").read_text(encoding="utf-8"),
+                    (out_dir / "prompt.raw.json").read_text(encoding="utf-8"),
+                    (out_dir / "final-metadata.json").read_text(encoding="utf-8"),
+                    (out_dir / "final.raw.txt").read_text(encoding="utf-8"),
+                )
+            )
+            for secret in (*prompt_secrets, *final_secrets):
+                self.assertNotIn(secret, captured)
+            self.assertGreaterEqual(captured.count("[REDACTED]"), 6)
 
     def test_secret_redaction_covers_common_token_prefixes(self):
         hooks = load_hooks_module()
@@ -585,7 +999,7 @@ class RouterObservabilityTests(unittest.TestCase):
             self.write_config(root)
             base_event = {"cwd": str(root), "session_id": "s1", "turn_id": "t1"}
             run_hook(
-                "user_prompt_submit_groundwork_entry.py",
+                "UserPromptSubmit",
                 {**base_event, "prompt": "按 PRD 实施 docs/foo.md"},
                 root,
             )
@@ -602,7 +1016,7 @@ class RouterObservabilityTests(unittest.TestCase):
             )
 
             run_hook(
-                "stop_groundwork_trace.py",
+                "Stop",
                 {**base_event, "last_assistant_message": "Implementation Summary\nFiles Changed\nChecks Run"},
                 root,
             )
@@ -614,17 +1028,39 @@ class RouterObservabilityTests(unittest.TestCase):
             self.assertEqual(diagnostics["malformed_tool_events"], 1)
             self.assertEqual(coverage["malformed_tool_events"], 1)
 
+    def test_captured_event_coverage_separates_unsupported_unclassified_and_malformed_records(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out_dir = Path(tmp)
+            (out_dir / "tool-events.jsonl").write_text(
+                '{"coverage_status":"observed_supported","observed_at_ns":10,"event_uuid":"a"}\n'
+                '{"coverage_status":"unsupported","observed_at_ns":20,"event_uuid":"b"}\n'
+                '{"observed_at_ns":30,"event_uuid":"c"}\n'
+                '{malformed}\n',
+                encoding="utf-8",
+            )
+
+            _, coverage = load_hooks_module().ordered_events_for_stop(out_dir)
+
+            self.assertEqual(coverage["coverage_scope"], "captured_hook_records_only")
+            self.assertEqual(coverage["captured_record_count"], 4)
+            self.assertEqual(coverage["parsed_event_count"], 3)
+            self.assertEqual(coverage["classified_event_count"], 2)
+            self.assertEqual(coverage["observed_supported_event_count"], 1)
+            self.assertEqual(coverage["observed_unsupported_event_count"], 1)
+            self.assertEqual(coverage["unclassified_event_count"], 1)
+            self.assertEqual(coverage["malformed_event_count"], 1)
+
     def test_tool_permission_and_stop_hooks_noop_without_opt_in(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             base_event = {"cwd": str(root), "session_id": "s1", "turn_id": "t1"}
 
-            for script, event in [
-                ("post_tool_use_groundwork_trace.py", {**base_event, "tool_name": "Bash"}),
-                ("permission_request_groundwork_trace.py", {**base_event, "permission": "Bash"}),
-                ("stop_groundwork_trace.py", {**base_event, "final_response": "Implementation Summary"}),
+            for event_name, event in [
+                ("PostToolUse", {**base_event, "tool_name": "Bash"}),
+                ("PermissionRequest", {**base_event, "permission": "Bash"}),
+                ("Stop", {**base_event, "final_response": "Implementation Summary"}),
             ]:
-                result = run_hook(script, event, root)
+                result = run_hook(event_name, event, root)
                 self.assertEqual(result.stdout, "")
 
             self.assertFalse((root / ".groundwork").exists())
@@ -635,17 +1071,17 @@ class RouterObservabilityTests(unittest.TestCase):
             self.write_config(root)
             base_event = {"cwd": str(root), "session_id": "s1", "turn_id": "t1"}
             run_hook(
-                "user_prompt_submit_groundwork_entry.py",
+                "UserPromptSubmit",
                 {**base_event, "prompt": "按 PRD 实施 docs/foo.md"},
                 root,
             )
             run_hook(
-                "permission_request_groundwork_trace.py",
+                "PermissionRequest",
                 {**base_event, "permission": "Bash", "tool_input": {"command": "git add docs/foo.md"}},
                 root,
             )
             run_hook(
-                "stop_groundwork_trace.py",
+                "Stop",
                 {**base_event, "final_response": "Implementation Summary\nFiles Changed\nChecks Run"},
                 root,
             )
@@ -654,7 +1090,7 @@ class RouterObservabilityTests(unittest.TestCase):
             coverage = json.loads((self.turn_dir(root) / "coverage.json").read_text(encoding="utf-8"))
             self.assertEqual(permission_event["coverage_status"], "observed_supported")
             self.assertIn("git_write", permission_event["risk_markers"])
-            self.assertEqual(coverage["supported_event_count"], 1)
+            self.assertEqual(coverage["observed_supported_event_count"], 1)
             self.assertFalse((self.turn_dir(root) / "router-score.json").exists())
 
     def test_partial_coverage_is_not_baseline_eligible(self):
@@ -737,7 +1173,7 @@ class RouterObservabilityTests(unittest.TestCase):
             self.write_config(root)
 
             run_hook(
-                "user_prompt_submit_groundwork_entry.py",
+                "UserPromptSubmit",
                 {"cwd": str(root), "session_id": "s1", "turn_id": "t1", "prompt": "dispatch this clean review"},
                 root,
             )
@@ -770,10 +1206,14 @@ class RouterObservabilityTests(unittest.TestCase):
                 "model_profile": "exhaustive_review",
                 "reasoning_effort": "high",
                 "cost_latency_bias": "quality",
-                "selector_enforcement": "tool_enforced",
-                "evidence_layer": "prompt_preference",
+                "selector_policy": "tool_if_available_else_prompt_preference",
             },
-            "selector_evidence": {"runtime_reported": False},
+            "selector_evidence": {
+                "selector_enforcement": "tool_enforced",
+                "runtime_reported": False,
+                "evidence_layer": "runtime_tool_evidence",
+                "source": "runtime_adapter",
+            },
         }
 
         score = score_turn(
@@ -814,10 +1254,14 @@ class RouterObservabilityTests(unittest.TestCase):
                 "model_profile": "exhaustive_review",
                 "reasoning_effort": "high",
                 "cost_latency_bias": "quality",
-                "selector_enforcement": "tool_enforced",
-                "evidence_layer": "prompt_preference",
+                "selector_policy": "tool_if_available_else_prompt_preference",
             },
-            "selector_evidence": {"runtime_reported": True},
+            "selector_evidence": {
+                "selector_enforcement": "tool_enforced",
+                "runtime_reported": True,
+                "evidence_layer": "prompt_preference",
+                "source": "runtime_adapter",
+            },
         }
 
         score = score_turn(
@@ -852,10 +1296,14 @@ class RouterObservabilityTests(unittest.TestCase):
                 "model_profile": "exhaustive_review",
                 "reasoning_effort": "high",
                 "cost_latency_bias": "quality",
-                "selector_enforcement": "tool_enforced",
-                "evidence_layer": "runtime_tool_evidence",
+                "selector_policy": "tool_if_available_else_prompt_preference",
             },
-            "selector_evidence": {"runtime_reported": True, "source": "dispatch_package"},
+            "selector_evidence": {
+                "selector_enforcement": "tool_enforced",
+                "runtime_reported": True,
+                "evidence_layer": "runtime_tool_evidence",
+                "source": "dispatch_package",
+            },
         }
 
         score = score_turn(
@@ -867,6 +1315,75 @@ class RouterObservabilityTests(unittest.TestCase):
 
         self.assertEqual(score["execution_profile_verdict"], "insufficient_evidence")
         self.assertEqual(score["score_eligibility"], "insufficient_evidence")
+
+    def test_score_uses_tool_enforced_only_from_explicit_runtime_evidence(self):
+        decision = {
+            "session_id": "s1",
+            "turn_id": "t1",
+            "decision_mode": "observe_only",
+            "decision_source": "fixture",
+            "router_hint_emitted": False,
+            "entry_decision": {
+                "expected_best": "dispatch",
+                "acceptable_routes": ["dispatch"],
+                "forbidden_routes": ["implement"],
+                "route_boundary": "entry-contract",
+            },
+        }
+        dispatch_decision = {
+            "runtime_id": "clean_reviewer",
+            "route_decision": "worktree_review_only",
+            "execution_claim": "not_executed_by_dispatch",
+            "execution_profile": {
+                "model_profile": "exhaustive_review",
+                "reasoning_effort": "high",
+                "cost_latency_bias": "quality",
+                "selector_policy": "tool_if_available_else_prompt_preference",
+            },
+            "selector_evidence": {
+                "selector_enforcement": "tool_enforced",
+                "runtime_reported": True,
+                "evidence_layer": "runtime_tool_evidence",
+                "source": "runtime_adapter",
+            },
+        }
+
+        score = score_turn(
+            decision,
+            "Dispatch Package\nDispatch Runtime Decision",
+            [{"coverage_status": "observed_supported"}],
+            dispatch_decision,
+        )
+
+        self.assertEqual(score["execution_profile_verdict"], "pass")
+        self.assertEqual(score["selector_enforcement"], "tool_enforced")
+        self.assert_router_score_schema_valid(score)
+
+    def test_execution_profile_rejects_result_enforcement_as_request_policy(self):
+        decision = {
+            "session_id": "s1",
+            "turn_id": "t1",
+            "decision_source": "fixture",
+            "entry_decision": {
+                "expected_best": "dispatch",
+                "acceptable_routes": ["dispatch"],
+                "forbidden_routes": ["implement"],
+            },
+        }
+        dispatch_decision = {
+            "execution_profile": {
+                "model_profile": "balanced_work",
+                "reasoning_effort": "medium",
+                "cost_latency_bias": "balanced",
+                "selector_policy": "tool_enforced",
+            }
+        }
+
+        score = score_turn(decision, "Dispatch Package", [], dispatch_decision)
+
+        self.assertEqual(score["execution_profile_verdict"], "insufficient_evidence")
+        self.assertEqual(score["selector_mismatch_reason"], "selector_unverified")
+        self.assert_router_score_schema_valid(score)
 
     def test_fast_profile_mismatch_uses_structured_clean_review_signal(self):
         decision = {
@@ -891,8 +1408,7 @@ class RouterObservabilityTests(unittest.TestCase):
                 "model_profile": "fast_scan",
                 "reasoning_effort": "low",
                 "cost_latency_bias": "fast",
-                "selector_enforcement": "prompt_preference",
-                "evidence_layer": "prompt_preference",
+                "selector_policy": "tool_if_available_else_prompt_preference",
             },
         }
 
@@ -910,6 +1426,7 @@ class RouterObservabilityTests(unittest.TestCase):
         )
 
         self.assertEqual(non_clean_score["execution_profile_verdict"], "pass")
+        self.assertEqual(non_clean_score["selector_enforcement"], "unknown")
         self.assertEqual(clean_score["execution_profile_verdict"], "mismatch")
         self.assertEqual(clean_score["selector_mismatch_reason"], "profile_too_weak_for_risk")
         self.assert_router_score_schema_valid(clean_score)
@@ -949,7 +1466,7 @@ class RouterObservabilityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             result = subprocess.run(
-                [sys.executable, str(HOOKS / "user_prompt_submit_groundwork_entry.py")],
+                [sys.executable, str(HOOKS / HOOK_ENTRYPOINT), "UserPromptSubmit"],
                 input="{not json",
                 text=True,
                 cwd=root,
@@ -999,7 +1516,7 @@ class RouterObservabilityTests(unittest.TestCase):
         self.assertEqual(summary["best_route_hit_at_1"], {"count": 1, "total": 1, "rate": 1.0})
         self.assertNotIn("implement -> implement", summary["route_pair_confusion"])
 
-    def test_execution_profile_normalization_keeps_selector_as_preference(self):
+    def test_execution_profile_normalization_uses_request_policy_only(self):
         profile = normalize_execution_profile(
             "Read-only multi-perspective review -> reviewer profile / medium/high / balanced/quality",
             task_shape="clean review",
@@ -1008,7 +1525,9 @@ class RouterObservabilityTests(unittest.TestCase):
         self.assertEqual(profile["model_profile"], "exhaustive_review")
         self.assertEqual(profile["reasoning_effort"], "high")
         self.assertEqual(profile["cost_latency_bias"], "quality")
-        self.assertEqual(profile["selector_enforcement"], "prompt_preference")
+        self.assertEqual(profile["selector_policy"], "tool_if_available_else_prompt_preference")
+        self.assertNotIn("selector_enforcement", profile)
+        self.assertNotIn("selector_enforcement_policy", profile)
 
     def test_backfill_row_drafts_csv_without_raw_prompt(self):
         score = {

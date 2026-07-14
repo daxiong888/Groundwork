@@ -6,7 +6,7 @@ reader_action: "Use this schema before adding or changing pages in this project 
 default_evidence_layer: unknown
 confidence: low
 sources: []
-last_updated: 2026-06-26
+last_updated: "<YYYY-MM-DD>"
 stale_risk: medium
 aliases: []
 supersedes: []
@@ -31,15 +31,15 @@ Safe to Share / Redaction Notes: Review project-specific entries for secrets, cr
 
 ```yaml
 ---
-type: concept
+type: "<concept | decision | contract | procedure | summary | query | term>"
 status: draft
-target_reader: "Project maintainers and future agent sessions"
-reader_action: "Use for orientation only; inspect cited source before implementation or verification."
-default_evidence_layer: unknown
+target_reader: "<from PAGE-TYPES.md>"
+reader_action: "<from PAGE-TYPES.md>"
+default_evidence_layer: "<from PAGE-TYPES.md>"
 confidence: low
 sources: []
-last_updated: 2026-06-26
-stale_risk: medium
+last_updated: "<YYYY-MM-DD>"
+stale_risk: "<from PAGE-TYPES.md>"
 aliases: []
 supersedes: []
 superseded_by: []
@@ -47,6 +47,8 @@ contested_with: []
 claim_policy: claim_level_citations_required
 ---
 ```
+
+Create typed pages from `page.md` and apply the exact profile and section order in `PAGE-TYPES.md`.
 
 Allowed `type`: `concept | decision | contract | procedure | summary | query | term`.
 
@@ -64,7 +66,7 @@ Allowed `stale_risk`: `low | medium | high`.
 - Claim:
   Evidence layer:
   Source:
-  Last checked:
+  Last checked: <YYYY-MM-DD>
   Stale risk:
   Promotion blocked until:
 ```

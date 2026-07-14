@@ -111,7 +111,7 @@ class ProgressiveDisclosureTests(unittest.TestCase):
         self.assertIn("## Schema", details)
         self.assertIn("## Required Package Completeness", details)
         self.assertIn("## Managed Worktree Package Rules", details)
-        self.assertIn("legacy_compatibility:", details)
+        self.assertNotIn("legacy_compatibility:", details)
 
         compact_route_line = next(
             line.strip() for line in package.splitlines() if line.strip().startswith("route:")
@@ -125,6 +125,127 @@ class ProgressiveDisclosureTests(unittest.TestCase):
             for value in details_route_line.split("[", 1)[1].rstrip("]").split(",")
         }
         self.assertEqual(compact_routes, details_routes)
+
+    def test_dispatch_and_result_contracts_have_one_base_schema_with_adapter_deltas(self):
+        details = self.read("skills/dispatch/DISPATCH-PACKAGE-DETAILS.md")
+        examples = self.read("skills/dispatch/EXAMPLES.md")
+        runtimes = self.read("skills/dispatch/RUNTIME-ADAPTERS.md")
+        adapter_dispatch = self.read(
+            "skills/dispatch/adapters/codex_app_managed_worktree_thread/DISPATCH-PACKAGE-CONTRACT.md"
+        )
+        result = self.read("skills/dispatch/RESULT-PACKAGE.md")
+        adapter_result = self.read(
+            "skills/dispatch/adapters/codex_app_managed_worktree_thread/RESULT-PACKAGE-TEMPLATE.md"
+        )
+
+        self.assertNotIn("dispatch_native_alignment", details + examples + runtimes + adapter_dispatch)
+        self.assertIn("route_decision:", details)
+        self.assertIn("source_package:", details)
+        self.assertIn("verification_expectation:", details)
+        self.assertIn("adapter_extension: {}", details)
+        self.assertIn("Start with the canonical task schema", adapter_dispatch)
+        self.assertIn("legacy_compatibility:", adapter_dispatch)
+        self.assertNotIn("\n    legacy_compatibility:", examples)
+        self.assertNotIn("\ndispatch_version: 2\n", adapter_dispatch)
+        self.assertNotIn("\ntasks:\n", adapter_dispatch)
+
+        result_envelope = result.split("```yaml", 1)[1].split("```", 1)[0]
+        self.assertIn(
+            "outcome: ready_for_review | needs_remediation | blocked | human_decision | no_execution_needed",
+            result_envelope,
+        )
+        self.assertNotIn("\n  status:", result_envelope)
+        self.assertNotIn("no_worktree_needed", result_envelope)
+        for axis in ("runtime_lifecycle", "review", "review_loop", "merge_back", "archive", "branch_cleanup"):
+            self.assertIn(f"  {axis}:", result_envelope)
+
+        adapter_delta = adapter_result.split("```yaml", 1)[1].split("```", 1)[0]
+        self.assertIn("adapter_extension:", adapter_delta)
+        self.assertNotIn("result_package:", adapter_delta)
+        self.assertNotIn("outcome:", adapter_delta)
+        self.assertNotIn("review_loop:", adapter_delta)
+        self.assertIn("Start with the complete envelope", adapter_result)
+        runtime_package_line = next(
+            line for line in details.splitlines() if line.strip().startswith("runtime_package:")
+        )
+        self.assertNotIn("thread_title", runtime_package_line)
+        self.assertIn("initial_thread_title:", adapter_delta)
+        self.assertIn("current_thread_title:", adapter_delta)
+
+    def test_current_dispatch_workflow_and_eval_cases_use_the_base_delta_contract(self):
+        workflow = self.read("docs/runtime-dispatch-workflow.md")
+        dispatch_cases = self.read("evals/prompts/dispatch.csv")
+        lifecycle_cases = self.read("evals/prompts/dispatch-managed-worktree-lifecycle.csv")
+        lifecycle_scenario = self.read("evals/scenarios/managed-worktree-lifecycle.md")
+        current_sources = workflow + dispatch_cases + lifecycle_cases + lifecycle_scenario
+
+        self.assertNotIn("dispatch_native_alignment", current_sources)
+        self.assertIn("adapter_extension", workflow)
+        self.assertIn("single canonical base", workflow)
+        self.assertIn("outcome: no_execution_needed", lifecycle_scenario)
+        self.assertIn("legacy no_worktree_needed", lifecycle_cases)
+        self.assertNotIn("choose no_worktree_needed or", lifecycle_cases)
+
+    def test_managed_worktree_lifecycle_axes_and_child_prompt_linter_are_canonical(self):
+        lifecycle = self.read(
+            "skills/dispatch/adapters/codex_app_managed_worktree_thread/THREAD-LIFECYCLE.md"
+        )
+        prompt = self.read(
+            "skills/dispatch/adapters/codex_app_managed_worktree_thread/THREAD-PROMPT-TEMPLATE.md"
+        )
+        adapter_dispatch = self.read(
+            "skills/dispatch/adapters/codex_app_managed_worktree_thread/DISPATCH-PACKAGE-CONTRACT.md"
+        )
+
+        thread_states = lifecycle.split("## Thread Lifecycle States", 1)[1].split(
+            "## Independent Status Axes", 1
+        )[0]
+        self.assertIn("running -> result_returned | failed | blocked", thread_states)
+        for downstream_state in (
+            "clean_review_pending",
+            "merge_pending",
+            "archive_ready",
+            "branch_cleanup_pending",
+        ):
+            self.assertNotIn(downstream_state, thread_states)
+        self.assertIn("| `review` |", lifecycle)
+        self.assertIn("| `merge_back` |", lifecycle)
+        self.assertIn("| `archive` |", lifecycle)
+        self.assertIn("| `branch_cleanup` |", lifecycle)
+        self.assertIn("thread_status:", lifecycle)
+        self.assertNotIn("current_status: created", lifecycle)
+
+        canonical_linter = "python3 skills/_shared/tools/lint_child_goal_prompt.py"
+        self.assertIn(canonical_linter, prompt)
+        self.assertIn(canonical_linter, adapter_dispatch)
+        self.assertNotIn("python3 scripts/lint_child_goal_prompt.py", prompt + adapter_dispatch)
+        self.assertIn(
+            "{adapter_extension.codex_app_managed_worktree_thread.initial_thread_title}",
+            prompt,
+        )
+        self.assertIn(
+            "{adapter_extension.codex_app_managed_worktree_thread.current_thread_title}",
+            prompt,
+        )
+        self.assertIn(
+            "{adapter_extension.codex_app_managed_worktree_thread.parent_thread_identifier}",
+            prompt,
+        )
+        self.assertIn(
+            "{adapter_extension.codex_app_managed_worktree_thread.worktree_init.child_thread_identifier}",
+            prompt,
+        )
+        self.assertIn(
+            "{adapter_extension.codex_app_managed_worktree_thread.title_mutation_detected}",
+            prompt,
+        )
+        for invalid_base_path in (
+            "{runtime_identity.parent_thread_identifier}",
+            "{runtime_identity.child_thread_identifier}",
+            "{runtime_identity.title_mutation_detected}",
+        ):
+            self.assertNotIn(invalid_base_path, prompt)
+        self.assertNotIn("runtime_package.thread_title", prompt + adapter_dispatch)
 
     def test_dispatch_read_path_eval_names_an_existing_task_fixture(self):
         with (ROOT / "evals/prompts/routing-blind.csv").open(newline="", encoding="utf-8") as handle:
@@ -177,8 +298,8 @@ class ProgressiveDisclosureTests(unittest.TestCase):
         self.assertIn("this active `verify` contract", skill)
         self.assertIn("the user-named claim, evidence, scope, or check-output artifacts", skill)
         self.assertIn("`VERIFY-SCOPE.md` and `SCOPE-EVIDENCE-TEMPLATE.md`", skill)
-        self.assertIn("Do not inspect Groundwork plugin README", skill)
-        self.assertIn("`.codex-plugin/plugin.json`", skill)
+        self.assertIn("plugin/package self-inspection", skill)
+        self.assertIn("explicitly asks", skill)
         self.assertIn("other skill `SKILL.md` files", skill)
         self.assertIn("Scenario workspace allowlisted file discovery is allowed", skill)
         self.assertIn("do not treat allowlisted discovery of the named evidence files as a hard failure", skill)
@@ -194,6 +315,7 @@ class ProgressiveDisclosureTests(unittest.TestCase):
         self.assertNotIn("plugin manifests", read_only_section)
         self.assertNotIn("package internals", read_only_section)
         self.assertNotIn("other skill `SKILL.md`", read_only_section)
+        self.assertNotIn("Groundwork", default_section)
 
         default_path_index = skill.index("## Default Path: Named Evidence Verification")
         evidence_boundary_index = skill.index("## Evidence Boundary")
@@ -219,29 +341,54 @@ class ProgressiveDisclosureTests(unittest.TestCase):
 
         self.assertIn("## Fast Path: Prompt-Provided Compact PRD", skill)
         self.assertIn("Read only the named task artifact and this active `to-prd` contract.", skill)
-        self.assertIn("Do not inspect Groundwork plugin README", skill)
-        self.assertIn("`.codex-plugin/plugin.json`", skill)
+        self.assertIn("plugin/package self-inspection", skill)
         self.assertIn("unrelated skill files", skill)
         self.assertIn("shared lifecycle/evidence references", skill)
-        self.assertIn("Groundwork Maintenance Compact Path", skill)
-        self.assertIn("Do not use the generic fast path for Groundwork-internal maintenance requests", skill)
-        self.assertIn("runtime behavior, workflow changes, version enhancements, or skill-selection behavior", skill)
-        self.assertIn("Preserve lifecycle-state framing", skill)
-        self.assertIn("Requirement State, Source Truth / Evidence Level", skill)
+        self.assertNotIn("Maintenance Compact Path", skill)
         self.assertIn("source/package behavior", skill)
         self.assertIn("compact conversation PRD/spec", skill)
         self.assertIn("durable PRD artifact", skill)
         self.assertIn("load `PRD-TEMPLATE.md`, apply audience-first artifact fields", skill)
         self.assertIn("Mark missing product facts as **NEEDS CLARIFICATION**", skill)
-        self.assertNotIn("proposed plugin or workflow change remains fast path", skill)
 
         fast_path_index = skill.index("## Fast Path: Prompt-Provided Compact PRD")
-        maintenance_path_index = skill.index("## Groundwork Maintenance Compact Path")
         required_evidence_index = skill.index("## Required Evidence")
+        fast_path = skill[fast_path_index:required_evidence_index]
 
         self.assertLess(fast_path_index, required_evidence_index)
-        self.assertLess(fast_path_index, maintenance_path_index)
-        self.assertLess(maintenance_path_index, required_evidence_index)
+        for cue in ("install", "marketplace", "runtime", "workflow", "version", "skill-selection"):
+            self.assertIn(cue, fast_path)
+
+    def test_public_runtime_contracts_do_not_embed_repo_specific_maintenance_rules(self):
+        paths = [
+            "skills/to-prd/SKILL.md",
+            "skills/write-plan/SKILL.md",
+            "skills/prototype/SKILL.md",
+            "skills/implement/SKILL.md",
+            "skills/verify/SKILL.md",
+            "skills/handoff/SKILL.md",
+            "skills/wiki/SKILL.md",
+        ]
+
+        for path in paths:
+            skill = self.read(path)
+            self.assertNotIn("Groundwork", skill, path)
+            self.assertNotIn("AGENTS.md", skill, path)
+
+        for path in ROOT.glob("skills/*/SKILL.md"):
+            self.assertNotIn("AGENTS.md", path.read_text(encoding="utf-8"), str(path))
+
+    def test_lifecycle_preflight_has_explicit_lazy_load_paths(self):
+        references = [
+            "skills/to-prd/SKILL.md",
+            "skills/to-issues/SKILL.md",
+            "skills/wiki/SKILL.md",
+            "skills/implement/IMPLEMENT-BRANCHES.md",
+            "skills/verify/VERIFY-ROUTER-BRANCHES.md",
+        ]
+
+        for path in references:
+            self.assertIn("skills/_shared/LIFECYCLE-PREFLIGHT.md", self.read(path), path)
 
     def test_branch_references_have_audience_first_headers(self):
         paths = [

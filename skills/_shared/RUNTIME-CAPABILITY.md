@@ -84,17 +84,13 @@ community_evidence
 local_characterization_eval
 ```
 
-Mirrored inline template locations must match this enum:
-
-- `skills/_shared/COGNITIVE-BUDGET.md`
-- `skills/_shared/DECISION-MAPPING.md`
-- `skills/dispatch/SKILL.md`
+This file is the only runtime contract that owns the capability, selector-enforcement, and evidence-layer enums. Other contracts reference these values rather than mirroring them.
 
 Capability seed facts must be labeled as seed facts and kept separate from runtime/tool enforcement evidence.
 
 ## Capability Seed Handling
 
-Capability seeds are dated evidence inputs, not setup requirements or runtime truth. Store reusable seed notes under [`docs/capability-seeds/`](../../docs/capability-seeds/) with the audience-first header fields and an explicit status pair.
+Capability seeds are dated evidence inputs, not setup requirements or runtime truth. Source-repo maintainers store reusable seed notes under docs/capability-seeds/ with the audience-first header fields and an explicit status pair; that maintainer directory is not bundled into the runtime package.
 
 For a user-observed model menu seed, use:
 
@@ -108,7 +104,7 @@ official_current_behavior: not_claimed
 
 If a seed is used in a Dispatch Package, Goal Contract, or prompt as a desired selector, the selector status may be `prompt_preference` for that request. Keep `selector_enforcement` as `unknown` for the seed itself, and do not upgrade it to `tool_enforced` unless the executing tool/runtime reports enforcement for that specific run.
 
-The 2026-06-23 Codex model menu seed is recorded at [`docs/capability-seeds/codex-model-menu-2026-06-23.md`](../../docs/capability-seeds/codex-model-menu-2026-06-23.md). It documents a user-supplied observation only. It does not prove current official OpenAI/Codex behavior, every Codex surface, API availability, subagent/worktree availability, runtime execution, installed-plugin behavior, or selector enforcement.
+The source repository records the 2026-06-23 Codex model menu seed under docs/capability-seeds/ for maintainer reference; that repository-only evidence is not bundled into the runtime package. It documents a user-supplied observation only. It does not prove current official OpenAI/Codex behavior, every Codex surface, API availability, subagent/worktree availability, runtime execution, installed-plugin behavior, or selector enforcement.
 
 ## Runtime Mismatch Handling
 

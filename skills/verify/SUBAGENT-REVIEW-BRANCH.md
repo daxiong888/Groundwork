@@ -4,7 +4,7 @@ Target Reader: Codex running `verify` to prepare a fresh-context subagent review
 Reader Action Needed: Emit the verification scope first, then a bounded fresh-context subagent package.
 Decision Supported: Whether a delegated review package is bounded, read-only, evidence-backed, and safe to run.
 Artifact Type: branch-specific verification reference
-Source of Truth: `skills/_shared/SUBAGENT-DELEGATION.md`, `skills/_shared/ROLE-SEPARATION.md`, and `skills/verify/SCOPE-EVIDENCE-TEMPLATE.md`.
+Source of Truth: `skills/_shared/SUBAGENT-DELEGATION.md`, `skills/_shared/REVIEW-LOOP.md`, and `skills/verify/SCOPE-EVIDENCE-TEMPLATE.md`.
 Scope: Fresh-context subagent review packages, read-only clean review boundaries, parent-history isolation, and runtime mismatch handling.
 Out of Scope: Spawning subagents by default, nested delegation, file mutation by reviewers, runtime selector enforcement claims, or final readiness approval.
 Evidence Level: Source-validation policy only unless an actual runtime/subagent tool reports execution evidence.

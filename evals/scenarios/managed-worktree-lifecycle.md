@@ -4,7 +4,7 @@ Target Reader: Groundwork eval reviewers, dispatch maintainers, and lifecycle co
 Reader Action Needed: Use this scenario to verify v0.3.3 managed worktree lifecycle routing, closeout gates, and prompt fixtures.
 Decision Supported: Whether dispatch and lifecycle artifacts reject unsupported closeout claims, route missing evidence to remediation, block, or human decision, and preserve v0.3.3 safety intent as v0.4.0 native-alignment fixture coverage.
 Artifact Type: eval scenario
-Source of Truth: v0.3.3 managed worktree lifecycle contracts plus `docs/prd-v0.4.0-codex-native-worktree-handoff-alignment.md` FR-406, AC-401 through AC-406, and AC-409 for native alignment fixture migration.
+Source of Truth: Current `skills/dispatch/DISPATCH-PACKAGE-DETAILS.md`, `skills/dispatch/RESULT-PACKAGE.md`, managed-worktree adapter contracts, and v0.3.3/v0.4.0 documents only as labeled compatibility or fixture-provenance sources.
 Scope: Scenario-level coverage for managed worktree lifecycle states, Goal Mode hardening, runtime identity, clean review fan-out, merge-back, branch cleanup, serial barriers, backward compatibility, native route decisions, `.worktreeinclude` safety fixtures, native handoff fixtures, native closeout merge gates, dispatch runtime-ownership boundaries, and local environment setup representation.
 Out of Scope: Executing Codex App thread tools, creating worktrees, refreshing installed plugin cache, committing, pushing, PR creation, tracker mutation, UAT, release readiness, or proving real runtime execution.
 Evidence Level: Derived from PRD v0.3.3 FR-12, `THREAD-LIFECYCLE.md`, `RESULT-PACKAGE.md`, managed worktree adapter templates, merge-back protocol, branch cleanup checklist, clean review fan-out protocol, conflict preflight protocol, and v0.4.0 native fixture migration source truth for route, `.worktreeinclude`, handoff, closeout, dispatch ownership, and local environment setup coverage. These checks are fixture/contract evidence only.
@@ -25,7 +25,7 @@ And local fixture checks must remain contract/eval evidence only, not real Codex
 
 | ID | Input state | Expected route | Must reject |
 |---|---|---|---|
-| mwl-000 | Input is read-only, planning-only, or otherwise does not need a worktree. | `no_worktree_needed` or non-managed runtime route. | Creating a managed worktree child or lifecycle closeout package for no-op execution. |
+| mwl-000 | Input is read-only, planning-only, or otherwise does not need a worktree. | `outcome: no_execution_needed` or a non-managed read-only runtime route. | Emitting legacy `no_worktree_needed` in a new package, or creating managed-worktree lifecycle evidence for no-op execution. |
 | mwl-001 | Child returns `ready_for_review`; no clean review exists. | `clean_review_pending`. | `archive_ready`, `clean_review_passed`, `merged_to_main_worktree`. |
 | mwl-002 | Clean review passed; merge/discard is not decided. | `merge_pending`, `discard_pending`, or `human_decision`. | `archive_ready`. |
 | mwl-003 | Merge completed and validation evidence is present; branch state is unknown. | `archive_ready` plus `branch_cleanup_pending` or `human_decision`. | `branch_cleaned`. |
@@ -59,7 +59,7 @@ And local fixture checks must remain contract/eval evidence only, not real Codex
 | mwl-031 | A `.worktreeinclude` fixture includes active real-looking secret or forbidden entries such as `.env`, `.env.local`, `config/secrets.json`, cookies, tokens, PII, production data, `.groundwork`, or `.trellis`. | Safety fixture fails or routes to blocked/human decision; private entries must remain unstaged/uncommitted unless explicitly approved. | Treating secret-like entries as safe committed examples. |
 | mwl-032 | A Local to Worktree handoff package is prepared before Codex creates or exposes the native worktree. | Use `native_handoff_package.direction: local_to_worktree`; set `native_context.worktree_path.availability: unavailable_before_handoff`; avoid invented thread IDs, worktree paths, or hidden parent-session dependencies. | Inventing native IDs or worktree paths before Handoff. |
 | mwl-033 | A Worktree to Local handoff package returns with visible native context. | Record visible `native_context.thread_ref`, `native_context.worktree_path`, and `native_context.worktree_association`; include changed files, evidence, open risks, and stop condition before closeout. | Closeout intake without visible context fields, changed files, evidence, open risks, or stop condition. |
-| mwl-034 | A dispatch artifact includes `dispatch_native_alignment` for a worktree-isolated package. | Treat Groundwork as route/policy/evidence owner only; mark runtime evidence owner as Codex runtime, adapter, or user-supplied; keep legacy lifecycle/registry/thread/runtime fields as compatibility, not Groundwork-owned execution state. | Groundwork-owned worktree creation, Handoff execution, archive, cleanup, runtime success, cache refresh, or release readiness fields. |
+| mwl-034 | A dispatch artifact includes the canonical task base plus a managed-worktree `adapter_extension`. | Keep route, source, policy, handoff, closeout, verification, approval, and runtime-evidence ownership in the base; keep only initialization and compatibility data in the adapter delta. | Duplicated base fields in the delta, or Groundwork-owned worktree creation, Handoff execution, archive, cleanup, runtime success, cache refresh, or release readiness claims. |
 | mwl-035 | A task needs local environment setup before isolated work. | Represent setup under `route_decision.setup_requirements`, Codex local-environment expectation, or manual setup evidence; do not claim Groundwork executed worktree setup. | Groundwork-executed worktree setup or hidden local environment mutation. |
 | mwl-036 | A dispatch package carries a runtime, cache, release, UAT, marketplace, or cache-refresh claim. | Include a full `verification_expectation.release_evidence_claim` object with claim type, evidence status, plugin root, source root, refresh/equivalence method, run scope, commands/trials, and limitations. | Only setting `release_readiness_claimed: true` or using narrative release evidence. |
 | mwl-037 | Dispatch recommends an `automation_candidate` route for monitoring, reminder, wakeup, or scheduled check. | Use `runtime_id: not_applicable` and keep the route recommendation-only until a separate approved automation execution step exists. | Inventing `main_thread_readonly`, `codex_subagent`, or worktree runtime just to satisfy schema shape, or claiming automation creation. |
@@ -72,7 +72,7 @@ And local fixture checks must remain contract/eval evidence only, not real Codex
 
 | Rows | Coverage type | Coverage source | Purpose |
 |---|---|---|---|
-| `dispatch-mwl-000` through `dispatch-mwl-012` | `compatibility` | v0.3.3 managed-worktree lifecycle intent | Preserve reject/no-op, lifecycle, merge-back, dirty-worktree, init-preflight, serial-closeout, and archive-recovery safety coverage while native alignment lands. |
+| `dispatch-mwl-000` through `dispatch-mwl-012` | `compatibility` | v0.3.3 managed-worktree lifecycle intent | Preserve reject/no-op, lifecycle, merge-back, dirty-worktree, init-preflight, serial-closeout, and archive-recovery safety while mapping new output to the current Result Package contract. |
 | `dispatch-mwl-013` through `dispatch-mwl-017` | `native_alignment` | PRD FR-404/FR-406, AC-404/AC-406 | Reject native closeout merge recommendations when evidence, git boundary, merge source, cleanup separation, or review status is missing. |
 | `dispatch-mwl-018` through `dispatch-mwl-028` | `native_alignment` | PRD FR-406 and AC-401 through AC-406 plus AC-408 and AC-409 | Cover native route, `.worktreeinclude`, handoff, dispatch runtime-ownership, local environment setup, release evidence claim, automation recommendation, and same-base closeout serialization fixture classes. |
 
@@ -82,7 +82,7 @@ Cross-suite native-alignment rows that remain valid coverage:
 |---|---|---|---|
 | `dispatch.csv:dispatch-016` | `native_alignment` | FR-406 route fixture, AC-401 | Low-risk scoped task routes to `local_direct`. |
 | `dispatch.csv:dispatch-017` | `native_alignment` | FR-406 route fixture, AC-401 | The same work class routes to `worktree_isolated` when unrelated staged files, stale base, and shared-file conflict justify isolation. |
-| `dispatch.csv:dispatch-018` | `native_alignment` | FR-406 dispatch fixture, AC-405 | Dispatch artifact uses `dispatch_native_alignment` without claiming Codex-native runtime execution. |
+| `dispatch.csv:dispatch-018` | `native_alignment` | FR-406 dispatch fixture, AC-405 | Dispatch artifact uses one canonical task base plus a managed-worktree adapter delta without claiming Codex-native runtime execution. |
 | `handoff.csv:handoff-016` | `native_alignment` | FR-406 handoff fixture, AC-403 | Local to Worktree package uses `availability: unavailable_before_handoff`. |
 | `handoff.csv:handoff-017` | `native_alignment` | FR-406 handoff fixture, AC-403 | Worktree to Local package includes visible native context, changed files, evidence, open risks, and stop condition. |
 
@@ -100,7 +100,7 @@ Cross-suite native-alignment rows that remain valid coverage:
 | Closeout cannot recommend merge with missing git boundary. | AC-404, AC-406 | `dispatch-mwl-014` | Git status, intended files, staged files, unrelated dirty files, explicit denylist, and safe flag are required. |
 | Closeout cannot recommend merge with unknown or missing merge source. | AC-404, AC-406 | `dispatch-mwl-015` | Merge source must be `patch_bundle`, `visible_branch`, `codex_handoff`, or `pathspec_checkout` with source evidence. |
 | Closeout cannot recommend merge with missing or failed review status. | AC-404, AC-406 | `dispatch-mwl-017` | Review status must be `passed` with review evidence. |
-| Dispatch artifact does not contain Groundwork-owned execution runtime fields conflicting with Codex-native ownership. | AC-405, AC-406 | `dispatch-mwl-024`, `dispatch-018` | `dispatch_native_alignment` records route/policy/evidence expectations; runtime execution fields remain external evidence or legacy compatibility. |
+| Dispatch artifact does not contain Groundwork-owned execution runtime fields conflicting with Codex-native ownership. | AC-405, AC-406 | `dispatch-mwl-024`, `dispatch-018` | The canonical base owns route/policy/evidence expectations; the adapter delta contains only runtime-specific initialization/compatibility data, and execution remains external evidence. |
 | Local environment setup requirements are route setup requirements or manual/Codex setup evidence. | AC-409 | `dispatch-mwl-025` | Covered in V040-007; not delegated to V040-008. Local setup is not Groundwork-executed worktree setup. |
 | Runtime/cache/release/UAT/marketplace/cache-refresh claims require structured release evidence. | AC-408 | `dispatch-mwl-026` | `release_evidence_claim` is required; boolean or narrative release evidence is insufficient. |
 | Automation recommendations have a non-executing runtime placeholder. | AC-405 | `dispatch-mwl-027` | `automation_candidate` uses `runtime_id: not_applicable` until a separate approved automation action exists. |
@@ -153,7 +153,7 @@ These fixture paths do not prove real Codex App worktree execution. They prove t
 - Confirm native route fixtures cover both `local_direct` and `worktree_isolated` and state why runtime execution is not proven.
 - Confirm `.worktreeinclude.example` pass/fail fixtures cover placeholder-only entries and forbidden secret-like categories.
 - Confirm native handoff fixtures include `availability: unavailable_before_handoff` for Local to Worktree and visible native context for Worktree to Local.
-- Confirm dispatch-native-alignment fixtures keep Groundwork out of execution runtime ownership.
+- Confirm base-plus-adapter-delta fixtures keep Groundwork out of execution runtime ownership and do not duplicate canonical base fields.
 - Confirm local environment setup appears as `route_decision.setup_requirements`, Codex local-environment expectation, or manual setup evidence, not Groundwork-executed worktree setup.
 - Confirm runtime/cache/release/UAT/marketplace/cache-refresh claims carry full `release_evidence_claim` evidence, not only a boolean or narrative.
 - Confirm `automation_candidate` uses `runtime_id: not_applicable` and remains recommendation-only unless a separate approved automation action exists.

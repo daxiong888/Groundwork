@@ -21,11 +21,9 @@ Route away:
 
 Name the prototype question first. Inspect source, PRD, task, data shape, existing prototype, screenshot, or UI notes only as needed. Static HTML/visual claims need browser/runtime evidence; otherwise mark `unverified`.
 
-For Groundwork repo maintenance, apply repo-local `AGENTS.md` before reporting complete.
-
 Prototype evidence can classify backend candidates, mock fields, and client-derived logic, but cannot confirm backend/API/source truth without source, schema/API, runtime evidence, or explicit confirmation.
 
-Load one branch extension: `LOGIC.md`, `LOGIC-LAB.md`, `UI.md`, or `UI-VARIANTS.md`. Add `CONTRACT-BOUNDARY.md` for mock/backend separation, `DECISION-CAPTURE.md` for promoted decisions, `VISUAL-HANDOFF-PACKET.md` for visual packets, and `ROLE-SEPARATION.md` only when downstream ownership matters.
+Load one branch extension: `LOGIC.md`, `LOGIC-LAB.md`, `UI.md`, or `UI-VARIANTS.md`. Add `CONTRACT-BOUNDARY.md` for mock/backend separation, `DECISION-CAPTURE.md` for promoted decisions, `skills/_shared/VISUAL-HANDOFF-PACKET.md` for visual packets, and `skills/_shared/REVIEW-LOOP.md` only when downstream ownership matters.
 
 ## Workflow
 

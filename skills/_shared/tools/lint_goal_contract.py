@@ -45,6 +45,7 @@ GOAL_COMMAND_PLACEHOLDER_PATTERNS = (
     r"^/goal\b.*\{[^}]+\}",
     r"^/goal\s+(?:one executable task|todo|tbd|待定)\s*$",
 )
+GOAL_COMMAND_PATTERN = re.compile(r"^/goal(?:\s|$)")
 
 VAGUE_PHRASES = (
     ("Verification", "make sure it works", "verification must name concrete evidence"),
@@ -190,7 +191,7 @@ def lint(text: str) -> list[tuple[str, str]]:
 
     goal_command = extract_field_value(text, FIELD_ALIASES["Goal Command"])
     goal_command_first_line = first_non_empty_line(goal_command)
-    if goal_command and not goal_command_first_line.startswith("/goal"):
+    if goal_command and GOAL_COMMAND_PATTERN.match(goal_command_first_line) is None:
         findings.append(("Goal Command", "Goal Command must start with /goal"))
     elif goal_command_first_line and contains_any(GOAL_COMMAND_PLACEHOLDER_PATTERNS, goal_command_first_line):
         findings.append(("Goal Command", "Goal Command must be executable, not a placeholder"))

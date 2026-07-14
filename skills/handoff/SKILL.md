@@ -15,7 +15,7 @@ Do not use for one-off explanations, PRD creation, issue slicing, code edits, re
 
 - `compact`: default one-screen continuation. Cite sources and summarize only resume-critical state.
 - `review-package`: review-focused handoff. Load `REVIEW-PACKAGE.md`.
-- `native-handoff`: Codex Local/Worktree continuation package. Load `NATIVE-HANDOFF-PACKAGE.md`; Groundwork prepares the package only.
+- `native-handoff`: Codex Local/Worktree continuation package. Load `NATIVE-HANDOFF-PACKAGE.md`; this route prepares the package only.
 - `state-freshness`: existing lifecycle state must be referenced. Load `STATE-FRESHNESS.md`.
 - `complex`: managed worktree, role separation, visual packet, release/cache/runtime/wiki, or clean-review gaps affect continuation.
 

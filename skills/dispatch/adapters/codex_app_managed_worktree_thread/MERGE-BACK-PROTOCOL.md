@@ -30,6 +30,12 @@ merge_back:
   preconditions:
     clean_review_passed: true | false
     clean_review_evidence: ""
+    review_kind: clean | coordinator_intake | self_check | not_applicable
+    reviewer_context: ""
+    reviewed_material_change_id: ""
+    latest_material_change_id: ""
+    review_loop_status: self_check_complete | clean_review_pending | clean_review_passed | needs_remediation | remediation_in_progress | remediation_self_check_complete | blocked | human_decision | low_risk_coordinator_intake
+    next_review_required: true | false
     main_worktree_status_checked: true | false
     main_worktree_clean_enough: true | false | unknown
     base_matches: true | false | unknown
@@ -60,11 +66,12 @@ merge_back:
 
 ## Clean Review Gate
 
-Merge-back may start only after fresh clean-review evidence is recorded and the merge-back package records `clean_review_passed: true` with `clean_review_evidence`.
+Merge-back may start only after fresh clean-review evidence is recorded and the merge-back package records all of: `review_kind: clean`; `clean_review_passed: true`; non-empty `clean_review_evidence` and `reviewer_context`; equal non-empty `reviewed_material_change_id` and `latest_material_change_id`; `review_loop_status: clean_review_passed`; and `next_review_required: false`.
 
-- `review_package_returned` is only an intake state and does not permit merge-back.
+- `runtime_lifecycle.state: result_returned` is only an intake state and does not permit merge-back.
 - Child self-review does not permit merge-back.
 - Fresh clean review is the default evidence source.
+- A prior clean review is stale when its reviewed material-change id does not match the latest material-change id; stale evidence must not set `clean_review_passed: true`.
 - `low_risk_coordinator_intake` is not clean-review evidence and does not permit merge-back. It may close coordinator intake only when it satisfies `skills/_shared/LOW-RISK-COORDINATOR-INTAKE.md`; it must not set `clean_review_passed: true`.
 - Coordinator intake without fresh clean-review evidence does not permit merge-back.
 - A child implementation thread must not output or claim `review_passed`; only the coordinator or clean reviewer may record clean-review pass evidence before the merge barrier.

@@ -1,40 +1,19 @@
-# Managed Worktree Selector Enforcement
+# Managed Worktree Selector Evidence
 
-## Target Reader
+Target Reader: Dispatch users, managed-worktree runtime adapters, and reviewers interpreting execution-profile evidence.
+Reader Action Needed: Keep the request-side selector policy separate from the selector status returned by the adapter.
+Decision Supported: Whether a managed-worktree result has enough adapter evidence to report selector application.
+Artifact Type: runtime adapter delta.
+Source of Truth: `skills/_shared/RUNTIME-CAPABILITY.md` and the managed-worktree Result Package template.
+Scope: Managed-worktree selector request and returned-evidence mapping.
+Out of Scope: Choosing concrete models, changing runtime capabilities, or defining the global selector status enum.
+Evidence Level: Source-validation adapter contract only; actual enforcement requires run-specific adapter/tool evidence.
+Safe to Share / Redaction Notes: Safe to share as-is; returned adapter evidence must not expose private runtime payloads.
 
-Dispatch users, runtime adapters, and reviewers interpreting model profile or reasoning effort fields.
+`skills/_shared/RUNTIME-CAPABILITY.md` owns the `selector_enforcement` values and proof rules. This adapter does not redefine them.
 
-## Reader Action Needed
-
-Report selector enforcement as evidence from the adapter, not as an assumption from the dispatch package.
-
-## Decision Supported
-
-Whether a result may report `tool_enforced`, must fall back to `prompt_preference`, or should use `unavailable` or `unknown`.
-
-## Scope
-
-Selector enforcement reporting for model profile, reasoning effort, and cost/latency bias fields in managed worktree adapter results.
-
-## Out of Scope
-
-Choosing the model, changing runtime capabilities, treating selector preferences as proof, and blocking execution unless enforceable selectors were explicitly required.
-
-## Evidence Level
-
-Derived from Groundwork execution profile rules and managed worktree adapter result requirements.
-
-## Allowed Values
-
-- `tool_enforced`: the adapter confirms the model or reasoning selectors were applied by a tool or runtime API.
-- `prompt_preference`: selectors were included in the child prompt only.
-- `unavailable`: the available runtime tools cannot apply selectors.
-- `unknown`: selector support was not inspected or not reported.
-
-## Rules
-
-- Dispatch may request `model_profile`, `reasoning_effort`, and `cost_latency_bias`.
-- Package contents alone never prove `tool_enforced`.
-- If the adapter cannot inspect selector application, report `prompt_preference`, `unavailable`, or `unknown`.
-- Result and review packages must include evidence for the selected enforcement status.
-- Do not turn a selector preference into a blocker unless the package or user explicitly requires enforceable selector support.
+- Dispatch may request `model_profile`, `reasoning_effort`, and `cost_latency_bias` with `selector_policy`.
+- A child prompt or package proves only the request. It never proves selector application.
+- The Result Package records `selector_enforcement` plus `selector_enforcement_evidence` returned by the adapter.
+- Without adapter/tool confirmation, use the canonical non-enforced or unknown status; do not infer `tool_enforced`.
+- Missing selector support blocks execution only when the user or package explicitly requires enforceable selectors.

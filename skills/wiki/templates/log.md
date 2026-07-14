@@ -6,7 +6,7 @@ reader_action: "Review material wiki changes, source refreshes, deprecations, an
 default_evidence_layer: unknown
 confidence: low
 sources: []
-last_updated: 2026-06-26
+last_updated: "<YYYY-MM-DD>"
 stale_risk: medium
 aliases: []
 supersedes: []
@@ -29,7 +29,7 @@ Safe to Share / Redaction Notes: Review entries for secrets, credentials, PII, s
 
 ## Entries
 
-### 2026-06-26
+### <YYYY-MM-DD>
 
 - Action:
 - Pages changed:

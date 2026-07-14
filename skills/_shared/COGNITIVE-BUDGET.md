@@ -26,42 +26,24 @@ Concrete model labels are runtime-specific evidence, not permanent global truth.
 | `exhaustive_review` | independent clean review, skill-audit, architecture/security/privacy/schema/data correctness review | high or xhigh when available | quality | Still needs source evidence, role separation, and verification scope; does not prove runtime readiness by itself. |
 | `spark_iteration` | bounded fast coding iteration with a fast feedback loop | low or medium; high only for bounded loops when available | fastest practical loop | Spark final authority restrictions apply: not final clean reviewer, final verifier, public skill approver, release/UAT authority, or customer authority. |
 
-## Decision Mapping Guidance
-
-Use `skills/_shared/DECISION-MAPPING.md` when options are already enumerable and the work is to compare tradeoffs, dependencies, and decision criteria.
-
-Decision mapping usually fits `balanced_work` for low-risk choices with clear evidence and `strong_reasoning` for cross-cutting product, architecture, runtime, or public-skill exposure choices. Use `exhaustive_review` only for an independent review of a decision map, not for the same author to approve their own decision.
-
-When a decision map compares runtime/model options, keep the recommendation at the profile and prompt preference layer unless runtime/tool evidence proves more:
-
-```yaml
-model_profile: fast_scan | balanced_work | strong_reasoning | exhaustive_review | spark_iteration
-selector_enforcement: prompt_preference | unavailable | unknown
-evidence_layer: prompt_preference
-runtime_evidence: not_claimed
-```
-
-Do not report selector enforcement, concrete runtime execution, installed-plugin behavior, cache refresh, UAT readiness, release readiness, or customer readiness from decision mapping alone.
-
 ## Profile-To-Model Mapping Gate
 
-Before mapping a profile to a concrete model, record the evidence layer. The inline `evidence_layer` values below mirror the canonical runtime evidence layer enum in `skills/_shared/RUNTIME-CAPABILITY.md` and must be updated together.
+This file owns the profile, reasoning, and cost/latency vocabulary. Before mapping a profile to a concrete model, record:
 
 ```yaml
 model_profile: fast_scan | balanced_work | strong_reasoning | exhaustive_review | spark_iteration
 concrete_model: ""
-reasoning_or_thinking_preference: low | medium | high | xhigh | unknown
+reasoning_effort: low | medium | high | xhigh | unknown
 cost_latency_bias: fast | balanced | quality
-capability_status: known | unknown | user_supplied | docs_reference | tool_enforced
-selector_enforcement: tool_enforced | prompt_preference | unavailable | unknown
-evidence_layer: prompt_preference | runtime_tool_evidence | user_observed_model_menu_seed | official_docs | community_evidence | local_characterization_eval
 ```
+
+When capability or execution claims are material, attach the canonical `capability_status`, `selector_enforcement`, and `evidence_layer` fields from `skills/_shared/RUNTIME-CAPABILITY.md`. Do not mirror their enums here.
 
 Rules:
 
 - Prefer a profile and reasoning/thinking preference in dispatch packages.
 - Map to `concrete_model` only when current runtime/tool evidence, an explicit user instruction, or a labeled seed/docs reference is relevant to the route.
-- If mapping comes from a seed or docs reference, set `selector_enforcement` to `prompt_preference`, `unavailable`, or `unknown` unless runtime/tool evidence proves `tool_enforced`.
+- If mapping comes from a seed or docs reference, apply the selector status rules from `RUNTIME-CAPABILITY.md`; only runtime/tool evidence can prove enforcement.
 - Do not maintain or present a permanent global model table as runtime truth.
 - Do not treat Codex UI thinking labels as API reasoning-effort values, or API docs as proof of Codex UI selector enforcement.
 

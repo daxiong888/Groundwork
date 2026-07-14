@@ -1,6 +1,6 @@
 # Groundwork Project Definition
 
-For v0.1, `docs/prd.md` is the product source of truth. This file describes the broader project intent and should not expand MVP implementation scope beyond the PRD.
+This file describes durable project intent. Current implementation architecture is owned by `docs/plugin-architecture.md`, public skill behavior by the corresponding `skills/*/SKILL.md`, and package shape by `scripts/runtime_package_manifest.json`; historical PRDs remain scoped decision records rather than global current truth.
 
 ## One-Liner
 

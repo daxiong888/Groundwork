@@ -6,15 +6,15 @@ Groundwork dispatch maintainers, runtime adapter authors, coordinators, and revi
 
 ## Reader Action Needed
 
-Use this lifecycle to decide whether a managed worktree child thread may continue, needs remediation, is ready for clean review/merge-back, may be archived, or must remain available for human decision.
+Use this lifecycle to report only managed worktree thread execution state. Track review, merge-back, archive, and branch cleanup on their independent Result Package axes.
 
 ## Decision Supported
 
-Whether archive, branch cleanup, remediation, merge-back, discard, or human decision is the next legal action for one managed worktree child task.
+Whether one managed worktree child thread is admitted, initializing, active, or has returned/failed/blocked, without inferring downstream review or cleanup state.
 
 ## Scope
 
-Lifecycle states and legal transitions for one Codex App managed worktree child thread after Dispatch Package v2 admission.
+Thread-only states and legal transitions for one Codex App managed worktree child after Dispatch Package v2 admission.
 
 ## Out of Scope
 
@@ -27,31 +27,35 @@ Derived from PRD v0.3.3 FR-1, Dispatch Package v2, managed worktree review/resul
 ## Core Rules
 
 - A child thread must not archive itself, delete branches, stage, commit, push, open PRs, close issues, mutate trackers, or change remote state unless separately approved.
-- `review_package_returned`, `clean_review_pending`, and `needs_remediation` are not enough for `archive_ready`.
-- `archived` does not imply `branch_cleaned`; branch cleanup is separate evidence and approval.
+- Thread completion is not review pass, merge-back, archive readiness, or branch cleanup.
+- Review, merge-back, archive, and branch cleanup each require their own status and evidence under the canonical Result Package.
 - `pendingWorktreeId` is pending initialization evidence only. It must resolve to both child thread identifier and worktree path before success can be claimed.
 - While initialization is pending, coordinator waits/polls/resolves or routes to `blocked`/`human_decision`; it must not implement the same task in the parent thread or create manual fallback worktrees without explicit topology approval.
 
-## Lifecycle States
+## Thread Lifecycle States
 
 ```text
-package_admitted -> worktree_init_pending -> child_thread_created -> prompt_delivered -> running
-running -> review_package_returned | needs_remediation | blocked
-review_package_returned -> clean_review_pending | needs_remediation | blocked
-clean_review_pending -> clean_review_passed | needs_remediation | blocked
-clean_review_passed -> merge_pending | discard_pending | blocked
-needs_remediation -> running | discard_pending | blocked
-merge_pending -> merged_to_main_worktree | blocked
-discard_pending -> discarded | blocked
-merged_to_main_worktree | discarded -> archive_ready
-blocked -> archive_ready only with preserved evidence and human decision that retention is not needed
-archive_ready -> archived | blocked
-archived -> branch_cleanup_pending | branch_retained_with_reason | closed only when branch cleanup is not applicable/finalized
-branch_cleanup_pending -> branch_cleaned | branch_retained_with_reason | blocked
-branch_cleaned | branch_retained_with_reason -> closed
+package_admitted -> worktree_init_pending | child_thread_created | blocked
+worktree_init_pending -> child_thread_created | failed | blocked
+child_thread_created -> prompt_delivered | failed | blocked
+prompt_delivered -> running | failed | blocked
+running -> result_returned | failed | blocked
 ```
 
-No transition may skip evidence preservation. Unknown state routes to `blocked` or `human_decision` through closeout rather than inferring a later state.
+`result_returned`, `failed`, and `blocked` end the current runtime attempt. A corrected retry starts from a new, evidenced admission attempt; it must not rewrite prior events. No transition may skip evidence preservation. Unknown state routes to `blocked` or `human_decision` rather than inferring a later state.
+
+## Independent Status Axes
+
+These axes are not lifecycle transitions:
+
+| Axis | Owner | Key Safety Rule |
+| --- | --- | --- |
+| `review` | fresh reviewer or explicit coordinator intake | `result_returned` does not mean review passed; child self-check is not clean review. |
+| `merge_back` | coordinator closeout | Review pass does not mean changes were applied; merge/discard needs source and git-boundary evidence. |
+| `archive` | coordinator closeout | Merge/discard/retention evidence may support archive readiness, but never proves archive execution. |
+| `branch_cleanup` | coordinator plus required approver | Archive does not imply cleanup; unknown, remote, protected, or force deletion routes to `human_decision`. |
+
+Each axis records its own status and evidence using `skills/dispatch/RESULT-PACKAGE.md`. A coordinator may evaluate axes in parallel or sequence, but must not encode them as thread states.
 
 ## Registry Record
 
@@ -66,32 +70,29 @@ worktree_thread_registry:
   worktree_path: ""
   artifact_path: ""
   owner_skill: dispatch
-  current_status: created | active | review-ready | blocked | merge-ready | merged | archive-ready | archived | branch-cleanup-pending | branch-cleaned | branch-retained | closed | abandoned
+  thread_status: init_pending | created | prompt_delivered | active | result_returned | failed | blocked
   created_at: ""
   last_checked_at: ""
 ```
 
 Identity is `runtime_correlation_id`; task id, branch, and title are supporting evidence only. `worktree_init_pending` may record `pendingWorktreeId`, but it is not a recoverable active-work registry record until child thread id and worktree path exist.
 
-Every status change must preserve an event with correlation id, task id, from/to status, reason, evidence refs, artifact path, and timestamp. If no artifact path or trace log exists, route to `blocked` or `human_decision`.
+Every thread status change must preserve an event with correlation id, task id, from/to status, reason, evidence refs, artifact path, and timestamp. If no artifact path or trace log exists, route to `blocked` or `human_decision`. Review, merge, archive, and cleanup statuses must not be written into `thread_status`.
 
 ## State Evidence
 
 | State Group | Required Evidence |
 | --- | --- |
 | Admission/init | Dispatch Package identity, admissibility result, execution gate, pending id or resolved child thread/worktree evidence. |
-| Running/result | Delivered prompt identity, last runtime status, returned review/result package, validation status, blockers. |
-| Review/remediation | Fresh clean-review evidence, failed check/unmet AC, remediation path, or blocker list. |
-| Merge/discard | Merge-back source and git boundary preconditions, or discard reason and preserved evidence. |
-| Archive | Closeout package showing merge/discard/blocked-with-human-decision complete and evidence preserved. |
-| Branch cleanup | Branch checklist evidence, approval where required, or retention/not-applicable reason. |
+| Active run | Delivered prompt identity, last runtime status, and blockers. |
+| Result return | Returned review/result package, validation status, changed-file evidence, and blockers. |
 
 ## Archive Readiness Gate
 
-`archive_ready` is legal only after merge-back evidence, discard evidence, or blocked-with-human-decision evidence proves the child worktree no longer needs retention. Before recommending archive, closeout names review package status, result package status, clean-review status, merge/discard status, unresolved blockers, and any human decision.
+Archive readiness is not a thread state. Set `archive.status: ready` only after a closeout package cites the input result outcome, review status, merge/discard/retention status, unresolved blockers, and any required human decision. A blocked runtime may support archive readiness only when evidence is preserved and a human decision confirms retention is unnecessary.
 
-Thread archive may remove a Codex-managed worktree, but it is not branch cleanup evidence. Direct `archived -> closed` requires evidence that branch cleanup is not applicable or already finalized.
+Thread archive may remove a Codex-managed worktree, but it is not branch cleanup evidence. Record `archive.status` and `branch_cleanup.status` independently even when both are finalized in one approved closeout operation.
 
 ## Eval Hooks
 
-Reject child prompts/results that self-archive; `pendingWorktreeId -> child_thread_created` without resolved child thread/worktree path; pending init plus parent-thread implementation/manual fallback without approval; `review_package_returned` or `clean_review_pending` directly to `archive_ready`; `archived -> closed` when branch cleanup remains; or any claim that archive implies branch cleanup.
+Reject child prompts/results that self-archive; advance `pendingWorktreeId` to `child_thread_created` without resolved child thread/worktree path; combine pending init with parent-thread implementation/manual fallback without approval; put review/merge/archive/cleanup values in `thread_status`; or claim that runtime return, review pass, merge, archive, or branch cleanup implies another axis.

@@ -45,13 +45,13 @@ Chinese user-facing content is supported. Chinese labels may be used where the s
 - Pause If: must define conditions that require human input, source clarification, approval, missing tooling resolution, or risk escalation.
 - Non-goals: must list explicitly excluded work.
 - Risk / Gate: must name remaining risks, approval gates, destructive actions, or remote mutation gates.
-- Preferred Runtime: must name the preferred runtime such as `codex_app_managed_worktree_thread`, `codex_subagent`, `main_thread_direct`, `main_thread_readonly`, `clean_reviewer`, or state that `dispatch` may choose.
+- Preferred Runtime: upstream producers must use `dispatch_may_choose`; `dispatch` may resolve it to a supported runtime such as `codex_app_managed_worktree_thread`, `codex_subagent`, `main_thread_direct`, `main_thread_readonly`, or `clean_reviewer` only when package routing is in scope.
 - Result Package Expected: must name the required output package such as `review_package`, `findings_package`, `diagnosis_package`, or another declared package.
 
 ## Integration Points
 
-- `to-issues`: identifies missing Goal Contract fields but does not final-mark readiness.
-- `triage`: creates a Goal Contract only for ready-for-agent executable tasks.
+- `to-issues`: supplies accepted task slices, acceptance, blockers, and verification inputs; it does not select runtime or final-mark readiness.
+- `triage`: creates a Goal Contract only for ready-for-agent executable tasks and leaves runtime selection as `dispatch_may_choose`.
 - `dispatch`: consumes a Goal Contract and may reject tasks with missing required fields.
 - runtime adapters: receive a Goal Contract but do not generate product truth.
 
@@ -67,7 +67,7 @@ A strong Goal Contract:
 - defines bounded iteration policy;
 - defines stop evidence;
 - defines pause conditions;
-- names a preferred runtime or lets `dispatch` choose one;
+- leaves runtime selection as `dispatch_may_choose` until `dispatch` owns package routing;
 - names the expected result package.
 
 Reject or revise the contract if it:

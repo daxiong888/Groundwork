@@ -24,15 +24,13 @@ Route away:
 
 Inspect task source, PRD/spec, conversation, prior state, blockers, source refs, lifecycle state, and verification expectations. Unknown source -> `needs-info`.
 
-For Groundwork repo maintenance, apply repo-local `AGENTS.md` before reporting complete.
-
-Every verdict includes `Severity` and `State Transition Reason`. Use `SEVERITY.md`; severity is current blocker/gap impact, not product priority. `AFK` can proceed from available source/acceptance/scope/first inspection/verification without new human decision/access/approval. `HITL` needs human decision, authority/access, manual validation, risky approval, or product/design choice.
+Every verdict includes `Severity` and `State Transition Reason`. Use `skills/_shared/SEVERITY.md`; severity is current blocker/gap impact, not product priority. `AFK` can proceed from available source/acceptance/scope/first inspection/verification without new human decision/access/approval. `HITL` needs human decision, authority/access, manual validation, risky approval, or product/design choice.
 
 Closeout requires `verify` evidence, already-`done` evidence, or explicit `wontfix` owner decision. Otherwise keep open as `verification`, `needs-info`, or `ready-for-human`.
 
 Use `skills/_shared/LIFECYCLE-STATE.md` only to decide if workstream-scoped state is justified. Do not duplicate external issue/PR ownership unless Groundwork recovery needs remain.
 
-Executable `ready-for-agent + AFK` must include a `Goal Contract` using `skills/_shared/GOAL-CONTRACT.md` field names, preferred runtime recommendation, and expected result package. Do not emit child goals for `needs-info`, `ready-for-human`, or HITL-only tasks.
+Executable `ready-for-agent + AFK` must include a `Goal Contract` using `skills/_shared/GOAL-CONTRACT.md` field names, set `Preferred Runtime` to `dispatch_may_choose`, and name the expected result package. Do not emit child goals for `needs-info`, `ready-for-human`, or HITL-only tasks.
 
 ## Severity Derivation
 
@@ -40,7 +38,7 @@ Identify current blocker/gap, strongest affected boundary, blast radius/dependen
 
 ## Workflow
 
-Gather source/outcome; classify state; assign severity and transition reason; separate evidence added/missing; apply readiness contracts; for `ready-for-agent + AFK`, produce agent brief with Goal Contract/runtime recommendation; for HITL, output decision/options/risks/next action; decide lifecycle-state need; recommend next route.
+Gather source/outcome; classify state; assign severity and transition reason; separate evidence added/missing; apply readiness contracts; for `ready-for-agent + AFK`, produce an agent brief and Goal Contract while deferring runtime/package selection to `dispatch`; for HITL, output decision/options/risks/next action; decide lifecycle-state need; recommend next route.
 
 ## Hard Stops
 
@@ -49,7 +47,7 @@ Gather source/outcome; classify state; assign severity and transition reason; se
 - Stop before lifecycle state, closeout, or external ownership changes when source truth is unclear, mixed, or duplicated.
 - Do not treat severity as product priority.
 - Do not generate Goal Contracts for missing-info/HITL tasks.
-- Do not claim runtime/model/reasoning selector enforcement; recommendations are advisory for `dispatch`.
+- Do not select or recommend runtime, model, reasoning, worktree, isolation, or parallelization details; `dispatch` owns package routing after readiness.
 - Reject project-global `.planning`, `.gsd`, GSD clones, or task databases; redirect only when workstream-scoped `artifacts/<workstream-slug>/STATE.md` is justified.
 
 ## Output Shape

@@ -1,22 +1,28 @@
 #!/usr/bin/env python3
-"""Validate eval coverage-manifest.yaml without requiring PyYAML."""
+"""Validate the stdlib-readable eval coverage manifest."""
 
 from __future__ import annotations
 
 import csv
 import sys
+import tomllib
 from pathlib import Path
 
 EVALS_DIR = Path(__file__).resolve().parent
 if str(EVALS_DIR) not in sys.path:
     sys.path.insert(0, str(EVALS_DIR))
 
-import run_runtime
+try:
+    from routing_schema import PUBLIC_SKILL_ROUTES, expected_skill_for_row, route_expectations_for_row
+    from suite_registry import DEFAULT_SUITES
+except ImportError:  # pragma: no cover - package import path
+    from evals.routing_schema import PUBLIC_SKILL_ROUTES, expected_skill_for_row, route_expectations_for_row
+    from evals.suite_registry import DEFAULT_SUITES
 
 
 REPO = Path(__file__).resolve().parents[1]
 PROMPTS = REPO / "evals" / "prompts"
-DEFAULT_MANIFEST = REPO / "evals" / "coverage-manifest.yaml"
+DEFAULT_MANIFEST = REPO / "evals" / "coverage-manifest.toml"
 REQUIRED_LISTS = (
     "positives",
     "route_negatives",
@@ -48,6 +54,8 @@ ALLOWED_HARD_MARKERS = {
     "wiki_citation_boundary",
     "wiki_source_truth_boundary",
 }
+expected_route = expected_skill_for_row
+STRUCTURED_ROUTE_FIELDS = ("expected_best", "acceptable_routes", "forbidden_routes")
 
 
 class ManifestError(ValueError):
@@ -55,70 +63,20 @@ class ManifestError(ValueError):
 
 
 def parse_manifest(path: Path) -> dict[str, dict[str, list[str]]]:
-    """Parse the small YAML subset used by coverage-manifest.yaml."""
-    data: dict[str, dict[str, list[str]]] = {}
-    in_public_skills = False
-    current_skill: str | None = None
-    current_key: str | None = None
+    try:
+        payload = tomllib.loads(path.read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError) as exc:
+        raise ManifestError(f"{path}: unable to parse TOML: {exc}") from exc
 
-    for line_number, raw_line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
-        stripped = raw_line.strip()
-        if not stripped or stripped.startswith("#"):
-            continue
-
-        indent = len(raw_line) - len(raw_line.lstrip(" "))
-        if indent == 0:
-            if stripped != "public_skills:":
-                raise ManifestError(f"{path}:{line_number}: unsupported top-level key: {stripped}")
-            in_public_skills = True
-            current_skill = None
-            current_key = None
-            continue
-
-        if not in_public_skills:
-            raise ManifestError(f"{path}:{line_number}: content before public_skills")
-
-        if indent == 2 and stripped.endswith(":"):
-            current_skill = stripped[:-1]
-            current_key = None
-            if not current_skill:
-                raise ManifestError(f"{path}:{line_number}: blank skill key")
-            if current_skill in data:
-                raise ManifestError(f"{path}:{line_number}: duplicate skill key: {current_skill}")
-            data[current_skill] = {}
-            continue
-
-        if indent == 4 and ":" in stripped:
-            if current_skill is None:
-                raise ManifestError(f"{path}:{line_number}: list key without skill")
-            key, value = stripped.split(":", 1)
-            key = key.strip()
-            value = value.strip()
-            if key in data[current_skill]:
-                raise ManifestError(f"{path}:{line_number}: duplicate key for {current_skill}: {key}")
-            if value == "":
-                data[current_skill][key] = []
-                current_key = key
-                continue
-            if value == "[]":
-                data[current_skill][key] = []
-                current_key = key
-                continue
-            raise ManifestError(f"{path}:{line_number}: only block lists or [] are supported for {key}")
-
-        if indent == 6 and stripped.startswith("- "):
-            if current_skill is None or current_key is None:
-                raise ManifestError(f"{path}:{line_number}: list item without active key")
-            item = stripped[2:].strip()
-            if not item:
-                raise ManifestError(f"{path}:{line_number}: blank list item")
-            data[current_skill][current_key].append(item)
-            continue
-
-        raise ManifestError(f"{path}:{line_number}: unsupported YAML shape")
-
-    if not data:
+    data = payload.get("public_skills")
+    if not isinstance(data, dict) or not data:
         raise ManifestError(f"{path}: no public_skills entries found")
+    for skill, contract in data.items():
+        if not isinstance(contract, dict):
+            raise ManifestError(f"{path}: {skill} must be a table")
+        for key, values in contract.items():
+            if not isinstance(values, list) or any(not isinstance(item, str) for item in values):
+                raise ManifestError(f"{path}: {skill}.{key} must be a string array")
     return data
 
 
@@ -160,20 +118,6 @@ def split_reference(reference: str) -> tuple[str, str, str | None]:
     return path, row_id, marker
 
 
-def expected_route(row: dict[str, str]) -> str:
-    for field in ("expected_best", "expected_skill", "skill"):
-        value = (row.get(field) or "").strip()
-        if value:
-            return value
-    return ""
-
-
-def parse_routes(value: str | None, default: list[str]) -> list[str]:
-    if not value:
-        return default
-    return [item.strip() for item in value.split("|") if item.strip()]
-
-
 def validate_positive(skill: str, reference: str, row: dict[str, str], errors: list[str]) -> None:
     route = expected_route(row)
     should_trigger = (row.get("should_trigger") or "").strip().lower()
@@ -187,18 +131,40 @@ def validate_positive(skill: str, reference: str, row: dict[str, str], errors: l
 
 
 def validate_route_negative(skill: str, reference: str, row: dict[str, str], errors: list[str]) -> None:
-    route = expected_route(row)
-    should_trigger = (row.get("should_trigger") or "").strip().lower()
-    acceptable = parse_routes(row.get("acceptable_routes"), [route] if route else [])
-    if should_trigger == "false":
+    try:
+        route, acceptable, forbidden = route_expectations_for_row(row)
+    except ValueError as exc:
+        errors.append(f"{skill}: route_negative {reference} has invalid route expectations: {exc}")
         return
-    if route == skill:
-        errors.append(
-            f"{skill}: route_negative {reference} still expects {skill!r}; "
-            "use should_trigger=false or a row routed elsewhere"
+    should_trigger = (row.get("should_trigger") or "").strip().lower()
+    if should_trigger == "false":
+        owner = (row.get("skill") or "").strip()
+        if owner != skill:
+            errors.append(
+                f"{skill}: route_negative {reference} is owned by {owner!r}, not {skill!r}"
+            )
+        has_structured_expectations = any(
+            str(row.get(field) or "").strip() for field in STRUCTURED_ROUTE_FIELDS
         )
+        if not has_structured_expectations:
+            return
+    if route == skill:
+        if should_trigger == "false":
+            errors.append(
+                f"{skill}: route_negative {reference} still expects {skill!r}; "
+                "structured negatives must route elsewhere"
+            )
+        else:
+            errors.append(
+                f"{skill}: route_negative {reference} still expects {skill!r}; "
+                "use should_trigger=false or a row routed elsewhere"
+            )
     if skill in acceptable:
         errors.append(f"{skill}: route_negative {reference} allows {skill!r}")
+    if skill not in forbidden:
+        errors.append(
+            f"{skill}: route_negative {reference} does not explicitly forbid {skill!r}"
+        )
 
 
 def validate_hard_negative(
@@ -227,10 +193,10 @@ def validate_manifest(path: Path) -> list[str]:
     errors: list[str] = []
     manifest = parse_manifest(path)
     rows = load_rows()
-    public_routes = set(run_runtime.PUBLIC_SKILL_ROUTES)
+    public_routes = set(PUBLIC_SKILL_ROUTES)
     skill_dirs = public_skill_dirs()
     expected_skills = public_routes | skill_dirs
-    default_suites = set(run_runtime.DEFAULT_SUITES)
+    default_suites = set(DEFAULT_SUITES)
     actual_suites = {item.name for item in PROMPTS.glob("*.csv")}
 
     missing = sorted(expected_skills - set(manifest))

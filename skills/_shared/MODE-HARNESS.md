@@ -2,7 +2,7 @@ Target Reader: Groundwork skill authors, routers, implementers, reviewers, verif
 Reader Action Needed: Classify the host mode before durable writes, runtime claims, reviewer closeout, or artifact promotion.
 Decision Supported: Whether a skill may write files, run runtime tools, mutate git or remotes, produce conversation-only output, or must stop with a boundary.
 Artifact Type: shared guardrail
-Source of Truth: `skills/_shared/LIFECYCLE-PREFLIGHT.md`, `skills/to-prd/SKILL.md`, `skills/_shared/GRILLING.md`, and Groundwork role-separation policy.
+Source of Truth: Host-mode capability evidence, `skills/to-prd/SKILL.md`, `skills/_shared/GRILLING.md`, and Groundwork role-separation policy.
 Scope: Host-mode detection, Plan Mode fallback behavior, read-only/chat-only boundaries, durable write gates, runtime execution gates, and skill-specific downgrade behavior.
 Out of Scope: Implementing host tools, creating Plan Mode, executing runtimes, changing repository files by itself, approving release/UAT/customer readiness, or replacing skill-specific contracts.
 Evidence Level: Source-validation policy only. This contract does not prove tool-enforced Plan Mode, runtime execution, marketplace behavior, cache refresh, browser evidence, UAT evidence, release evidence, or customer readiness.

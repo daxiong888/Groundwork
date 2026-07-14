@@ -16,35 +16,25 @@ Raw plugin install/upgrade, marketplace, runtime, workflow, version, or skill-se
 Hard default for a named small artifact (`TASK.md`, pasted requirements, ticket excerpt, prototype notes) asking for compact PRD/spec or ACs.
 
 - Read only the named task artifact and this active `to-prd` contract.
-- Do not inspect Groundwork plugin README, `.codex-plugin/plugin.json`, plugin manifests, package internals, unrelated skill files, or shared lifecycle/evidence references.
+- Do not inspect plugin/package READMEs, manifests, package internals, unrelated skill files, or shared lifecycle/evidence references by default.
 - Do not load lifecycle, evidence, grilling, first-principles, adversarial-review, or PRD template references by default.
-- Package self-inspection only when asked to inspect, evaluate, debug, install, package, or prove Groundwork source/package behavior.
+- Leave this fast path only for explicit plugin/package self-inspection or when source/package behavior evidence is required by the requested decision.
 - Use the compact conversation PRD/spec shape below.
 - Mark missing product facts as **NEEDS CLARIFICATION**; do not search package internals or invent truth.
 
-Do not use the generic fast path for Groundwork-internal maintenance requests involving install/upgrade, marketplace behavior, runtime behavior, workflow changes, version enhancements, or skill-selection behavior. Use the Groundwork maintenance compact path below.
+Leave the fast path when the requested decision itself concerns plugin/package self-inspection, install or upgrade, marketplace, runtime, workflow, version, skill-selection, or source/package behavior. This permits requested source inspection; it does not make package internals a default context source.
 
 Escalate only for durable PRD artifacts, source-backed product truth, wiki context, lifecycle/workflow gates, requested source inspection, or drafting blockers.
 
-## Groundwork Maintenance Compact Path
-
-Use for Groundwork-internal compact drafts/specs, not source-backed proof or durable PRD files.
-
-- Read only the named task artifact and this active `to-prd` contract unless source/package behavior inspection is explicitly requested.
-- Do not inspect Groundwork plugin README, `.codex-plugin/plugin.json`, plugin manifests, installed package internals, or unrelated skill files by default.
-- Preserve lifecycle-state framing: Requirement State, Source Truth / Evidence Level, Visible User Value, Acceptance Criteria, Evidence Needed Before Implementation, Open Questions, Downstream Gate.
-- Mark unprovided package/runtime/workflow facts as **NEEDS CLARIFICATION**.
-- Load lifecycle/evidence/template refs only for durable artifacts, source-backed truth, accepted release/version/workflow/runtime truth, or explicit lifecycle gates.
-
 ## Required Evidence
 
-Use user context first. Inspect source/docs/prototypes/tickets/data only for material questions or requested source-backed truth. For Groundwork maintenance, apply repo-local `AGENTS.md`. Load lifecycle for durable/source-backed/accepted workflow truth; Plan Mode for raw PRD/spec/grill intake without write claims; grilling/domain/wiki refs only when material.
+Use user context first. Inspect source/docs/prototypes/tickets/data only for material questions or requested source-backed truth. Load `skills/_shared/LIFECYCLE-PREFLIGHT.md` for durable/source-backed/accepted workflow truth; Plan Mode for raw PRD/spec/grill intake without write claims; grilling/domain/wiki refs only when material.
 
 Load `skills/_shared/FIRST-PRINCIPLES.md` only when PRD shaping must separate primitive facts, constraints, root cause/core need, minimal valuable scope, and falsifiable success signal. Load `skills/_shared/ADVERSARIAL-REVIEW.md` only when the PRD may turn unsupported wording, prototype labels, glossary terms, or old docs into contract truth, implementation readiness, or stronger evidence than the source supports.
 
 ## Workflow
 
-Choose fast path, Groundwork maintenance compact path, or full path. State target reader, decision, facts, assumptions, open questions, and evidence level; ask only if blocked; mark unknown backend/business/acceptance facts as **NEEDS CLARIFICATION**; keep AC IDs stable; recommend `to-issues` only when accepted enough.
+Choose the compact or full path. State target reader, decision, facts, assumptions, open questions, and evidence level; ask only if blocked; mark unknown backend/business/acceptance facts as **NEEDS CLARIFICATION**; keep AC IDs stable; recommend `to-issues` only when accepted enough.
 
 ## Hard Stops
 
@@ -59,8 +49,6 @@ Choose fast path, Groundwork maintenance compact path, or full path. State targe
 ## Output Shape
 
 Default compact conversation PRD/spec: Problem / Intent, ACs, material Open Questions, and Next Step. Add Target Reader, Decision Supported, Known Facts, Assumptions, or Not In Scope only when they change review or acceptance.
-
-Groundwork maintenance compact spec adds only the material Requirement State, Source Truth / Evidence Level, Evidence Needed Before Implementation, and Downstream Gate fields.
 
 Durable PRD artifact: load `PRD-TEMPLATE.md`, apply audience-first artifact fields, and include the full source/evidence/lifecycle boundary only when artifact promotion is justified.
 

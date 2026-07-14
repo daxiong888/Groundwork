@@ -38,7 +38,7 @@ Derived from dispatch runtime router contracts, routing profiles, conflict prefl
 
 Package addressed to `codex_app_managed_worktree_thread` requires exactly one concrete write task with:
 
-- `dispatch_native_alignment.route_decision.route = worktree_isolated`;
+- `route_decision.route = worktree_isolated`;
 - `task_type = write_implementation`, `readiness = ready_for_agent`;
 - `isolation.filesystem = codex_managed_worktree`;
 - concrete isolation input such as dirty workspace, unrelated staged files, stale base, shared-file conflict, serial dependency, setup requirement, rollback/archive need, or material write risk;

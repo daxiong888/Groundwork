@@ -73,18 +73,6 @@ A decision map should be compact and reviewable:
 
 When decision mapping compares model, runtime, child-thread, worktree, subagent, or selector choices, use `skills/_shared/RUNTIME-CAPABILITY.md` and `skills/_shared/COGNITIVE-BUDGET.md`.
 
-Decision maps may recommend a model profile or runtime preference, but selector enforcement remains `prompt_preference`, `unavailable`, or `unknown` unless tool/runtime evidence proves `tool_enforced` for the specific run.
-
-Use these labels when runtime/model choice is material:
-
-The inline `evidence_layer` values below mirror the canonical runtime evidence layer enum in `skills/_shared/RUNTIME-CAPABILITY.md` and must be updated together.
-
-```yaml
-model_profile: fast_scan | balanced_work | strong_reasoning | exhaustive_review | spark_iteration
-capability_status: known | unknown | user_supplied | docs_reference | tool_enforced
-selector_enforcement: tool_enforced | prompt_preference | unavailable | unknown
-evidence_layer: prompt_preference | runtime_tool_evidence | user_observed_model_menu_seed | official_docs | community_evidence | local_characterization_eval
-runtime_evidence: not_claimed
-```
+Decision maps may recommend a model profile or runtime preference. Copy profile, reasoning, and cost/latency fields from `COGNITIVE-BUDGET.md`; copy capability, selector-enforcement, and evidence-layer fields from `RUNTIME-CAPABILITY.md`. Do not recreate either enum set in a decision map.
 
 Do not claim selector enforcement, runtime execution, installed-plugin behavior, cache refresh, marketplace behavior, UAT readiness, release readiness, or customer readiness from a decision map.

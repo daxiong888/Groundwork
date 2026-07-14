@@ -47,7 +47,7 @@ Material public skill changes must use `skills/_shared/SKILL-AUDIT.md` before ac
 
 `skill-audit` is a required shared workflow/reference. Do not promote it to `skills/skill-audit/SKILL.md` unless a later accepted publicization slice proves direct invocation value, routing negatives pass, and maintainer acceptance authorizes public exposure.
 
-Author self-audit is self-check only. Public skill approval, material skill-quality approval, and final acceptance require independent clean review or maintainer acceptance under `skills/_shared/ROLE-SEPARATION.md`.
+Author self-audit is self-check only. Public skill approval, material skill-quality approval, and final acceptance require independent clean review or maintainer acceptance under `skills/_shared/REVIEW-LOOP.md`.
 
 ## Hard Negatives
 
@@ -61,8 +61,7 @@ Hard-negative evals/checks must fail when:
 - prompt text alone is treated as runtime, selector, browser, UAT, release, customer, marketplace, or installed-plugin/cache evidence;
 - first-principles reasoning or adversarial self-check is treated as clean review, independent verification, runtime/browser/UAT/release/customer/marketplace/installed-plugin/cache evidence, or public-skill authorization;
 - author or same-session implementer approves their own material skill-quality change as final;
-- `low_risk_coordinator_intake` bypasses clean review for material public skill, shared guardrail, adapter contract, package template, schema, fixture, state-machine, or shared-config changes;
-- `low_risk_coordinator_intake` is relabeled as clean review passed or used as approval, readiness, archive, cleanup, merge, commit, push, PR, runtime, browser, marketplace, installed-plugin, or cache-refresh evidence.
+- any review exception violates the materiality, role-authority, low-risk eligibility, or evidence-label rules in `skills/_shared/REVIEW-LOOP.md`.
 
 ## Evidence Boundary
 

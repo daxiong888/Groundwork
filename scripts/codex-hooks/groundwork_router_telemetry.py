@@ -10,7 +10,6 @@ import importlib.util
 import json
 import os
 import re
-import sys
 import time
 import uuid
 from datetime import datetime, timezone
@@ -40,15 +39,15 @@ risk_markers = _route_detection.risk_markers
 evidence_markers = _route_detection.evidence_markers
 
 
+SENSITIVE_ASSIGNMENT_KEYS = r"(?:token|api[_-]?key|password|passwd|client[_-]?secret|aws_secret_access_key|cookie)"
 SECRET_PATTERNS = (
-    (re.compile(r"(Authorization:\s*Bearer\s+)[^\s,;]+", re.I), r"\1[REDACTED]"),
-    (re.compile(r"(token=)[^\s,;]+", re.I), r"\1[REDACTED]"),
-    (re.compile(r"(api[_-]?key=)[^\s,;]+", re.I), r"\1[REDACTED]"),
+    (re.compile(r"([\"']?Authorization[\"']?\s*:\s*[\"']?Bearer\s+)[^\"'\s,;}\]]+", re.I), r"\1[REDACTED]"),
     (
-        re.compile(r"((?:password|passwd|client[_-]?secret|aws_secret_access_key)\s*[:=]\s*)[^\s,;]+", re.I),
-        r"\1[REDACTED]",
+        re.compile(rf"([\"']?{SENSITIVE_ASSIGNMENT_KEYS}[\"']?\s*[:=]\s*)(?P<quote>[\"'])(?:(?:\\.)|(?!(?P=quote)).)*(?P=quote)", re.I),
+        r"\1\g<quote>[REDACTED]\g<quote>",
     ),
     (re.compile(r"(cookie:\s*)[^\n]+", re.I), r"\1[REDACTED]"),
+    (re.compile(rf"([\"']?{SENSITIVE_ASSIGNMENT_KEYS}[\"']?\s*[:=]\s*)[^\"'\s,;}}\]]+", re.I), r"\1[REDACTED]"),
     (re.compile(r"\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{20,}\b"), "[REDACTED_GITHUB_TOKEN]"),
     (re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}\b"), "[REDACTED_GITHUB_PAT]"),
     (re.compile(r"\bAKIA[0-9A-Z]{16}\b"), "[REDACTED_AWS_ACCESS_KEY_ID]"),
@@ -60,21 +59,13 @@ SECRET_PATTERNS = (
     ),
 )
 
-DEFAULT_CONFIG = {
-    "enabled": False,
-    "mode": "observe_only",
-    "raw_capture": False,
-    "snippet_capture": False,
-}
+DEFAULT_CONFIG = {"enabled": False, "mode": "observe_only", "raw_capture": False, "snippet_capture": False}
+BOOLEAN_CONFIG_FIELDS = {"enabled", "raw_capture", "snippet_capture"}
+TELEMETRY_RELATIVE_PATH = Path(".groundwork/harness/router-observability")
 
 
 def utc_now():
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-def load_stdin_event():
-    raw = sys.stdin.read()
-    return json.loads(raw) if raw.strip() else {}
 
 
 def redact_text(text, *, compact=False, limit=None):
@@ -100,18 +91,35 @@ def cwd_from_event(event):
     return Path(event.get("cwd") or os.getcwd()).resolve()
 
 
-def config_path(cwd):
-    return cwd / ".groundwork" / "harness" / "router-observability" / "config.json"
+def checked_telemetry_path(cwd, path):
+    project_root = Path(cwd).resolve()
+    telemetry_root = project_root / TELEMETRY_RELATIVE_PATH
+    candidate = Path(path)
+    candidate = candidate if candidate.is_absolute() else telemetry_root / candidate
+    if not candidate.is_relative_to(telemetry_root):
+        raise ValueError("router telemetry path escapes its project root")
+    current = project_root
+    for part in candidate.relative_to(project_root).parts:
+        current /= part
+        if current.is_symlink():
+            raise ValueError(f"router telemetry path contains a symlink: {current}")
+    if not candidate.resolve(strict=False).is_relative_to(telemetry_root.resolve(strict=False)):
+        raise ValueError("router telemetry path resolves outside its project root")
+    return candidate
 
 
 def load_config(cwd):
-    path = config_path(cwd)
     config = None
     source = "absent"
     try:
+        path = checked_telemetry_path(cwd, Path(cwd).resolve() / TELEMETRY_RELATIVE_PATH / "config.json")
         payload = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(payload, dict):
             raise ValueError("config must be an object")
+        if any(field in payload and not isinstance(payload[field], bool) for field in BOOLEAN_CONFIG_FIELDS):
+            raise ValueError("config boolean fields must use JSON booleans")
+        if "mode" in payload and not isinstance(payload["mode"], str):
+            raise ValueError("config mode must be a string")
         config = {**DEFAULT_CONFIG, **payload}
         source = ".groundwork/harness/router-observability/config.json"
     except FileNotFoundError:
@@ -143,9 +151,9 @@ def ids_from_event_with_sources(event):
     turn_source = "turn_id"
     turn_id = event.get("turn_id")
     if not turn_id:
-        turn_source, turn_id = "event_id", event.get("event_id")
-    if not turn_id:
         turn_source, turn_id = "request_id", event.get("request_id")
+    if not turn_id:
+        turn_source, turn_id = "event_id", event.get("event_id")
     if not turn_id and event.get("tool_use_id"):
         turn_source = "tool_use_id_fallback"
         turn_id = stable_hash(f"{session_id}:tool:{event.get('tool_use_id')}")[:12]
@@ -158,25 +166,58 @@ def ids_from_event_with_sources(event):
     return str(session_id), str(turn_id), session_source, turn_source
 
 
-def ids_from_event(event):
-    session_id, turn_id, _, _ = ids_from_event_with_sources(event)
-    return session_id, turn_id
+def safe_path_component(value):
+    text = str(value or "unknown")
+    if text in {".", ".."}:
+        return stable_hash(text)[:16]
+    return text if re.fullmatch(r"[A-Za-z0-9._-]+", text) else stable_hash(text)[:16]
 
 
-def turn_dir(cwd, event):
-    session_id, turn_id = ids_from_event(event)
-    return cwd / ".groundwork" / "harness" / "router-observability" / session_id / turn_id
+def turn_dir(cwd, session_id, turn_id):
+    return checked_telemetry_path(
+        cwd, Path(safe_path_component(session_id)) / safe_path_component(turn_id)
+    )
+
+
+def correlated_ids(cwd, event, event_name):
+    session_id, turn_id, session_source, turn_source = ids_from_event_with_sources(event)
+    active_path = checked_telemetry_path(
+        cwd, turn_dir(cwd, session_id, "active").parent / "active-turn.json"
+    )
+    if event_name == "UserPromptSubmit":
+        if turn_source == "turn_id":
+            try:
+                active_path.unlink()
+            except FileNotFoundError:
+                pass
+            return session_id, turn_id, session_source, turn_source
+        if turn_source != "request_id":
+            turn_id = f"fallback-{time.time_ns():x}"
+            turn_source = "generated_prompt_fallback"
+        write_json(active_path, {"turn_id": turn_id, "created_at": utc_now()})
+        return session_id, turn_id, session_source, turn_source
+    if turn_source == "turn_id":
+        return session_id, turn_id, session_source, turn_source
+    active = read_json(active_path)
+    if isinstance(active, dict) and active.get("turn_id"):
+        return session_id, str(active["turn_id"]), session_source, "active_prompt_fallback"
+    return session_id, turn_id, session_source, turn_source
 
 
 def write_json(path, value):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    with open_output(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, "w") as handle:
+        handle.write(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
 
 
 def append_jsonl(path, value):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a", encoding="utf-8") as handle:
+    with open_output(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, "a") as handle:
         handle.write(json.dumps(value, ensure_ascii=False, sort_keys=True) + "\n")
+
+
+def open_output(path, flags, mode):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor = os.open(path, flags | getattr(os, "O_NOFOLLOW", 0), 0o600)
+    return os.fdopen(descriptor, mode, encoding="utf-8")
 
 
 def read_json(path):
@@ -213,15 +254,25 @@ def ordered_events_for_stop(out_dir):
     events.sort(key=lambda event: (int(event.get("observed_at_ns") or 0), str(event.get("event_uuid") or "")))
     for index, event in enumerate(events, start=1):
         event["event_index"] = index
+    malformed_event_count = malformed_tool_events + malformed_permission_events
+    supported_event_count = sum(event.get("coverage_status") == "observed_supported" for event in events)
+    unsupported_event_count = sum(event.get("coverage_status") == "unsupported" for event in events)
+    classified_event_count = supported_event_count + unsupported_event_count
     return events, {
-        "schema_version": "router_telemetry.coverage.v1",
+        "schema_version": "router_telemetry.captured_event_coverage.v1",
+        "coverage_scope": "captured_hook_records_only",
+        "captured_record_count": len(events) + malformed_event_count,
+        "parsed_event_count": len(events),
+        "classified_event_count": classified_event_count,
         "tool_events": len(tool_events),
         "permission_events": len(permission_events),
         "malformed_tool_events": malformed_tool_events,
         "malformed_permission_events": malformed_permission_events,
+        "malformed_event_count": malformed_event_count,
         "event_ordering": "observed_at_ns,event_uuid",
-        "supported_event_count": sum(event.get("coverage_status") == "observed_supported" for event in events),
-        "unsupported_event_count": sum(event.get("coverage_status") != "observed_supported" for event in events),
+        "observed_supported_event_count": supported_event_count,
+        "observed_unsupported_event_count": unsupported_event_count,
+        "unclassified_event_count": len(events) - classified_event_count,
     }
 
 
@@ -229,16 +280,10 @@ def event_metadata():
     return {"observed_at_ns": time.time_ns(), "pid": os.getpid(), "event_uuid": str(uuid.uuid4())}
 
 
-def raw_capture_allows_unredacted():
-    return os.environ.get("GROUNDWORK_ROUTER_OBSERVABILITY_ALLOW_UNREDACTED_RAW_CAPTURE") == "1"
-
-
 def raw_capture_payload(key, value):
-    if raw_capture_allows_unredacted():
-        return {key: value, "redaction": {"status": "unredacted_explicitly_allowed", "notes": []}}
     return {
         key: redact_text(value),
-        "redaction": {"status": "redacted", "notes": ["raw capture is redacted unless explicitly allowed"]},
+        "redaction": {"status": "redacted", "notes": ["runtime raw capture is always redacted"]},
     }
 
 
@@ -307,10 +352,10 @@ def handle_user_prompt_submit(event):
     config, source = load_config(cwd)
     if not config or not config.get("enabled"):
         return None
-    session_id, turn_id, session_id_source, turn_id_source = ids_from_event_with_sources(event)
+    session_id, turn_id, session_id_source, turn_id_source = correlated_ids(cwd, event, "UserPromptSubmit")
     prompt = prompt_from_event(event)
     decision = entry_decision_from_prompt(prompt)
-    out_dir = turn_dir(cwd, event)
+    out_dir = turn_dir(cwd, session_id, turn_id)
     prompt_metadata = {
         "schema_version": "router_telemetry.prompt_metadata.v1",
         "session_id": session_id,
@@ -325,13 +370,13 @@ def handle_user_prompt_submit(event):
         "raw_prompt_storage": "enabled" if config.get("raw_capture") else "disabled",
     }
     router_decision = {
-        "schema_version": "router_telemetry.prompt_candidate.v1",
+        "schema_version": "router_telemetry.prompt_candidate.v2",
         "session_id": session_id,
         "turn_id": turn_id,
         "session_id_source": session_id_source,
         "turn_id_source": turn_id_source,
         "created_at": utc_now(),
-        "cwd": str(cwd),
+        "cwd_sha256": stable_hash(str(cwd)),
         "activation_source": source,
         "decision_mode": "observe_only",
         "requested_mode": str(config.get("mode") or "observe_only"),
@@ -342,12 +387,14 @@ def handle_user_prompt_submit(event):
         "prompt_route_candidate": decision.get("expected_best", "unknown"),
         "decision_source": "prompt_classifier_candidate",
         "decision_evidence": [{"kind": "prompt_hash", "value": prompt_metadata["prompt_sha256"]}],
-        "limitations": ["candidate only; not authoritative skill-load or route-hit evidence"],
+        "limitations": [
+            "route candidate only; no requirement-state, source-truth, risk, lifecycle, actual route, or skill-load inference"
+        ],
     }
-    write_json(out_dir / "prompt-metadata.json", prompt_metadata)
-    write_json(out_dir / "router-decision.json", router_decision)
+    write_json(checked_telemetry_path(cwd, out_dir / "prompt-metadata.json"), prompt_metadata)
+    write_json(checked_telemetry_path(cwd, out_dir / "router-decision.json"), router_decision)
     if config.get("raw_capture"):
-        write_json(out_dir / "prompt.raw.json", raw_capture_payload("prompt", prompt))
+        write_json(checked_telemetry_path(cwd, out_dir / "prompt.raw.json"), raw_capture_payload("prompt", prompt))
     return None
 
 
@@ -358,7 +405,7 @@ def handle_tool_event(event, hook_event_name):
         return None
     tool_name = tool_name_from_event(event)
     command = command_from_event(event)
-    session_id, turn_id, session_id_source, turn_id_source = ids_from_event_with_sources(event)
+    session_id, turn_id, session_id_source, turn_id_source = correlated_ids(cwd, event, hook_event_name)
     tool_input = event.get("tool_input") or event.get("input") or {}
     row = {
         "schema_version": "router_telemetry.tool_event.v1",
@@ -378,7 +425,7 @@ def handle_tool_event(event, hook_event_name):
         **tool_response_summary(event),
         **event_metadata(),
     }
-    append_jsonl(turn_dir(cwd, event) / "tool-events.jsonl", row)
+    append_jsonl(checked_telemetry_path(cwd, turn_dir(cwd, session_id, turn_id) / "tool-events.jsonl"), row)
     return None
 
 
@@ -387,7 +434,7 @@ def handle_permission_event(event):
     config, _ = load_config(cwd)
     if not config or not config.get("enabled"):
         return None
-    session_id, turn_id, session_id_source, turn_id_source = ids_from_event_with_sources(event)
+    session_id, turn_id, session_id_source, turn_id_source = correlated_ids(cwd, event, "PermissionRequest")
     tool_name = tool_name_from_event(event)
     command = command_from_event(event)
     row = {
@@ -405,7 +452,9 @@ def handle_permission_event(event):
         "status": str(event.get("status") or "unknown"),
         **event_metadata(),
     }
-    append_jsonl(turn_dir(cwd, event) / "permission-events.jsonl", row)
+    append_jsonl(
+        checked_telemetry_path(cwd, turn_dir(cwd, session_id, turn_id) / "permission-events.jsonl"), row
+    )
     return None
 
 
@@ -414,8 +463,9 @@ def handle_stop(event):
     config, _ = load_config(cwd)
     if not config or not config.get("enabled"):
         return None
-    out_dir = turn_dir(cwd, event)
-    decision = read_json(out_dir / "router-decision.json")
+    session_id, turn_id, _, _ = correlated_ids(cwd, event, "Stop")
+    out_dir = turn_dir(cwd, session_id, turn_id)
+    decision = read_json(checked_telemetry_path(cwd, out_dir / "router-decision.json"))
     if not isinstance(decision, dict):
         return None
     final_message = final_message_from_event(event)
@@ -437,12 +487,13 @@ def handle_stop(event):
         "skill_hits": [],
         "limitations": ["response shape is not actual route or skill-load evidence"],
     }
-    write_json(out_dir / "final-metadata.json", final_metadata)
+    write_json(checked_telemetry_path(cwd, out_dir / "final-metadata.json"), final_metadata)
     if config.get("raw_capture"):
         final_raw = raw_capture_payload("final", final_message)
-        (out_dir / "final.raw.txt").write_text(str(final_raw["final"] or ""), encoding="utf-8")
+        with open_output(checked_telemetry_path(cwd, out_dir / "final.raw.txt"), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, "w") as handle:
+            handle.write(str(final_raw["final"] or ""))
         write_json(
-            out_dir / "final.raw.meta.json",
+            checked_telemetry_path(cwd, out_dir / "final.raw.meta.json"),
             {
                 "schema_version": "router_telemetry.final_raw_metadata.v1",
                 "session_id": final_metadata["session_id"],
@@ -453,19 +504,8 @@ def handle_stop(event):
                 "redaction": final_raw["redaction"],
             },
         )
+    checked_telemetry_path(cwd, out_dir / "tool-events.jsonl")
+    checked_telemetry_path(cwd, out_dir / "permission-events.jsonl")
     _, coverage = ordered_events_for_stop(out_dir)
-    write_json(out_dir / "coverage.json", coverage)
+    write_json(checked_telemetry_path(cwd, out_dir / "coverage.json"), coverage)
     return None
-
-
-def run_handler(handler, event_name=None):
-    try:
-        event = load_stdin_event()
-        output = handler(event) if event_name is None else handler(event, event_name)
-    except Exception as exc:  # Hooks must not break normal Codex use.
-        output = None
-        if os.environ.get("GROUNDWORK_ROUTER_OBSERVABILITY_DEBUG"):
-            print(f"Groundwork router telemetry hook failed: {exc}", file=sys.stderr)
-    if output is not None:
-        print(json.dumps(output, ensure_ascii=False, sort_keys=True))
-    return 0

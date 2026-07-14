@@ -486,13 +486,7 @@ def entry_decision_from_prompt(prompt):
         "expected_best": normalize_route(route),
         "acceptable_routes": acceptable,
         "forbidden_routes": forbidden,
-        "route_boundary": "entry-contract",
-        "intent_kind": route if route in {"direct", "implement", "verify", "handoff", "prototype"} else "plan",
-        "requirement_state": "implementation_ready" if route == "implement" else "unknown",
-        "source_truth": "conversation",
-        "risk_gate": "none",
-        "expected_state_transition": "implement" if route == "implement" else "none",
-        "expected_stop_condition": "continue" if route != DIRECT_ROUTE else "direct_answer",
+        "candidate_scope": "route_only",
     }
 
 

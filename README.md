@@ -90,6 +90,8 @@ codex plugin add groundwork@groundwork
 
 If Codex is already open, restart the app or refresh the plugin list after installation.
 
+The builder replaces only output directories that contain its `.groundwork-marketplace-output` marker. It intentionally refuses markerless output, including marketplaces built by older versions. Inspect and remove a pre-marker output yourself, or choose a new `--output` path; the builder will not infer ownership and delete it automatically.
+
 ## Update Locally
 
 For a local checkout:

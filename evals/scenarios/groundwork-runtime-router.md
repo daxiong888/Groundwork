@@ -16,7 +16,7 @@ Expected route: `codex_app_managed_worktree_thread`
 
 Expected execution profile: balanced coding model, `reasoning_effort = medium`, `cost_latency_bias = balanced`, with a concrete `routing_reason`.
 
-Expected selector enforcement: `tool_if_available_else_prompt_preference` in the package, or `prompt_preference` / `unknown` in any result summary unless a runtime adapter confirms selector support.
+Expected selector policy: `tool_if_available_else_prompt_preference` in the package. Result summaries report `selector_enforcement` as `prompt_preference` or `unknown` unless a runtime adapter confirms selector application.
 
 Parallelization expectation: allowed only when conflict preflight finds `conflict_group = none` or an approved independent group.
 

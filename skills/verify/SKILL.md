@@ -25,7 +25,7 @@ Historical baselines are allowed only when the user explicitly asks for historic
 
 ## Default Path: Named Evidence Verification
 
-Use this path for generic claim-evidence verification when the prompt names `CLAIM.md`, `EVIDENCE.md`, a scope artifact, or explicit evidence artifact paths and does not ask to evaluate, debug, install, package, release, cache-check, or maintain Groundwork itself.
+Use this path for generic claim-evidence verification when the prompt names `CLAIM.md`, `EVIDENCE.md`, a scope artifact, or explicit evidence artifact paths and does not ask for plugin/package self-inspection, install, package, release, or cache verification.
 
 Read only:
 
@@ -33,7 +33,7 @@ Read only:
 - the user-named claim, evidence, scope, or check-output artifacts;
 - `VERIFY-SCOPE.md` and `SCOPE-EVIDENCE-TEMPLATE.md` when needed for the required scope-first report.
 
-Do not inspect Groundwork plugin README, `.codex-plugin/plugin.json`, plugin manifests, package internals, other skill `SKILL.md` files, or repository-wide docs/source by default. Leave this path only when the user explicitly asks for Groundwork maintenance, plugin/package/install/cache/release verification, or when a named in-scope artifact cites a specific additional path that must be checked.
+Do not inspect plugin/package READMEs, manifests, package internals, other skill `SKILL.md` files, or repository-wide docs/source by default. Leave this path only when the user explicitly asks for plugin/package self-inspection, install/cache/release verification, or when a named in-scope artifact cites a specific additional path that must be checked.
 
 Scenario workspace allowlisted file discovery is allowed and may be reported as a warning when noisy; do not treat allowlisted discovery of the named evidence files as a hard failure.
 

@@ -54,15 +54,10 @@ Use `skills/wiki/templates/` as the starter set:
 - `index.md`
 - `log.md`
 - `error-book.md`
-- `page-concept.md`
-- `page-decision.md`
-- `page-contract.md`
-- `page-procedure.md`
-- `page-summary.md`
-- `page-query.md`
-- `page-term.md`
+- `page.md`, the shared typed-page base
+- `PAGE-TYPES.md`, the type-profile and exact section-order contract
 
-Copy only the files required by the accepted storage mode and update dates, sources, status, stale risk, aliases, and evidence layers for the actual project.
+Copy only the files required by the accepted storage mode. For each authored page, start from `page.md`, apply one profile from `PAGE-TYPES.md`, replace every date/profile placeholder, and update sources, status, stale risk, aliases, and evidence layers for the actual project.
 
 ## Skill Interaction
 

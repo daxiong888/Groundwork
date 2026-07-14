@@ -4,7 +4,7 @@ Target Reader: Codex preparing handoff for managed worktree, role separation, vi
 Reader Action Needed: Preserve continuation state and ownership boundaries without upgrading evidence.
 Decision Supported: Which claims remain open gaps, which next role owns them, and which references must be cited for continuation.
 Artifact Type: branch-specific handoff reference
-Source of Truth: `skills/handoff/SKILL.md`, `skills/_shared/EVIDENCE-BOUNDARY.md`, `skills/_shared/ROLE-SEPARATION.md`, and `skills/dispatch/COMPLEX-WORK-SEPARATION.md`.
+Source of Truth: `skills/handoff/SKILL.md`, `skills/_shared/EVIDENCE-BOUNDARY.md`, `skills/_shared/REVIEW-LOOP.md`, and `skills/dispatch/COMPLEX-WORK-SEPARATION.md`.
 Scope: Complex handoff evidence boundaries, visual packet rules, wiki boundaries, release/runtime/cache continuation, and clean-review gaps.
 Out of Scope: Runtime execution, clean review, verification, coordinator closeout, archive, branch cleanup, commit, push, PR, tracker mutation, or native Handoff Git operations.
 Evidence Level: Source-validation rule only.
@@ -17,7 +17,7 @@ For managed worktree or material role-separated work, handoff preserves state an
 Use:
 
 - `skills/dispatch/COMPLEX-WORK-SEPARATION.md` for managed worktree separation and closeout boundaries.
-- `skills/_shared/ROLE-SEPARATION.md` for designer/planner, implementer, clean reviewer, verifier, and coordinator role boundaries.
+- `skills/_shared/REVIEW-LOOP.md` for materiality, role authority, clean-review evidence, and stale-review rules.
 - `skills/_shared/REVIEW-LOOP.md` when previous clean review is missing, stale, or findings remain.
 
 ## Evidence Boundaries
