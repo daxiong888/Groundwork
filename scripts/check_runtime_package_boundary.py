@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -12,52 +14,14 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PLUGIN_NAME = "groundwork"
-
-ALLOWED_RUNTIME_ROOTS = {
-    ".codex-plugin",
-    "hooks",
-    "skills",
-    "scripts",
-    "README.md",
-    "LICENSE",
-}
-
-EXPECTED_RUNTIME_HOOK_FILES = {
-    "hooks.json",
-}
-
-EXPECTED_RUNTIME_CODEX_HOOK_FILES = {
-    "groundwork_route_detection.py",
-    "groundwork_router_observability.py",
-    "permission_request_groundwork_trace.py",
-    "post_tool_use_groundwork_trace.py",
-    "pre_tool_use_groundwork_trace.py",
-    "stop_groundwork_score.py",
-    "user_prompt_submit_groundwork_entry.py",
-}
-
-FORBIDDEN_RUNTIME_ROOTS = {
-    ".git",
-    ".github",
-    ".codegraph",
-    ".groundwork",
-    ".trellis",
-    "AGENTS.md",
-    "CHANGELOG.md",
-    "PROJECT.md",
-    ".gitignore",
-    ".worktreeinclude.example",
-    "artifacts",
-    "docs",
-    "evals",
-    "examples",
-    "research",
-    "schemas",
-    "dist",
-    "refer",
-    "node_modules",
-}
+CONTRACT_PATH = ROOT / "scripts" / "runtime_package_manifest.json"
+PACKAGE_CONTRACT = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
+PLUGIN_NAME = PACKAGE_CONTRACT["plugin_name"]
+COPY_ENTRIES = PACKAGE_CONTRACT["copy_entries"]
+ALLOWED_RUNTIME_ROOTS = {destination.split("/", 1)[0] for destination in COPY_ENTRIES.values()}
+EXPECTED_EXACT_FILES = {key: set(value) for key, value in PACKAGE_CONTRACT["exact_files"].items()}
+FORBIDDEN_RUNTIME_ROOTS = set(PACKAGE_CONTRACT["forbidden_roots"])
+BUDGETS = PACKAGE_CONTRACT["budgets"]
 
 
 def parse_args() -> argparse.Namespace:
@@ -105,6 +69,122 @@ def file_set(root: Path) -> set[str]:
     if not root.exists():
         return set()
     return {path.relative_to(root).as_posix() for path in root.rglob("*") if path.is_file()}
+
+
+def sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
+def content_inventory(package_root: Path) -> list[dict[str, str]]:
+    generated = ".codex-plugin/runtime-manifest.json"
+    return [
+        {"path": path.relative_to(package_root).as_posix(), "sha256": sha256_bytes(path.read_bytes())}
+        for path in sorted(package_root.rglob("*"))
+        if path.is_file() and path.relative_to(package_root).as_posix() != generated
+    ]
+
+
+def line_count(paths) -> int:
+    total = 0
+    for path in paths:
+        if not path.is_file():
+            continue
+        try:
+            total += len(path.read_text(encoding="utf-8").splitlines())
+        except UnicodeDecodeError:
+            continue
+    return total
+
+
+def skill_reference_depth(skills_root: Path) -> int:
+    markdown = list(skills_root.rglob("*.md"))
+    nodes = {path.resolve() for path in markdown}
+    edges = {node: set() for node in nodes}
+    for path in markdown:
+        for reference in re.findall(r"`([^`]+\.md)`", path.read_text(encoding="utf-8")):
+            if reference.startswith("skills/"):
+                candidate = skills_root.parent / reference
+            elif "/" in reference:
+                root_candidate = skills_root.parent / reference
+                candidate = root_candidate if root_candidate.exists() else path.parent / reference
+            else:
+                candidate = path.parent / reference
+            resolved = candidate.resolve()
+            if resolved in nodes:
+                edges[path.resolve()].add(resolved)
+
+    maximum = 0
+
+    def visit(node: Path, seen: set[Path]) -> None:
+        nonlocal maximum
+        maximum = max(maximum, len(seen))
+        for target in edges[node]:
+            if target not in seen:
+                visit(target, seen | {target})
+
+    for node in nodes:
+        visit(node, {node})
+    return maximum
+
+
+def validate_runtime_provenance(package_root: Path, errors: list[str]) -> None:
+    manifest_path = package_root / ".codex-plugin" / "runtime-manifest.json"
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        plugin = json.loads((package_root / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError) as exc:
+        errors.append(f"Runtime provenance manifest is missing or invalid: {exc}")
+        return
+    inventory = content_inventory(package_root)
+    inventory_hash = sha256_bytes(json.dumps(inventory, sort_keys=True, separators=(",", ":")).encode("utf-8"))
+    require(manifest.get("plugin_name") == plugin.get("name"), errors, "Runtime manifest plugin_name mismatch.")
+    require(manifest.get("plugin_version") == plugin.get("version"), errors, "Runtime manifest plugin_version mismatch.")
+    require(
+        manifest.get("contract_sha256") == sha256_bytes(CONTRACT_PATH.read_bytes()),
+        errors,
+        "Runtime manifest package contract hash mismatch.",
+    )
+    require(manifest.get("content_file_count") == len(inventory), errors, "Runtime manifest content_file_count mismatch.")
+    require(manifest.get("content_inventory_sha256") == inventory_hash, errors, "Runtime manifest content hash mismatch.")
+    require(
+        manifest.get("readme_sha256") == sha256_bytes((package_root / "README.md").read_bytes()),
+        errors,
+        "Runtime manifest README hash mismatch.",
+    )
+    require(manifest.get("budgets") == BUDGETS, errors, "Runtime manifest budget contract mismatch.")
+
+
+def validate_complexity_budgets(package_root: Path, errors: list[str]) -> dict[str, int]:
+    runtime_files = [path for path in package_root.rglob("*") if path.is_file()]
+    generated_manifest = package_root / ".codex-plugin" / "runtime-manifest.json"
+    runtime_lines = line_count(path for path in runtime_files if path != generated_manifest)
+    skill_files = [path for path in (package_root / "skills").rglob("*") if path.is_file()]
+    hook_files = [path for path in (package_root / "scripts" / "codex-hooks").rglob("*") if path.is_file()]
+    metrics = {
+        "runtime_files": len(runtime_files),
+        "runtime_lines_excluding_generated_manifest": runtime_lines,
+        "skill_files": len(skill_files),
+        "skill_lines": line_count(skill_files),
+        "codex_hook_files": len(hook_files),
+        "codex_hook_lines": line_count(hook_files),
+        "skill_reference_depth": skill_reference_depth(package_root / "skills"),
+    }
+    pairs = {
+        "runtime_files": "max_runtime_files",
+        "runtime_lines_excluding_generated_manifest": "max_runtime_lines_excluding_generated_manifest",
+        "skill_files": "max_skill_files",
+        "skill_lines": "max_skill_lines",
+        "codex_hook_files": "max_codex_hook_files",
+        "codex_hook_lines": "max_codex_hook_lines",
+        "skill_reference_depth": "max_skill_reference_depth",
+    }
+    for metric, budget in pairs.items():
+        require(
+            metrics[metric] <= BUDGETS[budget],
+            errors,
+            f"Runtime complexity budget exceeded: {metric}={metrics[metric]} > {budget}={BUDGETS[budget]}",
+        )
+    return metrics
 
 
 def validate_hooks_config(package_root: Path, errors: list[str]) -> None:
@@ -176,7 +256,7 @@ def validate_package(package_root: Path) -> None:
 
     hook_files = file_set(package_root / "hooks")
     require(
-        hook_files == EXPECTED_RUNTIME_HOOK_FILES,
+        hook_files == EXPECTED_EXACT_FILES["hooks"],
         errors,
         "Runtime package hooks/ files must be exact:\n"
         + "\n".join(f"- hooks/{path}" for path in sorted(hook_files)),
@@ -192,28 +272,27 @@ def validate_package(package_root: Path) -> None:
 
     codex_hook_files = file_set(package_root / "scripts" / "codex-hooks")
     require(
-        codex_hook_files == EXPECTED_RUNTIME_CODEX_HOOK_FILES,
+        codex_hook_files == EXPECTED_EXACT_FILES["scripts/codex-hooks"],
         errors,
         "Runtime package scripts/codex-hooks/ files must be exact:\n"
         + "\n".join(f"- scripts/codex-hooks/{path}" for path in sorted(codex_hook_files)),
     )
+    plugin_metadata_files = file_set(package_root / ".codex-plugin")
+    require(
+        plugin_metadata_files == EXPECTED_EXACT_FILES[".codex-plugin"],
+        errors,
+        "Runtime package .codex-plugin/ files must be exact:\n"
+        + "\n".join(f"- .codex-plugin/{path}" for path in sorted(plugin_metadata_files)),
+    )
     validate_hooks_config(package_root, errors)
-
-    runtime_readme = ROOT / "README.runtime.md"
-    if (package_root / "README.md").is_file() and runtime_readme.is_file():
-        require(
-            (package_root / "README.md").read_text(encoding="utf-8")
-            == runtime_readme.read_text(encoding="utf-8"),
-            errors,
-            "Runtime package README.md must be generated from README.runtime.md.",
-        )
-    else:
-        require(runtime_readme.is_file(), errors, "Source README.runtime.md is missing.")
+    validate_runtime_provenance(package_root, errors)
+    metrics = validate_complexity_budgets(package_root, errors)
 
     if errors:
         raise SystemExit("\n\n".join(errors))
 
     print(f"runtime package boundary ok: {package_root}")
+    print("runtime complexity metrics: " + json.dumps(metrics, sort_keys=True))
 
 
 def main() -> int:

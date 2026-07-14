@@ -211,7 +211,7 @@ Required behavior:
 
 - Preserve existing checks for verify scope, QA Failure shape, gate fields, artifact header, `git add .`, lifecycle artifacts, and trace-ready forbidden behavior.
 - Keep the v0.4.1 fixes for code-diff-only readiness claims and low-risk cleanup claims.
-- Add stable checker ids in score JSON, such as `verify_scope_full`, `code_diff_only_readiness_claim`, and `low_risk_cleanup_claim`.
+- Add stable checker ids in score JSON, such as `verify_scope`, `code_diff_only_readiness_claim`, and `low_risk_cleanup_claim`.
 - Add unit tests for positive, negative, and negated/conditional wording.
 
 Exit criteria:

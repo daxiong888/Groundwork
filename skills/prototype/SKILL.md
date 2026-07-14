@@ -46,9 +46,9 @@ Mark missing backend/state/rule evidence as `mock`, `illustrative`, `proposed hy
 
 ## Output Shape
 
-Use a compact prototype report with question, decision, contract sources/status, confirmed/rejected decisions, mock/client-derived fields, assumptions, contract impact, open questions, next route, states/interactions explored, browser/runtime evidence, coverage, gaps, downstream feedback, cleanup, and next action.
+Default to prototype question, answer/decision, evidence boundary, states or interactions explored, material gaps, and cleanup/next action. Add contract sources, confirmed/rejected decisions, mock/client-derived fields, assumptions, contract impact, browser/runtime evidence, coverage, or downstream feedback only when the prototype actually exercised them.
 
-For visual handoff packets, include the required sections from `skills/_shared/VISUAL-HANDOFF-PACKET.md` or mark them `not applicable`.
+For an explicitly requested visual handoff packet, include the required sections from `skills/_shared/VISUAL-HANDOFF-PACKET.md`; do not emit an empty packet or `not applicable` placeholders for ordinary prototypes.
 
 ## Stop Condition
 

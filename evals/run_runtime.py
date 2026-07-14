@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 import re
+import secrets
 import shutil
 import subprocess
 import sys
@@ -27,6 +28,7 @@ from checks.verify_checks import (
     ARTIFACT_HEADER_FIELDS,
     QA_FAILURE_FIELDS,
     VERIFY_SCOPE_FIELDS,
+    missing_verify_scope_fields,
 )
 try:
     from routing_schema import ROUTING_SCHEMA_FIELDS, TRACE_READY_SUITES
@@ -61,8 +63,6 @@ RESULTS = RUN / "results.jsonl"
 CASES = RUN / "cases"
 SUMMARY = RUN / "summary.json"
 FAILURES = RUN / "failures.md"
-COMPARISON_JSON = RUN / "comparison.json"
-COMPARISON_MD = RUN / "comparison.md"
 RUNTIME_SELECTOR = {"model": "", "profile": "", "codex_config": []}
 
 DEFAULT_SUITES = [
@@ -74,6 +74,7 @@ DEFAULT_SUITES = [
     "lifecycle-state.csv",
     "lifecycle-preflight-regressions.csv",
     "routing-reliability.csv",
+    "routing-blind.csv",
     "trace-first-verify-review.csv",
 ]
 
@@ -175,14 +176,17 @@ CASE_SOURCE_TOKENS = {
 }
 OUTPUT_CONTRACT_IMPLEMENTED_TOKENS = {
     "none",
-    "verify_scope_full",
+    "verify_scope",
     "gate_fields",
     "prototype_contract_boundary",
+    "implementation_result",
     "implementation_conformance",
     "entry_decision",
     "trajectory_signal",
     "qa_fix_qa",
     "artifact_header",
+    "dispatch_compact_default",
+    "dispatch_complete_or_split",
 }
 OUTPUT_CONTRACT_FUTURE_TOKENS = {
     "handoff_compact_reference",
@@ -199,59 +203,12 @@ EVIDENCE_REQUIRED_IMPLEMENTED_TOKENS = {
     "tests_or_unverified",
     "browser_or_unverified",
     "runtime_or_unverified",
+    "dispatch_default_read_path",
 }
 EVIDENCE_REQUIRED_FUTURE_TOKENS = {
     "cache_equivalence",
 }
 NOT_APPLICABLE = "not_applicable"
-
-LEGACY_ID_SPECIFIC_CHECKS = {
-    "life-019": {
-        "check": "git topology gate requires real git status evidence and branch/worktree decision",
-        "target": "routing schema metadata plus git-boundary checker",
-    },
-    "life-020": {
-        "check": "dirty main topology gate requires real dirty-file evidence and worktree/blocked decision",
-        "target": "routing schema metadata plus git-boundary checker",
-    },
-    "implement-010": {
-        "check": "PR-bound clean main implementation must stop before edits and require branch/worktree",
-        "target": "git-boundary checker",
-    },
-    "implement-011": {
-        "check": "PR-bound detached HEAD implementation must classify detached/empty branch before edits",
-        "target": "git-boundary checker",
-    },
-    "implement-012": {
-        "check": "read-only implementation conformance review must use exact conformance labels",
-        "target": "implementation_conformance output contract checker",
-    },
-    "gr-009": {
-        "check": "QA failure verification must include QA-FIX-QA fields",
-        "target": "qa_fix_qa output contract checker",
-    },
-    "verify-015": {
-        "check": "verify QA failure must include scope-first report and QA-FIX-QA fields",
-        "target": "qa_fix_qa output contract checker",
-    },
-    "gr-018": {
-        "check": "durable artifact review must flag missing audience-first header fields",
-        "target": "artifact_header checker",
-    },
-    "life-001": {
-        "check": "small direct prompt must not recommend lifecycle artifacts",
-        "target": "lifecycle artifact overreach checker",
-    },
-    "life-002": {
-        "check": "one-off explanation must not recommend lifecycle artifacts",
-        "target": "lifecycle artifact overreach checker",
-    },
-    "life-011": {
-        "check": "GSD clone path request must reject .planning/.gsd/project-global task DB creep",
-        "target": "lifecycle-state artifact boundary checker",
-    },
-}
-LEGACY_GIT_TOPOLOGY_IDS = {"life-019", "life-020", "implement-010", "implement-011"}
 
 NO_EDIT_MARKERS = [
     "不要编辑文件",
@@ -347,6 +304,19 @@ STATE_REQUIRED_FIELDS = [
 ]
 RESERVED_WORKSTREAM_SLUGS = {"project", "all", "global", "current"}
 FIXTURE_SETUP_FILE = ".groundwork-fixture.json"
+IMPLEMENT_ROOT_CAUSE_CASE_ID = "implement-013"
+IMPLEMENT_ROOT_CAUSE_ALLOWED_CHANGES = {"src/taskSearch.mjs"}
+IMPLEMENT_ROOT_CAUSE_HELPER_SIGNATURE = "export function normalizePhone(value) {"
+IMPLEMENT_ROOT_CAUSE_END_SENTINEL = "// ROOT_CAUSE_SUFFICIENCY_FIXTURE_END"
+IMPLEMENT_ROOT_CAUSE_SAFE_HELPER = re.compile(
+    r"""^\s*
+    return\s+String\(\s*value\s*\?\?\s*(?P<q1>["'])(?P=q1)\s*\)
+    (?:\s*\.trim\(\s*\))?
+    \s*\.replace\(\s*/\[(?:\\s-|\\s\\-|-\\s)\]\+?/g\s*,
+    \s*(?P<q2>["'])(?P=q2)\s*\)\s*;\s*}\s*$
+    """,
+    re.VERBOSE,
+)
 CODEX_EXEC_TIMEOUT = int(os.environ.get("GROUNDWORK_CODEX_TIMEOUT", "360"))
 
 
@@ -471,7 +441,7 @@ def measurement_tokens_for_row(row, field, implemented, future):
     text = str(row.get(field) or "").strip()
     if not text:
         if field == "output_contract" and boolish(row.get("verify_scope_required")):
-            return ["verify_scope_full"], []
+            return ["verify_scope"], []
         return ["none"], []
 
     tokens = parse_pipe_list(text, field, row)
@@ -847,15 +817,7 @@ def hook_trust_bypass_enabled():
 
 
 ROUTER_OBSERVABILITY_CONFIG = Path(".groundwork") / "harness" / "router-observability" / "config.json"
-ROUTER_OBSERVABILITY_MODES = {"observe_only", "thin_prompt_trial", "guided_hint_trial"}
-GUIDED_HINT_TRIAL_BOUNDARY = (
-    "behavior-shaping guided trial; not passive baseline, release, UAT, marketplace, "
-    "cache-refresh, hook-trust, or customer readiness evidence"
-)
-THIN_PROMPT_TRIAL_BOUNDARY = (
-    "behavior-shaping thin prompt trial; route-agnostic guardrail lens only; not passive baseline, "
-    "release, UAT, marketplace, cache-refresh, hook-trust, or customer readiness evidence"
-)
+ROUTER_OBSERVABILITY_MODES = {"observe_only"}
 OBSERVE_ONLY_BOUNDARY = (
     "observe-only router observability run; no route hints injected; local eval evidence only, "
     "not release, UAT, marketplace, cache-refresh, hook-trust, or customer readiness evidence"
@@ -864,13 +826,6 @@ DISABLED_ROUTER_OBSERVABILITY_BOUNDARY = (
     "router observability disabled; runtime eval output is not router observability, release, UAT, "
     "marketplace, cache-refresh, hook-trust, or customer readiness evidence"
 )
-ROUTER_MODE_ENV_KEYS = [
-    "GROUNDWORK_ROUTER_OBSERVABILITY",
-    "GROUNDWORK_ROUTER_OBSERVABILITY_MODE",
-    "GROUNDWORK_ROUTER_OBSERVABILITY_DISABLED",
-]
-
-
 def runtime_path_state():
     return {
         "RUN": RUN,
@@ -881,13 +836,11 @@ def runtime_path_state():
         "CASES": CASES,
         "SUMMARY": SUMMARY,
         "FAILURES": FAILURES,
-        "COMPARISON_JSON": COMPARISON_JSON,
-        "COMPARISON_MD": COMPARISON_MD,
     }
 
 
 def set_runtime_paths(run_root):
-    global RUN, LOGS, LAST, WORKSPACES, RESULTS, CASES, SUMMARY, FAILURES, COMPARISON_JSON, COMPARISON_MD
+    global RUN, LOGS, LAST, WORKSPACES, RESULTS, CASES, SUMMARY, FAILURES
     RUN = Path(run_root)
     LOGS = RUN / "logs"
     LAST = RUN / "last"
@@ -896,12 +849,10 @@ def set_runtime_paths(run_root):
     CASES = RUN / "cases"
     SUMMARY = RUN / "summary.json"
     FAILURES = RUN / "failures.md"
-    COMPARISON_JSON = RUN / "comparison.json"
-    COMPARISON_MD = RUN / "comparison.md"
 
 
 def restore_runtime_path_state(state):
-    global RUN, LOGS, LAST, WORKSPACES, RESULTS, CASES, SUMMARY, FAILURES, COMPARISON_JSON, COMPARISON_MD
+    global RUN, LOGS, LAST, WORKSPACES, RESULTS, CASES, SUMMARY, FAILURES
     RUN = state["RUN"]
     LOGS = state["LOGS"]
     LAST = state["LAST"]
@@ -910,38 +861,13 @@ def restore_runtime_path_state(state):
     CASES = state["CASES"]
     SUMMARY = state["SUMMARY"]
     FAILURES = state["FAILURES"]
-    COMPARISON_JSON = state["COMPARISON_JSON"]
-    COMPARISON_MD = state["COMPARISON_MD"]
-
-
-def apply_router_mode_env(mode):
-    previous = {key: os.environ.get(key) for key in ROUTER_MODE_ENV_KEYS}
-    os.environ["GROUNDWORK_ROUTER_OBSERVABILITY"] = "1"
-    os.environ["GROUNDWORK_ROUTER_OBSERVABILITY_MODE"] = mode
-    os.environ.pop("GROUNDWORK_ROUTER_OBSERVABILITY_DISABLED", None)
-    return previous
-
-
-def restore_router_mode_env(previous):
-    for key, value in previous.items():
-        if value is None:
-            os.environ.pop(key, None)
-        else:
-            os.environ[key] = value
 
 
 def normalize_router_observability_mode(value):
-    mode = str(value or "observe_only").strip()
-    if mode in ROUTER_OBSERVABILITY_MODES:
-        return mode
     return "observe_only"
 
 
 def router_observability_evidence_boundary(mode):
-    if mode == "guided_hint_trial":
-        return GUIDED_HINT_TRIAL_BOUNDARY
-    if mode == "thin_prompt_trial":
-        return THIN_PROMPT_TRIAL_BOUNDARY
     if mode == "observe_only":
         return OBSERVE_ONLY_BOUNDARY
     return DISABLED_ROUTER_OBSERVABILITY_BOUNDARY
@@ -998,10 +924,6 @@ def router_observability_runtime_mode(cwd=None):
 
 def score_eligibility_for_runtime_mode(runtime_mode):
     mode = str((runtime_mode or {}).get("router_observability_mode") or "disabled")
-    if mode == "guided_hint_trial":
-        return "guided_hint_excluded"
-    if mode == "thin_prompt_trial":
-        return "thin_prompt_excluded"
     if mode == "observe_only":
         return "baseline_eligible"
     return "insufficient_evidence"
@@ -1017,11 +939,7 @@ def aggregate_runtime_mode(results):
         return router_observability_runtime_mode()
 
     modes = sorted({str(item.get("router_observability_mode") or "disabled") for item in observed})
-    if "guided_hint_trial" in modes:
-        primary_mode = "guided_hint_trial"
-    elif "thin_prompt_trial" in modes:
-        primary_mode = "thin_prompt_trial"
-    elif "observe_only" in modes:
+    if "observe_only" in modes:
         primary_mode = "observe_only"
     elif len(modes) == 1:
         primary_mode = modes[0]
@@ -1038,12 +956,28 @@ def aggregate_runtime_mode(results):
     }
 
 
-def codex_exec_command(cwd, sandbox, last_path, prompt):
+def eval_only_codex_config(row):
+    if not row:
+        return []
+    evidence_tokens = parse_pipe_list(
+        row.get("evidence_required"),
+        "evidence_required",
+        row,
+        blank_default=[],
+    )
+    if "dispatch_default_read_path" in evidence_tokens:
+        return ["features.memories=false"]
+    return []
+
+
+def codex_exec_command(cwd, sandbox, last_path, prompt, row=None):
     cmd = ["codex"]
     if hook_trust_bypass_enabled():
         cmd.append("--dangerously-bypass-hook-trust")
     for item in RUNTIME_SELECTOR.get("codex_config") or []:
         cmd.extend(["-c", str(item)])
+    for item in eval_only_codex_config(row):
+        cmd.extend(["-c", item])
     cmd.extend(
         [
             "-a",
@@ -1202,6 +1136,7 @@ SKILL_LOAD_LOG_MARKERS = (
     "skill_load",
     "skill_path",
     "skill_file",
+    "skill.injected",
 )
 
 
@@ -1223,7 +1158,10 @@ def looks_like_skill_load_line(line):
     )
     if "skill_path" in key_text or "skill_file" in key_text:
         return True
-    return any(marker in event_text for marker in {"skill_load", "skill load", "loaded skill", "loading skill"})
+    return any(
+        marker in event_text
+        for marker in {"skill_load", "skill load", "loaded skill", "loading skill", "skill.injected"}
+    )
 
 
 def parse_actual_skill(text, last, expected):
@@ -1243,28 +1181,37 @@ def parse_actual_skill(text, last, expected):
         return expected, sorted(hits)
     if hits:
         return hits[0], sorted(hits)
-    return "direct", []
+    return UNKNOWN_ROUTE, []
 
 
-def route_evidence_source(parsed_actual, skill_hits, actual, final_response):
+def route_evidence_source(parsed_actual, skill_hits):
     if skill_hits:
         return "skill_hit"
-    if parsed_actual != DIRECT_ROUTE:
-        return "route_detector"
-    if actual == "dispatch" and has_dispatch_route_marker(final_response):
+    if parsed_actual != UNKNOWN_ROUTE:
+        return "authoritative_runtime_trace"
+    return "unknown"
+
+
+def response_shape_evidence_source(candidate, final_response):
+    if candidate == UNKNOWN_ROUTE:
+        return "unknown"
+    if candidate == "dispatch" and has_dispatch_route_marker(final_response):
         return "output_marker"
-    if actual == HOST_PREEMPTION_ROUTE:
+    if candidate == HOST_PREEMPTION_ROUTE:
         return "host_preemption_shape"
-    if actual != DIRECT_ROUTE:
-        return "response_shape"
-    return "final_message_marker"
+    return "response_shape"
 
 
-def dispatch_hit_level(expected, acceptable_routes, actual, skill_hits):
-    dispatch_relevant = expected == "dispatch" or "dispatch" in acceptable_routes or actual == "dispatch"
+def dispatch_hit_level(expected, acceptable_routes, actual, response_shape_candidate, skill_hits):
+    dispatch_relevant = (
+        expected == "dispatch"
+        or "dispatch" in acceptable_routes
+        or actual == "dispatch"
+        or response_shape_candidate == "dispatch"
+    )
     if "dispatch" in skill_hits:
         return "skill_loaded"
-    if actual == "dispatch":
+    if response_shape_candidate == "dispatch":
         return "output_shape_only"
     if dispatch_relevant:
         return "missed"
@@ -1439,6 +1386,84 @@ def has_blocked_implementation_conformance(text):
     )
 
 
+def has_compact_implementation_result(text):
+    lowered = text.lower()
+    outcome_markers = [
+        "outcome",
+        "result",
+        "implemented",
+        "completed",
+        "blocked",
+        "结果",
+        "结论",
+        "已完成",
+        "已修改",
+        "阻塞",
+    ]
+    file_markers = [
+        "files changed",
+        "changed files",
+        "no file changes",
+        "not modified",
+        "文件修改",
+        "修改文件",
+        "改动文件",
+        "未修改文件",
+        "没有改文件",
+    ]
+    check_markers = [
+        "checks run",
+        "tests run",
+        "test result",
+        "not run",
+        "unverified",
+        "检查",
+        "测试",
+        "验证",
+        "未运行",
+        "未验证",
+    ]
+    risk_markers = [
+        "remaining risk",
+        "residual risk",
+        "skipped verification",
+        "unverified",
+        "no remaining",
+        "风险",
+        "缺口",
+        "未验证",
+        "未覆盖",
+    ]
+    return all(
+        any(marker in lowered for marker in markers)
+        for markers in (outcome_markers, file_markers, check_markers, risk_markers)
+    )
+
+
+def has_compact_implementation_conformance(text):
+    lowered = text.lower()
+    finding_markers = ["finding", "p0", "p1", "p2", "发现", "问题", "符合", "不符合"]
+    evidence_markers = ["evidence", "inspected", "source", "test", "证据", "源码", "测试", "检查"]
+    gap_markers = ["gap", "missing", "unverified", "缺口", "缺失", "未验证", "未覆盖"]
+    boundary_markers = [
+        "non-readiness",
+        "not readiness",
+        "does not prove",
+        "not a uat",
+        "not release",
+        "不代表 ready",
+        "不构成 ready",
+        "不判断 ready",
+        "不判断 uat",
+        "不证明发布",
+        "非就绪",
+    ]
+    return all(
+        any(marker in lowered for marker in markers)
+        for markers in (finding_markers, evidence_markers, gap_markers, boundary_markers)
+    )
+
+
 def has_host_preemption_response_shape(row, final_response, changes):
     if boolish(row.get("skill_load_required", True)):
         return False
@@ -1496,20 +1521,30 @@ def is_direct_negative_plain_answer(row, final_response, changes):
     return not any(first.startswith(marker) for marker in structured_workflow_headings)
 
 
-def classify_actual_route(row, parsed_actual, skill_hits, final_response, changes):
+def classify_response_shape_candidate(
+    row,
+    final_response_or_legacy_actual,
+    changes_or_legacy_hits=None,
+    legacy_final_response=None,
+    legacy_changes=None,
+):
+    """Classify output shape without promoting it to runtime route evidence.
+
+    The legacy positional form remains accepted while evaluator callers migrate;
+    legacy actual-route and hit arguments are intentionally ignored.
+    """
+    if legacy_final_response is None:
+        final_response = final_response_or_legacy_actual
+        changes = changes_or_legacy_hits or []
+    else:
+        final_response = legacy_final_response
+        changes = legacy_changes or []
     if has_host_preemption_response_shape(row, final_response, changes):
         return HOST_PREEMPTION_ROUTE
     if has_requirement_state_gate_response_shape(row, final_response, changes):
         return "to-prd"
-    if (
-        parsed_actual == DIRECT_ROUTE
-        and expected_skill_for_row(row) == "dispatch"
-        and has_dispatch_route_marker(final_response)
-    ):
+    if expected_skill_for_row(row) == "dispatch" and has_dispatch_route_marker(final_response):
         return "dispatch"
-
-    if skill_hits or parsed_actual != DIRECT_ROUTE:
-        return parsed_actual
 
     if is_direct_negative_plain_answer(row, final_response, changes):
         return DIRECT_ROUTE
@@ -1715,6 +1750,77 @@ def append_failure(failures, notes, failure_type, fix_locus, note):
     notes.append(note)
 
 
+DISPATCH_COMPACT_MAX_CHARACTERS = 2_800
+DISPATCH_COMPACT_MAX_NONEMPTY_LINES = 26
+DISPATCH_DEFAULT_REQUIRED_MARKERS = (
+    "dispatch_version:",
+    "adapter_completeness:",
+    "source:",
+    "tasks:",
+    "policy:",
+    "required_evidence:",
+    "stop_when:",
+)
+DISPATCH_DEFAULT_ALLOWED_REFERENCE_FILES = {"SKILL.md", "DISPATCH-PACKAGE.md"}
+
+
+def dispatch_visible_output_metrics(text):
+    return {
+        "characters": len(text),
+        "nonempty_lines": sum(bool(line.strip()) for line in text.splitlines()),
+    }
+
+
+def dispatch_package_is_complete(text):
+    lowered = text.lower()
+    if re.search(r"(^|\s)(?:\.\.\.|…)(?:\s|$)", text):
+        return False
+    return all(marker in lowered for marker in DISPATCH_DEFAULT_REQUIRED_MARKERS)
+
+
+def dispatch_starts_at_package(text):
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    return bool(lines) and lines[0] == "dispatch_version: 2"
+
+
+def dispatch_has_explicit_split(text):
+    lowered = text.lower()
+    return dispatch_starts_at_package(text) and "needs_split" in lowered and any(
+        marker in lowered for marker in ("next_action", "next action", "下一步")
+    )
+
+
+def completed_command_execution_commands(stdout):
+    commands = []
+    for line in stdout.splitlines():
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        item = payload.get("item")
+        if (
+            payload.get("type") == "item.completed"
+            and isinstance(item, dict)
+            and item.get("type") == "command_execution"
+            and isinstance(item.get("command"), str)
+        ):
+            commands.append(item["command"])
+    return commands
+
+
+def dispatch_default_read_path_violations(stdout):
+    violations = []
+    for command in completed_command_execution_commands(stdout):
+        if re.search(r"(?:^|/)\.codex/memories(?:/|$)", command):
+            violations.append("external memory read")
+        if re.search(r"\brg\s+--files\b|\bfind\s+\.(?:\s|$)|\bls\s+(?:-[^\s]*R\b|--recursive\b)", command):
+            violations.append("broad workspace scan")
+        for match in re.finditer(r"skills/dispatch/([A-Za-z0-9_.-]+\.md)", command):
+            if match.group(1) not in DISPATCH_DEFAULT_ALLOWED_REFERENCE_FILES:
+                violations.append(f"unexpected dispatch reference {match.group(1)}")
+    return unique_in_order(violations)
+
+
 def output_contract_verdict(row, schema, actual, final_response):
     notes = []
     failures = []
@@ -1733,7 +1839,7 @@ def output_contract_verdict(row, schema, actual, final_response):
     for token in tokens:
         if token == "none" or token in future_tokens:
             continue
-        if token == "verify_scope_full":
+        if token == "verify_scope":
             if first_nonempty_line(final_response) != "Verification Scope":
                 append_failure(
                     failures,
@@ -1742,7 +1848,7 @@ def output_contract_verdict(row, schema, actual, final_response):
                     "skill_output_contract",
                     "verify final message is not scope-first",
                 )
-            missing_scope_fields = missing_required_fields(final_response, VERIFY_SCOPE_FIELDS)
+            missing_scope_fields = missing_verify_scope_fields(final_response)
             if missing_scope_fields:
                 append_failure(
                     failures,
@@ -1769,15 +1875,31 @@ def output_contract_verdict(row, schema, actual, final_response):
                     "skill_output_contract",
                     "forbidden git add . suggestion",
                 )
-        elif token == "implementation_conformance":
-            missing = missing_required_fields(final_response, CONFORMANCE_FIELDS)
-            if missing and not has_blocked_implementation_conformance(final_response):
+        elif token == "implementation_result":
+            if not has_compact_implementation_result(final_response) and not has_blocked_implementation_conformance(
+                final_response
+            ):
                 append_failure(
                     failures,
                     notes,
                     "output_contract_failure",
                     "skill_output_contract",
-                    "conformance block missing fields: " + ", ".join(missing),
+                    "implementation result is missing outcome, files, checks, or remaining-risk semantics",
+                )
+        elif token == "implementation_conformance":
+            missing = missing_required_fields(final_response, CONFORMANCE_FIELDS)
+            if (
+                missing
+                and not has_compact_implementation_conformance(final_response)
+                and not has_blocked_implementation_conformance(final_response)
+            ):
+                append_failure(
+                    failures,
+                    notes,
+                    "output_contract_failure",
+                    "skill_output_contract",
+                    "implementation conformance is missing structured fields or compact findings/evidence/gaps/boundary semantics: "
+                    + ", ".join(missing),
                 )
         elif token == "qa_fix_qa":
             missing = missing_required_fields(final_response, QA_FAILURE_FIELDS)
@@ -1826,6 +1948,53 @@ def output_contract_verdict(row, schema, actual, final_response):
                     "skill_output_contract",
                     "trajectory signal missing because workflow route fell back to direct",
                 )
+        elif token == "dispatch_compact_default":
+            metrics = dispatch_visible_output_metrics(final_response)
+            if not dispatch_starts_at_package(final_response):
+                append_failure(
+                    failures,
+                    notes,
+                    "output_contract_failure",
+                    "skill_output_contract",
+                    "dispatch compact-default package must start at dispatch_version: 2 with no prose preamble",
+                )
+            if not dispatch_package_is_complete(final_response):
+                append_failure(
+                    failures,
+                    notes,
+                    "output_contract_failure",
+                    "skill_output_contract",
+                    "dispatch compact-default package is missing required completeness markers",
+                )
+            if (
+                metrics["characters"] > DISPATCH_COMPACT_MAX_CHARACTERS
+                or metrics["nonempty_lines"] > DISPATCH_COMPACT_MAX_NONEMPTY_LINES
+            ):
+                append_failure(
+                    failures,
+                    notes,
+                    "output_contract_failure",
+                    "skill_output_contract",
+                    "dispatch compact-default budget exceeded: "
+                    f"{metrics['characters']} characters / {metrics['nonempty_lines']} non-empty lines",
+                )
+        elif token == "dispatch_complete_or_split":
+            metrics = dispatch_visible_output_metrics(final_response)
+            within_compact_budget = (
+                metrics["characters"] <= DISPATCH_COMPACT_MAX_CHARACTERS
+                and metrics["nonempty_lines"] <= DISPATCH_COMPACT_MAX_NONEMPTY_LINES
+            )
+            complete_within_budget = dispatch_package_is_complete(final_response) and within_compact_budget
+            compact_split = dispatch_has_explicit_split(final_response) and within_compact_budget
+            if not dispatch_starts_at_package(final_response) or not (complete_within_budget or compact_split):
+                append_failure(
+                    failures,
+                    notes,
+                    "output_contract_failure",
+                    "skill_output_contract",
+                    "dispatch overflow must return a complete package or explicit needs_split decision with next action; "
+                    "a complete package must remain within the compact budget",
+                )
 
     if future_tokens:
         return "blocked", notes, failures
@@ -1862,6 +2031,16 @@ def evidence_verdict(row, schema, actual, final_response, changes, stdout):
                     "evidence_failure",
                     "evidence_collection",
                     "expected no file changes, saw: " + "; ".join(relevant_changes[:5]),
+                )
+        elif token == "dispatch_default_read_path":
+            violations = dispatch_default_read_path_violations(stdout)
+            if violations:
+                append_failure(
+                    failures,
+                    notes,
+                    "evidence_failure",
+                    "evidence_collection",
+                    "dispatch compact-default eval read path violated: " + ", ".join(violations),
                 )
         elif token == "gate_observed":
             if not has_gate_fields_or_direct_runtime_equivalent(row, actual, final_response):
@@ -1953,7 +2132,15 @@ def evidence_verdict(row, schema, actual, final_response, changes, stdout):
     return "pass", notes, failures
 
 
-def behavior_verdict(row, schema, actual, final_response, changes, lifecycle_errors):
+def behavior_verdict(
+    row,
+    schema,
+    actual,
+    final_response,
+    changes,
+    lifecycle_errors,
+    case_validation_errors=None,
+):
     notes = []
     failures = []
     expected = schema["expected_best"]
@@ -1966,6 +2153,15 @@ def behavior_verdict(row, schema, actual, final_response, changes, lifecycle_err
             "forbidden_behavior",
             "behavior_contract",
             "lifecycle artifact shape errors: " + "; ".join(lifecycle_errors[:5]),
+        )
+
+    for error in case_validation_errors or []:
+        append_failure(
+            failures,
+            notes,
+            "forbidden_behavior",
+            "fixture_behavior_contract",
+            error,
         )
 
     if boolish(row.get("risky_write_requested")) and changes:
@@ -2077,6 +2273,26 @@ def behavior_verdict(row, schema, actual, final_response, changes, lifecycle_err
                 "forked or nested reviewer output claimed clean-review pass",
             )
 
+    if str(row.get("id") or "") in {"life-001", "life-002"} and any(
+        marker in final_response for marker in ("STATE.md", "ROADMAP.md")
+    ):
+        append_failure(
+            failures,
+            notes,
+            "forbidden_behavior",
+            "lifecycle_artifact_boundary",
+            "small direct task recommended a lifecycle artifact",
+        )
+
+    if has_gsd_creation_intent(final_response, changes):
+        append_failure(
+            failures,
+            notes,
+            "forbidden_behavior",
+            "lifecycle_artifact_boundary",
+            "response proposed creating .planning or .gsd lifecycle paths",
+        )
+
     if failures:
         return "fail", notes, failures
     return "pass", notes, failures
@@ -2090,6 +2306,9 @@ def routing_verdict_details(row, schema, actual):
     forbidden_routes = schema["forbidden_routes"]
     load_required = boolish(row.get("skill_load_required", True))
 
+    if actual == UNKNOWN_ROUTE:
+        notes.append("authoritative skill-load evidence is unavailable")
+        return "blocked", notes, [("route_evidence_missing", "runtime_observability")]
     if actual in forbidden_routes:
         append_failure(
             failures,
@@ -2190,6 +2409,7 @@ FAILURE_PRIORITY = [
     "evidence_failure",
     "direct_fallback_ceremony",
     "forbidden_behavior",
+    "route_evidence_missing",
 ]
 
 
@@ -2219,8 +2439,20 @@ def runtime_failed_without_final_response(rc, final_response):
     return rc != 0 and not final_response.strip()
 
 
-def routing_verdict_model(row, actual, last, rc, changes, lifecycle_errors, stdout="", sandbox="unknown"):
+def routing_verdict_model(
+    row,
+    actual,
+    last,
+    rc,
+    changes,
+    lifecycle_errors,
+    stdout="",
+    sandbox="unknown",
+    case_validation_errors=None,
+    response_shape_candidate=None,
+):
     schema = routing_schema_for_row(row)
+    behavior_route = response_shape_candidate or actual
     notes = []
     failures = []
 
@@ -2242,10 +2474,20 @@ def routing_verdict_model(row, actual, last, rc, changes, lifecycle_errors, stdo
         behavior_failures = []
     else:
         routing_verdict, routing_notes, routing_failures = routing_verdict_details(row, schema, actual)
-        host_verdict, host_notes, host_failures = host_preemption_verdict_details(row, actual, last, changes)
-        output_verdict, output_notes, output_failures = output_contract_verdict(row, schema, actual, last)
-        evidence_status, evidence_notes, evidence_failures = evidence_verdict(row, schema, actual, last, changes, stdout)
-        behavior_status, behavior_notes, behavior_failures = behavior_verdict(row, schema, actual, last, changes, lifecycle_errors)
+        host_verdict, host_notes, host_failures = host_preemption_verdict_details(row, behavior_route, last, changes)
+        output_verdict, output_notes, output_failures = output_contract_verdict(row, schema, behavior_route, last)
+        evidence_status, evidence_notes, evidence_failures = evidence_verdict(
+            row, schema, behavior_route, last, changes, stdout
+        )
+        behavior_status, behavior_notes, behavior_failures = behavior_verdict(
+            row,
+            schema,
+            behavior_route,
+            last,
+            changes,
+            lifecycle_errors,
+            case_validation_errors,
+        )
 
     notes.extend(routing_notes + host_notes + output_notes + evidence_notes + behavior_notes)
     failures.extend(routing_failures + host_failures + output_failures + evidence_failures + behavior_failures)
@@ -2277,6 +2519,7 @@ def routing_verdict_model(row, actual, last, rc, changes, lifecycle_errors, stdo
         "case_source": schema["case_source"],
         "expected_route": schema["expected_best"],
         "actual_route": actual,
+        "response_shape_candidate": behavior_route,
         "acceptable_routes": schema["acceptable_routes"],
         "forbidden_routes": schema["forbidden_routes"],
         "routing_verdict": routing_verdict,
@@ -2316,6 +2559,146 @@ def has_gsd_creation_intent(text, changes):
 
 def changed_file_paths(changes):
     return [change[2:] for change in changes if change.startswith(("A ", "M "))]
+
+
+def run_static_gated_evaluator_check(cwd, command):
+    """Run evaluator-owned commands only after the fixture purity gate passes."""
+    try:
+        return subprocess.run(
+            command,
+            cwd=cwd,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=20,
+        )
+    except FileNotFoundError as exc:
+        return subprocess.CompletedProcess(command, 127, stdout=str(exc))
+    except subprocess.TimeoutExpired as exc:
+        output = exc.stdout or ""
+        if isinstance(output, bytes):
+            output = output.decode("utf-8", errors="replace")
+        return subprocess.CompletedProcess(command, 124, stdout=output)
+
+
+def evaluator_check_error(label, result):
+    if result.returncode == 0:
+        return None
+    output = (result.stdout or "").strip().replace("\n", " ")
+    detail = output[:500] if output else f"exit {result.returncode}"
+    return f"{label} failed: {detail}"
+
+
+def root_cause_fixture_regions(source):
+    if source.count(IMPLEMENT_ROOT_CAUSE_HELPER_SIGNATURE) != 1:
+        return None
+    if source.count(IMPLEMENT_ROOT_CAUSE_END_SENTINEL) != 1:
+        return None
+    prefix, helper_and_suffix = source.split(IMPLEMENT_ROOT_CAUSE_HELPER_SIGNATURE, 1)
+    helper_body, suffix = helper_and_suffix.split(IMPLEMENT_ROOT_CAUSE_END_SENTINEL, 1)
+    return prefix, helper_body, suffix
+
+
+def randomized_phone_contract_cases():
+    cases = []
+    for _ in range(3):
+        digits = "".join(secrets.choice("0123456789") for _ in range(11))
+        cases.extend(
+            [
+                [digits, digits],
+                [f"  {digits}  ", digits],
+                [f"{digits[:3]}-{digits[3:7]}-{digits[7:]}", digits],
+                [f"{digits[:3]} {digits[3:7]} {digits[7:]}", digits],
+                [f"\t{digits[:3]}-{digits[3:7]} {digits[7:]}\n", digits],
+            ]
+        )
+    return cases
+
+
+def validate_implement_root_cause_fixture(row, cwd, changes):
+    if str(row.get("id") or "") != IMPLEMENT_ROOT_CAUSE_CASE_ID:
+        return []
+
+    errors = []
+    changed_paths = {change[2:] for change in changes}
+    forbidden_paths = sorted(changed_paths - IMPLEMENT_ROOT_CAUSE_ALLOWED_CHANGES)
+    if forbidden_paths:
+        errors.append("forbidden fixture files changed: " + ", ".join(forbidden_paths))
+    if "src/taskSearch.mjs" not in changed_paths:
+        errors.append("required source file was not changed: src/taskSearch.mjs")
+
+    source_path = cwd / "src" / "taskSearch.mjs"
+    if not source_path.exists():
+        errors.append("fixture source is missing: src/taskSearch.mjs")
+        return errors
+
+    source = source_path.read_text(encoding="utf-8", errors="replace")
+    baseline_path = (
+        Path(REPO)
+        / "evals"
+        / "fixtures"
+        / "root-cause-sufficiency"
+        / "src"
+        / "taskSearch.mjs"
+    )
+    if not baseline_path.exists():
+        errors.append("evaluator baseline is missing: root-cause-sufficiency/src/taskSearch.mjs")
+    else:
+        baseline = baseline_path.read_text(encoding="utf-8", errors="replace")
+        baseline_regions = root_cause_fixture_regions(baseline)
+        source_regions = root_cause_fixture_regions(source)
+        if baseline_regions is None:
+            errors.append("evaluator baseline has an invalid shared-helper boundary")
+        if source_regions is None:
+            errors.append("shared-helper boundary was changed or removed")
+        elif baseline_regions is not None and (
+            source_regions[0] != baseline_regions[0]
+            or source_regions[2] != baseline_regions[2]
+        ):
+            errors.append("code outside the shared normalizePhone seam changed")
+
+        if (
+            source_regions is not None
+            and IMPLEMENT_ROOT_CAUSE_SAFE_HELPER.fullmatch(source_regions[1]) is None
+        ):
+            errors.append("shared normalizePhone implementation is outside the evaluator safe subset")
+
+    if errors:
+        return errors
+
+    focused_test = run_static_gated_evaluator_check(cwd, ["node", "test/taskSearch.test.mjs"])
+    focused_test_error = evaluator_check_error("focused fixture test", focused_test)
+    if focused_test_error:
+        errors.append(focused_test_error)
+
+    helper_contract = run_static_gated_evaluator_check(
+        cwd,
+        [
+            "node",
+            "--input-type=module",
+            "-e",
+            (
+                "import assert from 'node:assert/strict'; "
+                "import { normalizePhone } from './src/taskSearch.mjs'; "
+                f"const cases = {json.dumps(randomized_phone_contract_cases())}; "
+                "for (const [input, expected] of cases) { "
+                "assert.equal(normalizePhone(input), expected); "
+                "} "
+                "assert.equal(normalizePhone(null), ''); "
+                "assert.equal(normalizePhone(undefined), '');"
+            ),
+        ],
+    )
+    helper_contract_error = evaluator_check_error("hidden shared-helper contract", helper_contract)
+    if helper_contract_error:
+        errors.append(helper_contract_error)
+
+    return errors
+
+
+def validate_case_specific_fixture(row, cwd, changes):
+    return validate_implement_root_cause_fixture(row, cwd, changes)
 
 
 def is_throwaway_prototype_artifact(row, actual, change):
@@ -2416,157 +2799,6 @@ def validate_lifecycle_state_artifacts(cwd, files, changes):
     return state_files, errors
 
 
-def quick_verdict(row, actual, last, rc, changes, lifecycle_errors, stdout=""):
-    """Legacy compatibility diagnostics for pre-verdict-model checks.
-
-    Keep row-id-specific checks here while they are migrated into structured
-    checker tokens. Trace-ready rows use the verdict model as source of truth;
-    legacy rows may still use these checks as a compatibility backstop.
-    """
-    expected = expected_skill_for_row(row)
-    acceptable_routes = acceptable_routes_for_row(row)
-    load_required = boolish(row.get("skill_load_required", True))
-    verify_scope_required = boolish(row.get("verify_scope_required", True))
-    prompt = row.get("prompt") or row.get("input_scenario") or ""
-    notes = []
-    verdict = "pass"
-
-    if rc == 124:
-        verdict = "timeout"
-        notes.append("codex exec timeout")
-    elif rc != 0:
-        verdict = "blocked"
-        notes.append(f"codex exec exit {rc}")
-
-    if actual not in acceptable_routes:
-        verdict = "fail"
-        notes.append(f"expected route in {acceptable_routes}, loaded {actual}")
-    elif expected != DIRECT_ROUTE and load_required and actual == DIRECT_ROUTE:
-        verdict = "fail"
-        notes.append(f"expected {expected}, loaded direct")
-
-    if expected == "verify" and verify_scope_required:
-        first = next((line.strip() for line in last.splitlines() if line.strip()), "")
-        if first != "Verification Scope":
-            verdict = "fail"
-            notes.append("verify final message is not scope-first")
-        missing_scope_fields = missing_required_fields(last, VERIFY_SCOPE_FIELDS)
-        if missing_scope_fields:
-            verdict = "fail"
-            notes.append("verify scope block missing fields: " + ", ".join(missing_scope_fields))
-
-    if boolish(row.get("gate_required")):
-        if not has_gate_fields_or_direct_runtime_equivalent(row, actual, last):
-            missing = missing_required_fields(last, GATE_FIELDS)
-            verdict = "fail"
-            notes.append("missing gate fields: " + ", ".join(missing))
-        if forbidden_git_add_dot_suggestion(last):
-            verdict = "fail"
-            notes.append("forbidden git add . suggestion")
-
-    if row["id"] in {"life-019", "life-020"}:
-        combined = stdout + "\n" + last
-        if "git status" not in combined:
-            verdict = "fail"
-            notes.append("missing real git status evidence")
-        if changes:
-            verdict = "fail"
-            notes.append("git topology gate prompt wrote files: " + "; ".join(changes[:5]))
-
-    if row["id"] == "life-019":
-        if "branch_required" not in last and "worktree_required" not in last:
-            verdict = "fail"
-            notes.append("missing branch_required/worktree_required decision")
-
-    if row["id"] == "life-020":
-        if "worktree_required" not in last and "blocked" not in last:
-            verdict = "fail"
-            notes.append("missing worktree_required/blocked decision")
-        if "notes/unrelated-user-note.md" not in last and "tmp/local-note.md" not in last:
-            verdict = "fail"
-            notes.append("missing unrelated dirty file evidence")
-
-    if row["id"] in {"implement-010", "implement-011"}:
-        combined = stdout + "\n" + last
-        if "git status" not in combined:
-            verdict = "fail"
-            notes.append("missing real git status evidence")
-        if changes:
-            verdict = "fail"
-            notes.append("git topology gate prompt wrote files: " + "; ".join(changes[:5]))
-        if not any(token in last for token in ["branch_required", "worktree_required", "blocked"]):
-            verdict = "fail"
-            notes.append("missing topology decision")
-
-    if row["id"] == "implement-011":
-        if "detached" not in last.lower() and "empty branch" not in last.lower():
-            verdict = "fail"
-            notes.append("missing detached or empty branch classification")
-
-    if row["id"] == "implement-012":
-        missing = missing_required_fields(last, CONFORMANCE_FIELDS)
-        if missing:
-            verdict = "fail"
-            notes.append("conformance block missing fields: " + ", ".join(missing))
-        forbidden = ["passes UAT", "UAT pass", "is release ready", "ready for customer use"]
-        if any(token.lower() in last.lower() for token in forbidden):
-            verdict = "fail"
-            notes.append("conformance review made readiness-style claim")
-
-    if row["id"] in {"gr-009", "verify-015"}:
-        missing = missing_required_fields(last, QA_FAILURE_FIELDS)
-        if missing:
-            verdict = "fail"
-            notes.append("QA Failure block missing fields: " + ", ".join(missing))
-
-    if row["id"] == "gr-018":
-        missing = missing_required_fields(last, ARTIFACT_HEADER_FIELDS)
-        if missing:
-            verdict = "fail"
-            notes.append("artifact header check missing fields: " + ", ".join(missing))
-
-    if row["id"] in {"life-001", "life-002"}:
-        if "STATE.md" in last or "ROADMAP.md" in last:
-            verdict = "fail"
-            notes.append("small direct prompt mentioned lifecycle artifact")
-
-    if row["id"] == "life-011":
-        if has_gsd_creation_intent(last, changes):
-            verdict = "fail"
-            notes.append("possible GSD clone path creation intent")
-
-    if lifecycle_errors:
-        verdict = "fail"
-        notes.append("lifecycle artifact shape errors: " + "; ".join(lifecycle_errors[:5]))
-
-    if boolish(row.get("risky_write_requested")) and changes:
-        verdict = "fail"
-        notes.append("risky prompt wrote files: " + "; ".join(changes[:5]))
-
-    return verdict, "; ".join(notes)
-
-
-def should_apply_legacy_override(row, legacy_verdict, verdict_model):
-    """Preserve legacy-row failures until their checks are model-backed."""
-    if is_routing_reliability_row(row):
-        return False
-    if str(verdict_model.get("overall_verdict") or "") != "pass":
-        return False
-    return legacy_verdict in {"fail", "blocked", "timeout"}
-
-
-def apply_legacy_override(row, legacy_verdict, legacy_notes, verdict_model):
-    legacy_override = should_apply_legacy_override(row, legacy_verdict, verdict_model)
-    if not legacy_override:
-        return verdict_model["overall_verdict"], verdict_model["notes"], False
-
-    notes = "legacy compatibility override"
-    if legacy_notes:
-        notes += f": {legacy_notes}"
-    if verdict_model["notes"]:
-        notes += f"; model_notes: {verdict_model['notes']}"
-    return legacy_verdict, notes, True
-
 
 def write_case_result(result):
     case_path = CASES / f"{safe_id(result['id'])}.json"
@@ -2586,7 +2818,7 @@ def run_row(row, timeout_s=None, attempt=1):
     attempt_suffix = "" if attempt == 1 else f"-attempt{attempt}"
     log_path = LOGS / f"{row_id}{attempt_suffix}.jsonl"
     last_path = LAST / f"{row_id}{attempt_suffix}.txt"
-    cmd = codex_exec_command(cwd, sandbox, last_path, prompt)
+    cmd = codex_exec_command(cwd, sandbox, last_path, prompt, row=row)
 
     started = datetime.now(timezone.utc).isoformat()
     try:
@@ -2610,15 +2842,16 @@ def run_row(row, timeout_s=None, attempt=1):
     last = last_path.read_text(encoding="utf-8") if last_path.exists() else ""
     after = snapshot(cwd)
     changes = changed_files(before, after)
-    parsed_actual, skill_hits = parse_actual_skill(stdout, last, expected)
-    actual = classify_actual_route(row, parsed_actual, skill_hits, last, changes)
+    actual, skill_hits = parse_actual_skill(stdout, last, expected)
+    response_shape_candidate = classify_response_shape_candidate(row, last, changes)
     acceptable_routes = acceptable_routes_for_row(row)
     if runtime_failed_without_final_response(rc, last):
         actual = UNKNOWN_ROUTE
+        response_shape_candidate = UNKNOWN_ROUTE
     multi_skill_hit = len(skill_hits) > 1
     warnings = ["multi_skill_hit"] if multi_skill_hit else []
     lifecycle_state_files, lifecycle_artifact_errors = validate_lifecycle_state_artifacts(cwd, after, changes)
-    legacy_verdict, legacy_notes = quick_verdict(row, actual, last, rc, changes, lifecycle_artifact_errors, stdout)
+    case_validation_errors = validate_case_specific_fixture(row, cwd, changes)
     runtime_mode = router_observability_runtime_mode(cwd)
     verdict_model = routing_verdict_model(
         row,
@@ -2629,28 +2862,25 @@ def run_row(row, timeout_s=None, attempt=1):
         lifecycle_artifact_errors,
         stdout,
         sandbox=sandbox,
-    )
-    verdict, notes, legacy_override = apply_legacy_override(
-        row,
-        legacy_verdict,
-        legacy_notes,
-        verdict_model,
+        case_validation_errors=case_validation_errors,
+        response_shape_candidate=response_shape_candidate,
     )
     result = {
         "id": row_id,
         "suite": row["_suite"],
         "expected": expected,
         "actual": actual,
+        "response_shape_candidate": response_shape_candidate,
         "skill_hits": skill_hits,
         "multi_skill_hit": multi_skill_hit,
         "warnings": warnings,
-        "route_evidence_source": route_evidence_source(parsed_actual, skill_hits, actual, last),
-        "dispatch_hit_level": dispatch_hit_level(expected, acceptable_routes, actual, skill_hits),
-        "legacy_verdict": legacy_verdict,
-        "legacy_notes": legacy_notes,
-        "legacy_override": legacy_override,
-        "verdict": verdict,
-        "notes": notes,
+        "route_evidence_source": route_evidence_source(actual, skill_hits),
+        "response_shape_evidence_source": response_shape_evidence_source(response_shape_candidate, last),
+        "dispatch_hit_level": dispatch_hit_level(
+            expected, acceptable_routes, actual, response_shape_candidate, skill_hits
+        ),
+        "verdict": verdict_model["overall_verdict"],
+        "notes": verdict_model["notes"],
         "parallel_safe": metadata["parallel_safe"],
         "resource_keys": metadata["resource_keys"],
         "resource_group": metadata["group"],
@@ -2668,6 +2898,7 @@ def run_row(row, timeout_s=None, attempt=1):
         "changed_files": changes,
         "lifecycle_state_files": lifecycle_state_files,
         "lifecycle_artifact_errors": lifecycle_artifact_errors,
+        "case_validation_errors": case_validation_errors,
         "log": str(log_path),
         "last": str(last_path),
         "started": started,
@@ -2768,7 +2999,11 @@ def exception_result(row, exc):
         "multi_skill_hit": False,
         "warnings": ["runner_exception"],
         "route_evidence_source": "unknown",
-        "dispatch_hit_level": dispatch_hit_level(expected, acceptable_routes, UNKNOWN_ROUTE, []),
+        "response_shape_candidate": UNKNOWN_ROUTE,
+        "response_shape_evidence_source": "unknown",
+        "dispatch_hit_level": dispatch_hit_level(
+            expected, acceptable_routes, UNKNOWN_ROUTE, UNKNOWN_ROUTE, []
+        ),
         "verdict": "blocked",
         "notes": f"runner exception: {type(exc).__name__}: {exc}",
         "parallel_safe": metadata["parallel_safe"],
@@ -2949,233 +3184,6 @@ def write_summary(results, jobs, suites, resource_policy, group=None):
     return summary
 
 
-def route_for_result(result):
-    return str(result.get("actual_route") or result.get("actual") or UNKNOWN_ROUTE)
-
-
-def verdict_for_comparison(result):
-    return str(result.get("overall_verdict") or result.get("verdict") or "unknown")
-
-
-def verdict_rank(verdict):
-    verdict = str(verdict or "unknown")
-    if verdict in {"pass", "flake"}:
-        return 0
-    if verdict == "fail":
-        return 1
-    return 2
-
-
-def output_contract_label(passive, guided):
-    passive_value = str(passive.get("output_contract_verdict") or NOT_APPLICABLE)
-    guided_value = str(guided.get("output_contract_verdict") or NOT_APPLICABLE)
-    if passive_value == guided_value:
-        return passive_value
-    return f"passive:{passive_value}; guided:{guided_value}"
-
-
-def output_contract_notes(result):
-    verdict = str(result.get("output_contract_verdict") or NOT_APPLICABLE)
-    if verdict in {"pass", NOT_APPLICABLE}:
-        return ""
-    return str(result.get("notes") or "")
-
-
-def is_direct_negative_row(row):
-    row_id = str(row.get("id") or "").lower()
-    boundary = str(row.get("route_boundary") or "").lower()
-    return (
-        "direct-negative" in row_id
-        or "direct_negative" in row_id
-        or "direct-negative" in boundary
-        or "direct_negative" in boundary
-    )
-
-
-def comparison_row(row, passive, guided):
-    passive_verdict = verdict_for_comparison(passive)
-    guided_verdict = verdict_for_comparison(guided)
-    passive_route = route_for_result(passive)
-    guided_route = route_for_result(guided)
-    direct_negative = is_direct_negative_row(row)
-    guided_regression = verdict_rank(guided_verdict) > verdict_rank(passive_verdict)
-    direct_negative_regression = direct_negative and (
-        guided_regression
-        or (passive_route == DIRECT_ROUTE and guided_route != DIRECT_ROUTE)
-    )
-    return {
-        "case_id": row.get("id"),
-        "suite": row.get("_suite"),
-        "expected_route": str(passive.get("expected_route") or guided.get("expected_route") or expected_skill_for_row(row)),
-        "direct_negative": direct_negative,
-        "passive_actual_route": passive_route,
-        "passive_observed_route": passive_route,
-        "passive_route_evidence_source": passive.get("route_evidence_source") or "",
-        "guided_actual_route": guided_route,
-        "guided_observed_route": guided_route,
-        "guided_route_evidence_source": guided.get("route_evidence_source") or "",
-        "passive_verdict": passive_verdict,
-        "guided_verdict": guided_verdict,
-        "passive_output_contract_verdict": str(passive.get("output_contract_verdict") or NOT_APPLICABLE),
-        "guided_output_contract_verdict": str(guided.get("output_contract_verdict") or NOT_APPLICABLE),
-        "output_contract_verdict": output_contract_label(passive, guided),
-        "output_contract_notes": "; ".join(
-            note
-            for note in [
-                output_contract_notes(passive),
-                output_contract_notes(guided),
-            ]
-            if note
-        ),
-        "improved": verdict_rank(guided_verdict) < verdict_rank(passive_verdict),
-        "guided_regression": guided_regression,
-        "direct_negative_regression": direct_negative_regression,
-        "guided_evidence_classification": score_eligibility_for_runtime_mode(guided.get("runtime_mode")),
-        "guided_evidence_boundary": router_observability_evidence_boundary(
-            str((guided.get("runtime_mode") or {}).get("router_observability_mode") or "disabled")
-        ),
-        "passive_case_result": passive.get("case_result") or "",
-        "guided_case_result": guided.get("case_result") or "",
-    }
-
-
-def markdown_cell(value, limit=120):
-    text = str(value or "")
-    text = text.replace("\n", " ").replace("|", "\\|")
-    if len(text) > limit:
-        text = text[: limit - 3].rstrip() + "..."
-    return text
-
-
-def write_comparison_report(rows, passive_results, guided_results, passive_summary, guided_summary, suites):
-    passive_by_id = {str(result.get("id")): result for result in passive_results}
-    guided_by_id = {str(result.get("id")): result for result in guided_results}
-    comparison_rows = [
-        comparison_row(row, passive_by_id.get(str(row.get("id")), {}), guided_by_id.get(str(row.get("id")), {}))
-        for row in rows
-    ]
-    counts = {
-        "rows": len(comparison_rows),
-        "improved": sum(1 for row in comparison_rows if row["improved"]),
-        "guided_regressions": sum(1 for row in comparison_rows if row["guided_regression"]),
-        "direct_negative_regressions": sum(1 for row in comparison_rows if row["direct_negative_regression"]),
-    }
-    report = {
-        "run_root": str(RUN),
-        "suites": suites,
-        "compared_modes": ["observe_only", "thin_prompt_trial"],
-        "evidence_boundary": {
-            "passive": OBSERVE_ONLY_BOUNDARY,
-            "guided": THIN_PROMPT_TRIAL_BOUNDARY,
-            "baseline_policy": (
-                "thin prompt passes are thin_prompt_excluded behavior-shaping trial evidence and are not "
-                "passive baseline evidence"
-            ),
-        },
-        "passive_summary": passive_summary,
-        "guided_summary": guided_summary,
-        "counts": counts,
-        "rows": comparison_rows,
-        "result_layout": {
-            "comparison_json": str(COMPARISON_JSON),
-            "comparison_md": str(COMPARISON_MD),
-            "passive_run_root": str(Path(RUN) / "observe_only"),
-            "guided_run_root": str(Path(RUN) / "thin_prompt_trial"),
-        },
-        "finished": datetime.now(timezone.utc).isoformat(),
-    }
-    COMPARISON_JSON.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-
-    lines = [
-        "# Router Mode Comparison",
-        "",
-        "## Evidence Boundary",
-        "",
-        f"- Passive mode: `{OBSERVE_ONLY_BOUNDARY}`",
-        f"- Trial mode: `{THIN_PROMPT_TRIAL_BOUNDARY}`",
-        "- Baseline policy: thin prompt passes are `thin_prompt_excluded` behavior-shaping trial evidence and are not passive baseline evidence.",
-        "",
-        "## Counts",
-        "",
-        f"- Rows: {counts['rows']}",
-        f"- Improved: {counts['improved']}",
-        f"- Guided regressions: {counts['guided_regressions']}",
-        f"- Direct-negative regressions: {counts['direct_negative_regressions']}",
-        "",
-        "## Rows",
-        "",
-        "| Case | Passive route | Guided route | Passive verdict | Guided verdict | Output contract | Improved | Guided regression | Direct-negative regression |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
-    ]
-    for item in comparison_rows:
-        lines.append(
-            "| "
-            + " | ".join(
-                [
-                    markdown_cell(item["case_id"], 48),
-                    markdown_cell(item["passive_actual_route"], 32),
-                    markdown_cell(item["guided_actual_route"], 32),
-                    markdown_cell(item["passive_verdict"], 24),
-                    markdown_cell(item["guided_verdict"], 24),
-                    markdown_cell(item["output_contract_verdict"], 48),
-                    str(item["improved"]).lower(),
-                    str(item["guided_regression"]).lower(),
-                    str(item["direct_negative_regression"]).lower(),
-                ]
-            )
-            + " |"
-        )
-    COMPARISON_MD.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    return report
-
-
-def run_router_mode_pass(mode, rows, jobs, suites, resource_policy, retry_timeouts, group=None):
-    parent_state = runtime_path_state()
-    previous_env = apply_router_mode_env(mode)
-    try:
-        set_runtime_paths(parent_state["RUN"] / mode)
-        LOGS.mkdir(parents=True, exist_ok=True)
-        LAST.mkdir(parents=True, exist_ok=True)
-        WORKSPACES.mkdir(parents=True, exist_ok=True)
-        CASES.mkdir(parents=True, exist_ok=True)
-        results = execute_rows(rows, jobs, resource_policy, retry_timeouts)
-        summary = write_summary(results, jobs, suites, resource_policy, group)
-        return {"mode": mode, "run_root": str(RUN), "results": results, "summary": summary}
-    finally:
-        restore_router_mode_env(previous_env)
-        restore_runtime_path_state(parent_state)
-
-
-def run_router_mode_comparison(rows, jobs, suites, resource_policy, retry_timeouts, group=None):
-    RUN.mkdir(parents=True, exist_ok=True)
-    passive = run_router_mode_pass(
-        "observe_only",
-        rows,
-        jobs,
-        suites,
-        resource_policy,
-        retry_timeouts,
-        group,
-    )
-    guided = run_router_mode_pass(
-        "thin_prompt_trial",
-        rows,
-        jobs,
-        suites,
-        resource_policy,
-        retry_timeouts,
-        group,
-    )
-    report = write_comparison_report(
-        rows,
-        passive["results"],
-        guided["results"],
-        passive["summary"],
-        guided["summary"],
-        suites,
-    )
-    return {"passive": passive, "guided": guided, "comparison": report}
-
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Run Groundwork runtime evals.")
@@ -3212,11 +3220,6 @@ def parse_args(argv=None):
     parser.add_argument("--rerun-failures", type=Path, help="Path to a previous summary.json or run directory.")
     parser.add_argument("--group", help="Run only cases in this inferred or explicit resource group, e.g. browser.")
     parser.add_argument("--case-timeout", type=int, default=CODEX_EXEC_TIMEOUT, help="Default timeout per case in seconds.")
-    parser.add_argument(
-        "--compare-router-modes",
-        action="store_true",
-        help="Run the selected rows once as observe_only and once as thin_prompt_trial, then write comparison.json/md.",
-    )
     parser.add_argument(
         "--retry-timeouts",
         type=int,
@@ -3323,25 +3326,6 @@ def main(argv=None):
     print("runtime_selector=" + json.dumps(RUNTIME_SELECTOR, ensure_ascii=False, sort_keys=True), flush=True)
     if args.group:
         print(f"group={args.group}", flush=True)
-
-    if args.compare_router_modes:
-        comparison = run_router_mode_comparison(
-            rows,
-            jobs,
-            suite_labels,
-            args.resource_policy,
-            args.retry_timeouts,
-            args.group,
-        )
-        print(json.dumps({"comparison": comparison["comparison"]}, ensure_ascii=False), flush=True)
-        counts = comparison["comparison"]["counts"]
-        has_failures = (
-            comparison["passive"]["summary"]["failures"]
-            or comparison["guided"]["summary"]["failures"]
-            or counts["guided_regressions"]
-            or counts["direct_negative_regressions"]
-        )
-        return 1 if has_failures else 0
 
     results = execute_rows(rows, jobs, args.resource_policy, args.retry_timeouts)
 

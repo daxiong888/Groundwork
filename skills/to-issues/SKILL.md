@@ -52,13 +52,13 @@ Confirm source/acceptance, stop if not accepted enough, apply locale, split vert
 
 ## Output Shape
 
-Use tracker-neutral issue drafts with summary, source, title, goal, ACs, evidence/source, blockers, AFK/HITL, contract impact, verification evidence, runtime candidate, missing fields, triage candidate, ordering, next action, and artifact recommendation.
+Default to tracker-neutral drafts containing title/goal, ACs, blockers or dependencies, and verification expectation. State the accepted source once for the package. Add AFK/HITL, contract impact, runtime candidate, missing fields, triage candidate, ordering, next action, or artifact recommendation only when it changes execution or review.
 
 Runtime candidate block, when used, must include `recommendation_only: true`, source support, task/runtime/isolation/parallelization candidates, Goal Contract status/missing fields, runtime missing fields, `not_readiness_evidence: true`.
 
 ## Stop Condition
 
-Stop when each draft has a vertical slice, ACs, blockers, execution type, contract impact, verification evidence needed, runtime candidate fields, missing fields, triage recommendation, and next action.
+Stop when each draft has a vertical slice, ACs, material blockers/dependencies, and verification evidence needed. Require execution type, contract impact, runtime candidate, triage recommendation, or next action only when applicable.
 
 ## Artifact Rule
 

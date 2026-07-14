@@ -153,7 +153,7 @@ Plan and final report follow session locale. File paths and identifiers remain l
 
 ### `verify`
 
-For `verify`, the opening six-field `Verification Scope` block is a stable contract and must remain literal English. The report body and user-visible findings follow session locale. In Chinese reports, explain once that the opening field names are contract labels.
+For `verify`, the default `Verification Scope` labels `Claim`, `Covered`, `Missing`, and `Verdict` are stable contract fields and remain literal English. High-risk, multi-claim, durable, machine-consumed, or explicitly requested reports may use the extended six-field labels. The report body and user-visible findings follow session locale.
 
 ### Gate Fields
 

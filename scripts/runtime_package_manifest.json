@@ -1,0 +1,56 @@
+{
+  "schema_version": "groundwork.runtime-package-contract.v1",
+  "plugin_name": "groundwork",
+  "copy_entries": {
+    ".codex-plugin": ".codex-plugin",
+    "skills": "skills",
+    "hooks": "hooks",
+    "scripts/codex-hooks": "scripts/codex-hooks",
+    "README.runtime.md": "README.md",
+    "LICENSE": "LICENSE"
+  },
+  "exact_files": {
+    ".codex-plugin": ["plugin.json", "runtime-manifest.json"],
+    "hooks": ["hooks.json"],
+    "scripts/codex-hooks": [
+      "groundwork_route_registry.json",
+      "groundwork_route_detection.py",
+      "groundwork_router_telemetry.py",
+      "permission_request_groundwork_trace.py",
+      "post_tool_use_groundwork_trace.py",
+      "pre_tool_use_groundwork_trace.py",
+      "stop_groundwork_trace.py",
+      "user_prompt_submit_groundwork_entry.py"
+    ]
+  },
+  "forbidden_roots": [
+    ".git",
+    ".github",
+    ".codegraph",
+    ".groundwork",
+    ".trellis",
+    "AGENTS.md",
+    "CHANGELOG.md",
+    "PROJECT.md",
+    ".gitignore",
+    ".worktreeinclude.example",
+    "artifacts",
+    "docs",
+    "evals",
+    "examples",
+    "research",
+    "schemas",
+    "dist",
+    "refer",
+    "node_modules"
+  ],
+  "budgets": {
+    "max_runtime_files": 125,
+    "max_runtime_lines_excluding_generated_manifest": 9800,
+    "max_skill_files": 112,
+    "max_skill_lines": 8400,
+    "max_codex_hook_files": 8,
+    "max_codex_hook_lines": 1200,
+    "max_skill_reference_depth": 24
+  }
+}

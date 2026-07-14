@@ -11,7 +11,7 @@ Evidence Level: Groundwork issue #15 acceptance criteria and current eval prompt
 
 Record these fields for each evaluated prompt:
 
-- `triggered_skill`: skill actually selected, or `direct`.
+- `triggered_skill`: skill proven by authoritative skill-load trace; use `unknown` when that evidence is unavailable. Do not infer it from final-answer shape.
 - `expected_skill`: skill expected by the fixture, or `direct`.
 - `false_positive`: `true` when a skill workflow ran but should not have.
 - `false_negative`: `true` when the expected skill did not load.
@@ -34,7 +34,7 @@ Use these metrics only for `evals/prompts/routing-reliability.csv` and other row
 Per-row routing fields:
 
 - `expected_route`: the single best first owning workflow, derived from `expected_best`.
-- `actual_route`: the observed first route, or `runtime-safety-gate` only for strict host/runtime preemption.
+- `actual_route`: the first route supported by authoritative skill-load evidence. Use `unknown` when the runtime does not expose that evidence. `response_shape_candidate` is a separate diagnostic and never substitutes for `actual_route`.
 - `acceptable_routes`: safe alternatives separated by `|` in CSV and emitted as a list in JSON.
 - `forbidden_routes`: routes that fail even if the output appears plausible.
 - `route_boundary`: the boundary under test, such as `entry-contract`, `implement-vs-verify`, or `runtime-safety-gate-vs-skill-gate`.
@@ -44,13 +44,13 @@ Per-row routing fields:
 - `evidence_verdict`: `pass`, `fail`, `blocked`, or `not_applicable` in runner output, with legacy reports allowed to use `present`, `missing`, or `explicitly_unavailable` when they are not routing rows.
 - `behavior_verdict`: `pass`, `fail`, `blocked`, or `not_applicable`.
 - `overall_verdict`: `pass`, `partial`, `fail`, `blocked`, or timeout-equivalent failure.
-- `failure_type`: the classified reason, such as `forbidden_route`, `invalid_host_preemption`, `output_contract_failure`, `evidence_failure`, `direct_fallback_ceremony`, or `premature_implementation`.
+- `failure_type`: the classified reason, such as `route_evidence_missing`, `forbidden_route`, `invalid_host_preemption`, `output_contract_failure`, `evidence_failure`, `direct_fallback_ceremony`, or `premature_implementation`.
 - `fix_locus`: likely owner layer, such as routing surface, runtime safety gate, skill output contract, evidence collection, requirement-state gate, or direct fallback boundary.
 - `owner`: the team or maintainer responsible for the regression record.
 - `action`: one of `fix_now`, `defer_with_reason`, `accept_as_expected`, or `needs_more_evidence`.
 - `sample_backfill`: one of `add_row`, `update_row`, `covered_by_existing_row`, or `no_backfill_with_reason`.
 
-Summary metrics in `routing_summary`:
+Summary route-hit metrics in `routing_summary` include only rows with authoritative route evidence and eligible scoring. Output/behavior verdict counts remain independently useful when routing is blocked:
 
 - `best_route_hit_at_1`: count and rate where `actual_route == expected_route`.
 - `acceptable_route_coverage`: count and rate where `actual_route` is in `acceptable_routes`.
@@ -147,17 +147,19 @@ Routing rows use finite measurement tokens for `output_contract` and `evidence_r
 Current implemented `output_contract` tokens:
 
 - `none`
-- `verify_scope_full`
+- `verify_scope`
 - `gate_fields`
 - `prototype_contract_boundary`
+- `implementation_result`
 - `implementation_conformance`
 - `entry_decision`
 - `trajectory_signal`
 
-Current allowed future `output_contract` tokens:
-
 - `qa_fix_qa`
 - `artifact_header`
+
+Current allowed future `output_contract` tokens:
+
 - `handoff_compact_reference`
 - `route_failure_feedback`
 

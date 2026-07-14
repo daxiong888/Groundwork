@@ -60,10 +60,14 @@ def write_benchmark_result(
         "output_tokens": 25,
         "total_tokens": input_tokens + 25,
     }
+    final_message_path = result_root / "target-plugin-eval-output" / "final-message.txt"
+    if final_message:
+        final_message_path.parent.mkdir(parents=True, exist_ok=True)
+        final_message_path.write_text("## Outcome\n\nDone.\n", encoding="utf-8")
     scenario = {
         "id": "sample",
         "status": scenario_status,
-        "finalMessagePath": str(result_root / "target-plugin-eval-output" / "final-message.txt") if final_message else None,
+        "finalMessagePath": str(final_message_path) if final_message else None,
         "finalMessagePreview": "done" if final_message else None,
         "usage": usage,
     }
@@ -90,6 +94,13 @@ def scenario_result(
     turns: int = 1,
     nested: int = 0,
     forbidden_scans: int = 0,
+    broad_scans: int = 0,
+    external_memory_reads: int = 0,
+    visible_characters: int = 1200,
+    visible_lines: int = 18,
+    visible_sections: int = 4,
+    placeholder_fields: int = 0,
+    final_response_status: str = "present",
 ) -> dict:
     return {
         "scenario": name,
@@ -103,12 +114,22 @@ def scenario_result(
                 "output_tokens": 100,
                 "total_tokens": input_tokens + 100,
             },
+            "final_response": {
+                "status": final_response_status,
+                "source": "full_message",
+                "path": f"/tmp/{name}/final-message.txt",
+                "character_count": visible_characters,
+                "nonempty_line_count": visible_lines,
+                "section_count": visible_sections,
+                "placeholder_field_count": placeholder_fields,
+            },
             "runtime_trace": {
                 "model_turn_count": turns,
                 "command_execution_count": 2,
                 "nested_command_count": nested,
                 "forbidden_source_scan_count": forbidden_scans,
-                "broad_scan_count": 0,
+                "broad_scan_count": broad_scans,
+                "external_memory_read_count": external_memory_reads,
                 "package_files_read": package_files_read or [],
             },
         },
@@ -116,7 +137,7 @@ def scenario_result(
 
 
 class PluginEvalCleanBenchmarkConfigTests(unittest.TestCase):
-    def test_dispatch_config_uses_non_recursive_task_workspace(self):
+    def test_dispatch_config_is_non_recursive_blind_task(self):
         with tempfile.TemporaryDirectory() as tmp:
             result_root = Path(tmp) / "results" / "dispatch"
             config_path = run_plugin_eval_clean.write_benchmark_config(
@@ -133,13 +154,7 @@ class PluginEvalCleanBenchmarkConfigTests(unittest.TestCase):
             self.assertTrue((workspace_source / "ACCEPTED-TASK.md").is_file())
             self.assertIn("produce a Dispatch Package v2", user_input)
             self.assertIn("compact package skeleton", user_input)
-            self.assertIn("plugins/groundwork/skills/dispatch/SKILL.md", user_input)
-            self.assertIn("plugins/groundwork/skills/dispatch/DISPATCH-PACKAGE.md", user_input)
-            self.assertIn("DISPATCH-PACKAGE-DETAILS.md", user_input)
-            self.assertIn("RESULT-PACKAGE.md", user_input)
-            self.assertIn("RUNTIME-ADAPTERS.md", user_input)
-            self.assertIn("ROUTING-PROFILES.md", user_input)
-            self.assertIn("EXAMPLES.md", user_input)
+            self.assertNotIn("plugins/groundwork/skills/", user_input)
             self.assertIn("Do not run plugin-eval", user_input)
             self.assertIn("Do not run scripts/run_plugin_eval_clean.py", user_input)
             self.assertNotIn("Run the Groundwork dispatch benchmark scenario", user_input)
@@ -147,15 +162,12 @@ class PluginEvalCleanBenchmarkConfigTests(unittest.TestCase):
             task = (workspace_source / "ACCEPTED-TASK.md").read_text(encoding="utf-8")
             self.assertIn("compact package skeleton", task)
             self.assertIn("Do not produce an adapter-ready package", task)
-            self.assertIn("Do not inspect Groundwork plugin README", task)
-            self.assertIn("plugins/groundwork/skills/dispatch/SKILL.md", task)
-            self.assertIn("plugins/groundwork/skills/dispatch/DISPATCH-PACKAGE.md", task)
-            self.assertIn("RESULT-PACKAGE.md", task)
-            self.assertIn("RUNTIME-ADAPTERS.md", task)
+            self.assertIn("discover only the minimum local plugin guidance", task)
+            self.assertNotIn("plugins/groundwork/skills/", task)
             self.assertNotIn("expected result package fields", task)
             self.assertNotIn("select the lightest appropriate runtime", task)
 
-    def test_to_prd_config_uses_active_contract_fast_path_boundary(self):
+    def test_to_prd_config_does_not_reveal_expected_read_path(self):
         with tempfile.TemporaryDirectory() as tmp:
             result_root = Path(tmp) / "results" / "to-prd"
             config_path = run_plugin_eval_clean.write_benchmark_config(
@@ -170,16 +182,12 @@ class PluginEvalCleanBenchmarkConfigTests(unittest.TestCase):
             task = (workspace_source / "TASK.md").read_text(encoding="utf-8")
 
             self.assertTrue((workspace_source / "TASK.md").is_file())
-            self.assertIn("plugins/groundwork/skills/to-prd/SKILL.md", user_input)
-            self.assertIn("plugins/groundwork/skills/to-prd/SKILL.md", task)
-            self.assertIn("Do not inspect Groundwork plugin README", task)
-            self.assertIn(".codex-plugin/plugin.json", user_input)
-            self.assertIn("PRD-TEMPLATE.md", user_input)
-            self.assertIn("GRILL-BEFORE-WRITE.md", user_input)
-            self.assertIn("shared lifecycle/evidence references", task)
+            self.assertNotIn("plugins/groundwork/skills/", user_input)
+            self.assertNotIn("plugins/groundwork/skills/", task)
+            self.assertIn("discover only the minimum local plugin guidance", task)
             self.assertNotIn("Run the Groundwork to-prd benchmark scenario", user_input)
 
-    def test_verify_config_uses_active_contract_named_evidence_boundary(self):
+    def test_verify_config_does_not_reveal_expected_read_path(self):
         with tempfile.TemporaryDirectory() as tmp:
             result_root = Path(tmp) / "results" / "verify"
             config_path = run_plugin_eval_clean.write_benchmark_config(
@@ -195,17 +203,9 @@ class PluginEvalCleanBenchmarkConfigTests(unittest.TestCase):
 
             self.assertTrue((workspace_source / "CLAIM.md").is_file())
             self.assertTrue((workspace_source / "EVIDENCE.md").is_file())
-            self.assertIn("plugins/groundwork/skills/verify/SKILL.md", user_input)
-            self.assertIn("plugins/groundwork/skills/verify/VERIFY-SCOPE.md", user_input)
-            self.assertIn("plugins/groundwork/skills/verify/SCOPE-EVIDENCE-TEMPLATE.md", user_input)
-            self.assertIn("plugins/groundwork/skills/verify/SKILL.md", claim)
-            self.assertIn("plugins/groundwork/skills/verify/VERIFY-SCOPE.md", claim)
-            self.assertIn("plugins/groundwork/skills/verify/SCOPE-EVIDENCE-TEMPLATE.md", claim)
-            self.assertIn("Do not inspect Groundwork plugin README", claim)
-            self.assertIn(".codex-plugin/plugin.json", user_input)
-            self.assertIn("plugin manifests", user_input)
-            self.assertIn("package internals", user_input)
-            self.assertIn("other skill SKILL.md files", user_input)
+            self.assertNotIn("plugins/groundwork/skills/", user_input)
+            self.assertNotIn("plugins/groundwork/skills/", claim)
+            self.assertIn("discover only the minimum local plugin guidance", claim)
             self.assertNotIn("Run the Groundwork verify benchmark scenario", user_input)
 
     def test_default_config_does_not_prompt_nested_benchmark(self):
@@ -294,6 +294,39 @@ class PluginEvalCleanBenchmarkConfigTests(unittest.TestCase):
             )
             self.assertEqual(run_plugin_eval_clean.benchmark_status(0, summary), "completed")
 
+    def test_runtime_trace_summary_counts_eval_only_memory_and_broad_reads(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result_root = Path(tmp) / "results" / "dispatch"
+            log_path = result_root / "target-plugin-eval-output" / "runs" / "run" / "codex.stdout.jsonl"
+            log_path.parent.mkdir(parents=True)
+            commands = [
+                "/bin/zsh -lc \"sed -n '1,80p' /Users/example/.codex/memories/MEMORY.md\"",
+                "/bin/zsh -lc \"find . -maxdepth 2 -type f\"",
+                "/bin/zsh -lc \"sed -n '1,80p' plugins/groundwork/skills/dispatch/CLEAN-REVIEW-FANOUT.md\"",
+            ]
+            log_path.write_text(
+                "\n".join(
+                    json.dumps(
+                        {
+                            "type": "item.completed",
+                            "item": {"type": "command_execution", "command": command},
+                        }
+                    )
+                    for command in commands
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            summary = run_plugin_eval_clean.read_runtime_trace_summary(result_root)
+
+            self.assertEqual(summary["external_memory_read_count"], 1)
+            self.assertEqual(summary["broad_scan_count"], 1)
+            self.assertIn(
+                "plugins/groundwork/skills/dispatch/CLEAN-REVIEW-FANOUT.md",
+                summary["package_files_read"],
+            )
+
     def test_package_read_detector_covers_common_read_commands(self):
         commands = [
             "python3 - <<'PY' plugins/groundwork/skills/verify/SKILL.md",
@@ -357,6 +390,64 @@ class PluginEvalCleanBenchmarkConfigTests(unittest.TestCase):
             self.assertTrue(validation["valid_for_usage_regression"])
             self.assertEqual(validation["evidence_category"], "valid_runs")
             self.assertEqual(validation["reason"], "all validity checks passed")
+
+    def test_final_response_metrics_reads_relocated_full_message(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result_root = Path(tmp) / "results" / "dispatch"
+            relocated = result_root / "target-plugin-eval-output" / "runs" / "run" / "final.md"
+            relocated.parent.mkdir(parents=True)
+            relocated.write_text(
+                "## Outcome\n\nCompact package.\n\n## Gaps\n\n- None: n/a\n",
+                encoding="utf-8",
+            )
+            payload = {
+                "scenarios": [{
+                    "finalMessagePath": "/tmp/target/.plugin-eval/runs/run/final.md",
+                    "finalMessagePreview": "truncated",
+                }]
+            }
+            (result_root / "benchmark-result.json").write_text(
+                json.dumps(payload) + "\n",
+                encoding="utf-8",
+            )
+
+            metrics = run_plugin_eval_clean.read_final_response_metrics(result_root)
+
+            self.assertEqual(metrics["status"], "present")
+            self.assertEqual(metrics["source"], "full_message")
+            self.assertEqual(metrics["section_count"], 2)
+            self.assertEqual(metrics["nonempty_line_count"], 4)
+            self.assertEqual(metrics["placeholder_field_count"], 1)
+
+    def test_visible_response_metrics_ignores_yaml_container_keys(self):
+        metrics = run_plugin_eval_clean.visible_response_metrics(
+            "source:\n"
+            "  artifact: ACCEPTED-TASK.md\n"
+            "tasks:\n"
+            "  - task_id: docs-update\n"
+            "policy:\n"
+            "  remote_writes_allowed: false\n"
+        )
+
+        self.assertEqual(metrics["placeholder_field_count"], 0)
+
+    def test_visible_response_metrics_detects_markdown_and_chinese_placeholders(self):
+        metrics = run_plugin_eval_clean.visible_response_metrics(
+            "**Gaps:** None\n"
+            "**Unverified Claims**: N/A\n"
+            "- **缺口：** 无\n"
+            "- 风险：待定\n"
+        )
+
+        self.assertEqual(metrics["placeholder_field_count"], 4)
+
+    def test_visible_response_metrics_ignores_bold_container_keys(self):
+        metrics = run_plugin_eval_clean.visible_response_metrics(
+            "**source:**\n"
+            "  artifact: ACCEPTED-TASK.md\n"
+        )
+
+        self.assertEqual(metrics["placeholder_field_count"], 0)
 
     def test_validate_benchmark_run_discards_transport_failure(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -553,6 +644,41 @@ class PluginEvalCleanBenchmarkConfigTests(unittest.TestCase):
 
         self.assertEqual(result["status"], "fail")
         self.assertIn("to-prd: input_tokens 35001 exceeds threshold 35000", result["failures"])
+
+    def test_clean_regression_gate_rejects_visible_output_regression(self):
+        scenarios = {
+            "to-prd": scenario_result("to-prd", 24493, visible_lines=46),
+            "verify": scenario_result("verify", 39702, placeholder_fields=1),
+            "dispatch": scenario_result("dispatch", 36333, final_response_status="preview_only"),
+        }
+
+        result = check_plugin_eval_clean_regression.validate_scenarios(scenarios)
+
+        self.assertEqual(result["status"], "fail")
+        self.assertIn("to-prd: visible nonempty lines 46 exceeds threshold 28", result["failures"])
+        self.assertIn("verify: placeholder fields 1 exceeds threshold 0", result["failures"])
+        self.assertIn(
+            "dispatch: final_response status is preview_only, expected present full message",
+            result["failures"],
+        )
+
+    def test_clean_regression_gate_scopes_dispatch_read_path_guards_to_eval(self):
+        scenarios = {
+            "to-prd": scenario_result("to-prd", 24493),
+            "verify": scenario_result("verify", 39702),
+            "dispatch": scenario_result(
+                "dispatch",
+                36333,
+                broad_scans=1,
+                external_memory_reads=1,
+            ),
+        }
+
+        result = check_plugin_eval_clean_regression.validate_scenarios(scenarios)
+
+        self.assertEqual(result["status"], "fail")
+        self.assertIn("dispatch: broad_scan_count 1 != 0 for compact-default eval", result["failures"])
+        self.assertIn("dispatch: external_memory_read_count 1 != 0 for compact-default eval", result["failures"])
 
     def test_clean_regression_gate_rejects_unexpected_read_paths(self):
         scenarios = {

@@ -327,8 +327,8 @@ def budget_value(bucket: object) -> int | None:
 def scenario_workspace_files(scenario: str) -> dict[str, str]:
     common_boundary = (
         "Do not run plugin-eval, scripts/run_plugin_eval_clean.py, eval scripts, "
-        "benchmark commands, or repository-wide discovery. Use only the files in "
-        "this workspace plus the local Groundwork plugin if it is useful.\n"
+        "benchmark commands, or repository-wide discovery. Use the task files in "
+        "this workspace and discover only the minimum local plugin guidance needed.\n"
     )
     if scenario == "to-prd":
         return {
@@ -338,13 +338,6 @@ def scenario_workspace_files(scenario: str) -> dict[str, str]:
                 "changes. The PRD should capture the visible user value, acceptance "
                 "criteria, evidence needed before implementation, and open decisions. "
                 "No file edits are requested; produce the PRD/spec in the final answer.\n\n"
-                "If local Groundwork guidance is useful, read only "
-                "`plugins/groundwork/skills/to-prd/SKILL.md`. Do not inspect "
-                "Groundwork plugin README, `.codex-plugin/plugin.json`, plugin manifests, "
-                "package internals, `PRD-TEMPLATE.md`, `GRILL-BEFORE-WRITE.md`, or shared "
-                "lifecycle/evidence references unless this task explicitly asks for a "
-                "durable artifact, source-backed product truth, wiki-backed context, or "
-                "lifecycle gate evaluation.\n\n"
                 f"{common_boundary}"
             )
         }
@@ -354,15 +347,6 @@ def scenario_workspace_files(scenario: str) -> dict[str, str]:
                 "# Claim To Verify\n\n"
                 "Claim: A local package-boundary change is ready to be treated as "
                 "runtime evidence because the package build and static checks passed.\n\n"
-                "If local Groundwork guidance is useful, read only "
-                "`plugins/groundwork/skills/verify/SKILL.md`, "
-                "`plugins/groundwork/skills/verify/VERIFY-SCOPE.md`, and "
-                "`plugins/groundwork/skills/verify/SCOPE-EVIDENCE-TEMPLATE.md`. "
-                "Do not inspect Groundwork plugin README, `.codex-plugin/plugin.json`, "
-                "plugin manifests, package internals, other skill `SKILL.md` files, "
-                "or repository-wide docs/source unless this task explicitly asks for "
-                "Groundwork maintenance, plugin/package/install/cache/release verification, "
-                "or a named in-scope artifact cites that path.\n\n"
                 f"{common_boundary}"
             ),
             "EVIDENCE.md": (
@@ -386,15 +370,6 @@ def scenario_workspace_files(scenario: str) -> dict[str, str]:
                 "schema, runtime adapter analysis, model/profile selection, or result "
                 "package details unless explicitly requested. Do not execute the work; "
                 "produce the compact package skeleton in the final answer.\n\n"
-                "If local Groundwork guidance is useful, read only "
-                "`plugins/groundwork/skills/dispatch/SKILL.md` and "
-                "`plugins/groundwork/skills/dispatch/DISPATCH-PACKAGE.md`. Do not inspect "
-                "Groundwork plugin README, `.codex-plugin/plugin.json`, plugin manifests, "
-                "package internals, `DISPATCH-PACKAGE-DETAILS.md`, `RESULT-PACKAGE.md`, "
-                "`RUNTIME-ADAPTERS.md`, `ROUTING-PROFILES.md`, or `EXAMPLES.md` unless "
-                "this task explicitly asks for adapter-ready output, full schema, runtime "
-                "adapter behavior, model/profile selection, examples, or returned evidence "
-                "details.\n\n"
                 f"{common_boundary}"
             )
         }
@@ -425,38 +400,18 @@ def scenario_user_input(scenario: str) -> str:
         task = (
             "Read TASK.md in the current workspace and produce a compact PRD/spec "
             "with acceptance criteria, known facts, assumptions, open questions, "
-            "and implementation-prep evidence needs in the final answer only. If "
-            "Groundwork guidance is useful, read only "
-            "plugins/groundwork/skills/to-prd/SKILL.md and do not inspect plugin "
-            "README, .codex-plugin/plugin.json, package internals, PRD-TEMPLATE.md, "
-            "GRILL-BEFORE-WRITE.md, or shared lifecycle/evidence references unless "
-            "this task explicitly asks for durable, source-backed, wiki-backed, or "
-            "lifecycle-gate output."
+            "and implementation-prep evidence needs in the final answer only."
         )
     elif scenario == "verify":
         task = (
             "Read CLAIM.md and EVIDENCE.md in the current workspace and produce a "
             "scope-first verification report that separates covered, not covered, "
-            "and missing evidence. If Groundwork guidance is useful, read only "
-            "plugins/groundwork/skills/verify/SKILL.md, "
-            "plugins/groundwork/skills/verify/VERIFY-SCOPE.md, and "
-            "plugins/groundwork/skills/verify/SCOPE-EVIDENCE-TEMPLATE.md. Do not "
-            "inspect plugin README, .codex-plugin/plugin.json, plugin manifests, "
-            "package internals, or other skill SKILL.md files unless this task "
-            "explicitly asks for Groundwork maintenance, plugin/package/install/cache/"
-            "release verification, or a named in-scope artifact cites that path."
+            "and missing evidence."
         )
     elif scenario == "dispatch":
         task = (
             "Read ACCEPTED-TASK.md in the current workspace and produce a Dispatch "
-            "Package v2 compact package skeleton in the final answer only. If Groundwork "
-            "guidance is useful, read only plugins/groundwork/skills/dispatch/SKILL.md "
-            "and plugins/groundwork/skills/dispatch/DISPATCH-PACKAGE.md. Do not inspect "
-            "plugin README, .codex-plugin/plugin.json, package internals, "
-            "DISPATCH-PACKAGE-DETAILS.md, RESULT-PACKAGE.md, RUNTIME-ADAPTERS.md, "
-            "ROUTING-PROFILES.md, or EXAMPLES.md unless this task explicitly asks for "
-            "adapter-ready output, full schema, runtime adapter behavior, model/profile "
-            "selection, examples, or returned evidence details."
+            "Package v2 compact package skeleton in the final answer only."
         )
     else:
         task = (
@@ -475,7 +430,7 @@ def scenario_success_checklist(scenario: str) -> list[str]:
     checklist = [
         "The response stays within the requested Groundwork scenario.",
         "No nested Plugin Eval, run_plugin_eval_clean.py, eval script, or benchmark command is run.",
-        "The agent uses only the minimal scenario workspace plus the local plugin when useful.",
+        "The agent discovers and reads only the minimum local plugin guidance needed.",
         "Runtime/cache/release claims are not made without installed-plugin evidence.",
         "Observed token usage is recorded when Codex emits usage telemetry.",
     ]
@@ -591,6 +546,7 @@ def run_plugin_eval_benchmark(
     assert_no_plugin_eval(target_root)
     runtime_trace = read_runtime_trace_summary(scenario_result_root)
     observed_usage = read_observed_usage(scenario_result_root / "observed-usage.jsonl")
+    final_response = read_final_response_metrics(scenario_result_root)
     validation = validate_benchmark_run(
         exit_code=result.returncode,
         scenario_result_root=scenario_result_root,
@@ -606,6 +562,7 @@ def run_plugin_eval_benchmark(
         "exit_code": result.returncode,
         "command": command_text,
         "observed_usage": observed_usage,
+        "final_response": final_response,
         "runtime_trace": runtime_trace,
     }
 
@@ -829,25 +786,125 @@ def read_benchmark_result(result_path: Path) -> dict:
     }
 
 
-def final_assistant_message_exists(scenario: dict, scenario_result_root: Path) -> bool:
-    preview = scenario.get("finalMessagePreview")
-    if isinstance(preview, str) and preview.strip():
-        return True
-
+def resolve_final_assistant_message_path(
+    scenario: dict,
+    scenario_result_root: Path,
+) -> Path | None:
     final_path = scenario.get("finalMessagePath")
     if not isinstance(final_path, str) or not final_path:
-        return False
+        return None
 
     path = Path(final_path)
     if path.is_file():
-        return True
+        return path
 
     marker = f"{os.sep}.plugin-eval{os.sep}"
     if marker not in final_path:
-        return False
+        return None
     relocated_suffix = final_path.split(marker, 1)[1]
     relocated_path = scenario_result_root / "target-plugin-eval-output" / relocated_suffix
-    return relocated_path.is_file()
+    return relocated_path if relocated_path.is_file() else None
+
+
+def read_final_assistant_message(
+    scenario: dict,
+    scenario_result_root: Path,
+) -> tuple[str | None, str, str | None]:
+    path = resolve_final_assistant_message_path(scenario, scenario_result_root)
+    if path is not None:
+        return path.read_text(encoding="utf-8"), "full_message", str(path)
+
+    preview = scenario.get("finalMessagePreview")
+    if isinstance(preview, str) and preview.strip():
+        return preview, "preview_only", None
+    return None, "missing", None
+
+
+def final_assistant_message_exists(scenario: dict, scenario_result_root: Path) -> bool:
+    message, _, _ = read_final_assistant_message(scenario, scenario_result_root)
+    return bool(message and message.strip())
+
+
+def visible_response_metrics(message: str) -> dict:
+    lines = message.splitlines()
+    nonempty_lines = [line for line in lines if line.strip()]
+    section_count = sum(1 for line in nonempty_lines if re.match(r"^#{1,6}\s+\S", line))
+    placeholder_pattern = re.compile(
+        r"^(?:\*\*)?[^:：*\n]{1,60}?"
+        r"(?:(?:[:：]\*\*)|(?:\*\*[:：])|[:：])\s*"
+        r"(?P<value>[-—]|n/?a|none|null|not applicable|tbd|待定|暂无|无|不适用)?\s*$",
+        re.IGNORECASE,
+    )
+    placeholder_field_count = 0
+    for index, line in enumerate(lines):
+        normalized = re.sub(r"^[-*+]\s+", "", line.strip())
+        match = placeholder_pattern.match(normalized)
+        if match is None:
+            continue
+        current_indent = len(line) - len(line.lstrip())
+        next_nonempty = next(
+            (candidate for candidate in lines[index + 1 :] if candidate.strip()),
+            None,
+        )
+        if (
+            match.group("value") is None
+            and next_nonempty is not None
+            and len(next_nonempty) - len(next_nonempty.lstrip()) > current_indent
+        ):
+            continue
+        placeholder_field_count += 1
+    return {
+        "character_count": len(message),
+        "nonempty_line_count": len(nonempty_lines),
+        "section_count": section_count,
+        "placeholder_field_count": placeholder_field_count,
+    }
+
+
+def read_final_response_metrics(scenario_result_root: Path) -> dict:
+    benchmark_result = read_benchmark_result(scenario_result_root / "benchmark-result.json")
+    if benchmark_result.get("status") != "present":
+        return {
+            "status": "missing",
+            "source": None,
+            "path": None,
+            "character_count": None,
+            "nonempty_line_count": None,
+            "section_count": None,
+            "placeholder_field_count": None,
+        }
+
+    payload = benchmark_result.get("payload")
+    scenarios = payload.get("scenarios") if isinstance(payload, dict) else None
+    scenario = scenarios[0] if isinstance(scenarios, list) and scenarios else None
+    if not isinstance(scenario, dict):
+        return {
+            "status": "missing",
+            "source": None,
+            "path": None,
+            "character_count": None,
+            "nonempty_line_count": None,
+            "section_count": None,
+            "placeholder_field_count": None,
+        }
+
+    message, source, path = read_final_assistant_message(scenario, scenario_result_root)
+    if message is None:
+        return {
+            "status": "missing",
+            "source": source,
+            "path": path,
+            "character_count": None,
+            "nonempty_line_count": None,
+            "section_count": None,
+            "placeholder_field_count": None,
+        }
+    return {
+        "status": "present" if source == "full_message" else "preview_only",
+        "source": source,
+        "path": path,
+        **visible_response_metrics(message),
+    }
 
 
 def read_runtime_trace_summary(scenario_result_root: Path) -> dict:
@@ -864,6 +921,8 @@ def read_runtime_trace_summary(scenario_result_root: Path) -> dict:
             "forbidden_source_scan_commands": [],
             "broad_scan_count": 0,
             "broad_scan_commands": [],
+            "external_memory_read_count": 0,
+            "external_memory_read_commands": [],
             "package_files_read": [],
             "transport_failure_count": 0,
             "transport_failure_messages": [],
@@ -879,6 +938,7 @@ def read_runtime_trace_summary(scenario_result_root: Path) -> dict:
     nested_commands: list[str] = []
     forbidden_source_scan_commands: list[str] = []
     broad_scan_commands: list[str] = []
+    external_memory_read_commands: list[str] = []
     package_files_read: set[str] = set()
     transport_failure_messages: list[str] = []
     terminal_transport_failure_messages: list[str] = []
@@ -926,6 +986,8 @@ def read_runtime_trace_summary(scenario_result_root: Path) -> dict:
                 forbidden_source_scan_commands.append(command)
             if is_broad_scan_command(command):
                 broad_scan_commands.append(command)
+            if is_external_memory_read_command(command):
+                external_memory_read_commands.append(command)
             package_files_read.update(extract_package_file_reads(command))
 
     return {
@@ -939,6 +1001,8 @@ def read_runtime_trace_summary(scenario_result_root: Path) -> dict:
         "forbidden_source_scan_commands": forbidden_source_scan_commands,
         "broad_scan_count": len(broad_scan_commands),
         "broad_scan_commands": broad_scan_commands,
+        "external_memory_read_count": len(external_memory_read_commands),
+        "external_memory_read_commands": external_memory_read_commands,
         "package_files_read": sorted(package_files_read),
         "transport_failure_count": len(transport_failure_messages),
         "transport_failure_messages": transport_failure_messages,
@@ -1004,6 +1068,14 @@ def is_nested_benchmark_command(command: str) -> bool:
 
 def is_broad_scan_command(command: str) -> bool:
     return any(pattern in command for pattern in BROAD_SCAN_PATTERNS)
+
+
+def is_external_memory_read_command(command: str) -> bool:
+    normalized = command.replace("\\", "/")
+    return any(
+        pattern in normalized
+        for pattern in ("/.codex/memories/", "~/.codex/memories/", "$CODEX_HOME/memories/")
+    )
 
 
 def is_forbidden_source_scan_command(command: str) -> bool:

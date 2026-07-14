@@ -41,7 +41,7 @@ def row_from_score(score):
         expected == "verify"
         or any("verify_scope" in checker_id for checker_id in checker_ids)
     ):
-        output_contract = "verify_scope_full"
+        output_contract = "verify_scope"
 
     row = {
         "id": f"ro-backfill-{case_id}",

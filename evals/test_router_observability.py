@@ -22,8 +22,8 @@ ROUTER_SCORE_SCHEMA = ROOT / "schemas" / "groundwork-router-score.schema.json"
 
 def load_hooks_module():
     spec = importlib.util.spec_from_file_location(
-        "groundwork_router_observability_for_test",
-        HOOKS / "groundwork_router_observability.py",
+        "groundwork_router_telemetry_for_test",
+        HOOKS / "groundwork_router_telemetry.py",
     )
     module = importlib.util.module_from_spec(spec)
     previous = sys.dont_write_bytecode
@@ -103,7 +103,7 @@ class RouterObservabilityTests(unittest.TestCase):
             "pre_tool_use_groundwork_trace.py",
             "permission_request_groundwork_trace.py",
             "post_tool_use_groundwork_trace.py",
-            "stop_groundwork_score.py",
+            "stop_groundwork_trace.py",
         ]
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -129,7 +129,9 @@ class RouterObservabilityTests(unittest.TestCase):
             root = Path(tmp)
             hook_root = root / "scripts" / "codex-hooks"
             hook_root.mkdir(parents=True)
-            for script in HOOKS.glob("*.py"):
+            for script in HOOKS.iterdir():
+                if not script.is_file():
+                    continue
                 (hook_root / script.name).write_text(script.read_text(encoding="utf-8"), encoding="utf-8")
 
             result = subprocess.run(
@@ -156,10 +158,11 @@ class RouterObservabilityTests(unittest.TestCase):
                 check=True,
             )
 
-            output = json.loads(result.stdout)
-            self.assertIn("Verification Scope", output["hookSpecificOutput"]["additionalContext"])
+            self.assertEqual(result.stdout, "")
             decision = json.loads((self.turn_dir(root) / "router-decision.json").read_text(encoding="utf-8"))
             self.assertEqual(decision["entry_decision"]["expected_best"], "verify")
+            self.assertEqual(decision["decision_mode"], "observe_only")
+            self.assertFalse(decision["behavior_intervention"])
             self.assertEqual(result.stderr, "")
 
     def write_config(self, root, **overrides):
@@ -221,7 +224,7 @@ class RouterObservabilityTests(unittest.TestCase):
             decision = json.loads((self.turn_dir(root) / "router-decision.json").read_text(encoding="utf-8"))
             prompt_metadata = json.loads((self.turn_dir(root) / "prompt-metadata.json").read_text(encoding="utf-8"))
             self.assertEqual(decision["decision_mode"], "observe_only")
-            self.assertEqual(decision["decision_source"], "heuristic")
+            self.assertEqual(decision["decision_source"], "prompt_classifier_candidate")
             self.assertEqual(decision["activation_source"], ".groundwork/harness/router-observability/config.json")
             self.assertEqual(decision["turn_id_source"], "turn_id")
             self.assertFalse(decision["router_hint_emitted"])
@@ -270,7 +273,7 @@ class RouterObservabilityTests(unittest.TestCase):
             decision = json.loads((self.turn_dir(root) / "router-decision.json").read_text(encoding="utf-8"))
             self.assertEqual(decision["activation_source"], "invalid_config_env_force_enable")
 
-    def test_thin_prompt_mode_emits_route_agnostic_context_and_excludes_baseline(self):
+    def test_removed_thin_prompt_mode_is_recorded_but_never_injected(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             self.write_config(root, mode="thin_prompt_trial")
@@ -281,23 +284,14 @@ class RouterObservabilityTests(unittest.TestCase):
                 root,
             )
 
-            output = json.loads(result.stdout)
-            self.assertEqual(output["hookSpecificOutput"]["hookEventName"], "UserPromptSubmit")
-            context = output["hookSpecificOutput"]["additionalContext"]
-            self.assertIn("Preserve evidence boundaries", context)
-            self.assertIn("Keep the user's requested task primary", context)
-            self.assertNotIn("expected first route", context)
-            self.assertNotIn("use verify", context)
+            self.assertEqual(result.stdout, "")
             decision = json.loads((self.turn_dir(root) / "router-decision.json").read_text(encoding="utf-8"))
-            self.assertEqual(decision["decision_mode"], "thin_prompt_trial")
+            self.assertEqual(decision["decision_mode"], "observe_only")
+            self.assertEqual(decision["requested_mode"], "thin_prompt_trial")
             self.assertEqual(decision["entry_decision"]["expected_best"], "write-plan")
             self.assertFalse(decision["router_hint_emitted"])
-            self.assertTrue(decision["prompt_enhancement_emitted"])
-            score = score_turn(decision, "Implementation Mini-Plan", [])
-            self.assertFalse(score["router_hint_emitted"])
-            self.assertTrue(score["prompt_enhancement_emitted"])
-            self.assertEqual(score["score_eligibility"], "thin_prompt_excluded")
-            self.assert_router_score_schema_valid(score)
+            self.assertFalse(decision["prompt_enhancement_emitted"])
+            self.assertFalse(decision["behavior_intervention"])
 
     def test_thin_prompt_mode_does_not_emit_context_for_direct_prompts(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -312,15 +306,13 @@ class RouterObservabilityTests(unittest.TestCase):
 
             self.assertEqual(result.stdout, "")
             decision = json.loads((self.turn_dir(root) / "router-decision.json").read_text(encoding="utf-8"))
-            self.assertEqual(decision["decision_mode"], "thin_prompt_trial")
+            self.assertEqual(decision["decision_mode"], "observe_only")
+            self.assertEqual(decision["requested_mode"], "thin_prompt_trial")
             self.assertEqual(decision["entry_decision"]["expected_best"], "direct")
             self.assertFalse(decision["router_hint_emitted"])
             self.assertFalse(decision["prompt_enhancement_emitted"])
-            score = score_turn(decision, "Direct answer.", [])
-            self.assertFalse(score["prompt_enhancement_emitted"])
-            self.assert_router_score_schema_valid(score)
 
-    def test_guided_hint_verify_evidence_label_upgrade_mentions_verification_scope(self):
+    def test_removed_guided_hint_mode_never_injects_verification_scope(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             self.write_config(root, mode="guided_hint_trial")
@@ -331,24 +323,12 @@ class RouterObservabilityTests(unittest.TestCase):
                 root,
             )
 
-            output = json.loads(result.stdout)
-            hint = output["hookSpecificOutput"]["additionalContext"]
-            self.assertIn("use verify-lite", hint)
-            self.assertIn("Verification Scope", hint)
-            for field in [
-                "In Scope",
-                "Out of Scope",
-                "Covered",
-                "Not Covered",
-                "Evidence Sources",
-                "User-visible Claim Being Verified",
-            ]:
-                self.assertIn(field, hint)
-            self.assertIn("Do not answer as direct", hint)
+            self.assertEqual(result.stdout, "")
             decision = json.loads((self.turn_dir(root) / "router-decision.json").read_text(encoding="utf-8"))
             self.assertEqual(decision["entry_decision"]["expected_best"], "verify")
-            score = score_turn(decision, "Verification Scope\nIn Scope\nOut of Scope\nCovered\nNot Covered\nEvidence Sources\nUser-visible Claim Being Verified", [])
-            self.assertEqual(score["score_eligibility"], "guided_hint_excluded")
+            self.assertEqual(decision["decision_mode"], "observe_only")
+            self.assertEqual(decision["requested_mode"], "guided_hint_trial")
+            self.assertFalse(decision["behavior_intervention"])
 
     def test_guided_hint_non_allowlisted_routes_do_not_emit_context(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -383,7 +363,7 @@ class RouterObservabilityTests(unittest.TestCase):
             self.assertEqual(decision["entry_decision"]["expected_best"], "verify")
             self.assertFalse(decision["router_hint_emitted"])
 
-    def test_tool_and_stop_hooks_write_score_and_card(self):
+    def test_tool_and_stop_hooks_write_telemetry_without_score_or_card(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             self.write_config(root)
@@ -406,34 +386,30 @@ class RouterObservabilityTests(unittest.TestCase):
                 root,
             )
             result = run_hook(
-                "stop_groundwork_score.py",
+                "stop_groundwork_trace.py",
                 {**base_event, "last_assistant_message": "Implementation Summary\nFiles Changed\nChecks Run token=secret-456"},
                 root,
             )
 
             self.assertEqual(result.stdout, "")
-            score_path = self.turn_dir(root) / "router-score.json"
-            self.assert_router_score_schema_valid(score_path)
-            score = json.loads(score_path.read_text(encoding="utf-8"))
             final_metadata = json.loads((self.turn_dir(root) / "final-metadata.json").read_text(encoding="utf-8"))
             tool_event = json.loads((self.turn_dir(root) / "tool-events.jsonl").read_text(encoding="utf-8"))
-            card = (self.turn_dir(root) / "router-card.md").read_text(encoding="utf-8")
-            self.assertEqual(score["expected_route"], "implement")
-            self.assertEqual(score["actual_route"], "implement")
+            self.assertEqual(final_metadata["prompt_route_candidate"], "implement")
+            self.assertEqual(final_metadata["response_shape_candidate"], "implement")
+            self.assertEqual(final_metadata["response_shape_source"], "response_shape_heuristic")
+            self.assertEqual(final_metadata["authoritative_skill_load_trace"], "unavailable")
+            self.assertEqual(final_metadata["skill_hits"], [])
             self.assertEqual(final_metadata["snippet_capture"], "disabled")
             self.assertEqual(final_metadata["final_snippet"], "")
             self.assertNotIn("secret-456", json.dumps(final_metadata))
-            self.assertEqual(score["score_eligibility"], "display_only")
-            self.assertIn("expected_route_source", score["notes"])
-            self.assertEqual(score["routing_verdict"], "pass")
             self.assertEqual(tool_event["tool_use_id"], "tool-1")
             self.assertEqual(tool_event["tool_response_present"], True)
             self.assertEqual(tool_event["tool_response_status"], "success")
             self.assertTrue(tool_event["tool_input_sha256"])
             self.assertTrue(tool_event["tool_response_sha256"])
-            self.assertTrue(score["checker_results"])
-            self.assertIn("Groundwork Router Decision", card)
-            self.assertIn("Live heuristic display-only", card)
+            self.assertFalse((self.turn_dir(root) / "router-score.json").exists())
+            self.assertFalse((self.turn_dir(root) / "router-card.md").exists())
+            self.assertFalse((self.turn_dir(root) / "dispatch-decision.json").exists())
 
     def test_tool_use_id_fallback_groups_pre_and_post_events(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -538,7 +514,7 @@ class RouterObservabilityTests(unittest.TestCase):
                 root,
             )
             run_hook(
-                "stop_groundwork_score.py",
+                "stop_groundwork_trace.py",
                 {
                     **base_event,
                     "last_assistant_message": (
@@ -626,7 +602,7 @@ class RouterObservabilityTests(unittest.TestCase):
             )
 
             run_hook(
-                "stop_groundwork_score.py",
+                "stop_groundwork_trace.py",
                 {**base_event, "last_assistant_message": "Implementation Summary\nFiles Changed\nChecks Run"},
                 root,
             )
@@ -646,14 +622,14 @@ class RouterObservabilityTests(unittest.TestCase):
             for script, event in [
                 ("post_tool_use_groundwork_trace.py", {**base_event, "tool_name": "Bash"}),
                 ("permission_request_groundwork_trace.py", {**base_event, "permission": "Bash"}),
-                ("stop_groundwork_score.py", {**base_event, "final_response": "Implementation Summary"}),
+                ("stop_groundwork_trace.py", {**base_event, "final_response": "Implementation Summary"}),
             ]:
                 result = run_hook(script, event, root)
                 self.assertEqual(result.stdout, "")
 
             self.assertFalse((root / ".groundwork").exists())
 
-    def test_permission_events_include_coverage_and_feed_stop_score(self):
+    def test_permission_events_feed_stop_coverage_without_live_score(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             self.write_config(root)
@@ -669,16 +645,17 @@ class RouterObservabilityTests(unittest.TestCase):
                 root,
             )
             run_hook(
-                "stop_groundwork_score.py",
+                "stop_groundwork_trace.py",
                 {**base_event, "final_response": "Implementation Summary\nFiles Changed\nChecks Run"},
                 root,
             )
 
             permission_event = json.loads((self.turn_dir(root) / "permission-events.jsonl").read_text(encoding="utf-8"))
-            score = json.loads((self.turn_dir(root) / "router-score.json").read_text(encoding="utf-8"))
+            coverage = json.loads((self.turn_dir(root) / "coverage.json").read_text(encoding="utf-8"))
             self.assertEqual(permission_event["coverage_status"], "observed_supported")
             self.assertIn("git_write", permission_event["risk_markers"])
-            self.assertEqual(score["tool_coverage_status"], "supported_events_observed")
+            self.assertEqual(coverage["supported_event_count"], 1)
+            self.assertFalse((self.turn_dir(root) / "router-score.json").exists())
 
     def test_partial_coverage_is_not_baseline_eligible(self):
         decision = {
@@ -724,6 +701,7 @@ class RouterObservabilityTests(unittest.TestCase):
             decision,
             "Implementation Summary\nFiles Changed\nChecks Run",
             [{"coverage_status": "observed_supported"}],
+            authoritative_skill_hits=["implement"],
         )
 
         self.assertEqual(score["score_eligibility"], "baseline_eligible")
@@ -753,7 +731,7 @@ class RouterObservabilityTests(unittest.TestCase):
         self.assertEqual(score["score_eligibility"], "insufficient_evidence")
         self.assertIn("classifier_evidence", score["notes"])
 
-    def test_dispatch_prompt_writes_dispatch_decision(self):
+    def test_dispatch_prompt_records_candidate_without_profile_or_dispatch_decision(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             self.write_config(root)
@@ -764,20 +742,11 @@ class RouterObservabilityTests(unittest.TestCase):
                 root,
             )
 
-            dispatch_decision = json.loads((self.turn_dir(root) / "dispatch-decision.json").read_text(encoding="utf-8"))
-            profile = dispatch_decision["execution_profile"]
-            self.assertEqual(dispatch_decision["decision_source"], "heuristic_dispatch_candidate")
-            self.assertFalse(dispatch_decision["actual_dispatch_output_observed"])
-            self.assertEqual(dispatch_decision["score_eligibility"], "insufficient_evidence")
-            self.assertEqual(dispatch_decision["execution_claim"], "not_executed_by_dispatch")
-            card = render_router_card({"session_id": "s1", "turn_id": "t1"}, {}, dispatch_decision)
-            self.assertIn("## Dispatch Candidate", card)
-            self.assertIn("Actual dispatch output observed: `False`", card)
-            self.assertEqual(profile["model_profile"], "exhaustive_review")
-            self.assertEqual(profile["reasoning_effort"], "high")
-            self.assertEqual(profile["cost_latency_bias"], "quality")
-            self.assertEqual(profile["selector_enforcement"], "prompt_preference")
-            self.assertEqual(profile["evidence_layer"], "prompt_preference")
+            decision = json.loads((self.turn_dir(root) / "router-decision.json").read_text(encoding="utf-8"))
+            self.assertEqual(decision["prompt_route_candidate"], "dispatch")
+            self.assertEqual(decision["decision_source"], "prompt_classifier_candidate")
+            self.assertFalse(decision["behavior_intervention"])
+            self.assertFalse((self.turn_dir(root) / "dispatch-decision.json").exists())
 
     def test_tool_enforced_selector_requires_runtime_evidence(self):
         decision = {
@@ -817,7 +786,8 @@ class RouterObservabilityTests(unittest.TestCase):
         self.assertEqual(score["execution_profile_verdict"], "insufficient_evidence")
         self.assertEqual(score["selector_mismatch_reason"], "selector_unverified")
         self.assertEqual(score["score_eligibility"], "insufficient_evidence")
-        self.assertEqual(score["route_evidence_source"], "output_marker")
+        self.assertEqual(score["route_evidence_source"], "unknown")
+        self.assertEqual(score["response_shape_candidate"], "dispatch")
         self.assertEqual(score["dispatch_hit_level"], "output_shape_only")
         self.assertEqual(score["skill_hit_source"], "unknown")
         self.assertEqual(score["skill_hits"], [])
@@ -963,6 +933,7 @@ class RouterObservabilityTests(unittest.TestCase):
             decision,
             "Verification Scope\n- In Scope: local diff only",
             [{"coverage_status": "observed_supported"}],
+            authoritative_skill_hits=["verify"],
         )
 
         self.assertEqual(score["actual_route"], "verify")
@@ -993,7 +964,7 @@ class RouterObservabilityTests(unittest.TestCase):
             )
 
             self.assertEqual(result.stdout, "")
-            self.assertIn("Groundwork router observability hook failed", result.stderr)
+            self.assertIn("Groundwork router telemetry hook failed", result.stderr)
 
     def test_routing_summary_excludes_insufficient_scores_from_baseline_metrics(self):
         summary = summarize_routing_results(
@@ -1097,7 +1068,7 @@ class RouterObservabilityTests(unittest.TestCase):
             "failure_type": "output_contract_failure",
             "checker_results": [
                 {
-                    "checker_id": "router_observability.verify_scope_full",
+                    "checker_id": "router_observability.verify_scope",
                     "verdict": "fail",
                 }
             ],
@@ -1106,7 +1077,7 @@ class RouterObservabilityTests(unittest.TestCase):
         row, missing = backfill_row.row_from_score(score)
 
         self.assertEqual(missing, [])
-        self.assertEqual(row["output_contract"], "verify_scope_full")
+        self.assertEqual(row["output_contract"], "verify_scope")
 
     def test_report_includes_router_observability_section(self):
         with tempfile.TemporaryDirectory() as tmp:

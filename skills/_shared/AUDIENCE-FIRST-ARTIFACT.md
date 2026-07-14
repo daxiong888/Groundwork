@@ -24,6 +24,8 @@ This contract does not by itself require every public `skills/<public-skill>/SKI
 
 Helper indexes, templates, examples, generated fixtures, and machine-readable schemas may use their native shape when adding the header would reduce machine readability. In those cases, the owning maintainer doc or adjacent shared contract must state the audience, source truth, evidence level, and redaction boundary.
 
+Runtime instruction references and reasoning lenses are source contracts, not user-facing durable artifacts. They may replace the nine-field header with one compact purpose/evidence-boundary sentence when the owning `SKILL.md` already supplies routing and scope. Do not copy audience metadata into model-visible output.
+
 ## Required Header Fields (exact)
 
 Every new or materially updated durable artifact must include these fields exactly:

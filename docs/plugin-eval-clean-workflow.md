@@ -50,11 +50,13 @@ The `marketplace/plugins/groundwork` package is built by `scripts/build_local_ma
 ```text
 .codex-plugin/
 skills/
+hooks/hooks.json
+scripts/codex-hooks/
 README.md
 LICENSE
 ```
 
-It must not contain repo-only or maintainer-lab roots such as `.github/`, `AGENTS.md`, `CHANGELOG.md`, `PROJECT.md`, `docs/`, `evals/`, `artifacts/`, `examples/`, `hooks/`, `research/`, `schemas/`, or `scripts/`.
+It must not contain repo-only or maintainer-lab roots such as `.github/`, `AGENTS.md`, `CHANGELOG.md`, `PROJECT.md`, `docs/`, `evals/`, `artifacts/`, `examples/`, `research/`, or `schemas/`. The only packaged hook/script paths are the exact contract-listed `hooks/hooks.json` and `scripts/codex-hooks/` telemetry entrypoints; ordinary maintainer scripts remain source-only. `.codex-plugin/runtime-manifest.json` is generated during the build and binds the package to its metadata, package contract, README, and content inventory.
 
 ## Command Modes
 
@@ -87,11 +89,13 @@ Clean benchmarks measure Groundwork runtime behavior on small user tasks, not th
 > [!IMPORTANT]
 > Scenario prompts must not ask the nested Codex run to run Plugin Eval, `scripts/run_plugin_eval_clean.py`, eval scripts, benchmark commands, or broad repository scans. They should ask for a realistic Groundwork output such as a compact PRD/spec, a scope-first verification report, or a Dispatch Package v2.
 
+Scenario prompts are blind to the expected plugin read path: do not name the target `SKILL.md` or supporting reference files in the user prompt. The model must discover the minimum relevant guidance from the installed plugin. The harness may still enforce an expected-read allowlist, reject global-memory reads, or reject broad workspace scans after the run; those are evaluator-side assertions for the clean compact-default scenario, not production Groundwork prohibitions or prompt coaching. The runtime row carrying `dispatch_default_read_path` also disables the nested Codex `memories` feature for that ephemeral eval invocation so the host's normal memory policy cannot contaminate the isolated measurement.
+
 The full source checkout is still used to build the local marketplace package and record source metadata. It is not the scenario workspace copied into the nested Codex run.
 
 After execution, the wrapper reads only the nested Codex `codex.stdout.jsonl` command log under `results/<scenario>/target-plugin-eval-output/`. Missing raw command logs, nested Plugin Eval commands, `scripts/run_plugin_eval_clean.py`, benchmark-script commands under `scripts/` or `evals/`, or source-repo `docs/`, `evals/`, `artifacts/`, `scripts/`, or `research/` path scans are hard failures because they mean the scenario cannot prove clean non-recursive behavior or measured benchmark harness/source-repo exploration instead of Groundwork runtime read-path cost.
 
-Allowlisted file discovery inside the temporary scenario workspace, such as `rg --files` for named task/evidence files and installed plugin entry files, is a reportable scan signal rather than an automatic hard failure. Searching for words such as `benchmark`, `docs`, or `scripts` inside a named scenario task file is not a hard failure unless the command scans forbidden source-repo paths.
+Allowlisted file discovery inside the temporary scenario workspace, such as `rg --files` for named task/evidence files and installed plugin entry files, is normally a reportable scan signal rather than an automatic hard failure. The Dispatch compact-default eval is stricter: its accepted task file is named up front, so any broad workspace scan or global-memory read fails that evaluator-side read-path check. Searching for words such as `benchmark`, `docs`, or `scripts` inside a named scenario task file is not a hard failure unless the command scans forbidden source-repo paths.
 
 ## Required Evidence
 
@@ -133,6 +137,8 @@ Record token budget movement in `docs/plugin-token-budget-policy.md` whenever a 
 
 The PR 6 source guardrail baseline adds this trend discipline without claiming a Plugin Eval static-budget replacement or installed-plugin runtime evidence.
 
+Visible-output regression ceilings are enforced separately from input-token budgets: `to-prd` is capped at 3,200 characters / 28 non-empty lines / 6 sections, `verify` at 2,600 / 24 / 5, and the clean targeted Dispatch compact-default scenario at 2,800 / 26 / 6. These are post-response regression guards, not target lengths or truncation rules. Required fields and semantic completeness take precedence; Dispatch must return `needs_split` or use the prompt-material route-specific contract when a complete package cannot fit. Adapter-ready, clean-review fanout, complex separation, field-level validation, and explicitly requested full-schema outputs are outside the compact-default ceiling.
+
 ## Smoke Checks
 
 Use these source-level checks before treating the wrapper/doc update as complete:
@@ -149,4 +155,4 @@ python3 scripts/run_plugin_eval_clean.py \
   --run-root /private/tmp/groundwork-plugin-eval/smoke
 ```
 
-For package-boundary checks, confirm the wrapper output names a package root under `marketplace/plugins/groundwork`, and confirm that root contains no `docs/`, `scripts/`, `evals/`, or other maintainer-lab directories.
+For package-boundary checks, confirm the wrapper output names a package root under `marketplace/plugins/groundwork`, and confirm that root contains no `docs/`, `evals/`, or other maintainer-lab directories and no scripts outside the exact `scripts/codex-hooks/` allowlist.

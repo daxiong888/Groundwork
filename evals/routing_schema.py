@@ -53,13 +53,12 @@ EVIDENCE_LAYERS = {
 SCORE_ELIGIBILITY = {
     "baseline_eligible",
     "display_only",
-    "guided_hint_excluded",
-    "thin_prompt_excluded",
     "insufficient_evidence",
 }
 
 TRACE_READY_SUITES = {
     "routing-reliability.csv",
+    "routing-blind.csv",
     "trace-first-verify-review.csv",
     "clean-review-fanout.csv",
     "zh-trigger-parity.csv",

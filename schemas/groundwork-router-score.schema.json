@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://groundwork.dev/schemas/groundwork-router-score.schema.json",
   "title": "Groundwork Router Observability Score Schema",
-  "description": "Schema for router-score.json artifacts emitted by dormant router observability hooks. This schema is source-validation evidence only and does not imply runtime, cache, release, UAT, or customer readiness.",
+  "description": "Schema for offline router evaluator scores derived from telemetry and fixtures. Runtime hooks do not emit scores. This schema is source-validation evidence only and does not imply runtime, cache, release, UAT, or customer readiness.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -12,6 +12,8 @@
     "created_at",
     "expected_route",
     "actual_route",
+    "response_shape_candidate",
+    "response_shape_source",
     "route_boundary",
     "expected_route_source",
     "actual_route_source",
@@ -64,6 +66,12 @@
     "actual_route": {
       "$ref": "groundwork-common.schema.json#/$defs/workflow_route"
     },
+    "response_shape_candidate": {
+      "$ref": "groundwork-common.schema.json#/$defs/workflow_route"
+    },
+    "response_shape_source": {
+      "$ref": "groundwork-common.schema.json#/$defs/non_empty_string"
+    },
     "route_boundary": {
       "$ref": "groundwork-common.schema.json#/$defs/non_empty_string"
     },
@@ -82,9 +90,7 @@
     "route_evidence_source": {
       "type": "string",
       "enum": [
-        "output_marker",
-        "final_message_marker",
-        "route_detector",
+        "skill_hit",
         "unknown"
       ]
     },
@@ -114,8 +120,6 @@
       "enum": [
         "baseline_eligible",
         "display_only",
-        "guided_hint_excluded",
-        "thin_prompt_excluded",
         "insufficient_evidence"
       ]
     },

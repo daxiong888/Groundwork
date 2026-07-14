@@ -54,9 +54,9 @@ Gather source/outcome; classify state; assign severity and transition reason; se
 
 ## Output Shape
 
-Use `Triage Verdict` with state, severity, AFK/HITL, previous state, transition reason, evidence added/missing, blockers, readiness check, lifecycle recommendation, agent brief or human decision, next action, and artifact recommendation.
+Default to one `Triage Verdict`: state, severity, transition reason, material blockers or missing evidence, and next action. Add AFK/HITL when ownership matters; previous state/evidence delta for a real transition; lifecycle recommendation, agent brief, human decision, or artifact recommendation only when the verdict requires it.
 
-For `needs-info`, `blocked`, HITL, risky approval, or any other gate-bearing triage, include these exact machine-readable gate labels before the next action detail:
+Only when an approval is actually required before the next action, include these exact machine-readable gate labels:
 
 ```text
 Proposed Action:
@@ -70,7 +70,7 @@ Keep these gate labels in English even when the report body follows a non-Englis
 
 ## Stop Condition
 
-Stop when state, severity, transition reason, blockers, AFK/HITL, readiness reason, evidence added/missing, lifecycle-state recommendation, and next action are explicit.
+Stop when state, severity, transition reason, material blockers/missing evidence, and next action are explicit. Other fields are conditional on the decision.
 
 ## Artifact Rule
 

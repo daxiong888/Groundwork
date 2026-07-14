@@ -1,14 +1,6 @@
 # First-Principles Lens
 
-Target Reader: Groundwork skill authors, routers, implementers, reviewers, and verifiers deciding whether a request needs root-cause construction before planning, editing, or claiming evidence.
-Reader Action Needed: Reduce a request, bug, design, contract, or claim to primitive facts, hard constraints, causal mechanism, root cause, minimal solution, and falsifiable verification.
-Decision Supported: Whether the current conclusion is grounded enough to plan, implement, verify, hand off, or narrow scope.
-Artifact Type: shared workflow reference.
-Source of Truth: `docs/product-principles.md`, `skills/_shared/EVIDENCE-BOUNDARY.md`, `skills/implement/SKILL.md`, and source-validation policy.
-Scope: First-principles decomposition for requirements, bugs, implementation plans, contracts, source-backed docs, and evidence claims.
-Out of Scope: Public skill creation, readiness approval, runtime/cache/release/UAT evidence, clean review, or replacing source inspection.
-Evidence Level: Source-validation guidance only until paired with named source, test, runtime, browser, data, UAT, release, or clean-review evidence.
-Safe to Share / Redaction Notes: Safe to share as-is; contains no secrets, credentials, private payloads, PII, or production data.
+Purpose: internal first-principles construction for material causal decisions; source-validation guidance until paired with named evidence.
 
 ## Public Surface Boundary
 
@@ -16,9 +8,20 @@ Do not create `skills/first-principles/SKILL.md` for this behavior by default. F
 
 ## Core Definition
 
-First-principles analysis reduces a request, bug, design, or claim to primitive facts, non-negotiable constraints, causal mechanisms, and the smallest verifiable solution.
+First-principles analysis reduces a request, bug, design, or claim to primitive facts, non-negotiable constraints, causal mechanisms, and the smallest sufficient, verifiable solution.
 
 It does not replace source inspection, implementation, verification, or clean review. It is the construction half of the loop: build the strongest evidence-grounded explanation before editing or claiming support.
+
+## Minimal Means Sufficient First
+
+Evaluate candidate solutions in this order:
+
+1. **Sufficiency:** the solution addresses the confirmed cause or core need, restores the affected invariants, and has a falsifiable verification signal.
+2. **Scope:** among sufficient solutions, choose the one with the lowest justified blast radius, complexity, and unrelated change.
+
+Line count, file count, and implementation convenience are not sufficiency criteria. A smaller patch is invalid when it only masks a symptom, moves the failure to another layer, duplicates logic around a broken shared mechanism, or leaves a known affected path inconsistent.
+
+If every sufficient solution exceeds the accepted scope, authority, or risk gate, stop and surface the required expansion or decision. Do not silently downgrade to a superficial workaround and call it minimal.
 
 ## Use When
 
@@ -33,6 +36,8 @@ Use this lens when:
 Do not use it for tiny mechanical edits, direct factual answers, simple rewrites, accepted implementation work with already inspected source and clear checks, or ceremonial restatement that does not change scope, route, or verification.
 
 ## Process
+
+Use the questions internally. Surface only facts, causal conclusions, or unknowns that change the decision; do not print the full numbered scaffold by default.
 
 ```text
 First-Principles Lens
@@ -55,7 +60,7 @@ First-Principles Lens
    - What is the smallest cause or need? Which observations are symptoms, triggers, or unsupported interpretations?
 
 7. Minimal Sufficient Solution
-   - What is the smallest scoped change, decision, or artifact that addresses the cause while preserving constraints?
+   - Which candidates actually address the cause and restore the invariants? Among those sufficient candidates, which has the lowest justified blast radius?
 
 8. Falsifiable Verification Signal
    - What test, runtime/browser/data/UAT check, source inspection, or review evidence would disprove or support the solution?
@@ -76,7 +81,7 @@ Bug Root-Cause Ladder
 - Constraints / Invariants:
 - Causal Chain:
 - Root Cause:
-- Minimal Fix:
+- Minimal Sufficient Fix:
 - Verification Signal:
 - Remaining Hypotheses:
 ```
