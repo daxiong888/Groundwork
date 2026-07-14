@@ -1,6 +1,6 @@
 ---
 name: implement
-description: Bug fixes, patch/code edits, "修 bug", "直接 patch", "改代码", confirmed fixes, diagnose-before-edit, blocked implementation when source truth is missing, or read-only implementation conformance review. Not for raw requirements, slicing, readiness/UAT/release verification, handoff, or dispatch.
+description: Non-trivial or uncertain bug fixes, patch/code edits, "修 bug", "直接 patch", "改代码", confirmed fixes, diagnose-before-edit, blocked implementation when source truth is missing, or read-only implementation conformance review. Not for obvious text-only typo edits, raw requirements, slicing, readiness/UAT/release verification, handoff, or dispatch.
 ---
 
 # implement
@@ -35,27 +35,17 @@ Do not claim runtime/cache/release/UAT/marketplace/cache-refresh, clean-review, 
 
 ## Required Output
 
-Implementation, diagnosis, gated implementation, blocked implementation, and conformance reports include:
+Keep interactive final answers outcome-first and proportional. Omit empty, unchanged, and not-applicable fields; do not print internal planning or self-review scaffolding unless it changes the result.
 
-```text
-Scope:
-Acceptance Map:
-Evidence Inspected:
-Findings P0/P1/P2:
-Non-Readiness Boundary:
-Gaps:
-Next Action:
-Unverified Claims:
-Proposed Action:
-Target:
-Risk:
-Rollback/Undo:
-Approval Needed:
-```
+- Ordinary implementation: outcome, files changed, checks run with results, and remaining risk or skipped verification.
+- Diagnosis without edits: confirmed cause, decisive evidence, and the smallest safe next action.
+- Read-only conformance: findings first by severity, then material evidence gaps and the non-readiness boundary. Include acceptance mapping only when it helps locate a gap.
+- Blocked work: blocker, inspected evidence, and the one decision or input needed to continue.
+- Gated action: add the stable English labels `Proposed Action`, `Target`, `Risk`, `Rollback/Undo`, and `Approval Needed` only when approval is actually required before the next action.
 
-For nontrivial edit paths, include the five-line `Implementation Mini-Plan` from `LIGHTWEIGHT-PLAN.md`.
+For nontrivial edit paths, use the five-line `Implementation Mini-Plan` from `LIGHTWEIGHT-PLAN.md` before editing, but keep it internal unless the user asks for the plan or a material scope decision needs review.
 
-The gate field labels (`Proposed Action`, `Target`, `Risk`, `Rollback/Undo`, and `Approval Needed`) are stable machine-readable contract labels. Keep the labels in English even when the report body follows a non-English session locale.
+The gate field labels are stable machine-readable contract labels. Keep them in English even when the report body follows a non-English session locale. Load the full output skeleton only for an explicit audit/debug package, durable artifact, or machine-consumed report.
 
 ## Load Only What Fits
 
@@ -73,7 +63,7 @@ Apply lifecycle, git topology, evidence-boundary, role-separation, runtime, rele
 
 ## Stop Conditions
 
-- Stop before file edits unless the change is trivial and bounded, or the mini-plan is stated.
+- Stop before file edits unless the change is trivial and bounded, or the mini-plan is prepared. Show it only under the visibility rule above.
 - Stop before suspected-bug fixes without a reproduction, confirmed cause, failing check, or concrete test seam.
 - Stop before PR-bound edits on unsafe topology.
 - Stop before staging, committing, pushing, opening a PR, closing issues, publishing, deploying, migrations, destructive commands, or data/remote writes until the matching gate is satisfied.

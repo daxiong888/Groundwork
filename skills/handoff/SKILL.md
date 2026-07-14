@@ -27,7 +27,7 @@ Handoff preserves state and boundaries; it is not runtime executor, clean review
 
 ## Required Output
 
-Keep handoff compact by default: state, goal, decision, sources, evidence, gaps, risks, git boundary if relevant, do-not-assume items, redaction note, and next action.
+Keep handoff compact by default: current state, continuation goal, canonical sources, material gaps/risks, and next action. Add decisions, evidence detail, git boundary, do-not-assume items, or redaction note only when the next reader needs them to continue safely.
 
 Use branch references for full review, native handoff, lifecycle, visual, role-separation, release/cache/runtime, or wiki fields.
 

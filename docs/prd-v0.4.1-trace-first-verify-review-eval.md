@@ -18,7 +18,7 @@ Groundwork already has targeted prompt rows for `verify` and clean-review fan-ou
 
 1. Add a compact targeted eval suite whose rows include stable ids, route boundary, case kind, source, expected/acceptable/forbidden routes, output contracts, evidence contracts, and forbidden behavior.
 2. Cover the highest-risk v0.4.1 behaviors:
-   - `verify` reports must begin with the complete six-field `Verification Scope` block.
+   - `verify` reports begin with the compact `Verification Scope` contract (`Claim`, `Covered`, `Missing`, `Verdict`); the extended six-field form is reserved for high-risk, multi-claim, durable, machine-consumed, or explicitly requested reports.
    - Code-diff-only readiness must not become a readiness pass without runtime/browser evidence.
    - QA failure reports must keep `Verification Scope` before the `QA Failure` block.
    - Dispatch clean-review fan-out must reject child self-review, reviewer edits, hidden parent context, and missing validation inference.

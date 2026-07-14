@@ -1,14 +1,6 @@
 # Implement Branches
 
-Target Reader: Codex running the Groundwork `implement` skill after entry routing.
-Reader Action Needed: Apply full branch details, gates, conformance fields, review-loop handling, and output expansion without loading them in the active `SKILL.md` entry.
-Decision Supported: Whether to implement, diagnose, stop, remediate a finding, or report conformance only.
-Artifact Type: branch-specific implementation reference
-Source of Truth: `skills/implement/SKILL.md`, `skills/implement/LIGHTWEIGHT-PLAN.md`, `skills/implement/SELF-REVIEW.md`, and shared evidence-boundary contracts.
-Scope: Implementation branch details, gated output, failure handling, review-loop remediation, and evidence-claim boundaries.
-Out of Scope: Full PRD shaping, task slicing, final readiness, runtime execution, release approval, or remote mutation without approval.
-Evidence Level: Source-validation rule only.
-Safe to Share / Redaction Notes: Safe to share as-is; contains no secrets, credentials, PII, private logs, or production payloads.
+Purpose: branch details for routed `implement` work; source-validation guidance only, never final readiness or runtime evidence.
 
 ## Source And Gate Workflow
 
@@ -39,7 +31,7 @@ If a sufficient fix needs broader scope, authority, migration, dependency, or ri
 
 ## Conformance Field Set
 
-Use these labels for read-only conformance review and implementation final reports with conformance evidence:
+Use these labels only for an explicit structured conformance package. Ordinary findings-first reviews may omit labels that add no decision value.
 
 ```text
 Scope:
@@ -52,7 +44,7 @@ Next Action:
 Unverified Claims:
 ```
 
-`Non-Readiness Boundary` must state that the review is limited to implementation conformance and does not decide UAT, release, customer readiness, deployment readiness, or final acceptance unless the user explicitly asks for that scope.
+State the non-readiness boundary once when a reader could otherwise mistake implementation conformance for UAT, release, customer readiness, deployment readiness, or final acceptance.
 
 ## Gated Actions
 
@@ -104,9 +96,11 @@ If fixing clean-review or verify findings:
 | Unrelated files appear in the diff or staged set | Stop staging/commit work until the boundary is explicit. | Report allowlist, denylist, `git diff --name-only`, and `git diff --cached --name-only`; leave unrelated files unstaged. |
 | Acceptance criteria or source truth is unclear | Stop before implementation or ask the highest-impact clarification question. | Do not infer product behavior; state what is known, missing, and needed. |
 | Only a superficial workaround fits the accepted scope | Stop before under-fixing and surface the root-cause solution's required scope, authority, or risk decision. | Name why the smaller patch is insufficient, which invariant or affected path would remain broken, and the narrowest sufficient alternative. |
-| Code edit or bug patch is requested but no source truth, workspace file, task artifact, reproduction path, or test seam is available | Route to `blocked implementation`; do not answer as ordinary direct Q&A and do not patch speculatively. | Output exact implement field labels: `Scope`, `Acceptance Map`, `Evidence Inspected`, `Findings P0/P1/P2`, `Non-Readiness Boundary`, `Gaps`, `Next Action`, `Unverified Claims`; include `Proposed Action`, `Target`, `Risk`, `Rollback/Undo`, and `Approval Needed` when the stop is gate-bearing; for nontrivial bug intent include `Bug Root-Cause Ladder` with unavailable fields marked `not provided` or `unverified`. |
+| Code edit or bug patch is requested but no source truth, workspace file, task artifact, reproduction path, or test seam is available | Route to `blocked implementation`; do not answer as ordinary direct Q&A and do not patch speculatively. | State the blocker, inspected evidence, and the one input or decision needed. Add gate labels only when the stop is gate-bearing. Summarize the root-cause ladder only when it contains material evidence; do not print unavailable placeholders. |
 
 ## Full Output Skeleton
+
+Use this expanded skeleton only when the user explicitly requests a structured audit/debug package, durable artifact, or machine-consumed report. Omit every field that is not applicable; it is not the default interactive final.
 
 ```text
 Implementation Summary

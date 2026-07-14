@@ -1,3 +1,4 @@
+import csv
 import unittest
 from pathlib import Path
 
@@ -29,8 +30,24 @@ class ProgressiveDisclosureTests(unittest.TestCase):
 
         self.assertIn("## Default Dispatch Package v2 Path", skill)
         self.assertIn("Read only the accepted task artifact and `DISPATCH-PACKAGE.md`", skill)
-        self.assertIn("Default output: compact dispatch matrix plus package skeleton", skill)
+        self.assertIn("Default output: one compact package skeleton", skill)
         self.assertIn("Do not execute, spawn subagents, create worktrees, or mutate branches", skill)
+        self.assertIn("## Default Output Budget", skill)
+        self.assertIn("at most 2,800 characters and 26 non-empty lines", skill)
+        self.assertIn("regression budget, not a truncation rule", skill)
+        self.assertIn("Required fields and semantic completeness take precedence", skill)
+        self.assertIn("Every Dispatch output, including lite and split decisions", skill)
+        self.assertIn("start the final response at `dispatch_version: 2`", skill)
+        self.assertIn("no prose before or after the package", skill)
+        self.assertIn("Do not wrap the package in a code fence", skill)
+        self.assertIn("do not truncate or silently omit tasks, required evidence, or stop conditions", skill)
+        self.assertIn("`needs_split`", skill)
+        self.assertIn("route-specific contract", skill)
+        self.assertIn("does not apply to adapter-ready, clean-review fanout, complex separation", skill)
+        self.assertIn("missing source truth or audit scope", skill)
+        self.assertIn("only a lite `needs_info` decision", skill)
+        self.assertIn("do not invent generic task lenses", skill)
+        self.assertIn("Multi-perspective audit packaging is not clean-review fanout unless", skill)
         default_section = skill.split("## Default Dispatch Package v2 Path", 1)[1].split("## Evidence Boundary", 1)[0]
         self.assertNotIn("DISPATCH-PACKAGE-DETAILS.md", default_section)
         self.assertNotIn("RESULT-PACKAGE.md", default_section)
@@ -53,15 +70,37 @@ class ProgressiveDisclosureTests(unittest.TestCase):
         self.assertLess(default_path_index, load_only_index)
 
         self.assertIn("## Compact Default Contract", package)
-        self.assertLessEqual(len(package.splitlines()), 150)
+        self.assertLessEqual(len(package.splitlines()), 80)
         self.assertIn("package-only", package)
         self.assertIn("must not execute", package)
         self.assertIn("human-reviewable package skeleton", package)
         self.assertIn("not adapter-complete until extended fields are supplied", package)
+        self.assertIn("## Default Output Budget", package)
+        self.assertIn("at most 2,800 characters and 26 non-empty lines", package)
+        self.assertIn("regression budget, not a truncation rule", package)
+        self.assertIn("Every Dispatch output, including lite and split decisions", package)
+        self.assertIn("start at `dispatch_version: 2`", package)
+        self.assertIn("without prose before or after", package)
+        self.assertIn("Do not wrap it in a code fence", package)
+        self.assertIn("do not truncate or silently omit", package)
+        self.assertIn("needs_split", package)
+        self.assertIn("route-specific contract", package)
         self.assertIn("adapter_completeness: skeleton_only | adapter_ready", package)
+        self.assertIn("readiness_source:", package)
+        self.assertIn("redactions_applied:", package)
+        self.assertIn(
+            "route: local_direct | local_with_artifact | worktree_isolated | worktree_review_only | automation_candidate",
+            package,
+        )
+        self.assertNotIn("| clean_review", package)
+        self.assertIn("clean review is not a separate route", package)
+        self.assertNotIn("dispatch_native_alignment:", package)
+        self.assertNotIn("goal_contract:", package)
+        self.assertNotIn("runtime_package:", package)
         self.assertIn("adapter_ready requires `DISPATCH-PACKAGE-DETAILS.md`", package)
         self.assertIn("Do not load `RESULT-PACKAGE.md`", package)
         self.assertIn("Do not load `RUNTIME-ADAPTERS.md`", package)
+
         self.assertIn("Do not load `ROUTING-PROFILES.md`", package)
         self.assertIn("Do not load `EXAMPLES.md`", package)
         self.assertNotIn("## Schema", package)
@@ -73,6 +112,28 @@ class ProgressiveDisclosureTests(unittest.TestCase):
         self.assertIn("## Required Package Completeness", details)
         self.assertIn("## Managed Worktree Package Rules", details)
         self.assertIn("legacy_compatibility:", details)
+
+        compact_route_line = next(
+            line.strip() for line in package.splitlines() if line.strip().startswith("route:")
+        )
+        compact_routes = {value.strip() for value in compact_route_line.split(":", 1)[1].split("|")}
+        details_route_line = next(
+            line.strip() for line in details.splitlines() if line.strip().startswith("route_enum:")
+        )
+        details_routes = {
+            value.strip()
+            for value in details_route_line.split("[", 1)[1].rstrip("]").split(",")
+        }
+        self.assertEqual(compact_routes, details_routes)
+
+    def test_dispatch_read_path_eval_names_an_existing_task_fixture(self):
+        with (ROOT / "evals/prompts/routing-blind.csv").open(newline="", encoding="utf-8") as handle:
+            rows = {row["id"]: row for row in csv.DictReader(handle)}
+
+        row = rows["blind-dispatch-read-path-001"]
+        fixture = ROOT / row["fixture"] / "ACCEPTED-TASK.md"
+        self.assertTrue(fixture.is_file())
+        self.assertIn("ACCEPTED-TASK.md", row["input_scenario"])
 
     def test_verify_skill_routes_branch_templates_to_references(self):
         skill = self.read("skills/verify/SKILL.md")
@@ -100,8 +161,12 @@ class ProgressiveDisclosureTests(unittest.TestCase):
         self.assertNotIn("Visual Packet Evidence Boundary", skill)
         self.assertNotIn("For code-diff-only rows, keep the labeled verdict line mechanically safe", skill)
         self.assertNotIn("keep labeled `Verdict`, `Result`, `Status`, `Recommendation`, and `Conclusion` lines", skill)
-        self.assertIn("release state, UAT state", self.read("skills/verify/VERIFY-SCOPE.md"))
-        self.assertIn("Claimed Behavior: code diff only sufficiency claim", self.read("skills/verify/VERIFY-SCOPE.md"))
+        verify_scope = self.read("skills/verify/VERIFY-SCOPE.md")
+        self.assertIn("- Claim:", verify_scope)
+        self.assertIn("- Covered:", verify_scope)
+        self.assertIn("- Missing:", verify_scope)
+        self.assertIn("Verdict: blocked", verify_scope)
+        self.assertIn("Code diff alone cannot support", verify_scope)
 
     def test_verify_has_named_evidence_default_path_without_package_self_inspection(self):
         skill = self.read("skills/verify/SKILL.md")
@@ -117,9 +182,10 @@ class ProgressiveDisclosureTests(unittest.TestCase):
         self.assertIn("other skill `SKILL.md` files", skill)
         self.assertIn("Scenario workspace allowlisted file discovery is allowed", skill)
         self.assertIn("do not treat allowlisted discovery of the named evidence files as a hard failure", skill)
-        self.assertIn("keep the full verify safety boundary", skill)
+        self.assertIn("keep the verify safety boundary", skill)
+        self.assertIn("concrete claim, `Covered`, `Missing`", skill)
         self.assertIn("missing evidence", skill)
-        self.assertIn("bounded support/readiness judgment", skill)
+        self.assertIn("bounded verdict", skill)
 
         default_section = skill.split("## Default Path: Named Evidence Verification", 1)[1].split("## Evidence Boundary", 1)[0]
         read_only_section = default_section.split("Read only:", 1)[1].split("Do not inspect", 1)[0]
@@ -181,8 +247,6 @@ class ProgressiveDisclosureTests(unittest.TestCase):
         paths = [
             "skills/dispatch/EXAMPLES.md",
             "skills/dispatch/DISPATCH-ROUTER-BRANCHES.md",
-            "skills/implement/IMPLEMENT-BRANCHES.md",
-            "skills/verify/VERIFY-SCOPE.md",
             "skills/verify/VERIFY-ROUTER-BRANCHES.md",
             "skills/verify/QA-FAILURE-BRANCH.md",
             "skills/verify/RELEASE-READINESS-BRANCH.md",
@@ -210,6 +274,23 @@ class ProgressiveDisclosureTests(unittest.TestCase):
             text = self.read(path)
             missing = [field for field in required_fields if field not in text]
             self.assertEqual(missing, [], path)
+
+    def test_hot_path_runtime_references_use_compact_purpose_headers(self):
+        paths = [
+            "skills/implement/IMPLEMENT-BRANCHES.md",
+            "skills/implement/LIGHTWEIGHT-PLAN.md",
+            "skills/implement/SELF-REVIEW.md",
+            "skills/implement/TDD-LITE.md",
+            "skills/verify/VERIFY-SCOPE.md",
+            "skills/verify/SCOPE-EVIDENCE-TEMPLATE.md",
+            "skills/_shared/FIRST-PRINCIPLES.md",
+            "skills/_shared/ADVERSARIAL-REVIEW.md",
+        ]
+
+        for path in paths:
+            text = self.read(path)
+            self.assertIn("Purpose:", text, path)
+            self.assertNotIn("Target Reader:", text, path)
 
 
 if __name__ == "__main__":

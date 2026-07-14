@@ -1,14 +1,6 @@
 # First-Principles Lens
 
-Target Reader: Groundwork skill authors, routers, implementers, reviewers, and verifiers deciding whether a request needs root-cause construction before planning, editing, or claiming evidence.
-Reader Action Needed: Reduce a request, bug, design, contract, or claim to primitive facts, hard constraints, causal mechanism, root cause, minimal solution, and falsifiable verification.
-Decision Supported: Whether the current conclusion is grounded enough to plan, implement, verify, hand off, or narrow scope.
-Artifact Type: shared workflow reference.
-Source of Truth: `docs/product-principles.md`, `skills/_shared/EVIDENCE-BOUNDARY.md`, `skills/implement/SKILL.md`, and source-validation policy.
-Scope: First-principles decomposition for requirements, bugs, implementation plans, contracts, source-backed docs, and evidence claims.
-Out of Scope: Public skill creation, readiness approval, runtime/cache/release/UAT evidence, clean review, or replacing source inspection.
-Evidence Level: Source-validation guidance only until paired with named source, test, runtime, browser, data, UAT, release, or clean-review evidence.
-Safe to Share / Redaction Notes: Safe to share as-is; contains no secrets, credentials, private payloads, PII, or production data.
+Purpose: internal first-principles construction for material causal decisions; source-validation guidance until paired with named evidence.
 
 ## Public Surface Boundary
 
@@ -44,6 +36,8 @@ Use this lens when:
 Do not use it for tiny mechanical edits, direct factual answers, simple rewrites, accepted implementation work with already inspected source and clear checks, or ceremonial restatement that does not change scope, route, or verification.
 
 ## Process
+
+Use the questions internally. Surface only facts, causal conclusions, or unknowns that change the decision; do not print the full numbered scaffold by default.
 
 ```text
 First-Principles Lens

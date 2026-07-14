@@ -12,6 +12,16 @@
           "output_tokens": 3306,
           "total_tokens": 27799
         },
+        "final_response": {
+          "status": "present",
+          "measurement_source": "synthetic_fixture",
+          "source": "full_message",
+          "path": "/tmp/plugin-eval-clean-regression/to-prd/final-message.txt",
+          "character_count": 2400,
+          "nonempty_line_count": 28,
+          "section_count": 6,
+          "placeholder_field_count": 0
+        },
         "runtime_trace": {
           "model_turn_count": 1,
           "command_execution_count": 2,
@@ -35,6 +45,16 @@
           "input_tokens": 39702,
           "output_tokens": 4335,
           "total_tokens": 44037
+        },
+        "final_response": {
+          "status": "present",
+          "measurement_source": "synthetic_fixture",
+          "source": "full_message",
+          "path": "/tmp/plugin-eval-clean-regression/verify/final-message.txt",
+          "character_count": 2100,
+          "nonempty_line_count": 24,
+          "section_count": 5,
+          "placeholder_field_count": 0
         },
         "runtime_trace": {
           "model_turn_count": 1,
@@ -61,6 +81,16 @@
           "input_tokens": 36333,
           "output_tokens": 3177,
           "total_tokens": 39510
+        },
+        "final_response": {
+          "status": "present",
+          "measurement_source": "synthetic_fixture",
+          "source": "full_message",
+          "path": "/tmp/plugin-eval-clean-regression/dispatch/final-message.txt",
+          "character_count": 2600,
+          "nonempty_line_count": 26,
+          "section_count": 6,
+          "placeholder_field_count": 0
         },
         "runtime_trace": {
           "model_turn_count": 1,

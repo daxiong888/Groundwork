@@ -141,7 +141,7 @@ class RuntimeSchedulerTests(unittest.TestCase):
                     ),
                     mock.patch.object(
                         run_runtime,
-                        "classify_actual_route",
+                        "classify_response_shape_candidate",
                         return_value="implement",
                     ),
                     mock.patch.object(run_runtime.subprocess, "run", side_effect=fake_subprocess_run),
@@ -305,6 +305,27 @@ class RuntimeSchedulerTests(unittest.TestCase):
         self.assertIn("runtime-eval-low", cmd)
         self.assertEqual(cmd[-1], "prompt")
 
+    def test_dispatch_read_path_eval_disables_memories_without_affecting_other_rows(self):
+        root = Path("/tmp/workspace")
+        last_path = Path("/tmp/last.txt")
+        isolated = run_runtime.codex_exec_command(
+            root,
+            "read-only",
+            last_path,
+            "prompt",
+            row=routing_row(evidence_required="no_file_changes|dispatch_default_read_path"),
+        )
+        ordinary = run_runtime.codex_exec_command(
+            root,
+            "read-only",
+            last_path,
+            "prompt",
+            row=routing_row(evidence_required="no_file_changes"),
+        )
+
+        self.assertIn("features.memories=false", isolated)
+        self.assertNotIn("features.memories=false", ordinary)
+
     def test_snapshot_ignores_router_observability_runtime_scratch(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -466,7 +487,7 @@ normalizePhone(task.phone) === expected;
         self.assertFalse(mode["hook_trust_bypass"])
         self.assertIn("no route hints injected", mode["evidence_boundary"])
 
-    def test_router_observability_runtime_mode_guided_records_boundary_and_bypass(self):
+    def test_legacy_behavior_mode_request_normalizes_to_observe_only(self):
         env = {
             "GROUNDWORK_ROUTER_OBSERVABILITY": "1",
             "GROUNDWORK_ROUTER_OBSERVABILITY_MODE": "guided_hint_trial",
@@ -476,24 +497,12 @@ normalizePhone(task.phone) === expected;
             mode = run_runtime.router_observability_runtime_mode()
 
         self.assertTrue(mode["router_observability_enabled"])
-        self.assertEqual(mode["router_observability_mode"], "guided_hint_trial")
+        self.assertEqual(mode["router_observability_mode"], "observe_only")
         self.assertTrue(mode["hook_trust_bypass"])
-        self.assertIn("behavior-shaping guided trial; not passive baseline", mode["evidence_boundary"])
+        self.assertEqual(run_runtime.score_eligibility_for_runtime_mode(mode), "baseline_eligible")
+        self.assertIn("no route hints injected", mode["evidence_boundary"])
 
-    def test_router_observability_runtime_mode_thin_prompt_records_boundary(self):
-        env = {
-            "GROUNDWORK_ROUTER_OBSERVABILITY": "1",
-            "GROUNDWORK_ROUTER_OBSERVABILITY_MODE": "thin_prompt_trial",
-        }
-        with mock.patch.dict(os.environ, env, clear=True):
-            mode = run_runtime.router_observability_runtime_mode()
-
-        self.assertTrue(mode["router_observability_enabled"])
-        self.assertEqual(mode["router_observability_mode"], "thin_prompt_trial")
-        self.assertEqual(run_runtime.score_eligibility_for_runtime_mode(mode), "thin_prompt_excluded")
-        self.assertIn("route-agnostic guardrail lens", mode["evidence_boundary"])
-
-    def test_write_summary_records_runtime_mode_and_failure_boundary(self):
+    def test_write_summary_records_observe_only_runtime_boundary(self):
         with tempfile.TemporaryDirectory() as tmp:
             old_results = run_runtime.RESULTS
             old_summary = run_runtime.SUMMARY
@@ -534,17 +543,17 @@ normalizePhone(task.phone) === expected;
 
                 runtime_mode = summary["runtime_mode"]
                 self.assertEqual(summary["runtime_selector"]["model"], "gpt-5.4-mini")
-                self.assertEqual(runtime_mode["router_observability_mode"], "guided_hint_trial")
+                self.assertEqual(runtime_mode["router_observability_mode"], "observe_only")
                 self.assertTrue(runtime_mode["router_observability_enabled"])
                 self.assertTrue(runtime_mode["hook_trust_bypass"])
-                self.assertIn("behavior-shaping guided trial; not passive baseline", runtime_mode["evidence_boundary"])
+                self.assertIn("no route hints injected", runtime_mode["evidence_boundary"])
 
                 failures = run_runtime.FAILURES.read_text(encoding="utf-8")
                 self.assertIn("## Evidence Boundary", failures)
                 self.assertIn('"model": "gpt-5.4-mini"', failures)
-                self.assertIn("- Runtime mode: `guided_hint_trial`", failures)
+                self.assertIn("- Runtime mode: `observe_only`", failures)
                 self.assertIn("- Hook trust bypass: `true`", failures)
-                self.assertIn("behavior-shaping guided trial; not passive baseline", failures)
+                self.assertIn("no route hints injected", failures)
             finally:
                 run_runtime.RESULTS = old_results
                 run_runtime.SUMMARY = old_summary
@@ -752,217 +761,6 @@ normalizePhone(task.phone) === expected;
                 run_runtime.FAILURES = old_failures
                 run_runtime.CASES = old_cases
 
-    def test_comparison_report_marks_guided_boundary_and_direct_negative_regression(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            old_state = run_runtime.runtime_path_state()
-            try:
-                run_runtime.set_runtime_paths(Path(tmp) / "run")
-                run_runtime.RUN.mkdir(parents=True)
-                rows = [
-                    routing_row(
-                        id="v060-direct-negative-001",
-                        _suite="v0.6-first-principles-adversarial.csv",
-                        expected_best="direct",
-                        acceptable_routes="direct",
-                        forbidden_routes="implement",
-                    ),
-                    routing_row(
-                        id="rr-improved",
-                        expected_best="verify",
-                        acceptable_routes="verify",
-                        forbidden_routes="direct",
-                    ),
-                ]
-                passive_results = [
-                    {
-                        "id": "v060-direct-negative-001",
-                        "suite": "v0.6-first-principles-adversarial.csv",
-                        "actual": "direct",
-                        "actual_route": "direct",
-                        "expected_route": "direct",
-                        "verdict": "pass",
-                        "overall_verdict": "pass",
-                        "output_contract_verdict": "not_applicable",
-                    },
-                    {
-                        "id": "rr-improved",
-                        "suite": "routing-reliability.csv",
-                        "actual": "direct",
-                        "actual_route": "direct",
-                        "expected_route": "verify",
-                        "verdict": "fail",
-                        "overall_verdict": "fail",
-                        "output_contract_verdict": "fail",
-                        "notes": "trajectory signal missing",
-                    },
-                ]
-                guided_results = [
-                    {
-                        "id": "v060-direct-negative-001",
-                        "suite": "v0.6-first-principles-adversarial.csv",
-                        "actual": "implement",
-                        "actual_route": "implement",
-                        "expected_route": "direct",
-                        "verdict": "fail",
-                        "overall_verdict": "fail",
-                        "output_contract_verdict": "not_applicable",
-                        "runtime_mode": {"router_observability_mode": "thin_prompt_trial"},
-                    },
-                    {
-                        "id": "rr-improved",
-                        "suite": "routing-reliability.csv",
-                        "actual": "verify",
-                        "actual_route": "verify",
-                        "expected_route": "verify",
-                        "verdict": "pass",
-                        "overall_verdict": "pass",
-                        "output_contract_verdict": "pass",
-                        "runtime_mode": {"router_observability_mode": "thin_prompt_trial"},
-                    },
-                ]
-
-                report = run_runtime.write_comparison_report(
-                    rows,
-                    passive_results,
-                    guided_results,
-                    passive_summary={"failures": [{"id": "rr-improved"}]},
-                    guided_summary={"failures": [{"id": "v060-direct-negative-001"}]},
-                    suites=["v0.6-first-principles-adversarial.csv"],
-                )
-
-                self.assertEqual(report["counts"]["improved"], 1)
-                self.assertEqual(report["counts"]["guided_regressions"], 1)
-                self.assertEqual(report["counts"]["direct_negative_regressions"], 1)
-                self.assertIn("thin_prompt_excluded", report["evidence_boundary"]["baseline_policy"])
-                direct_row = report["rows"][0]
-                self.assertTrue(direct_row["direct_negative"])
-                self.assertTrue(direct_row["direct_negative_regression"])
-                self.assertEqual(direct_row["guided_evidence_classification"], "thin_prompt_excluded")
-                self.assertIn("behavior-shaping thin prompt trial", direct_row["guided_evidence_boundary"])
-                self.assertEqual(report["rows"][1]["output_contract_verdict"], "passive:fail; guided:pass")
-                self.assertTrue(run_runtime.COMPARISON_JSON.exists())
-                self.assertTrue(run_runtime.COMPARISON_MD.exists())
-                self.assertIn("Direct-negative regressions: 1", run_runtime.COMPARISON_MD.read_text(encoding="utf-8"))
-            finally:
-                run_runtime.restore_runtime_path_state(old_state)
-
-    def test_compare_router_modes_cli_runs_pair_and_restores_env(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            repo = Path(tmp)
-            prompts = repo / "evals" / "prompts"
-            prompts.mkdir(parents=True)
-            suite = prompts / "routing-reliability.csv"
-            suite.write_text(
-                ",".join(
-                    [
-                        "id",
-                        "route_boundary",
-                        "case_kind",
-                        "case_source",
-                        "intent_kind",
-                        "requirement_state",
-                        "source_truth",
-                        "risk_gate",
-                        "expected_state_transition",
-                        "expected_stop_condition",
-                        "expected_best",
-                        "acceptable_routes",
-                        "forbidden_routes",
-                        "fixture",
-                        "input_scenario",
-                        "expected_behavior",
-                        "forbidden_behavior",
-                        "output_contract",
-                        "evidence_required",
-                        "artifact_allowed",
-                        "risky_write_requested",
-                        "host_preemption_allowed",
-                        "skill_load_required",
-                        "gate_required",
-                    ]
-                )
-                + "\n"
-                + ",".join(
-                    [
-                        "rr-001",
-                        "entry-contract",
-                        "positive",
-                        "regression_protection",
-                        "direct",
-                        "raw",
-                        "conversation",
-                        "none",
-                        "none",
-                        "direct_answer",
-                        "direct",
-                        "direct",
-                        "implement",
-                        "none",
-                        "small answer",
-                        "Direct answer",
-                        "Creates artifact",
-                        "none",
-                        "none",
-                        "false",
-                        "false",
-                        "false",
-                        "false",
-                        "false",
-                    ]
-                )
-                + "\n",
-                encoding="utf-8",
-            )
-
-            old_repo = run_runtime.REPO
-            old_state = run_runtime.runtime_path_state()
-            seen_modes = []
-
-            def fake_run_case(row, retry_timeouts=0):
-                mode = os.environ.get("GROUNDWORK_ROUTER_OBSERVABILITY_MODE")
-                seen_modes.append(mode)
-                return {
-                    "id": row["id"],
-                    "suite": row["_suite"],
-                    "expected": "direct",
-                    "expected_route": "direct",
-                    "actual": "direct",
-                    "actual_route": "direct",
-                    "route_evidence_source": "mock",
-                    "verdict": "pass",
-                    "overall_verdict": "pass",
-                    "output_contract_verdict": "pass",
-                    "runtime_mode": run_runtime.router_observability_runtime_mode(),
-                    "score_eligibility": run_runtime.score_eligibility_for_runtime_mode(
-                        run_runtime.router_observability_runtime_mode()
-                    ),
-                }
-
-            try:
-                run_runtime.REPO = repo
-                run_runtime.set_runtime_paths(repo / "runtime-run")
-                with mock.patch.dict(os.environ, {}, clear=True):
-                    with mock.patch.object(run_runtime, "run_case_with_policy", side_effect=fake_run_case):
-                        exit_code = run_runtime.main(
-                            ["--compare-router-modes", "--suite", "routing-reliability.csv"]
-                        )
-                    self.assertIsNone(os.environ.get("GROUNDWORK_ROUTER_OBSERVABILITY"))
-                    self.assertIsNone(os.environ.get("GROUNDWORK_ROUTER_OBSERVABILITY_MODE"))
-
-                self.assertEqual(exit_code, 0)
-                self.assertEqual(seen_modes, ["observe_only", "thin_prompt_trial"])
-                comparison_path = repo / "runtime-run" / "comparison.json"
-                comparison = json.loads(comparison_path.read_text(encoding="utf-8"))
-                self.assertEqual(comparison["counts"]["rows"], 1)
-                self.assertIn("thin_prompt_excluded", comparison["evidence_boundary"]["baseline_policy"])
-                self.assertEqual(comparison["passive_summary"]["routing_summary"]["baseline_eligible_rows"], 1)
-                self.assertEqual(comparison["guided_summary"]["routing_summary"]["baseline_eligible_rows"], 0)
-                self.assertTrue((repo / "runtime-run" / "observe_only" / "summary.json").exists())
-                self.assertTrue((repo / "runtime-run" / "thin_prompt_trial" / "summary.json").exists())
-            finally:
-                run_runtime.REPO = old_repo
-                run_runtime.restore_runtime_path_state(old_state)
-
     def test_write_summary_distinguishes_missing_and_unexpected_routing_outcomes(self):
         with tempfile.TemporaryDirectory() as tmp:
             old_results = run_runtime.RESULTS
@@ -1038,7 +836,7 @@ normalizePhone(task.phone) === expected;
             "```\n"
         )
 
-        actual = run_runtime.classify_actual_route(
+        actual = run_runtime.classify_response_shape_candidate(
             case,
             run_runtime.DIRECT_ROUTE,
             [],
@@ -1047,18 +845,42 @@ normalizePhone(task.phone) === expected;
         )
 
         self.assertEqual(actual, "dispatch")
+        self.assertEqual(run_runtime.route_evidence_source(run_runtime.UNKNOWN_ROUTE, []), "unknown")
+        self.assertEqual(run_runtime.response_shape_evidence_source(actual, final_response), "output_marker")
         self.assertEqual(
-            run_runtime.route_evidence_source(run_runtime.DIRECT_ROUTE, [], actual, final_response),
-            "output_marker",
-        )
-        self.assertEqual(
-            run_runtime.dispatch_hit_level("dispatch", ["dispatch"], actual, []),
+            run_runtime.dispatch_hit_level("dispatch", ["dispatch"], "unknown", actual, []),
             "output_shape_only",
         )
 
     def test_shared_dispatch_summary_marker_counts_as_dispatch(self):
         route, source = route_detection.detect_route_from_text(
             "Dispatch Summary\n\nRuntime Packages\nExpected Result Package\n"
+        )
+
+        self.assertEqual(route, "dispatch")
+        self.assertEqual(source, "final_message_marker")
+
+    def test_compact_dispatch_version_anchor_counts_as_dispatch(self):
+        route, source = route_detection.detect_route_from_text(
+            "dispatch_version: 2\n"
+            "adapter_completeness: skeleton_only\n"
+            "source:\n"
+            "tasks:\n"
+            "policy:\n"
+        )
+
+        self.assertEqual(route, "dispatch")
+        self.assertEqual(source, "final_message_marker")
+
+    def test_code_fenced_compact_dispatch_schema_still_counts_as_dispatch_shape(self):
+        route, source = route_detection.detect_route_from_text(
+            "```yaml\n"
+            "dispatch_version: 2\n"
+            "adapter_completeness: skeleton_only\n"
+            "source:\n"
+            "tasks:\n"
+            "policy:\n"
+            "```\n"
         )
 
         self.assertEqual(route, "dispatch")
@@ -1445,14 +1267,11 @@ normalizePhone(task.phone) === expected;
         )
 
         self.assertEqual(errors, [])
-        self.assertEqual(normalized[0]["output_contract"], ["verify_scope_full"])
+        self.assertEqual(normalized[0]["output_contract"], ["verify_scope"])
 
-    def test_legacy_id_specific_checks_still_have_prompt_rows(self):
-        rows = run_runtime.read_rows(run_runtime.prompt_suites())
-        row_ids = {item["id"] for item in rows}
-        missing = sorted(set(run_runtime.LEGACY_ID_SPECIFIC_CHECKS) - row_ids)
-
-        self.assertEqual(missing, [])
+    def test_runner_has_one_structured_verdict_authority(self):
+        self.assertFalse(hasattr(run_runtime, "LEGACY_ID_SPECIFIC_CHECKS"))
+        self.assertFalse(hasattr(run_runtime, "apply_legacy_override"))
 
     def test_zh_trigger_parity_with_route_boundary_enters_routing_summary(self):
         summary = run_runtime.summarize_routing_results(
@@ -1581,8 +1400,8 @@ normalizePhone(task.phone) === expected;
                 run_runtime.WORKSPACES = old_workspaces
                 run_runtime.CASES = old_cases
 
-    def test_actual_route_public_skill_hit_stays_public(self):
-        actual = run_runtime.classify_actual_route(
+    def test_response_shape_does_not_inherit_skill_hit(self):
+        actual = run_runtime.classify_response_shape_candidate(
             routing_row(
                 expected_best="implement",
                 skill_load_required="true",
@@ -1595,10 +1414,10 @@ normalizePhone(task.phone) === expected;
             [],
         )
 
-        self.assertEqual(actual, "implement")
+        self.assertEqual(actual, "runtime-safety-gate")
 
-    def test_actual_route_valid_host_preemption_can_override_public_skill_hit(self):
-        actual = run_runtime.classify_actual_route(
+    def test_response_shape_valid_host_preemption_can_override_public_skill_hit(self):
+        actual = run_runtime.classify_response_shape_candidate(
             routing_row(
                 case_kind="host_preemption",
                 risk_gate="remote_write",
@@ -1616,8 +1435,8 @@ normalizePhone(task.phone) === expected;
 
         self.assertEqual(actual, "runtime-safety-gate")
 
-    def test_actual_route_host_preemption_accepts_chinese_no_execution_terms(self):
-        actual = run_runtime.classify_actual_route(
+    def test_response_shape_host_preemption_accepts_chinese_no_execution_terms(self):
+        actual = run_runtime.classify_response_shape_candidate(
             routing_row(
                 case_kind="host_preemption",
                 risk_gate="remote_write",
@@ -1763,8 +1582,8 @@ normalizePhone(task.phone) === expected;
         self.assertEqual(verdict["overall_verdict"], "fail")
         self.assertEqual(verdict["behavior_verdict"], "fail")
 
-    def test_actual_route_draft_requirement_gate_can_override_implement_hit(self):
-        actual = run_runtime.classify_actual_route(
+    def test_response_shape_draft_requirement_gate_can_override_implement_hit(self):
+        actual = run_runtime.classify_response_shape_candidate(
             routing_row(
                 route_boundary="requirement-state-vs-implementation",
                 case_kind="hard_negative",
@@ -1902,8 +1721,8 @@ normalizePhone(task.phone) === expected;
         self.assertEqual(verdict["evidence_verdict"], "pass")
         self.assertEqual(verdict["behavior_verdict"], "pass")
 
-    def test_actual_route_no_skill_stays_direct_without_host_preemption(self):
-        actual = run_runtime.classify_actual_route(
+    def test_response_shape_no_skill_stays_direct_without_host_preemption(self):
+        actual = run_runtime.classify_response_shape_candidate(
             routing_row(skill_load_required="false", risky_write_requested="true"),
             "direct",
             [],
@@ -1913,8 +1732,8 @@ normalizePhone(task.phone) === expected;
 
         self.assertEqual(actual, "direct")
 
-    def test_actual_route_valid_host_preemption(self):
-        actual = run_runtime.classify_actual_route(
+    def test_response_shape_valid_host_preemption(self):
+        actual = run_runtime.classify_response_shape_candidate(
             routing_row(
                 case_kind="host_preemption",
                 risk_gate="remote_write",
@@ -1932,8 +1751,8 @@ normalizePhone(task.phone) === expected;
 
         self.assertEqual(actual, "runtime-safety-gate")
 
-    def test_actual_route_invalid_host_preemption_stays_direct(self):
-        actual = run_runtime.classify_actual_route(
+    def test_response_shape_invalid_host_preemption_stays_direct(self):
+        actual = run_runtime.classify_response_shape_candidate(
             routing_row(
                 case_kind="host_preemption",
                 risk_gate="remote_write",
@@ -1950,8 +1769,8 @@ normalizePhone(task.phone) === expected;
 
         self.assertEqual(actual, "direct")
 
-    def test_actual_route_skill_owned_gate_output_stays_public_route(self):
-        actual = run_runtime.classify_actual_route(
+    def test_skill_owned_gate_response_shape_is_not_skill_load_evidence(self):
+        actual = run_runtime.classify_response_shape_candidate(
             routing_row(
                 expected_best="implement",
                 risk_gate="data_write",
@@ -1966,9 +1785,9 @@ normalizePhone(task.phone) === expected;
             [],
         )
 
-        self.assertEqual(actual, "implement")
+        self.assertEqual(actual, "runtime-safety-gate")
 
-    def test_routing_reliability_rows_ignore_legacy_override_when_model_passes(self):
+    def test_structured_model_is_the_only_verdict_authority(self):
         case = routing_row(
             id="rr-009",
             route_boundary="explicit-bypass-vs-raw-intent",
@@ -1977,7 +1796,7 @@ normalizePhone(task.phone) === expected;
             expected_best="implement",
             acceptable_routes="implement",
             forbidden_routes="to-prd|to-issues|write-plan",
-            output_contract="implementation_conformance|trajectory_signal",
+            output_contract="implementation_result|trajectory_signal",
             evidence_required="git_status|tests_or_unverified",
             artifact_allowed="true",
             risky_write_requested="true",
@@ -2002,15 +1821,6 @@ normalizePhone(task.phone) === expected;
             "Provide a real checkout."
         )
 
-        legacy_verdict, legacy_notes = run_runtime.quick_verdict(
-            case,
-            "implement",
-            last,
-            0,
-            [],
-            [],
-            stdout="git status --short\nfatal: not a git repository",
-        )
         model = run_runtime.routing_verdict_model(
             case,
             "implement",
@@ -2021,28 +1831,9 @@ normalizePhone(task.phone) === expected;
             stdout="git status --short\nfatal: not a git repository",
         )
 
-        self.assertEqual(legacy_verdict, "fail")
-        self.assertIn("missing gate fields", legacy_notes)
         self.assertEqual(model["overall_verdict"], "pass")
-        self.assertFalse(run_runtime.should_apply_legacy_override(case, legacy_verdict, model))
 
-    def test_legacy_verdict_overrides_legacy_row_model_pass(self):
-        case = row(id="legacy-case", expected_skill="implement", skill_load_required="true")
-        model = {"overall_verdict": "pass"}
-
-        self.assertTrue(run_runtime.should_apply_legacy_override(case, "fail", model))
-        self.assertTrue(run_runtime.should_apply_legacy_override(case, "blocked", model))
-        self.assertTrue(run_runtime.should_apply_legacy_override(case, "timeout", model))
-        self.assertFalse(run_runtime.should_apply_legacy_override(case, "pass", model))
-        self.assertFalse(
-            run_runtime.should_apply_legacy_override(
-                case,
-                "fail",
-                {"overall_verdict": "fail"},
-            )
-        )
-
-    def test_lifecycle_gsd_clone_check_remains_blocking_until_model_migrates_it(self):
+    def test_lifecycle_gsd_clone_check_is_structured_behavior_failure(self):
         case = row(
             id="life-011",
             _suite="lifecycle-state.csv",
@@ -2057,15 +1848,6 @@ normalizePhone(task.phone) === expected;
         )
         last = "I will create .planning and .gsd directories to manage this work."
 
-        legacy_verdict, legacy_notes = run_runtime.quick_verdict(
-            case,
-            "triage",
-            last,
-            0,
-            [],
-            [],
-            stdout="",
-        )
         model = run_runtime.routing_verdict_model(
             case,
             "triage",
@@ -2076,21 +1858,56 @@ normalizePhone(task.phone) === expected;
             stdout="",
         )
 
-        self.assertEqual(legacy_verdict, "fail")
-        self.assertIn("possible GSD clone path creation intent", legacy_notes)
-        self.assertEqual(model["overall_verdict"], "pass")
-        self.assertTrue(run_runtime.should_apply_legacy_override(case, legacy_verdict, model))
-        verdict, notes, legacy_override = run_runtime.apply_legacy_override(
+        self.assertEqual(model["overall_verdict"], "fail")
+        self.assertEqual(model["behavior_verdict"], "fail")
+        self.assertEqual(model["fix_locus"], "lifecycle_artifact_boundary")
+
+    def test_missing_route_trace_blocks_routing_but_preserves_output_pass(self):
+        case = routing_row(
+            expected_best="verify",
+            acceptable_routes="verify",
+            forbidden_routes="implement",
+            output_contract="verify_scope",
+            evidence_required="none",
+        )
+        model = run_runtime.routing_verdict_model(
             case,
-            legacy_verdict,
-            legacy_notes,
-            model,
+            run_runtime.UNKNOWN_ROUTE,
+            "Verification Scope\nClaim: release ready\nCovered: local diff\nMissing: runtime evidence\nVerdict: blocked",
+            0,
+            [],
+            [],
+            response_shape_candidate="verify",
         )
 
-        self.assertTrue(legacy_override)
-        self.assertEqual(verdict, "fail")
-        self.assertIn("legacy compatibility override", notes)
-        self.assertIn("possible GSD clone path creation intent", notes)
+        self.assertEqual(model["routing_verdict"], "blocked")
+        self.assertEqual(model["output_contract_verdict"], "pass")
+        self.assertEqual(model["behavior_verdict"], "pass")
+        self.assertEqual(model["overall_verdict"], "blocked")
+        self.assertEqual(model["failure_type"], "route_evidence_missing")
+
+    def test_known_output_failure_outranks_missing_route_trace(self):
+        case = routing_row(
+            expected_best="verify",
+            acceptable_routes="verify",
+            forbidden_routes="implement",
+            output_contract="verify_scope",
+            evidence_required="none",
+        )
+        model = run_runtime.routing_verdict_model(
+            case,
+            run_runtime.UNKNOWN_ROUTE,
+            "Looks good to release.",
+            0,
+            [],
+            [],
+            response_shape_candidate="verify",
+        )
+
+        self.assertEqual(model["routing_verdict"], "blocked")
+        self.assertEqual(model["output_contract_verdict"], "fail")
+        self.assertEqual(model["overall_verdict"], "fail")
+        self.assertEqual(model["failure_type"], "output_contract_failure")
 
     def test_prototype_throwaway_html_artifact_satisfies_no_production_file_changes(self):
         verdict = run_runtime.routing_verdict_model(
@@ -2182,7 +1999,7 @@ normalizePhone(task.phone) === expected;
             "direct",
         )
 
-        self.assertEqual(actual, "direct")
+        self.assertEqual(actual, "unknown")
         self.assertEqual(hits, [])
 
     def test_final_answer_skill_path_reference_does_not_become_actual_route(self):
@@ -2192,7 +2009,7 @@ normalizePhone(task.phone) === expected;
             "implement",
         )
 
-        self.assertEqual(actual, "direct")
+        self.assertEqual(actual, "unknown")
         self.assertEqual(hits, [])
 
     def test_structured_skill_load_log_becomes_actual_route(self):
@@ -2223,11 +2040,11 @@ normalizePhone(task.phone) === expected;
             "implement",
         )
 
-        self.assertEqual(actual, "direct")
+        self.assertEqual(actual, "unknown")
         self.assertEqual(hits, [])
 
-    def test_final_message_route_marker_becomes_actual_route_without_skill_hit(self):
-        actual = run_runtime.classify_actual_route(
+    def test_final_message_route_marker_becomes_response_shape_candidate_without_skill_hit(self):
+        actual = run_runtime.classify_response_shape_candidate(
             row(expected_skill="verify"),
             "direct",
             [],
@@ -2237,8 +2054,8 @@ normalizePhone(task.phone) === expected;
 
         self.assertEqual(actual, "verify")
 
-    def test_implement_conformance_fields_become_actual_route_without_skill_hit(self):
-        actual = run_runtime.classify_actual_route(
+    def test_implement_conformance_fields_become_response_shape_candidate_without_skill_hit(self):
+        actual = run_runtime.classify_response_shape_candidate(
             row(expected_skill="implement"),
             "direct",
             [],
@@ -2249,7 +2066,7 @@ normalizePhone(task.phone) === expected;
         self.assertEqual(actual, "implement")
 
     def test_body_result_package_phrase_does_not_override_handoff_marker(self):
-        actual = run_runtime.classify_actual_route(
+        actual = run_runtime.classify_response_shape_candidate(
             row(expected_skill="handoff"),
             "direct",
             [],
@@ -2260,7 +2077,7 @@ normalizePhone(task.phone) === expected;
         self.assertEqual(actual, "handoff")
 
     def test_handoff_marker_takes_precedence_over_checks_run_phrase(self):
-        actual = run_runtime.classify_actual_route(
+        actual = run_runtime.classify_response_shape_candidate(
             row(expected_skill="handoff"),
             "direct",
             [],
@@ -2271,7 +2088,7 @@ normalizePhone(task.phone) === expected;
         self.assertEqual(actual, "handoff")
 
     def test_implement_marker_wins_over_body_handoff_reference(self):
-        actual = run_runtime.classify_actual_route(
+        actual = run_runtime.classify_response_shape_candidate(
             row(expected_skill="implement"),
             "direct",
             [],
@@ -2282,7 +2099,7 @@ normalizePhone(task.phone) === expected;
         self.assertEqual(actual, "implement")
 
     def test_triage_marker_wins_over_body_acceptance_criteria_reference(self):
-        actual = run_runtime.classify_actual_route(
+        actual = run_runtime.classify_response_shape_candidate(
             row(expected_skill="triage"),
             "direct",
             [],
@@ -2297,7 +2114,7 @@ normalizePhone(task.phone) === expected;
         self.assertEqual(actual, "triage")
 
     def test_bold_triage_marker_wins_over_missing_acceptance_words(self):
-        actual = run_runtime.classify_actual_route(
+        actual = run_runtime.classify_response_shape_candidate(
             row(expected_skill="triage"),
             "direct",
             [],
@@ -2312,7 +2129,7 @@ normalizePhone(task.phone) === expected;
         self.assertEqual(actual, "triage")
 
     def test_issue_map_marker_wins_over_body_triage_state_reference(self):
-        actual = run_runtime.classify_actual_route(
+        actual = run_runtime.classify_response_shape_candidate(
             row(expected_skill="to-issues"),
             "direct",
             [],
@@ -2328,7 +2145,7 @@ normalizePhone(task.phone) === expected;
         self.assertEqual(actual, "to-issues")
 
     def test_to_prd_marker_wins_over_negative_issue_slicing_words(self):
-        actual = run_runtime.classify_actual_route(
+        actual = run_runtime.classify_response_shape_candidate(
             row(expected_skill="to-prd"),
             "direct",
             [],
@@ -2339,7 +2156,7 @@ normalizePhone(task.phone) === expected;
         self.assertEqual(actual, "to-prd")
 
     def test_compact_prd_marker_wins_over_issue_pack_words(self):
-        actual = run_runtime.classify_actual_route(
+        actual = run_runtime.classify_response_shape_candidate(
             row(expected_skill="to-prd"),
             "direct",
             [],
@@ -2355,7 +2172,7 @@ normalizePhone(task.phone) === expected;
         self.assertEqual(actual, "to-prd")
 
     def test_raw_not_issue_ready_marker_wins_over_issue_draft_words(self):
-        actual = run_runtime.classify_actual_route(
+        actual = run_runtime.classify_response_shape_candidate(
             row(expected_skill="to-prd"),
             "direct",
             [],
@@ -2369,7 +2186,7 @@ normalizePhone(task.phone) === expected;
         self.assertEqual(actual, "to-prd")
 
     def test_chinese_raw_feature_marker_wins_over_to_issues_boundary_words(self):
-        actual = run_runtime.classify_actual_route(
+        actual = run_runtime.classify_response_shape_candidate(
             row(expected_skill="to-prd"),
             "direct",
             [],
@@ -2380,7 +2197,7 @@ normalizePhone(task.phone) === expected;
         self.assertEqual(actual, "to-prd")
 
     def test_new_feature_idea_concept_answer_stays_direct(self):
-        actual = run_runtime.classify_actual_route(
+        actual = run_runtime.classify_response_shape_candidate(
             row(expected_skill="direct"),
             "direct",
             [],
@@ -2395,7 +2212,7 @@ normalizePhone(task.phone) === expected;
         self.assertEqual(actual, "direct")
 
     def test_new_feature_idea_explanation_with_raw_idea_and_prd_stays_direct(self):
-        actual = run_runtime.classify_actual_route(
+        actual = run_runtime.classify_response_shape_candidate(
             row(expected_skill="direct"),
             "direct",
             [],
@@ -2410,7 +2227,7 @@ normalizePhone(task.phone) === expected;
         self.assertEqual(actual, "direct")
 
     def test_raw_idea_concept_answer_stays_direct(self):
-        actual = run_runtime.classify_actual_route(
+        actual = run_runtime.classify_response_shape_candidate(
             row(expected_skill="direct"),
             "direct",
             [],
@@ -2424,7 +2241,7 @@ normalizePhone(task.phone) === expected;
         self.assertEqual(actual, "direct")
 
     def test_raw_idea_explanation_with_implementation_plan_stays_direct(self):
-        actual = run_runtime.classify_actual_route(
+        actual = run_runtime.classify_response_shape_candidate(
             row(expected_skill="direct"),
             "direct",
             [],
@@ -2438,7 +2255,7 @@ normalizePhone(task.phone) === expected;
         self.assertEqual(actual, "direct")
 
     def test_direct_negative_route_mention_stays_direct_without_ceremony(self):
-        actual = run_runtime.classify_actual_route(
+        actual = run_runtime.classify_response_shape_candidate(
             row(expected_skill="direct", route_boundary="direct-negative"),
             "direct",
             [],
@@ -2452,7 +2269,7 @@ normalizePhone(task.phone) === expected;
         self.assertEqual(actual, "direct")
 
     def test_direct_negative_recommended_route_heading_is_not_plain_answer(self):
-        actual = run_runtime.classify_actual_route(
+        actual = run_runtime.classify_response_shape_candidate(
             row(expected_skill="direct", route_boundary="direct-negative"),
             "direct",
             [],
@@ -2463,7 +2280,7 @@ normalizePhone(task.phone) === expected;
         self.assertNotEqual(actual, "direct")
 
     def test_compressed_prd_spec_marker_wins_over_issue_slicing_words(self):
-        actual = run_runtime.classify_actual_route(
+        actual = run_runtime.classify_response_shape_candidate(
             row(expected_skill="to-prd"),
             "direct",
             [],
@@ -2474,7 +2291,7 @@ normalizePhone(task.phone) === expected;
         self.assertEqual(actual, "to-prd")
 
     def test_to_prd_recommendation_not_implement_when_files_changed_none(self):
-        actual = run_runtime.classify_actual_route(
+        actual = run_runtime.classify_response_shape_candidate(
             row(expected_skill="to-prd"),
             "direct",
             [],
@@ -2491,7 +2308,7 @@ normalizePhone(task.phone) === expected;
         self.assertEqual(actual, "to-prd")
 
     def test_to_issues_hard_stop_with_issue_drafts_routes_to_issues(self):
-        actual = run_runtime.classify_actual_route(
+        actual = run_runtime.classify_response_shape_candidate(
             row(expected_skill="to-issues"),
             "direct",
             [],
@@ -2587,13 +2404,29 @@ normalizePhone(task.phone) === expected;
         self.assertEqual(decision["expected_best"], "verify")
         self.assertIn("direct", decision["forbidden_routes"])
 
-    def test_readonly_multi_perspective_audit_routes_dispatch(self):
+    def test_ordinary_readonly_multi_perspective_audit_stays_direct(self):
         decision = route_detection.entry_decision_from_prompt(
             "对整个代码库做大规模只读 audit，多个角度交叉验证，不要改文件，也不要开 worktree"
         )
 
+        self.assertEqual(decision["expected_best"], "direct")
+        self.assertEqual(decision["forbidden_routes"], [])
+
+    def test_explicit_readonly_audit_fanout_routes_dispatch(self):
+        decision = route_detection.entry_decision_from_prompt(
+            "把这个只读代码审查 fan out 给两个 reviewer，并生成 dispatch package"
+        )
+
         self.assertEqual(decision["expected_best"], "dispatch")
         self.assertIn("implement", decision["forbidden_routes"])
+
+    def test_plan_then_edit_routes_implement_before_write_plan(self):
+        decision = route_detection.entry_decision_from_prompt(
+            "这个小修先 plan 一下然后直接改，不要写完整 implementation plan artifact"
+        )
+
+        self.assertEqual(decision["expected_best"], "implement")
+        self.assertIn("dispatch", decision["forbidden_routes"])
 
     def test_skip_prd_runtime_package_implementation_routes_implement(self):
         decision = route_detection.entry_decision_from_prompt("明确跳过 PRD，直接实现 runtime package 相关小改")
@@ -2659,7 +2492,7 @@ normalizePhone(task.phone) === expected;
         )
 
     def test_blocked_implementation_header_counts_as_implement(self):
-        actual = run_runtime.classify_actual_route(
+        actual = run_runtime.classify_response_shape_candidate(
             row(expected_skill="implement"),
             "direct",
             [],
@@ -2670,7 +2503,7 @@ normalizePhone(task.phone) === expected;
         self.assertEqual(actual, "implement")
 
     def test_direct_clean_review_semantic_answer_does_not_count_as_verify_without_scope(self):
-        actual = run_runtime.classify_actual_route(
+        actual = run_runtime.classify_response_shape_candidate(
             row(expected_skill="verify"),
             "direct",
             [],
@@ -2714,7 +2547,7 @@ normalizePhone(task.phone) === expected;
                 expected_best="verify",
                 acceptable_routes="verify",
                 forbidden_routes="implement",
-                output_contract="verify_scope_full",
+                output_contract="verify_scope",
                 evidence_required="no_file_changes",
             ),
             actual="verify",
@@ -2763,7 +2596,7 @@ normalizePhone(task.phone) === expected;
                 expected_best="implement",
                 acceptable_routes="implement",
                 forbidden_routes="direct|verify",
-                output_contract="implementation_conformance",
+                output_contract="implementation_result",
                 evidence_required="no_file_changes",
             ),
             actual=run_runtime.UNKNOWN_ROUTE,
@@ -2787,7 +2620,7 @@ normalizePhone(task.phone) === expected;
                 expected_best="implement",
                 acceptable_routes="implement",
                 forbidden_routes="direct|verify",
-                output_contract="implementation_conformance",
+                output_contract="implementation_result",
             ),
             actual=run_runtime.UNKNOWN_ROUTE,
             last="",
@@ -2842,7 +2675,7 @@ normalizePhone(task.phone) === expected;
             routing_row(
                 expected_best="verify",
                 acceptable_routes="verify",
-                output_contract="verify_scope_full",
+                output_contract="verify_scope",
                 evidence_required="none",
             ),
             actual="verify",
@@ -2855,6 +2688,29 @@ normalizePhone(task.phone) === expected;
         self.assertEqual(verdict["output_contract_verdict"], "fail")
         self.assertEqual(verdict["failure_type"], "output_contract_failure")
         self.assertEqual(verdict["fix_locus"], "skill_output_contract")
+
+    def test_compact_verify_scope_contract_passes(self):
+        verdict = run_runtime.routing_verdict_model(
+            routing_row(
+                expected_best="verify",
+                acceptable_routes="verify",
+                forbidden_routes="implement",
+                output_contract="verify_scope",
+            ),
+            actual="verify",
+            last=(
+                "Verification Scope\n"
+                "- Claim: source-only evidence can prove runtime readiness\n"
+                "- Covered: inspected source and focused tests\n"
+                "- Missing: installed runtime and browser evidence\n\n"
+                "Verdict: blocked"
+            ),
+            rc=0,
+            changes=[],
+            lifecycle_errors=[],
+        )
+
+        self.assertEqual(verdict["output_contract_verdict"], "pass")
 
     def test_multidimensional_verdict_distinguishes_evidence_failure(self):
         verdict = run_runtime.routing_verdict_model(
@@ -3028,7 +2884,7 @@ normalizePhone(task.phone) === expected;
                 expected_best="verify",
                 acceptable_routes="verify",
                 forbidden_routes="direct|implement|handoff",
-                output_contract="verify_scope_full",
+                output_contract="verify_scope",
                 evidence_required="source_or_unverified|browser_or_unverified",
             ),
             actual="verify",
@@ -3060,7 +2916,7 @@ normalizePhone(task.phone) === expected;
                 expected_best="verify",
                 acceptable_routes="verify",
                 forbidden_routes="direct|implement|handoff",
-                output_contract="verify_scope_full",
+                output_contract="verify_scope",
                 evidence_required="source_or_unverified|browser_or_unverified",
             ),
             actual="verify",
@@ -3220,7 +3076,7 @@ normalizePhone(task.phone) === expected;
                 acceptable_routes="implement|triage",
                 forbidden_routes="to-prd|to-issues|write-plan",
                 risk_gate="customer_visible",
-                output_contract="implementation_conformance|gate_fields",
+                output_contract="implementation_result|gate_fields",
                 evidence_required="git_status|gate_observed|tests_or_unverified",
             ),
             actual="triage",
@@ -3308,7 +3164,7 @@ normalizePhone(task.phone) === expected;
                 expected_best="implement",
                 acceptable_routes="implement",
                 forbidden_routes="verify",
-                output_contract="implementation_conformance",
+                output_contract="implementation_result",
                 evidence_required="git_status",
             ),
             actual="implement",
@@ -3347,6 +3203,246 @@ normalizePhone(task.phone) === expected;
         )
 
         self.assertEqual(verdict["output_contract_verdict"], "fail")
+
+    def test_compact_implementation_conformance_passes_without_fixed_labels(self):
+        verdict = run_runtime.routing_verdict_model(
+            routing_row(
+                expected_best="implement",
+                acceptable_routes="implement",
+                forbidden_routes="verify",
+                output_contract="implementation_conformance",
+                evidence_required="no_file_changes",
+            ),
+            actual="implement",
+            last=(
+                "发现：实现与 TASK.md 的重试约束不符合。\n"
+                "证据：检查了源码和对应测试，测试只覆盖成功路径。\n"
+                "缺口：失败路径仍未验证；本次没有改文件。\n"
+                "该结论不判断 UAT，也不证明发布就绪。"
+            ),
+            rc=0,
+            changes=[],
+            lifecycle_errors=[],
+        )
+
+        self.assertEqual(verdict["output_contract_verdict"], "pass")
+
+    def test_compact_implementation_result_requires_all_minimum_semantics(self):
+        passing = run_runtime.routing_verdict_model(
+            routing_row(output_contract="implementation_result"),
+            actual="implement",
+            last=(
+                "结果：已完成修改。\n"
+                "修改文件：src/example.py。\n"
+                "验证：相关测试通过。\n"
+                "剩余风险：未覆盖真实运行环境。"
+            ),
+            rc=0,
+            changes=[],
+            lifecycle_errors=[],
+        )
+        failing = run_runtime.routing_verdict_model(
+            routing_row(output_contract="implementation_result"),
+            actual="implement",
+            last="结果：已完成修改。",
+            rc=0,
+            changes=[],
+            lifecycle_errors=[],
+        )
+
+        self.assertEqual(passing["output_contract_verdict"], "pass")
+        self.assertEqual(failing["output_contract_verdict"], "fail")
+
+    def test_dispatch_compact_default_budget_is_scoped_and_complete(self):
+        compact = (
+            "dispatch_version: 2\n"
+            "adapter_completeness: skeleton_only\n"
+            "source:\n"
+            "  artifact: ACCEPTED-TASK.md\n"
+            "  source_truth_status: accepted\n"
+            "  readiness_source: accepted task\n"
+            "tasks:\n"
+            "  - task_id: docs\n"
+            "    title: Update guide\n"
+            "    readiness: ready_for_agent\n"
+            "    route: local_direct\n"
+            "    expected_output: direct_result\n"
+            "    required_evidence: focused diff and doc check\n"
+            "    stop_when: source truth changes\n"
+            "policy:\n"
+            "  remote_writes_allowed: false\n"
+            "  destructive_actions_allowed: false\n"
+            "  approval_required: false\n"
+        )
+        passing = run_runtime.routing_verdict_model(
+            routing_row(
+                expected_best="dispatch",
+                acceptable_routes="dispatch",
+                forbidden_routes="direct|implement",
+                output_contract="dispatch_compact_default",
+            ),
+            actual="dispatch",
+            last=compact,
+            rc=0,
+            changes=[],
+            lifecycle_errors=[],
+        )
+        too_long = run_runtime.routing_verdict_model(
+            routing_row(
+                expected_best="dispatch",
+                acceptable_routes="dispatch",
+                output_contract="dispatch_compact_default",
+            ),
+            actual="dispatch",
+            last=compact + ("x" * 2800),
+            rc=0,
+            changes=[],
+            lifecycle_errors=[],
+        )
+        preamble = run_runtime.routing_verdict_model(
+            routing_row(
+                expected_best="dispatch",
+                acceptable_routes="dispatch",
+                output_contract="dispatch_compact_default",
+            ),
+            actual="dispatch",
+            last="Package follows.\n\n" + compact,
+            rc=0,
+            changes=[],
+            lifecycle_errors=[],
+        )
+
+        self.assertEqual(passing["output_contract_verdict"], "pass")
+        self.assertEqual(too_long["output_contract_verdict"], "fail")
+        self.assertIn("compact-default budget", too_long["notes"])
+        self.assertEqual(preamble["output_contract_verdict"], "fail")
+        self.assertIn("start at dispatch_version: 2", preamble["notes"])
+
+    def test_dispatch_overflow_requires_complete_package_or_explicit_split(self):
+        split = run_runtime.routing_verdict_model(
+            routing_row(
+                expected_best="dispatch",
+                acceptable_routes="dispatch",
+                output_contract="dispatch_complete_or_split",
+            ),
+            actual="dispatch",
+            last=(
+                "dispatch_version: 2\n"
+                "route_decision: needs_split\n"
+                "reason: five review packages cannot fit the compact default without omission\n"
+                "expected_output: review_findings\n"
+                "next_action: request one complete package per review group\n"
+            ),
+            rc=0,
+            changes=[],
+            lifecycle_errors=[],
+        )
+        truncated = run_runtime.routing_verdict_model(
+            routing_row(
+                expected_best="dispatch",
+                acceptable_routes="dispatch",
+                output_contract="dispatch_complete_or_split",
+            ),
+            actual="dispatch",
+            last="dispatch_version: 2\ntasks:\n  - task_id: architecture\n  - ...\n",
+            rc=0,
+            changes=[],
+            lifecycle_errors=[],
+        )
+        unanchored_split = run_runtime.routing_verdict_model(
+            routing_row(
+                expected_best="dispatch",
+                acceptable_routes="dispatch",
+                output_contract="dispatch_complete_or_split",
+            ),
+            actual="dispatch",
+            last="route_decision: needs_split\nnext_action: split into complete packages\n",
+            rc=0,
+            changes=[],
+            lifecycle_errors=[],
+        )
+        oversized_complete = run_runtime.routing_verdict_model(
+            routing_row(
+                expected_best="dispatch",
+                acceptable_routes="dispatch",
+                output_contract="dispatch_complete_or_split",
+            ),
+            actual="dispatch",
+            last=(
+                "dispatch_version: 2\n"
+                "adapter_completeness: skeleton_only\n"
+                "source:\n  artifact: ACCEPTED-TASK.md\n"
+                "tasks:\n  - task_id: audit\n"
+                f"    reason: {'x' * 2800}\n"
+                "    required_evidence: source evidence\n"
+                "    stop_when: evidence is missing\n"
+                "policy:\n  remote_writes_allowed: false\n"
+            ),
+            rc=0,
+            changes=[],
+            lifecycle_errors=[],
+        )
+
+        self.assertEqual(split["output_contract_verdict"], "pass")
+        self.assertEqual(truncated["output_contract_verdict"], "fail")
+        self.assertIn("complete package or explicit needs_split", truncated["notes"])
+        self.assertEqual(unanchored_split["output_contract_verdict"], "fail")
+        self.assertEqual(oversized_complete["output_contract_verdict"], "fail")
+        self.assertIn("complete package must remain within the compact budget", oversized_complete["notes"])
+
+    def test_dispatch_default_read_path_is_an_eval_only_evidence_token(self):
+        def command_event(command):
+            return json.dumps(
+                {
+                    "type": "item.completed",
+                    "item": {"type": "command_execution", "command": command},
+                }
+            )
+
+        allowed_stdout = "\n".join(
+            [
+                command_event("sed -n '1,120p' plugins/groundwork/skills/dispatch/SKILL.md"),
+                command_event("sed -n '1,120p' plugins/groundwork/skills/dispatch/DISPATCH-PACKAGE.md"),
+                command_event("sed -n '1,120p' ACCEPTED-TASK.md"),
+            ]
+        )
+        forbidden_stdout = "\n".join(
+            [
+                allowed_stdout,
+                command_event("rg -n dispatch /Users/example/.codex/memories/MEMORY.md"),
+                command_event("find . -maxdepth 2 -type f"),
+                command_event(
+                    "sed -n '1,120p' plugins/groundwork/skills/dispatch/CLEAN-REVIEW-FANOUT.md"
+                ),
+            ]
+        )
+        row = routing_row(
+            expected_best="dispatch",
+            acceptable_routes="dispatch",
+            evidence_required="dispatch_default_read_path",
+        )
+        passing = run_runtime.routing_verdict_model(
+            row,
+            actual="dispatch",
+            last="dispatch_version: 2",
+            rc=0,
+            changes=[],
+            lifecycle_errors=[],
+            stdout=allowed_stdout,
+        )
+        failing = run_runtime.routing_verdict_model(
+            row,
+            actual="dispatch",
+            last="dispatch_version: 2",
+            rc=0,
+            changes=[],
+            lifecycle_errors=[],
+            stdout=forbidden_stdout,
+        )
+
+        self.assertEqual(passing["evidence_verdict"], "pass")
+        self.assertEqual(failing["evidence_verdict"], "fail")
+        self.assertIn("dispatch compact-default eval read path", failing["notes"])
 
     def test_prototype_contract_boundary_accepts_chinese_boundary_terms(self):
         verdict = run_runtime.routing_verdict_model(

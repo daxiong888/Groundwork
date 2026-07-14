@@ -1,11 +1,6 @@
 # Implement Lightweight Plan
 
-Target Reader: Codex running the Groundwork `implement` skill.
-Reader Action Needed: Make a small implementation plan before editing without requiring a full `write-plan` workflow.
-Decision Supported: Whether the requested implementation is scoped enough to edit and what checks will prove the local change.
-Scope: Minimal planning inside `implement` after source/task inspection has started.
-Out of Scope: Full project plans, multi-checkpoint plans, PRD shaping, or task slicing.
-Evidence Level: Groundwork issue #6 acceptance criteria and `docs/prd.md` implement contract.
+Purpose: internal five-line checkpoint for scoped `implement` work; not a full plan or readiness artifact.
 
 Use this plan before file edits unless the change is truly trivial and already fully bounded.
 

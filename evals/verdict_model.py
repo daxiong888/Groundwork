@@ -11,14 +11,20 @@ except ImportError:  # pragma: no cover - package import path
 
 
 NOT_APPLICABLE = "not_applicable"
-VERIFY_SCOPE_FIELDS = [
-    "In Scope",
-    "Out of Scope",
-    "Covered",
-    "Not Covered",
-    "Evidence Sources",
-    "User-visible Claim Being Verified",
-]
+VERIFY_SCOPE_FIELD_ALIASES = {
+    "Claim": ["Claim", "User-visible Claim Being Verified", "In Scope"],
+    "Covered": ["Covered"],
+    "Missing": ["Missing", "Not Covered"],
+}
+
+
+def missing_verify_scope_fields(text):
+    lowered = str(text or "").lower()
+    return [
+        field
+        for field, aliases in VERIFY_SCOPE_FIELD_ALIASES.items()
+        if not any(f"{alias.lower()}:" in lowered for alias in aliases)
+    ]
 
 
 def utc_now():
@@ -202,11 +208,11 @@ def output_contract_check(expected, final_message):
             "notes": ["final_message_missing"],
         }, "output_contract_failure", "skill_output_contract"
     if expected == "verify":
-        missing = [field for field in VERIFY_SCOPE_FIELDS if field not in text]
+        missing = missing_verify_scope_fields(text)
         first_line = text.splitlines()[0].strip() if text.splitlines() else ""
         if first_line != "Verification Scope" or missing:
             return "fail", {
-                "checker_id": "router_observability.verify_scope_full",
+                "checker_id": "router_observability.verify_scope",
                 "verdict": "fail",
                 "severity": "p1",
                 "fix_locus": "skill_output_contract",
@@ -235,12 +241,6 @@ def tool_coverage_status(events):
 
 def apply_live_score_authority_gate(score, decision):
     blockers = []
-    if decision.get("decision_mode") == "guided_hint_trial" or score.get("router_hint_emitted"):
-        score["score_eligibility"] = "guided_hint_excluded"
-        return score
-    if decision.get("decision_mode") == "thin_prompt_trial" or score.get("prompt_enhancement_emitted"):
-        score["score_eligibility"] = "thin_prompt_excluded"
-        return score
     if decision.get("decision_mode") != "observe_only":
         blockers.append("decision_mode")
     if score.get("expected_route_source") not in {"fixture", "deterministic_entry_classifier"}:
@@ -270,28 +270,37 @@ def apply_live_score_authority_gate(score, decision):
             return score
         score["score_eligibility"] = "insufficient_evidence"
         score["routing_verdict"] = "blocked"
-        score["overall_verdict"] = "blocked"
-        score["failure_type"] = "route_miss" if score.get("actual_route") == "unknown" else score.get("failure_type", "unclassified")
+        if score.get("overall_verdict") == "pass":
+            score["overall_verdict"] = "blocked"
+            score["failure_type"] = "route_evidence_missing"
+            score["fix_locus"] = "runtime_observability"
         score["notes"] = "baseline scoring blocked by: " + ", ".join(blockers)
     else:
         score["score_eligibility"] = "baseline_eligible"
     return score
 
 
-def score_turn(decision, final_message="", events=None, dispatch_decision=None, changed_files=None):
+def score_turn(
+    decision,
+    final_message="",
+    events=None,
+    dispatch_decision=None,
+    changed_files=None,
+    authoritative_skill_hits=None,
+):
     events = events or []
     changed_files = changed_files or []
     entry = decision.get("entry_decision") or {}
     expected = normalize_route(entry.get("expected_best"))
     acceptable = as_list(entry.get("acceptable_routes")) or ([expected] if expected != "unknown" else [])
     forbidden = as_list(entry.get("forbidden_routes"))
-    actual, actual_source = detect_route_from_text(final_message)
-    actual = normalize_route(actual)
-    route_evidence_source = actual_source
-    if actual == "unknown":
-        route_evidence_source = "unknown"
-    elif actual == "dispatch" and has_dispatch_route_marker(final_message):
-        route_evidence_source = "output_marker"
+    response_shape_candidate, response_shape_source = detect_route_from_text(final_message)
+    response_shape_candidate = normalize_route(response_shape_candidate)
+    skill_hits = [normalize_route(item) for item in (authoritative_skill_hits or [])]
+    skill_hits = [item for item in skill_hits if item != "unknown"]
+    actual = skill_hits[0] if skill_hits else "unknown"
+    actual_source = "authoritative_skill_load_trace" if skill_hits else "unknown"
+    route_evidence_source = "skill_hit" if skill_hits else "unknown"
     dispatches = [dispatch_decision] if dispatch_decision else []
     profile_verdict, selector_mismatch_reason = execution_profile_verdict(dispatch_decision)
 
@@ -323,6 +332,8 @@ def score_turn(decision, final_message="", events=None, dispatch_decision=None, 
             or "unknown"
         )
     if actual == "dispatch":
+        dispatch_hit_level = "skill_loaded"
+    elif response_shape_candidate == "dispatch":
         dispatch_hit_level = "output_shape_only"
     elif expected == "dispatch" or "dispatch" in acceptable:
         dispatch_hit_level = "missed"
@@ -343,11 +354,13 @@ def score_turn(decision, final_message="", events=None, dispatch_decision=None, 
         "created_at": utc_now(),
         "expected_route": expected,
         "actual_route": actual,
+        "response_shape_candidate": response_shape_candidate,
+        "response_shape_source": response_shape_source,
         "route_boundary": entry.get("route_boundary", "entry-contract"),
         "expected_route_source": decision.get("decision_source", "unknown"),
         "actual_route_source": actual_source,
         "route_evidence_source": route_evidence_source,
-        "skill_hit_source": "unknown",
+        "skill_hit_source": actual_source,
         "dispatch_hit_level": dispatch_hit_level,
         "tool_coverage_status": tool_coverage_status(events),
         "score_eligibility": "insufficient_evidence",
@@ -368,7 +381,7 @@ def score_turn(decision, final_message="", events=None, dispatch_decision=None, 
         "failure_type": failure_type,
         "fix_locus": fix_locus,
         "changed_files": changed_files,
-        "skill_hits": [],
+        "skill_hits": skill_hits,
         "dispatch_decisions": dispatches,
         "router_hint_emitted": bool(decision.get("router_hint_emitted")),
         "prompt_enhancement_emitted": bool(decision.get("prompt_enhancement_emitted")),

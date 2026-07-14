@@ -20,23 +20,11 @@ Safe to Share / Redaction Notes: Safe to share as maintainer documentation. It c
 
 The current checker package also keeps common helpers in `evals/checks/common.py` and stable result helpers in `evals/checks/results.py`.
 
-## Legacy Id-Specific Checks
+## Single Verdict Authority
 
-`evals/run_runtime.py::quick_verdict` still contains a small set of row-id-specific compatibility checks while those protections migrate into structured `output_contract`, `evidence_required`, or checker-token coverage. The ids are explicit in `LEGACY_ID_SPECIFIC_CHECKS`, and unit tests require every protected id to remain present in `evals/prompts/*.csv`.
+`evals/run_runtime.py::routing_verdict_model` is the only runtime-eval verdict authority. Route, output contract, evidence, host preemption, and behavior remain separate dimensions and are combined once. Output-shape detection is recorded only as `response_shape_candidate`; it never becomes authoritative skill-load evidence. Missing authoritative route evidence produces a blocked routing dimension while output and behavior checks still report their own pass or failure.
 
-| Legacy id | Check condition | Target token or checker | Removal gate |
-|---|---|---|---|
-| `life-019` | PR-bound clean-main implementation must cite real `git status` evidence, stop before edits, and choose branch/worktree. | `git-boundary` checker / `evidence_required=git_status` | Remove only after runner emits an equivalent checker result without row-id branching. |
-| `life-020` | Dirty-main implementation must cite real dirty-file evidence and choose `worktree_required` or `blocked`. | `git-boundary` checker / `evidence_required=git_status` | Remove only after dirty-file evidence is checker-backed. |
-| `implement-010` | PR-bound clean-main implementation must not edit before branch/worktree decision. | `git-boundary` checker | Remove only after topology gate checker covers this fixture. |
-| `implement-011` | PR-bound detached-HEAD implementation must classify detached/empty branch before edits. | `git-boundary` checker | Remove only after detached topology is checker-backed. |
-| `implement-012` | Read-only implementation conformance review must use exact conformance labels and avoid readiness claims. | `output_contract=implementation_conformance` | Remove only after conformance labels and forbidden readiness claims are checker-backed. |
-| `gr-009` | QA failure verification must include QA-FIX-QA fields. | `output_contract=qa_fix_qa` | Remove only after QA-FIX-QA checker covers the row. |
-| `verify-015` | Verify QA failure must include scope-first report and QA-FIX-QA fields. | `output_contract=verify_scope_full|qa_fix_qa` | Remove only after verify and QA-FIX-QA checker results cover both requirements. |
-| `gr-018` | Durable artifact review must flag missing audience-first header fields. | `output_contract=artifact_header` | Remove only after artifact header checker covers the row. |
-| `life-001` | Small direct prompt must not recommend `STATE.md` or `ROADMAP.md`. | lifecycle artifact overreach checker | Remove only after overreach checker covers direct prompts. |
-| `life-002` | One-off explanation must not recommend lifecycle artifacts. | lifecycle artifact overreach checker | Remove only after overreach checker covers explanations. |
-| `life-011` | GSD clone path request must reject `.planning`, `.gsd`, project-global `STATE.md`, and task DB creep. | lifecycle-state artifact-boundary checker | Remove only after lifecycle artifact boundary checker covers the row. |
+Row-specific lifecycle and fixture protections are evaluated inside the structured behavior or fixture checkers. There is no legacy verdict override.
 
 ## Current Checker Ids
 
@@ -427,6 +415,18 @@ Required for a new checker-backed fixture:
 - a deterministic checker enforces the behavior;
 - an existing literal-match rule is intentionally sufficient for that fixture;
 - the row is exploratory and explicitly not used as a stable regression gate.
+
+## Dispatch Compact-default Checks
+
+Dispatch routing, visible-output discipline, read-path discipline, and overflow completeness use separate evaluator tokens:
+
+- `dispatch_compact_default` checks a complete skeleton-only package against the 2,800-character / 26-non-empty-line compact-default budget.
+- `dispatch_complete_or_split` accepts a complete package only within the compact budget; an oversized default package must become an explicit `needs_split` decision with a next action. It rejects both truncation and silent budget overflow.
+- `dispatch_default_read_path` inspects Codex command events for global-memory reads, broad workspace scans, or route-specific Dispatch references outside `SKILL.md` and `DISPATCH-PACKAGE.md`.
+
+For the `dispatch_default_read_path` row only, the runtime evaluator adds `features.memories=false` to the nested ephemeral `codex exec` command before applying the post-run command-log check. This isolates the benchmark from the host's normal memory policy; it does not change installed Groundwork behavior.
+
+These are evaluator-side contracts for the named regression rows. They do not prohibit production Dispatch from reading user-named memory or workspace evidence, or from loading clean-review, adapter, conflict, or complex-route references when those inputs are prompt-material.
 
 ## Evidence Boundary
 

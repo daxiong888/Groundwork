@@ -52,7 +52,7 @@ Load only when needed:
 
 ## Output Shape
 
-Use: Plan Summary, Source, Assumptions, Lifecycle Inputs when relevant, Files/Areas Inspected, Implementation Steps, Contract Notes, Risks/Gates, Verification Checkpoints, Stop Condition, Next Action, Artifact Recommendation.
+Default to accepted goal, ordered implementation steps, material dependencies or gates, verification checkpoints, and stop condition. Add source, assumptions, lifecycle inputs, inspected files, contract notes, next action, or artifact recommendation only when they affect execution.
 
 ## Stop Condition
 

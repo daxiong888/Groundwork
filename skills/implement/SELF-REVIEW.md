@@ -1,13 +1,8 @@
 # Implement Self-Review
 
-Target Reader: Codex running the Groundwork `implement` skill.
-Reader Action Needed: Review the local implementation before reporting completion or handing off to `verify`.
-Decision Supported: Whether the implementation stayed scoped and what evidence still needs verification.
-Scope: Post-edit self-review for scoped implementation work.
-Out of Scope: Final readiness verdict, release approval, or customer/UAT pass.
-Evidence Level: Groundwork issue #6 acceptance criteria and Groundwork implementation review requirements.
+Purpose: internal post-edit `implement` self-check; never final readiness, clean review, release approval, or UAT evidence.
 
-Include self-review in the final implementation response:
+Perform this self-review before the final response. Surface only material failures, remaining gaps, or evidence boundaries; do not print the full block when all items are already covered by the outcome, changed-files, checks, and risk summary.
 
 ```text
 Self-Review

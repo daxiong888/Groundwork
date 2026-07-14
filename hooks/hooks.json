@@ -51,7 +51,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex-hooks/stop_groundwork_score.py\" ]; then PYTHONDONTWRITEBYTECODE=1 python3 \"$PLUGIN_ROOT/scripts/codex-hooks/stop_groundwork_score.py\" || true; fi",
+            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex-hooks/stop_groundwork_trace.py\" ]; then PYTHONDONTWRITEBYTECODE=1 python3 \"$PLUGIN_ROOT/scripts/codex-hooks/stop_groundwork_trace.py\" || true; fi",
             "timeout": 30
           }
         ]

@@ -140,7 +140,7 @@ Suggested pass criteria for the first v0.2 reliability trial:
 - `verify` marks missing runtime/browser/data/environment/UAT evidence as `unverified`
 - `prototype` states cleanup decision and avoids becoming production implementation
 - content-shape checks use the last non-empty `agent_message`; empty trailing agent messages are runtime noise and should be recorded, not treated as the report body
-- `verify` rows that mention `Verification Scope` must include the full six-field scope block before specialized payloads; a bare `Verification Scope` heading is not sufficient
+- `verify` rows that mention `Verification Scope` must include `Claim`, `Covered`, `Missing`, and `Verdict` before specialized payloads; a bare heading is not sufficient
 
 ## V0.3 Lifecycle State Prompt Fixtures
 

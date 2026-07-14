@@ -4,7 +4,7 @@ Target Reader: Groundwork maintainers changing runtime package contents, public 
 Reader Action Needed: Keep token discipline as a source-validation quality gate before claiming runtime-package or benchmark readiness.
 Decision Supported: Whether a change preserves the lightweight runtime boundary and public skill entry budget.
 Artifact Type: maintainer policy
-Source of Truth: `scripts/build_local_marketplace.py`, `scripts/check_runtime_package_boundary.py`, `scripts/check_skill_entry_budget.py`, `README.runtime.md`, and `docs/plugin-eval-clean-workflow.md`.
+Source of Truth: `scripts/runtime_package_manifest.json`, `scripts/build_local_marketplace.py`, `scripts/check_runtime_package_boundary.py`, `scripts/check_skill_entry_budget.py`, `README.runtime.md`, and `docs/plugin-eval-clean-workflow.md`.
 Scope: Runtime package boundary, SKILL.md entry-file budget checks, benchmark trend recording, and source-validation CI gates.
 Out of Scope: Official tokenizer parity, Plugin Eval static budget replacement, release approval, marketplace publication, installed-cache refresh, UAT, or customer readiness.
 Evidence Level: Source-validation policy and local static checks only. Runtime evidence still requires installed-plugin/cache evidence named by the run.
@@ -16,7 +16,7 @@ Groundwork treats token discipline as part of product quality. Public entry file
 
 1. Runtime package is not the repository.
 
-The runtime package contains only `.codex-plugin/`, `skills/`, `README.md`, and `LICENSE`. Repository-only roots such as `.github/`, `docs/`, `evals/`, `artifacts/`, `schemas/`, and `scripts/` must not enter the packaged plugin.
+The runtime package contains only `.codex-plugin/`, `skills/`, `hooks/hooks.json`, `scripts/codex-hooks/`, `README.md`, and `LICENSE`. Repository-only roots such as `.github/`, `docs/`, `evals/`, `artifacts/`, and `schemas/` must not enter the packaged plugin, and no scripts outside the exact observability hook allowlist may be packaged.
 
 2. Evidence-first means claim-scoped evidence, not repository-wide search.
 
@@ -28,13 +28,30 @@ Public `SKILL.md` entry files should route to shared gates or branch references.
 
 ## Source Gates
 
+`scripts/runtime_package_manifest.json` is the canonical machine-readable package contract. Both the builder and checker load it; do not duplicate package allowlists or complexity ceilings in Python.
+
 `scripts/check_runtime_package_boundary.py` builds a fresh local marketplace package and fails when:
 
 - the package has top-level roots outside the allowed runtime set;
 - forbidden repo-only roots are present;
-- `README.md` differs from `README.runtime.md`;
-- `.codex-plugin/plugin.json` is missing;
-- `skills/` is missing.
+- a contract-listed exact directory contains missing or extra files;
+- generated `.codex-plugin/runtime-manifest.json` does not match plugin metadata, the package contract hash, README hash, or content inventory hash;
+- runtime, skill, or hook file/line counts exceed the contract budgets;
+- the maximum local Markdown reference chain under `skills/` exceeds the contract budget.
+
+The generated runtime manifest makes package provenance checkable after copying or cache installation. It records hashes and counts, not source-checkout paths or user data.
+
+Current structural ceilings are intentionally explicit rather than estimated token counts:
+
+| Metric | Ceiling |
+| --- | ---: |
+| Runtime files, including generated manifest | 125 |
+| Runtime lines, excluding generated manifest | 9,800 |
+| Skill files | 112 |
+| Skill lines | 8,400 |
+| Codex hook files | 8 |
+| Codex hook lines | 1,200 |
+| Skill Markdown reference depth | 24 |
 
 `scripts/check_skill_entry_budget.py` applies the current approximate budget:
 
@@ -47,7 +64,7 @@ Public `SKILL.md` entry files should route to shared gates or branch references.
 
 It also fails any public `SKILL.md` with a fenced inline example longer than 40 lines, and it blocks YAML schema-like blocks unless the file carries an explicit `token-budget: allow-full-yaml-schema` exemption.
 
-These checks are approximate. They are intended to stop regressions now and can later be replaced or supplemented by official Plugin Eval static budget checks.
+Line and reference checks are structural guardrails, not tokenizer estimates. They stop unexplained architecture growth and complement observed usage measurements; they do not claim official tokenizer parity.
 
 ## Benchmark Trend
 

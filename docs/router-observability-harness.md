@@ -1,51 +1,48 @@
-# Router Observability Harness
+# Router Telemetry Harness
 
-Target Reader: Groundwork maintainers, Codex hook reviewers, eval authors, and reviewers deciding whether router observability evidence is sufficient for local improvement work.
+Target Reader: Groundwork maintainers, Codex hook reviewers, and eval authors using local traces to improve routing and output contracts.
 
-Reader Action Needed: Use this document to install, trust, opt in, disable, inspect, and safely promote Router Observability v0 hook artifacts.
+Reader Action Needed: Decide whether to opt a project into observe-only telemetry, inspect its minimized artifacts, and promote only reviewed evidence into offline eval work.
 
-Decision Supported: Whether a local project should run observe-only Groundwork router tracing, whether a score can become an eval backfill candidate, and where selector/runtime claims must stop.
+Decision Supported: Whether a local trace is safe and sufficient for a maintainer investigation; never whether a route, runtime, release, UAT, or customer claim passed.
 
-Artifact Type: maintainer harness guide.
+Artifact Type: canonical maintainer harness guide.
 
-Source of Truth: `docs/prd-router-observability-and-self-improvement.md`, `docs/eval-trace-artifacts.md`, `skills/_shared/RUNTIME-CAPABILITY.md`, `skills/_shared/COGNITIVE-BUDGET.md`, `hooks/hooks.json`, and `scripts/codex-hooks/`.
+Source of Truth: `hooks/hooks.json`, `scripts/codex-hooks/groundwork_router_telemetry.py`, `scripts/codex-hooks/groundwork_route_detection.py`, `scripts/codex-hooks/groundwork_route_registry.json`, and `evals/verdict_model.py`.
 
-Scope: Plugin-bundled dormant hook entrypoints, project-local opt-in, trace scratch layout, observe-only and guided-hint modes, raw-capture boundary, dispatch execution profile observability, score backfill, report integration, and disable paths.
+Scope: dormant plugin-bundled hooks, project opt-in, hash/redaction policy, prompt-route candidates, response-shape candidates, ordered tool/permission events, coverage diagnostics, and offline promotion.
 
-Out of Scope: Marketplace release packaging, runtime adapter execution, automatic skill mutation, automatic PR/issue/tracker writes, automatic model or reasoning selector mutation, Automation creation, CI gate creation, UAT/customer/release readiness, installed-plugin cache refresh evidence, and general-user rollout.
+Out of Scope: prompt injection, guided modes, live scoring, model/profile inference, router cards, authoritative skill-load claims, automatic eval mutation, automatic dispatch/execution, release/UAT/customer readiness, and cache equivalence.
 
-Evidence Level: Source implementation and maintainer operating guide only. Hook artifacts are local review evidence; they are not runtime, cache-refresh, release, UAT, marketplace, or customer-readiness evidence.
+Evidence Level: source implementation and local telemetry contract. Trace artifacts are improvement evidence only.
 
-Safe to Share / Redaction Notes: Safe to share as a guide. It contains no raw traces, prompts, secrets, credentials, cookies, PII, browser logs, private payloads, or production data.
+Safe to Share / Redaction Notes: The guide is safe to share. Trace directories are private scratch until reviewed and redacted; do not promote secrets, PII, private payloads, raw prompts, or raw final responses.
 
-## Harness Flow
+## Architecture
 
 ```mermaid
 flowchart TD
-  A["Groundwork plugin provides dormant hook entrypoints"] --> B["Codex hook trust review when required"]
-  B --> C{"Project opted in?"}
-  C -- "no" --> D["Hook exits without trace write or model-visible output"]
-  C -- "yes" --> E["UserPromptSubmit writes router-decision.json"]
-  E --> F["Tool and permission hooks append minimized event JSONL"]
-  F --> G["Stop writes final-metadata, router-score, router-card"]
-  G --> H{"Failure worth preserving?"}
-  H -- "no" --> I["Keep scratch local and ignored"]
-  H -- "yes" --> J["Review/redact, then draft eval backfill row"]
+  A["Dormant plugin hooks"] --> B{"Project opted in?"}
+  B -- "no" --> C["No-op"]
+  B -- "yes" --> D["Prompt hash + prompt route candidate"]
+  D --> E["Ordered tool and permission events"]
+  E --> F["Final hash + response-shape candidate + coverage"]
+  F --> G["Offline maintainer analysis"]
+  G --> H{"Reviewed reproducible gap?"}
+  H -- "yes" --> I["Add or update eval case"]
+  H -- "no" --> J["Keep scratch local"]
 ```
 
-## Hook Packaging
+The runtime and Maintainer Lab have separate responsibilities:
 
-The repository ships dormant hook definitions at [`hooks/hooks.json`](../hooks/hooks.json). The command entrypoints live under [`scripts/codex-hooks/`](../scripts/codex-hooks/).
+| Layer | Responsibilities | Must Not Do |
+| --- | --- | --- |
+| Runtime telemetry | Opt-in detection, hashing, redaction, event ordering, coverage, prompt-route candidate, response-shape candidate. | Inject prompts, score pass/fail, infer execution profile, generate router cards, or call response shape an actual route. |
+| Maintainer Lab | Replay, scoring, behavior checks, output UX checks, reviewed eval backfill, trend reporting. | Upgrade telemetry into runtime/release/UAT truth without stronger evidence. |
 
-Plugin install or update only makes these hook definitions available for review. It does not mean tracking has started, and it does not create marketplace release evidence. The maintainer still needs any Codex-required hook trust review for the current installed plugin version.
+## Opt-In
 
-Hook commands are self-protecting during plugin cache refresh. Each manifest command first checks whether its entrypoint still exists under the loaded `$PLUGIN_ROOT`, and each entrypoint exits `0` if the main observability module cannot be imported. This protects an already-running Codex thread that still holds an old versioned plugin-root path while `codex plugin add groundwork@groundwork` refreshes or replaces the installed cache. The packaged main module must be self-contained within `scripts/codex-hooks/`; it must not import source-only maintainer packages such as `evals/`. Missing or partially replaced hook files must no-op; they must not block normal Codex tool execution, Stop handling, or release work. Set `GROUNDWORK_ROUTER_OBSERVABILITY_DEBUG=1` only when locally debugging hook failures.
-
-`SessionStart` is intentionally deferred. v0 does not need session-level metadata to prove no-op behavior, route decision capture, tool event capture, or Stop-time scoring.
-
-## Project Opt-In
-
-Hooks no-op unless the current project has opt-in config:
+Create the ignored project-local file:
 
 ```json
 {
@@ -56,126 +53,92 @@ Hooks no-op unless the current project has opt-in config:
 }
 ```
 
-Default local path:
+Path:
 
 ```text
 .groundwork/harness/router-observability/config.json
 ```
 
-This path is ignored by default. Do not commit `.groundwork/harness` unless a maintainer explicitly creates a reviewed, redacted promotion path.
+For one local process, `GROUNDWORK_ROUTER_OBSERVABILITY=1` force-enables the same observe-only behavior. Historical values such as `thin_prompt_trial` or `guided_hint_trial` may be preserved as `requested_mode` for diagnosis, but the runtime always records `decision_mode=observe_only` and emits no `additionalContext`.
 
-Environment fallback for local debugging:
+Hook trust remains a separate Codex runtime boundary. Availability or local source validity does not prove an installed hook was trusted or executed.
+
+## Recorded Signals
+
+Prompt stage records:
+
+- prompt hash and length;
+- optional redacted snippet;
+- `prompt_route_candidate` from the deterministic classifier;
+- classifier source and explicit candidate-only limitation.
+
+Tool and permission stages record:
+
+- event identity and stable ordering fields;
+- tool/command class;
+- input and response hashes/lengths;
+- supported/unsupported coverage status;
+- risk and evidence markers.
+
+Stop stage records:
+
+- final hash and length;
+- optional redacted snippet;
+- `response_shape_candidate`;
+- `response_shape_source=response_shape_heuristic`;
+- `authoritative_skill_load_trace=unavailable` and `skill_hits=[]` until the host supplies stronger evidence;
+- ordered event coverage and malformed-line counts.
+
+These are three distinct concepts:
 
 ```text
-GROUNDWORK_ROUTER_OBSERVABILITY=1
-GROUNDWORK_ROUTER_OBSERVABILITY_MODE=observe_only
+prompt_route_candidate != authoritative_skill_load_trace != response_shape_candidate
 ```
 
-`GROUNDWORK_ROUTER_OBSERVABILITY=1` force-enables the hooks for the current process. If a project config exists, the file still supplies settings such as `raw_capture`, `snippet_capture`, and mode defaults, but env activation records `activation_source=env_force_enable_over_config` and overrides `enabled=false`.
-
-Runtime eval automation that needs to exercise plugin-bundled hooks must also satisfy Codex hook trust for the installed plugin version. For controlled local trials, `evals/run_runtime.py` supports the explicit opt-in:
-
-```text
-GROUNDWORK_CODEX_BYPASS_HOOK_TRUST=1
-```
-
-This only inserts `--dangerously-bypass-hook-trust` into the spawned `codex exec` command. It must be paired with the normal harness activation env/config when the trial expects hook output. Do not use this switch for passive baselines, release evidence, or general user workflows.
-
-Disable for one process:
-
-```text
-GROUNDWORK_ROUTER_OBSERVABILITY_DISABLED=1
-```
-
-## Modes
-
-`observe_only` is the default v0 mode. It writes local scratch artifacts for opted-in projects only. It does not inject route hints, block prompts, rewrite tool calls, request Stop continuation, spawn subagents, create worktrees, create PRs, commit, push, or mutate trackers.
-
-`thin_prompt_trial` is explicit. It may emit route-agnostic `additionalContext` that preserves Groundwork evidence boundaries and the user's requested answer shape without naming skills, expected routes, gate fields, or route-specific output contracts. Every score from this mode is marked `thin_prompt_excluded`; it must not count toward passive baseline metrics.
-
-`guided_hint_trial` is explicit and allowlisted. It may emit compact route-specific `additionalContext` only when the route has a stable output contract, such as `Verification Scope` for `verify-lite`. Every score from this mode is marked `guided_hint_excluded`; it must not count toward passive baseline metrics. Generic route hints are not allowed because they can compete with natural skill triggers.
-
-Live heuristic `observe_only` scores are `display_only` until a fixture or accepted deterministic classifier supplies stronger expected-route evidence. Display-only scores preserve candidate route verdicts for review, but they do not count as baseline pass/fail evidence.
+No hit rate may treat them as interchangeable.
 
 ## Scratch Layout
-
-Opted-in projects write per-turn scratch under:
 
 ```text
 .groundwork/harness/router-observability/<session-id>/<turn-id>/
   prompt-metadata.json
-  prompt.raw.json                 # optional, raw_capture only
   router-decision.json
-  dispatch-decision.json          # optional, dispatch involved
-  tool-events.jsonl
-  permission-events.jsonl
+  tool-events.jsonl              # when tool hooks fire
+  permission-events.jsonl        # when permission hooks fire
   final-metadata.json
-  final.raw.txt                   # optional, raw_capture only
-  final.raw.meta.json             # optional, raw_capture only
-  router-score.json
-  router-card.md
-  coverage.json                   # written by Stop hook with event replay diagnostics
+  coverage.json
+  prompt.raw.json                # optional raw_capture
+  final.raw.txt                  # optional raw_capture
+  final.raw.meta.json            # optional raw_capture
 ```
 
-`prompt-metadata.json` and `final-metadata.json` are deterministic minimized metadata, not LLM summaries. By default they use hashes, lengths, capture-status fields, and source-strength fields instead of full content. Short redacted snippets are disabled by default and require explicit `snippet_capture=true`.
+Runtime hooks do not write `dispatch-decision.json`, `router-score.json`, or `router-card.md`.
 
-`raw_capture=true` remains a separate opt-in, but raw capture is redacted by default. To store unredacted raw prompt/final text, the process must also set `GROUNDWORK_ROUTER_OBSERVABILITY_ALLOW_UNREDACTED_RAW_CAPTURE=1`. This second switch is intended only for local debugging where the operator has already reviewed secret/PII risk. When raw final capture is enabled, `final.raw.meta.json` records whether raw text was redacted or explicitly unredacted.
+## Privacy
 
-Coverage is available from `tool-events.jsonl`, `permission-events.jsonl`, `coverage.json`, and `router-score.json`. Tool and permission JSONL rows record `observed_at_ns`, `pid`, and `event_uuid`; Stop-stage scoring sorts those rows by `observed_at_ns,event_uuid` and assigns replay `event_index` values in memory. `coverage.json` records malformed JSONL line counts so replay gaps are visible instead of silently disappearing.
+`snippet_capture` and `raw_capture` default to `false`. Raw capture, when explicitly enabled, is redacted by default. Unredacted capture additionally requires `GROUNDWORK_ROUTER_OBSERVABILITY_ALLOW_UNREDACTED_RAW_CAPTURE=1` and should be used only in a reviewed private environment.
 
-`evals/run_runtime.py` excludes only `.groundwork/harness/router-observability/` from workspace changed-file accounting. This prevents trace scratch from failing read-only route cases, but it does not ignore other `.groundwork` files or lifecycle artifacts.
+Hashes reduce exposure but do not make an artifact public. Keep `.groundwork/harness/` ignored and local.
 
-## Dispatch And Selector Boundary
+## Offline Improvement Loop
 
-When dispatch is selected or mentioned, `dispatch-decision.json` records a heuristic dispatch candidate and execution profile recommendation fields:
+1. Inspect the candidate fields and coverage diagnostics.
+2. Reproduce the prompt with a natural eval case; do not copy secrets or private raw content.
+3. Obtain authoritative skill-load evidence when the host exposes it; otherwise evaluate behavior and output UX without claiming routing accuracy.
+4. Use `evals/verdict_model.py` only in the Maintainer Lab to create reviewed scores or cards.
+5. Add a regression row only when the failure is reproducible and the expected route/behavior is source-backed.
 
-```text
-decision_source
-actual_dispatch_output_observed
-score_eligibility
-model_profile
-reasoning_effort
-cost_latency_bias
-selector_enforcement
-evidence_layer
-execution_claim
-```
+## Disable And Failure Behavior
 
-These fields describe dispatch intent unless a runtime adapter or tool reports selector application for the specific run. v0 hook output must keep `actual_dispatch_output_observed=false` and `score_eligibility=insufficient_evidence` for the heuristic dispatch candidate. Router score artifacts may use `score_eligibility=display_only` for live heuristic entry decisions. `tool_enforced` must not be claimed from a prompt, dispatch package, routing profile, model-menu seed, or hook score alone.
+Remove/disable the project config and unset `GROUNDWORK_ROUTER_OBSERVABILITY` to stop capture. Hook entrypoints return success on missing or partial package files and do not interrupt normal Codex use. Set `GROUNDWORK_ROUTER_OBSERVABILITY_DEBUG=1` only for local stderr diagnostics.
 
-## Backfill
+## Evidence Boundary
 
-Reviewed router scores can draft eval rows without mutating CSV:
+Telemetry does not prove:
 
-```bash
-python3 evals/router_observability/backfill_row.py --score .groundwork/harness/router-observability/<session>/<turn>/router-score.json
-```
-
-Use markdown output for review:
-
-```bash
-python3 evals/router_observability/backfill_row.py --score <router-score.json> --format markdown
-```
-
-The command copies no raw prompt or raw final text. It produces a redacted scenario placeholder and requires human review before any CSV edit.
-
-## Reports
-
-`evals/report.py` reads promoted or assembled `router-score.json` files under a report run directory and adds a Router Observability section with:
-
-- score eligibility counts;
-- execution profile verdict counts;
-- selector enforcement counts;
-- per-score expected route, actual route, and overall verdict.
-
-Report output preserves the existing evidence boundary: local/redacted artifacts are not runtime, release, UAT, cache-refresh, or customer-readiness evidence unless separate evidence is named.
-
-## Promotion Boundary
-
-Keep live scratch local unless another reviewer or future issue needs durable evidence. Promote only redacted artifacts under:
-
-```text
-artifacts/evals/<run-id>/
-```
-
-Do not promote secrets, credentials, cookies, PII, browser logs, private payloads, raw command output, raw prompts, raw final text, or unreviewed private URLs.
+- the host loaded a Groundwork skill;
+- the response followed that skill causally;
+- selector/model/profile enforcement;
+- installed-cache/source equivalence;
+- hook trust;
+- runtime, release, UAT, marketplace, or customer readiness.

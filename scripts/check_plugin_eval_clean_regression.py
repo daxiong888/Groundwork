@@ -16,6 +16,15 @@ INPUT_THRESHOLDS = {
     "dispatch": 50_000,
 }
 TOTAL_INPUT_THRESHOLD = 140_000
+# Evaluation-only budgets for the clean targeted compact-default scenarios.
+# They fail completed benchmark results; they never truncate runtime output or
+# apply to adapter-ready, clean-review, complex, or full-schema Dispatch routes.
+VISIBLE_OUTPUT_THRESHOLDS = {
+    "to-prd": {"characters": 3_200, "nonempty_lines": 28, "sections": 6},
+    "verify": {"characters": 2_600, "nonempty_lines": 24, "sections": 5},
+    "dispatch": {"characters": 2_800, "nonempty_lines": 26, "sections": 6},
+}
+PLACEHOLDER_FIELD_THRESHOLD = 0
 EXPECTED_PACKAGE_READS = {
     "to-prd": {
         "plugins/groundwork/skills/to-prd/SKILL.md",
@@ -130,6 +139,7 @@ def validate_scenarios(scenarios: dict[str, dict]) -> dict:
         benchmark = scenario.get("benchmark") if isinstance(scenario.get("benchmark"), dict) else {}
         usage = benchmark.get("observed_usage") if isinstance(benchmark.get("observed_usage"), dict) else {}
         trace = benchmark.get("runtime_trace") if isinstance(benchmark.get("runtime_trace"), dict) else {}
+        final_response = benchmark.get("final_response") if isinstance(benchmark.get("final_response"), dict) else {}
         input_tokens = int_value(usage.get("input_tokens"))
         output_tokens = int_value(usage.get("output_tokens"))
         total_tokens = int_value(usage.get("total_tokens"))
@@ -138,7 +148,12 @@ def validate_scenarios(scenarios: dict[str, dict]) -> dict:
         nested_count = int_value(trace.get("nested_command_count")) or 0
         forbidden_scan_count = int_value(trace.get("forbidden_source_scan_count")) or 0
         broad_scan_count = int_value(trace.get("broad_scan_count")) or 0
+        external_memory_read_count = int_value(trace.get("external_memory_read_count")) or 0
         package_files = trace.get("package_files_read") if isinstance(trace.get("package_files_read"), list) else []
+        visible_characters = int_value(final_response.get("character_count"))
+        visible_lines = int_value(final_response.get("nonempty_line_count"))
+        visible_sections = int_value(final_response.get("section_count"))
+        placeholder_fields = int_value(final_response.get("placeholder_field_count"))
 
         metrics[name] = {
             "input_tokens": input_tokens,
@@ -149,7 +164,13 @@ def validate_scenarios(scenarios: dict[str, dict]) -> dict:
             "nested_command_count": nested_count,
             "forbidden_source_scan_count": forbidden_scan_count,
             "broad_scan_count": broad_scan_count,
+            "external_memory_read_count": external_memory_read_count,
             "package_files_read": package_files,
+            "visible_response_status": final_response.get("status"),
+            "visible_characters": visible_characters,
+            "visible_nonempty_lines": visible_lines,
+            "visible_sections": visible_sections,
+            "placeholder_field_count": placeholder_fields,
             "status": benchmark.get("status"),
             "valid_for_usage_regression": benchmark.get("valid_for_usage_regression"),
             "manifest_path": scenario.get("_manifest_path"),
@@ -169,6 +190,45 @@ def validate_scenarios(scenarios: dict[str, dict]) -> dict:
             failures.append(f"{name}: nested_command_count {nested_count} != 0")
         if forbidden_scan_count != 0:
             failures.append(f"{name}: forbidden_source_scan_count {forbidden_scan_count} != 0")
+        if name == "dispatch" and broad_scan_count != 0:
+            failures.append(
+                f"dispatch: broad_scan_count {broad_scan_count} != 0 for compact-default eval"
+            )
+        if name == "dispatch" and external_memory_read_count != 0:
+            failures.append(
+                "dispatch: external_memory_read_count "
+                f"{external_memory_read_count} != 0 for compact-default eval"
+            )
+
+        output_threshold = VISIBLE_OUTPUT_THRESHOLDS[name]
+        if final_response.get("status") != "present":
+            failures.append(
+                f"{name}: final_response status is {final_response.get('status')}, expected present full message"
+            )
+        if visible_characters is None:
+            failures.append(f"{name}: missing visible character_count")
+        elif visible_characters > output_threshold["characters"]:
+            failures.append(
+                f"{name}: visible characters {visible_characters} exceeds threshold {output_threshold['characters']}"
+            )
+        if visible_lines is None:
+            failures.append(f"{name}: missing visible nonempty_line_count")
+        elif visible_lines > output_threshold["nonempty_lines"]:
+            failures.append(
+                f"{name}: visible nonempty lines {visible_lines} exceeds threshold {output_threshold['nonempty_lines']}"
+            )
+        if visible_sections is None:
+            failures.append(f"{name}: missing visible section_count")
+        elif visible_sections > output_threshold["sections"]:
+            failures.append(
+                f"{name}: visible sections {visible_sections} exceeds threshold {output_threshold['sections']}"
+            )
+        if placeholder_fields is None:
+            failures.append(f"{name}: missing placeholder_field_count")
+        elif placeholder_fields > PLACEHOLDER_FIELD_THRESHOLD:
+            failures.append(
+                f"{name}: placeholder fields {placeholder_fields} exceeds threshold {PLACEHOLDER_FIELD_THRESHOLD}"
+            )
 
         extra_reads = unexpected_package_reads(package_files, EXPECTED_PACKAGE_READS.get(name, set()))
         if extra_reads:
@@ -184,6 +244,9 @@ def validate_scenarios(scenarios: dict[str, dict]) -> dict:
         "thresholds": {
             "input_tokens": INPUT_THRESHOLDS,
             "total_input_tokens": TOTAL_INPUT_THRESHOLD,
+            "visible_output": VISIBLE_OUTPUT_THRESHOLDS,
+            "visible_output_scope": "clean_targeted_compact_default_only",
+            "placeholder_field_count": PLACEHOLDER_FIELD_THRESHOLD,
             "model_turn_count_per_scenario": 1,
             "nested_command_count": 0,
             "forbidden_source_scan_count": 0,
@@ -208,7 +271,10 @@ def render_text(result: dict) -> str:
             f"{name}: input={metrics['input_tokens']} output={metrics['output_tokens']} "
             f"total={metrics['total_tokens']} turns={metrics['model_turn_count']} "
             f"commands={metrics['command_execution_count']} nested={metrics['nested_command_count']} "
-            f"forbidden_scans={metrics['forbidden_source_scan_count']} broad_scans={metrics['broad_scan_count']}"
+            f"forbidden_scans={metrics['forbidden_source_scan_count']} broad_scans={metrics['broad_scan_count']} "
+            f"external_memory_reads={metrics['external_memory_read_count']} "
+            f"visible_chars={metrics['visible_characters']} visible_lines={metrics['visible_nonempty_lines']} "
+            f"visible_sections={metrics['visible_sections']} placeholders={metrics['placeholder_field_count']}"
         )
     if result["failures"]:
         lines.append("failures:")
@@ -227,6 +293,8 @@ def main() -> int:
             "thresholds": {
                 "input_tokens": INPUT_THRESHOLDS,
                 "total_input_tokens": TOTAL_INPUT_THRESHOLD,
+                "visible_output": VISIBLE_OUTPUT_THRESHOLDS,
+                "placeholder_field_count": PLACEHOLDER_FIELD_THRESHOLD,
             },
             "total_input_tokens": 0,
             "metrics": {},

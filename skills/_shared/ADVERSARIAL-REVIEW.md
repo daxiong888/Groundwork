@@ -1,14 +1,6 @@
 # Adversarial Review Lens
 
-Target Reader: Groundwork skill authors, routers, implementers, reviewers, and verifiers testing whether a conclusion, plan, implementation, handoff, or readiness claim can survive likely objections.
-Reader Action Needed: Try to disprove the current conclusion by attacking assumptions, evidence sufficiency, failure modes, edge cases, scope expansion, and claim boundaries.
-Decision Supported: Whether to accept the current conclusion, narrow it, downgrade unsupported claims, require more evidence, or route to fresh review/verify.
-Artifact Type: shared workflow reference.
-Source of Truth: `skills/verify/SKILL.md`, `skills/_shared/EVIDENCE-BOUNDARY.md`, `skills/_shared/ROLE-SEPARATION.md`, `skills/_shared/SKILL-QUALITY.md`, and source-validation policy.
-Scope: Falsification lens for PRDs, plans, implementation self-review, verification, handoff, skill-quality changes, release/UAT/cache/runtime claims, and review packages.
-Out of Scope: Public skill creation, implementation work, clean review replacement, independent verification replacement, or approving readiness without evidence.
-Evidence Level: Source-validation guidance only until paired with named source, test, runtime, browser, data, UAT, release, cache, or clean-review evidence.
-Safe to Share / Redaction Notes: Safe to share as-is; contains no secrets, credentials, private payloads, PII, or production data.
+Purpose: internal falsification lens for material claims; source-validation guidance until paired with named evidence and never a clean-review substitute.
 
 ## Public Surface Boundary
 
@@ -34,6 +26,8 @@ Use this lens when:
 Do not use it as ceremony for tiny mechanical edits, direct answers, or low-risk local changes where no material claim, route, artifact, or evidence boundary would change.
 
 ## Lens Questions
+
+Use the questions internally. Surface only adversarial findings that change scope, verdict, evidence needs, or remaining risk; do not print the full lens by default.
 
 ```text
 Adversarial Review Lens

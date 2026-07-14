@@ -17,7 +17,7 @@ Route issue closeout state decisions to `triage` when the prompt asks whether an
 
 Choose the lightest branch that can answer the claim:
 
-- `verify-lite`: no-command prompts, evidence-label upgrade questions, code-diff-only sufficiency questions, or "现有证据够不够" checks. Evidence-label upgrades include self-review/self-check -> clean review, same-session review -> independent verification, diff summary -> readiness, and source-only -> runtime/UAT/release. For evidence-label upgrades, do not write any preface or code-fenced scope; the first line must be `Verification Scope` with the six required scope fields.
+- `verify-lite`: no-command prompts, evidence-label upgrade questions, code-diff-only sufficiency questions, or "现有证据够不够" checks. Evidence-label upgrades include self-review/self-check -> clean review, same-session review -> independent verification, diff summary -> readiness, and source-only -> runtime/UAT/release. For evidence-label upgrades, do not write a preface; start with the compact claim/covered/missing scope.
 - `verify-standard`: implementation acceptance or TASK/PRD conformance with readiness/evidence claims.
 - `verify-strict`: release, UAT, customer, runtime, cache, marketplace, installed-plugin, selector-enforcement, package-readiness, or browser/UI claims.
 
@@ -37,7 +37,7 @@ Do not inspect Groundwork plugin README, `.codex-plugin/plugin.json`, plugin man
 
 Scenario workspace allowlisted file discovery is allowed and may be reported as a warning when noisy; do not treat allowlisted discovery of the named evidence files as a hard failure.
 
-Even on this fast path, keep the full verify safety boundary: concrete scope, `Covered`, `Not Covered`, `Evidence Sources`, missing evidence, and bounded support/readiness judgment remain mandatory.
+Even on this fast path, keep the verify safety boundary: concrete claim, `Covered`, `Missing`, and a bounded verdict remain mandatory. Name evidence sources only when they are not obvious from `Covered`.
 
 ## Evidence Boundary
 
@@ -47,13 +47,13 @@ Do not default to `evals/baselines/`, `artifacts/`, `research/`, `examples/`, hi
 
 ## Required Output
 
-Every final verification report starts with the complete six-field block from `SCOPE-EVIDENCE-TEMPLATE.md`. The first line is exactly:
+Every final verification report starts with the compact block from `SCOPE-EVIDENCE-TEMPLATE.md`. The first line is exactly:
 
 ```text
 Verification Scope
 ```
 
-Do not rename, translate, decorate, or replace that opening block. After it, use a compact claim-to-evidence summary unless a branch reference requires a fuller payload.
+The default block contains `Claim`, `Covered`, and `Missing`. After it, give one verdict plus only material evidence and the next check. Add Out of Scope, Evidence Sources, or branch-specific fields only for high-risk, multi-claim, durable, machine-consumed, or explicitly requested reports. Never print empty placeholders. Use a matrix only for three or more independently judged claims.
 
 ## Load Only What Fits
 
@@ -73,7 +73,7 @@ Apply shared evidence, role-separation, runtime, release, wiki, cognitive-budget
 
 ## Stop Conditions
 
-- Stop before any verdict unless `Verification Scope` has concrete `Covered`, `Not Covered`, and `Evidence Sources` fields.
+- Stop before any verdict unless `Verification Scope` has a concrete claim, covered evidence, and missing evidence or an explicit `none` supported by inspection.
 - Do not claim `pass`, readiness, UAT, release, runtime, browser, data, environment, or customer confidence without fresh in-scope evidence.
 - If only source, doc, diff, summary, or historical evidence is available, state that boundary and keep stronger claims unverified.
 - If verification is paired with push, deploy, publish, migration, destructive command, data write, remote tracker mutation, or shared skill mutation, output the approval gate before action.

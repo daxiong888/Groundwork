@@ -29,9 +29,9 @@
       "Write"
     ],
     "defaultPrompt": [
-      "Answer small low-risk requests directly, except code edits, evidence-label upgrades, readiness, or workflow-risk cases.",
+      "Keep low-risk answers direct and compact. Omit empty fields; expand schemas only for requested audits or machine packages.",
       "Route evidence-label upgrades to verify-lite, not direct: self-review/self-check -> clean review, diff summary -> readiness.",
-      "Route bug/patch/code-edit requests, including 修 bug/直接 patch, to implement; if source is missing, return blocked implementation."
+      "Route non-trivial code edits to implement; keep obvious text-only typos direct, and block when required source truth is missing."
     ],
     "brandColor": "#1F6FEB"
   }

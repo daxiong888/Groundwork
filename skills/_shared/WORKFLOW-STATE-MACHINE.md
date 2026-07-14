@@ -4,7 +4,7 @@ Target Reader: public skills, eval authors, reviewers, and maintainers needing o
 Reader Action Needed: validate accepted pre-state, produced state, legal next route, and stop gate.
 Decision Supported: whether a transition is legal, blocked, explicitly bypassed, or recommendation-level.
 Artifact Type: shared guardrail.
-Source of Truth: `skills/_shared/LIFECYCLE-PREFLIGHT.md`, public skill trigger contracts, routing reliability schema, and eval prompt fields.
+Source of Truth: `scripts/codex-hooks/groundwork_route_registry.json`; this document, public skill trigger contracts, and eval prompt fields must validate against it.
 Scope: transitions for `to-prd`, `to-issues`, `triage`, `write-plan`, `prototype`, `implement`, `verify`, `handoff`, `dispatch`, `wiki`, plus direct/blocked behavior.
 Out of Scope: runtime adapter lifecycle, tracker mutation, task CRUD, automatic state writes, release/UAT approval, or replacing skill-specific contracts.
 Evidence Level: source-derived routing/eval contract; runtime behavior requires installed-plugin/cache evidence.
@@ -67,7 +67,7 @@ Tokens:
 | `implementation_ready`/`verified` -> `dispatch` | accepted ready task or verified follow-up needing package-only routing | block runtime/clean-review overclaims |
 | any -> `handoff` | state, sources, evidence, gaps, next owner, do-not-assume boundaries | block long raw copies/evidence upgrades |
 | any -> `wiki` | explicit wiki maintenance, storage mode, citations, evidence layers | block synthesis promotion |
-| any -> `direct` | small bounded answer/trivial edit without artifact/git/verification/remote/durable-state impact | route when readiness/source-truth claims appear |
+| any -> `direct` | small bounded answer, trivial edit, or ordinary audit performed in the current context without artifact/git/verification/remote/durable-state impact | route when readiness/source-truth claims or explicit route/package/fan-out/delegation requests appear |
 
 ## Next Route Negatives
 

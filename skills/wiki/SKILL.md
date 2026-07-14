@@ -67,9 +67,9 @@ For missing wiki, source gaps, contested/stale/uncited claims, or route conflict
 
 ## Output Shape
 
-Use `Wiki Summary` or `Wiki Query Answer` with mode/question, root/pages/sources, changes/answer, evidence boundary, checks, gaps/stale claims, recommended update, and next route.
+Default to `Wiki Summary` or `Wiki Query Answer` with the answer/change, cited pages or sources, material stale/conflict/gap boundary, and next action when needed. Add mode, root, checks, recommended update, or next route only when they affect the result.
 
-For audits, use the exact `Wiki Audit Scope` block before findings.
+For focused/full audits or machine-consumed reports, use the exact `Wiki Audit Scope` block before findings. A quick audit may state root, inspected pages, material limitations, and findings in compact prose.
 
 ## Stop Condition
 

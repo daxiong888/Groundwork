@@ -450,7 +450,7 @@ Current implementation alignment:
 | `skills/_shared/LIFECYCLE-PREFLIGHT.md` | Canonical runtime form for `Intent`, `Suggested Workflow Mode`, `Source of Truth`, `Requirement State`, `Risk Gate`, `Verification Strategy`, and `Stop Condition`. |
 | Raw requirement gates in `to-prd` and `implement` | Existing behavior to measure first: raw or draft requirements are not implementation-ready unless explicit bypass is present. |
 | Direct fallback policy | Existing boundary to preserve for small answers, title rewrites, simple command output, and low-risk direct work. |
-| `verify` scope-first contract | Existing output shape to measure with `verify_scope_full`, not a reason to reroute implementation conformance review. |
+| `verify` scope-first contract | Existing output shape to measure with `verify_scope`, not a reason to reroute implementation conformance review. |
 | `implement` mini-plan contract | Existing implementation behavior to measure for accepted implementation or explicit-bypass rows. |
 | `prototype` contract-boundary handling | Existing boundary for prototype-only contract classification without backend source-truth verification. |
 | Parallel runner wrapper | Existing wrapper should consume serial runner verdict fields instead of re-implementing route judgment. |
@@ -555,7 +555,7 @@ First-slice implemented `output_contract` tokens:
 
 ```text
 none
-verify_scope_full
+verify_scope
 gate_fields
 prototype_contract_boundary
 implementation_conformance
@@ -1025,11 +1025,11 @@ Recommended implementation issues:
    - Verification: CSV parse check, duplicate-id check, unknown-token check, and manual sample review that confirms raw intent rows forbid `implement|write-plan|to-issues` while explicit bypass rows allow `implement`.
    - Note: the later high-ambiguity pressure-test pilot may expand selected boundaries to 20-40 rows, but that is not required for first acceptance.
 
-3. **RR-003: Actual route classification and strict host preemption**
+3. **RR-003: Route evidence and strict host-preemption diagnostics**
    - Depends on: RR-002.
    - Touches: `evals/run_runtime.py`.
-   - Stop condition: actual route classification distinguishes public skill hits, `direct`, and `runtime-safety-gate`; `runtime-safety-gate` is returned only when no public skill loads, row metadata allows host preemption, risky/destructive/remote/data/write intent is present, `changed_files == []`, and the final response contains gate/no-execution approval shape.
-   - Verification: targeted route-classification checks for direct fallback, public skill hit, valid host preemption, invalid host preemption, and skill-owned gate output.
+   - Stop condition: `actual_route` is populated only from authoritative skill-load trace; missing trace yields `unknown` and blocks only the routing dimension. Final-answer heuristics populate `response_shape_candidate` for output and behavior diagnostics, including strict host-preemption shape, but never count as skill-load evidence.
+   - Verification: targeted checks separate authoritative public skill hits from direct/output-shape candidates, valid host-preemption shape, invalid host-preemption shape, and skill-owned gate output.
 
 4. **RR-004: Multidimensional verdict model**
    - Depends on: RR-003.

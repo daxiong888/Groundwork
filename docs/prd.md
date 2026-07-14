@@ -339,19 +339,16 @@ When a suspected bug or failing behavior is involved, `implement` must use its e
 
 `verify` is skeptical by default. It must not summarize implementation intent as evidence.
 
-`verify` final reports begin with the complete six-field `Verification Scope` block before the verification summary or any specialized payload:
+`verify` final reports begin with the compact `Verification Scope` block before specialized payloads:
 
 ```text
 Verification Scope
-- In Scope:
-- Out of Scope:
+- Claim:
 - Covered:
-- Not Covered:
-- Evidence Sources:
-- User-visible Claim Being Verified:
+- Missing:
+- Verdict: pass / partial / fail / blocked
 
 Verification Summary
-- Verdict: pass / partial / fail / blocked
 - Claimed Behavior
 - Source Evidence
 - Test Evidence

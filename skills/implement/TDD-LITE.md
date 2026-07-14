@@ -1,11 +1,6 @@
 # Implement TDD-Lite
 
-Target Reader: Codex running the Groundwork `implement` skill.
-Reader Action Needed: Prefer a failing check or reproduction before changing behavior, then make the smallest sufficient fix.
-Decision Supported: Whether the implementation is evidence-backed rather than speculative.
-Scope: Focused bug fixes and behavior changes where a local test or reproduction is feasible.
-Out of Scope: Full test strategy, broad refactors, or claiming final readiness.
-Evidence Level: Groundwork issue #6 acceptance criteria and existing runtime fixture patterns.
+Purpose: focused RED/GREEN checkpoint for behavior changes; implementation evidence only, not final readiness.
 
 Use this loop when behavior changes:
 

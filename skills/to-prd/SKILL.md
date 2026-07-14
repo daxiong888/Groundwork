@@ -48,7 +48,7 @@ Choose fast path, Groundwork maintenance compact path, or full path. State targe
 
 ## Hard Stops
 
-- Stop before drafting if target reader, decision, known facts, assumptions, open questions, or needs confirmation are missing unless justified as `None`.
+- Stop before drafting only when a missing target reader, decision, fact, or acceptance boundary would materially change the spec. Do not print empty fields merely to prove they were considered.
 - Stop before writing a durable PRD file unless requested, artifact promotion is justified, the route is write-capable, and audience-first header fields are present.
 - Stop before recommending `to-issues` while blocking **NEEDS CLARIFICATION** remains.
 - Stop before promising or producing issue drafts, issue packs, agent-ready slices, or parallel agent work from raw requests to split issues for agents. For raw agent-slicing requests, output only compact PRD/spec shaping, missing fields, and the downstream acceptance gate until source is accepted enough.
@@ -58,9 +58,9 @@ Choose fast path, Groundwork maintenance compact path, or full path. State targe
 
 ## Output Shape
 
-Default compact conversation PRD/spec: Problem / Intent, Target Reader, Decision Supported, Known Facts, Assumptions, ACs, Open Questions, Not In Scope, Next Step.
+Default compact conversation PRD/spec: Problem / Intent, ACs, material Open Questions, and Next Step. Add Target Reader, Decision Supported, Known Facts, Assumptions, or Not In Scope only when they change review or acceptance.
 
-Groundwork maintenance compact spec adds Requirement State, Source Truth / Evidence Level, Evidence Needed Before Implementation, Downstream Gate.
+Groundwork maintenance compact spec adds only the material Requirement State, Source Truth / Evidence Level, Evidence Needed Before Implementation, and Downstream Gate fields.
 
 Durable PRD artifact: load `PRD-TEMPLATE.md`, apply audience-first artifact fields, and include the full source/evidence/lifecycle boundary only when artifact promotion is justified.
 

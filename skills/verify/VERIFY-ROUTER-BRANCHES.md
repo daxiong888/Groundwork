@@ -12,7 +12,7 @@ Safe to Share / Redaction Notes: Safe to share as-is; contains no secrets, crede
 
 ## Branch Workflows
 
-1. Start the final verification report with the complete six-field `Verification Scope` block from `SCOPE-EVIDENCE-TEMPLATE.md`.
+1. Start with the compact `Verification Scope` block from `SCOPE-EVIDENCE-TEMPLATE.md`; escalate to the extended block only when its risk or consumption conditions apply.
 2. State the named lens or branch being used.
 3. State the claimed behavior before judging it.
 4. Run lifecycle preflight when `STATE.md`, task-state, source-truth, UAT/release, or closeout claims are in scope.

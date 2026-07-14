@@ -1,23 +1,17 @@
 """Runtime-safe route and evidence marker detection shared by hooks and evals."""
 
+import json
 from pathlib import Path
 import re
 
 
 CLASSIFIER_SOURCE_PATH = str(Path(__file__).resolve())
+ROUTE_REGISTRY_PATH = Path(__file__).resolve().with_name("groundwork_route_registry.json")
+ROUTE_REGISTRY = json.loads(ROUTE_REGISTRY_PATH.read_text(encoding="utf-8"))
 
-PUBLIC_SKILL_ROUTES = {
-    "dispatch",
-    "to-prd",
-    "to-issues",
-    "triage",
-    "write-plan",
-    "prototype",
-    "implement",
-    "verify",
-    "handoff",
-    "wiki",
-}
+PUBLIC_SKILL_ROUTES = set(ROUTE_REGISTRY["public_routes"])
+PROMPT_PRECEDENCE = tuple(ROUTE_REGISTRY["prompt_precedence"])
+DEFAULT_FORBIDDEN_ROUTES = ROUTE_REGISTRY["default_forbidden_routes"]
 DIRECT_ROUTE = "direct"
 UNKNOWN_ROUTE = "unknown"
 HOST_PREEMPTION_ROUTE = "runtime-safety-gate"
@@ -72,12 +66,12 @@ CLOSEOUT_DECISION_RE = re.compile(
     r"(?:verify|测试|checks?|验证|done|wontfix|通过|pass(?:ed)?|证据|evidence)",
     re.I,
 )
-READONLY_AUDIT_ROUTING_RE = re.compile(
-    r"(?:大规模|multi[- ]?perspective|多个角度|交叉).{0,50}(?:只读|read[- ]?only).{0,50}"
-    r"(?:audit|审查|审核|review|验证).{0,80}(?:不要|不).{0,20}(?:改文件|写文件|开\s*worktree|create worktree)|"
-    r"(?:只读|read[- ]?only).{0,50}(?:audit|审查|审核|review).{0,80}"
-    r"(?:多个角度|交叉|subagent|clean reviewer|main_thread_readonly).{0,80}"
-    r"(?:不要|不).{0,20}(?:改文件|写文件|开\s*worktree|create worktree)",
+AUDIT_REQUEST_RE = re.compile(r"audit|审计|审查|审核|review|代码评估|架构评估", re.I)
+EXPLICIT_AUDIT_DISPATCH_RE = re.compile(
+    r"(?:dispatch|route|package|fan[- ]?out|delegate|分派|路由|打包|分发|分配给|交给).{0,80}"
+    r"(?:audit|审计|审查|审核|review|subagent|reviewer)|"
+    r"(?:audit|审计|审查|审核|review).{0,80}"
+    r"(?:dispatch|route|package|fan[- ]?out|delegate|分派|路由|打包|分发|分配给|交给)",
     re.I,
 )
 ACCEPTED_SOURCE_RE = re.compile(
@@ -100,6 +94,11 @@ DISPATCH_ACTION_RE = re.compile(
     re.I,
 )
 WRITE_PLAN_RE = re.compile(r"\bwrite[- ]?plan\b|\bimplementation plan\b|实现计划|执行步骤|检查点|stop condition|只写.*计划", re.I)
+PLAN_THEN_IMPLEMENT_RE = re.compile(
+    r"(?:plan|计划).{0,50}(?:开始|直接|然后|随后|并|同时|现在).{0,20}(?:改|实现|修|patch|edit)|"
+    r"(?:开始|直接|然后|随后|并|同时|现在).{0,20}(?:改|实现|修|patch|edit).{0,50}(?:plan|计划)",
+    re.I,
+)
 IMPLEMENT_RE = re.compile(
     r"\bimplement\b|实施|实现|修复|改代码|按 PRD 实施|"
     r"直接\s*patch|patch|补丁|"
@@ -239,6 +238,8 @@ def first_nonempty_line(text):
 
 def has_anchored_dispatch_marker(text):
     first = first_nonempty_line(text)
+    if first == "dispatch_version: 2":
+        return True
     anchored_marker = re.compile(
         r"^\s*(?:#+\s*)?\*{0,2}"
         r"(?:Dispatch Summary|Dispatch Package|Result Package|Dispatch Runtime Decision|Dispatch Candidate)"
@@ -263,6 +264,9 @@ def has_legacy_dispatch_shape(text):
         )
     lowered = value.lower()
     if "dispatch_version: 2" in lowered:
+        compact_schema_markers = ["adapter_completeness", "source:", "tasks:", "policy:"]
+        if all(marker in lowered for marker in compact_schema_markers):
+            return True
         schema_markers = [
             "adapter_completeness",
             "runtime_policy",
@@ -417,38 +421,57 @@ def is_closeout_decision(value):
     return bool(CLOSEOUT_DECISION_RE.search(value))
 
 
-def is_readonly_audit_routing(value):
-    return bool(READONLY_AUDIT_ROUTING_RE.search(value))
+def is_explicit_audit_dispatch(value):
+    return bool(AUDIT_REQUEST_RE.search(value) and EXPLICIT_AUDIT_DISPATCH_RE.search(value))
+
+
+def is_ordinary_audit_request(value):
+    return bool(
+        AUDIT_REQUEST_RE.search(value)
+        and not is_explicit_audit_dispatch(value)
+        and not is_evidence_boundary_verify(value)
+        and not IMPLEMENT_RE.search(value)
+    )
+
+
+def is_plan_then_implement(value):
+    return bool(WRITE_PLAN_RE.search(value) and IMPLEMENT_RE.search(value) and PLAN_THEN_IMPLEMENT_RE.search(value))
+
+
+def fallback_prompt_route(value):
+    for candidate, pattern in PROMPT_ROUTE_MARKERS:
+        if pattern.search(value):
+            return candidate
+    return None
 
 
 def prompt_route(value):
     if not str(value or "").strip():
         return UNKNOWN_ROUTE
-    if is_direct_plain_text(value):
-        return DIRECT_ROUTE
-    if is_implement_bypass(value):
-        return "implement"
-    if is_raw_or_planmode_prd_intake(value):
-        return "to-prd"
-    if re.search(r"handoff|交接|续上|保存状态", value, re.I):
-        return "handoff"
-    if is_closeout_decision(value):
-        return "triage"
-    if is_readonly_audit_routing(value):
-        return "dispatch"
-    if is_evidence_boundary_verify(value):
-        return "verify"
-    if WRITE_PLAN_RE.search(value):
-        return "write-plan"
-    if is_existing_issue_readiness(value):
-        return "triage"
-    if is_dispatch_ready_package_cue(value):
-        return "dispatch"
-    if IMPLEMENT_RE.search(value):
-        return "implement"
-    for candidate, pattern in PROMPT_ROUTE_MARKERS:
-        if pattern.search(value):
-            return candidate
+    rules = {
+        "direct_plain_text": lambda: DIRECT_ROUTE if is_direct_plain_text(value) else None,
+        "implement_bypass": lambda: "implement" if is_implement_bypass(value) else None,
+        "raw_prd_intake": lambda: "to-prd" if is_raw_or_planmode_prd_intake(value) else None,
+        "handoff": lambda: "handoff" if re.search(r"handoff|交接|续上|保存状态", value, re.I) else None,
+        "closeout_triage": lambda: "triage" if is_closeout_decision(value) else None,
+        "plan_then_implement": lambda: "implement" if is_plan_then_implement(value) else None,
+        "ordinary_audit_direct": lambda: DIRECT_ROUTE if is_ordinary_audit_request(value) else None,
+        "evidence_verify": lambda: "verify" if is_evidence_boundary_verify(value) else None,
+        "write_plan": lambda: "write-plan" if WRITE_PLAN_RE.search(value) else None,
+        "issue_readiness_triage": lambda: "triage" if is_existing_issue_readiness(value) else None,
+        "explicit_audit_dispatch": lambda: "dispatch" if is_explicit_audit_dispatch(value) else None,
+        "ready_package_dispatch": lambda: "dispatch" if is_dispatch_ready_package_cue(value) else None,
+        "implement": lambda: "implement" if IMPLEMENT_RE.search(value) else None,
+        "fallback_markers": lambda: fallback_prompt_route(value),
+        "direct_fallback": lambda: DIRECT_ROUTE,
+    }
+    unknown_rules = [rule for rule in PROMPT_PRECEDENCE if rule not in rules]
+    if unknown_rules:
+        raise ValueError(f"unknown prompt precedence rules: {unknown_rules}")
+    for rule_name in PROMPT_PRECEDENCE:
+        route = rules[rule_name]()
+        if route is not None:
+            return route
     return DIRECT_ROUTE
 
 
@@ -457,19 +480,7 @@ def entry_decision_from_prompt(prompt):
     route = prompt_route(value)
 
     acceptable = [route] if route != UNKNOWN_ROUTE else []
-    forbidden = []
-    if route == "write-plan":
-        forbidden = ["implement", "verify", "direct"]
-    elif route == "implement":
-        forbidden = ["verify", "dispatch"]
-    elif route == "verify":
-        forbidden = ["implement", "direct"]
-    elif route == "to-prd":
-        forbidden = ["implement", "to-issues"]
-    elif route == "triage":
-        forbidden = ["dispatch", "implement", "to-issues", "verify"]
-    elif route == "dispatch":
-        forbidden = ["verify", "implement", "direct"]
+    forbidden = list(DEFAULT_FORBIDDEN_ROUTES.get(route, []))
 
     return {
         "expected_best": normalize_route(route),
@@ -531,6 +542,10 @@ def evidence_markers(command):
 
 __all__ = [
     "CLASSIFIER_SOURCE_PATH",
+    "ROUTE_REGISTRY_PATH",
+    "ROUTE_REGISTRY",
+    "PROMPT_PRECEDENCE",
+    "DEFAULT_FORBIDDEN_ROUTES",
     "PUBLIC_SKILL_ROUTES",
     "DIRECT_ROUTE",
     "UNKNOWN_ROUTE",

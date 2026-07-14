@@ -3,7 +3,7 @@ import os
 import sys
 
 try:
-    from groundwork_router_observability import handle_stop, run_handler
+    from groundwork_router_telemetry import handle_stop, run_handler
 except Exception as exc:  # Hooks must not break normal Codex use during plugin cache refresh.
     if os.environ.get("GROUNDWORK_ROUTER_OBSERVABILITY_DEBUG"):
         print(f"Groundwork router observability entrypoint unavailable: {exc}", file=sys.stderr)
