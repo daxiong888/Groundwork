@@ -5,7 +5,7 @@ Reader Action Needed: Preserve the Runtime Kernel / Maintainer Lab boundary and 
 Decision Supported: Where a behavior belongs, which component owns it, and which evidence can support a completion claim.
 Artifact Type: canonical current architecture.
 Source of Truth: `.codex-plugin/plugin.json`, `scripts/runtime_package_manifest.json`, the ten public `skills/*/SKILL.md` contracts, `scripts/codex-hooks/groundwork_route_registry.json`, and repo-local `AGENTS.md`.
-Scope: Groundwork v0.5.5 source architecture, package boundary, route ownership, Dispatch contracts, optional observability, eval separation, and evidence boundaries.
+Scope: Groundwork v0.5.6 source architecture, package boundary, route ownership, Dispatch contracts, optional observability, eval separation, and evidence boundaries.
 Out of Scope: Historical design chronology, release approval, installed-cache equivalence, marketplace publication, UAT, or customer readiness.
 Evidence Level: current source contract; stronger runtime and release claims require their own evidence.
 Safe to Share / Redaction Notes: safe to share as-is.

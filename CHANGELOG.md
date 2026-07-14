@@ -4,6 +4,32 @@ All notable changes to Groundwork are documented in this file.
 
 ## Unreleased
 
+## v0.5.6 - 2026-07-14
+
+### Added
+
+- Added a guarded local-marketplace builder and generated runtime provenance-manifest validation chain that keeps the installed Runtime Kernel separate from source-only Maintainer Lab files.
+- Added clean plugin-eval regression tooling, skill/read-path token budgets, TOML coverage registration, case oracles, and focused contract tests for routing, Dispatch, reviews, Wiki templates, and child Goal prompts.
+- Added first-principles and adversarial-review guidance with root-cause sufficiency fixtures and evaluator coverage.
+
+### Changed
+
+- Bumped plugin metadata to `0.5.6` after the post-`v0.5.5` architecture, routing, packaging, and eval work while keeping the public surface stable at ten skills.
+- Unified route classification and opt-in observability around one package-owned registry and telemetry entrypoint, removing duplicate hook wrappers and keeping telemetry observe-only.
+- Tightened Dispatch/Result ownership, package-only runtime boundaries, review freshness, root-cause sufficiency, and runtime/cache/release evidence contracts.
+- Compressed public skill entrypoints and shared read paths, consolidated typed Wiki pages into a shared base template plus type profiles, and separated suite registry, routing schema, case-oracle, and orchestration ownership.
+
+### Fixed
+
+- Fixed route-evidence over-promotion, direct-route canary classification, closeout/read-only audit boundaries, and Dispatch primary-marker detection.
+- Fixed runtime eval packaging so bundled hooks remain self-contained, and hardened router telemetry path, symlink, configuration, redaction, and correlation handling.
+- Updated CI and source-validation paths for the consolidated runtime package, coverage manifest, Wiki templates, and telemetry entrypoint.
+
+### Notes
+
+- The public skill surface remains unchanged at ten skills, with no new runtime dependency or public executor behavior.
+- Source validation, generated-package validation, installed-cache equivalence, real runtime trials, tag publication, and release publication remain separate evidence layers; installing `0.5.6` requires a fresh cache refresh and post-refresh runtime check.
+
 ## v0.5.5 - 2026-06-30
 
 ### Changed
