@@ -2,8 +2,8 @@ Target Reader: Codex running `prototype`, `handoff`, or `verify` when visual han
 Reader Action Needed: Structure visual packets for review while preserving source, runtime, browser, UAT, and release evidence boundaries.
 Decision Supported: Whether a visual packet is only a communication artifact, what it may communicate, and which claims require separate evidence.
 Artifact Type: shared visual handoff packet contract
-Source of Truth: docs/prd-v0.5-prototype-first-skill-expansion.md FR-532, AC-B5, AC-C4, AC-D1 and artifacts/v0.5-prototype-first-skill-expansion/issue-map.md V050-005C.
-Scope: Visual handoff packet sections, mock-vs-confirmed field marking, API contract mapping, open questions, do-not-assume guidance, and evidence boundaries.
+Source of Truth: docs/prd-v0.5-prototype-first-skill-expansion.md FR-532, AC-B5, AC-C4, AC-D1, artifacts/v0.5-prototype-first-skill-expansion/issue-map.md V050-005C, and maintainer-approved GW-PROT-ANNOT-001.
+Scope: Visual handoff packet sections, mock-vs-confirmed field marking, API contract mapping, prototype annotation disposition carry-through, open questions, do-not-assume guidance, and evidence boundaries.
 Out of Scope: Public `visual-handoff` skill creation, browser automation, runtime proof, source/API verification, UAT, release, customer readiness, UI variants, and logic/state lab mechanics.
 Evidence Level: Source-validation guidance only; visual packets are communication/review artifacts unless separate source, browser, runtime, UAT, or release evidence is produced and named.
 Safe to Share / Redaction Notes: Safe to share as-is; contains no secrets, credentials, PII, logs, screenshots, or private payloads.
@@ -75,7 +75,7 @@ Use this boundary table when visual packet evidence could be overclaimed:
 
 ## Skill Integration
 
-- `prototype`: may create or review visual packets as prototype/communication output. It must classify mock, proposed, confirmed, and client-derived fields using `skills/prototype/CONTRACT-BOUNDARY.md`.
+- `prototype`: may create or review visual packets as prototype/communication output. It must classify mock, proposed, confirmed, and client-derived fields using `skills/prototype/CONTRACT-BOUNDARY.md`. When prototype-originated annotations or review aids exist, preserve the `Annotation Presentation Decision` from `skills/prototype/DECISION-CAPTURE.md`; keep `remove_before_final` and `separate_review_companion` content outside the target UI or presentation surface.
 - `handoff`: may cite or package visual packets for continuation. It must keep packet claims under `Do-Not-Assume` unless source/API, browser, runtime, UAT, or release evidence is separately named.
 - `verify`: may verify whether a packet is evidence-sufficient for a readiness claim. It must block or mark unverified any browser, runtime, UAT, release, customer-readiness, or API/schema truth claim based only on packet output.
 

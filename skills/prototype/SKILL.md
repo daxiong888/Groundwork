@@ -23,7 +23,7 @@ Name the prototype question first. Inspect source, PRD, task, data shape, existi
 
 Prototype evidence can classify backend candidates, mock fields, and client-derived logic, but cannot confirm backend/API/source truth without source, schema/API, runtime evidence, or explicit confirmation.
 
-Load one branch extension: `LOGIC.md`, `LOGIC-LAB.md`, `UI.md`, or `UI-VARIANTS.md`. Add `CONTRACT-BOUNDARY.md` for mock/backend separation, `DECISION-CAPTURE.md` for promoted decisions or any iterative prototype-learning pass, `skills/_shared/VISUAL-HANDOFF-PACKET.md` for visual packets, and `skills/_shared/REVIEW-LOOP.md` only when downstream ownership matters.
+Load one branch extension: `LOGIC.md`, `LOGIC-LAB.md`, `UI.md`, or `UI-VARIANTS.md`. Add `CONTRACT-BOUNDARY.md` for mock/backend separation, `DECISION-CAPTURE.md` for promoted decisions, any iterative prototype-learning pass, or an author/reviewer annotation layer that may cross into a target UI or presentation, `skills/_shared/VISUAL-HANDOFF-PACKET.md` for visual packets, and `skills/_shared/REVIEW-LOOP.md` only when downstream ownership matters.
 
 ## Workflow
 
@@ -37,6 +37,7 @@ For iterative work, run the conditional Prototype Learning Loop from `DECISION-C
 - Stop before handing prototype findings to PRD, issue, implementation, or contract notes unless contract sources, confirmed fields, mock fields, client-derived logic, and assumptions are separated.
 - Stop before promoting a prototype into durable source truth unless `Contract Impact: confirmed update`.
 - Stop before treating static HTML, screenshots, generated images, UI variants, or logic lab output as browser/runtime/UAT/release/customer evidence without the actual evidence named.
+- Stop before author/reviewer annotations, design notes, debug labels, or review aids enter a target UI or presentation unless `DECISION-CAPTURE.md` records their purpose, presentation disposition, and any required audience-facing source.
 - Do not let prototype polish imply production capability.
 - Do not use prototype instead of `verify` for backend/API/source truth or readiness claims.
 
