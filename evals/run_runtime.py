@@ -24,11 +24,23 @@ try:
         has_clean_review_pass_claim,
         has_diff_only_readiness_pass_claim,
     )
+    from checks.loop_checks import (
+        checkpoint_before_risky_action_failures,
+        prototype_iteration_checkpoint_failures,
+        prototype_no_delta_stop_failures,
+        prototype_one_shot_failures,
+        spec_clear_fast_path_failures,
+        spec_gap_list_failures,
+        spec_no_delta_stop_failures,
+        spec_single_question_failures,
+        spec_writeback_failures,
+    )
     from checks.verify_checks import (
         ARTIFACT_HEADER_FIELDS,
         QA_FAILURE_FIELDS,
         VERIFY_SCOPE_FIELDS,
         missing_verify_scope_fields,
+        qa_gap_closure_gate_failures,
     )
 except ImportError:  # pragma: no cover - package import path
     from evals.checks.common import has_required_field, missing_required_fields
@@ -42,11 +54,23 @@ except ImportError:  # pragma: no cover - package import path
         has_clean_review_pass_claim,
         has_diff_only_readiness_pass_claim,
     )
+    from evals.checks.loop_checks import (
+        checkpoint_before_risky_action_failures,
+        prototype_iteration_checkpoint_failures,
+        prototype_no_delta_stop_failures,
+        prototype_one_shot_failures,
+        spec_clear_fast_path_failures,
+        spec_gap_list_failures,
+        spec_no_delta_stop_failures,
+        spec_single_question_failures,
+        spec_writeback_failures,
+    )
     from evals.checks.verify_checks import (
         ARTIFACT_HEADER_FIELDS,
         QA_FAILURE_FIELDS,
         VERIFY_SCOPE_FIELDS,
         missing_verify_scope_fields,
+        qa_gap_closure_gate_failures,
     )
 try:
     from routing_schema import (
@@ -1594,6 +1618,52 @@ def output_contract_verdict(row, schema, actual, final_response):
                     "output_contract_failure",
                     "skill_output_contract",
                     "QA Failure block missing fields: " + ", ".join(missing),
+                )
+        elif token == "qa_gap_closure_gate":
+            gate_failures = qa_gap_closure_gate_failures(final_response)
+            for gate_failure in gate_failures:
+                append_failure(
+                    failures,
+                    notes,
+                    "output_contract_failure",
+                    "requirement_state_gate",
+                    gate_failure,
+                )
+        elif token in {
+            "prototype_iteration_checkpoint",
+            "prototype_no_delta_stop",
+            "prototype_one_shot",
+            "spec_single_question",
+            "spec_writeback",
+            "spec_no_delta_stop",
+            "spec_clear_fast_path",
+            "spec_gap_list",
+            "checkpoint_before_risky_action",
+        }:
+            loop_checkers = {
+                "prototype_iteration_checkpoint": prototype_iteration_checkpoint_failures,
+                "prototype_no_delta_stop": prototype_no_delta_stop_failures,
+                "prototype_one_shot": prototype_one_shot_failures,
+                "spec_single_question": spec_single_question_failures,
+                "spec_writeback": spec_writeback_failures,
+                "spec_no_delta_stop": spec_no_delta_stop_failures,
+                "spec_clear_fast_path": spec_clear_fast_path_failures,
+                "spec_gap_list": spec_gap_list_failures,
+                "checkpoint_before_risky_action": checkpoint_before_risky_action_failures,
+            }
+            if token == "spec_clear_fast_path":
+                loop_failures = loop_checkers[token](
+                    final_response, schema["expected_best"]
+                )
+            else:
+                loop_failures = loop_checkers[token](final_response)
+            for loop_failure in loop_failures:
+                append_failure(
+                    failures,
+                    notes,
+                    "output_contract_failure",
+                    "skill_output_contract",
+                    loop_failure,
                 )
         elif token == "artifact_header":
             missing = missing_required_fields(final_response, ARTIFACT_HEADER_FIELDS)

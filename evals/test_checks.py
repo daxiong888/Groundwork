@@ -2,7 +2,8 @@
 import unittest
 from pathlib import Path
 
-from evals.checks import artifact_checks, common, forbidden_patterns
+from evals import verdict_model
+from evals.checks import artifact_checks, common, forbidden_patterns, verify_checks
 from evals.schema_validation import SchemaResolver, validate_instance
 
 
@@ -26,6 +27,738 @@ class CommonFieldDetectionTests(unittest.TestCase):
         )
 
         self.assertEqual(missing, ["Reader Action Needed"])
+
+
+class QaGapClosureGateTests(unittest.TestCase):
+    def _report(
+        self,
+        admission="ready_for_implement",
+        delta="first observed failure",
+        next_action="route: implement",
+        verdict="fail",
+        authority="existing_and_sufficient",
+        risk_change="unchanged_within_boundary",
+        reproduction="command: node test/taskSearch.test.mjs",
+        re_qa="command: node test/taskSearch.test.mjs",
+    ):
+        return f"""Verification Scope
+- Claim: failed filter can enter bounded remediation
+- Covered: supplied failure package
+- Missing: none
+- Verdict: {verdict}
+QA Failure
+- Expected: filtered result
+- Actual: unfiltered result
+- Reproduction: {reproduction}
+- Severity: P1
+- Minimal Diagnosis: filter is not applied
+- Evidence Delta: {delta}
+- Source / AC Change: unchanged
+- Implementation Authority: {authority}
+- Risk Change: {risk_change}
+- Fix Plan: change the filter only
+- Gap-Closure Admission: {admission}
+- Gap Closure Plan: change only the phone filter and rerun the original check
+- Re-QA Required: {re_qa}
+- Regression Note: adjacent status filter
+- Scoped Next Action: {next_action}
+"""
+
+    def test_ready_admission_passes_with_complete_failure_package(self):
+        self.assertEqual(verify_checks.qa_gap_closure_gate_failures(self._report()), [])
+
+    def test_ready_admission_rejects_missing_reproduction(self):
+        report = self._report().replace(
+            "Reproduction: command: node test/taskSearch.test.mjs", "Reproduction: unverified"
+        )
+        self.assertIn(
+            "Reproduction cannot be unresolved for ready_for_implement",
+            verify_checks.qa_gap_closure_gate_failures(report),
+        )
+
+    def test_ready_admission_rejects_invalid_severity(self):
+        report = self._report().replace("Severity: P1", "Severity: none")
+        self.assertIn(
+            "Severity must be P0-P3 for QA Failure",
+            verify_checks.qa_gap_closure_gate_failures(report),
+        )
+
+    def test_ready_admission_rejects_unbounded_fix_plan(self):
+        report = self._report().replace(
+            "Fix Plan: change the filter only", "Fix Plan: unverified"
+        )
+        self.assertIn(
+            "Fix Plan cannot be unresolved for ready_for_implement",
+            verify_checks.qa_gap_closure_gate_failures(report),
+        )
+
+    def test_ready_admission_rejects_explicitly_broad_fix_scope(self):
+        for field, value in (
+            ("Fix Plan", "rewrite every module in the system"),
+            ("Fix Plan", "rewrite everything"),
+            ("Fix Plan", "refactor unrelated modules"),
+            ("Gap Closure Plan", "change every file in the repository and rerun the check"),
+        ):
+            with self.subTest(field=field):
+                report = self._report().replace(
+                    f"{field}: "
+                    + (
+                        "change the filter only"
+                        if field == "Fix Plan"
+                        else "change only the phone filter and rerun the original check"
+                    ),
+                    f"{field}: {value}",
+                )
+                self.assertIn(
+                    f"{field} must remain bounded for ready_for_implement",
+                    verify_checks.qa_gap_closure_gate_failures(report),
+                )
+
+    def test_ready_admission_allows_negated_broad_scope_with_bounded_fix(self):
+        report = self._report().replace(
+            "Fix Plan: change the filter only",
+            "Fix Plan: do not rewrite every module; change only the phone filter",
+        )
+
+        self.assertEqual(verify_checks.qa_gap_closure_gate_failures(report), [])
+
+    def test_ready_admission_requires_evidence_delta(self):
+        self.assertIn(
+            "Evidence Delta is missing, unresolved, or contains no new evidence",
+            verify_checks.qa_gap_closure_gate_failures(self._report(delta="unverified")),
+        )
+
+    def test_ready_admission_rejects_explicit_no_evidence_delta(self):
+        self.assertIn(
+            "Evidence Delta is missing, unresolved, or contains no new evidence",
+            verify_checks.qa_gap_closure_gate_failures(
+                self._report(delta="same result and same hypothesis; no new evidence")
+            ),
+        )
+
+    def test_negated_hypothesis_change_is_not_an_evidence_delta(self):
+        self.assertIn(
+            "Evidence Delta is missing, unresolved, or contains no new evidence",
+            verify_checks.qa_gap_closure_gate_failures(
+                self._report(
+                    delta="no new evidence; there is no changed hypothesis"
+                )
+            ),
+        )
+
+    def test_ready_admission_allows_new_evidence_with_same_result(self):
+        self.assertEqual(
+            verify_checks.qa_gap_closure_gate_failures(
+                self._report(
+                    delta="same result and same hypothesis, but a new trace localizes the filter branch"
+                )
+            ),
+            [],
+        )
+
+    def test_ready_admission_allows_changed_hypothesis_without_new_evidence(self):
+        self.assertEqual(
+            verify_checks.qa_gap_closure_gate_failures(
+                self._report(
+                    delta="no new evidence; hypothesis changed to the normalization branch"
+                )
+            ),
+            [],
+        )
+
+    def test_ready_admission_cannot_upgrade_failure_verdict(self):
+        self.assertIn(
+            "Verification Verdict must remain fail or blocked for QA Failure",
+            verify_checks.qa_gap_closure_gate_failures(self._report(verdict="pass")),
+        )
+
+    def test_ready_admission_rejects_non_actionable_gap_plan(self):
+        report = self._report().replace(
+            "Gap Closure Plan: change only the phone filter and rerun the original check",
+            "Gap Closure Plan: source truth and ACs are unchanged",
+        )
+        self.assertIn(
+            "Gap Closure Plan must name a scoped change or evidence update for ready_for_implement",
+            verify_checks.qa_gap_closure_gate_failures(report),
+        )
+
+    def test_ready_admission_rejects_vague_gap_plan(self):
+        report = self._report().replace(
+            "Gap Closure Plan: change only the phone filter and rerun the original check",
+            "Gap Closure Plan: handle this later",
+        )
+        self.assertIn(
+            "Gap Closure Plan must name a scoped change or evidence update for ready_for_implement",
+            verify_checks.qa_gap_closure_gate_failures(report),
+        )
+
+    def test_ready_admission_rejects_changed_source_or_acceptance(self):
+        report = self._report().replace(
+            "Source / AC Change: unchanged", "Source / AC Change: changed"
+        )
+        self.assertIn(
+            "Source / AC Change must be unchanged for ready_for_implement",
+            verify_checks.qa_gap_closure_gate_failures(report),
+        )
+
+    def test_non_ready_admission_cannot_enter_implement(self):
+        self.assertIn(
+            "Scoped Next Action must be one of route: to-prd for product_or_contract_rework",
+            verify_checks.qa_gap_closure_gate_failures(
+                self._report(admission="product_or_contract_rework")
+            ),
+        )
+
+    def test_non_ready_admission_rejects_indirect_implement_route(self):
+        self.assertIn(
+            "Scoped Next Action must be one of route: to-prd for product_or_contract_rework",
+            verify_checks.qa_gap_closure_gate_failures(
+                self._report(
+                    admission="product_or_contract_rework",
+                    next_action="route: implement",
+                )
+            ),
+        )
+
+    def test_non_ready_admission_allows_negated_implement_with_legal_route(self):
+        self.assertEqual(
+            verify_checks.qa_gap_closure_gate_failures(
+                self._report(
+                    admission="product_or_contract_rework",
+                    delta="unverified",
+                    next_action="route: to-prd",
+                    verdict="blocked",
+                )
+            ),
+            [],
+        )
+
+    def test_ready_admission_rejects_automatic_implement_execution(self):
+        self.assertIn(
+            "Scoped Next Action must be route: implement for ready_for_implement",
+            verify_checks.qa_gap_closure_gate_failures(
+                self._report(next_action="route: implement; execute now")
+            ),
+        )
+
+    def test_ready_admission_rejects_direct_implement_invocation(self):
+        self.assertIn(
+            "Scoped Next Action must be route: implement for ready_for_implement",
+            verify_checks.qa_gap_closure_gate_failures(
+                self._report(next_action="proceed immediately to implement")
+            ),
+        )
+
+    def test_ready_admission_rejects_implement_execution_outside_next_action(self):
+        report = self._report(next_action="route: implement")
+        report += "I am invoking implement now.\n"
+
+        self.assertIn(
+            "QA gap closure must recommend rather than execute implement",
+            verify_checks.qa_gap_closure_gate_failures(report),
+        )
+
+    def test_ready_admission_rejects_hidden_multiline_broad_scope_and_edit_claim(self):
+        report = self._report(next_action="route: implement")
+        report = report.replace(
+            "Fix Plan: change the filter only",
+            "Fix Plan: change the filter only\n  Then rewrite every module in the system.",
+        ).replace(
+            "Gap Closure Plan: change only the phone filter and rerun the original check",
+            "Gap Closure Plan: change only the phone filter and rerun the original check\n"
+            "  Then change every file in the repository.",
+        )
+        report += "I patched the filter and rewrote every module now.\n"
+
+        failures = verify_checks.qa_gap_closure_gate_failures(report)
+        self.assertIn("QA gap closure must remain bounded across the full output", failures)
+        self.assertIn(
+            "QA gap closure must recommend rather than execute implement", failures
+        )
+
+    def test_ready_admission_allows_negated_edit_claim(self):
+        report = self._report(next_action="route: implement").replace(
+            "Fix Plan: change the filter only",
+            "Fix Plan: do not patch or rewrite any other file; change only the phone filter",
+        )
+
+        self.assertEqual(verify_checks.qa_gap_closure_gate_failures(report), [])
+
+    def test_non_ready_admission_rejects_edit_claim_anywhere_in_output(self):
+        report = self._report(
+            admission="needs_info",
+            delta="unverified",
+            next_action="route: verify",
+            verdict="blocked",
+        )
+        report += "I patched the filter already.\n"
+
+        self.assertIn(
+            "QA gap closure must recommend rather than execute implement",
+            verify_checks.qa_gap_closure_gate_failures(report),
+        )
+
+    def test_ready_admission_rejects_passive_edit_claim(self):
+        report = self._report(next_action="route: implement")
+        report += "The filter has been patched already.\n"
+
+        self.assertIn(
+            "QA gap closure must recommend rather than execute implement",
+            verify_checks.qa_gap_closure_gate_failures(report),
+        )
+
+    def test_ready_admission_allows_negated_passive_edit_claim(self):
+        report = self._report(next_action="route: implement").replace(
+            "Fix Plan: change the filter only",
+            "Fix Plan: the filter has not been patched; change only the phone filter",
+        )
+
+        self.assertEqual(verify_checks.qa_gap_closure_gate_failures(report), [])
+
+    def test_ready_admission_rejects_applied_fix_claims(self):
+        for claim in (
+            "I applied the scoped fix already.",
+            "The scoped fix has been applied already.",
+            "We have already patched the filter.",
+            "The scoped fix has already been applied.",
+            "I have rewritten the filter.",
+        ):
+            with self.subTest(claim=claim):
+                report = self._report(next_action="route: implement")
+                report += claim + "\n"
+
+                self.assertIn(
+                    "QA gap closure must recommend rather than execute implement",
+                    verify_checks.qa_gap_closure_gate_failures(report),
+                )
+
+    def test_ready_admission_allows_negated_applied_fix_claims(self):
+        for claim in (
+            "I did not apply the scoped fix.",
+            "The scoped fix has not been applied.",
+        ):
+            with self.subTest(claim=claim):
+                report = self._report(next_action="route: implement").replace(
+                    "Fix Plan: change the filter only",
+                    f"Fix Plan: {claim} Change only the phone filter",
+                )
+
+                self.assertEqual(
+                    verify_checks.qa_gap_closure_gate_failures(report), []
+                )
+
+    def test_all_admissions_reject_patch_all_scope(self):
+        next_actions = {
+            "ready_for_implement": "route: implement",
+            "diagnose_before_edit": "route: implement",
+            "needs_info": "route: verify",
+            "product_or_contract_rework": "route: to-prd",
+            "human_decision": "route: human_decision",
+            "blocked": "route: stop",
+        }
+        for admission, next_action in next_actions.items():
+            for broad_scope in (
+                "Patch all files in the repository.",
+                "Fixing all files in the repository is the proposed remediation.",
+                "Editing all files is the proposed remediation.",
+                "Every file should be patched.",
+                "All files are being patched.",
+            ):
+                with self.subTest(admission=admission, broad_scope=broad_scope):
+                    report = self._report(
+                        admission=admission,
+                        next_action=next_action,
+                        verdict="blocked" if admission == "blocked" else "fail",
+                    )
+                    report += broad_scope + "\n"
+
+                    self.assertIn(
+                        "QA gap closure must remain bounded across the full output",
+                        verify_checks.qa_gap_closure_gate_failures(report),
+                    )
+
+    def test_patch_all_scope_negation_is_allowed(self):
+        for negated_scope in (
+            "Do not patch all files; change only the phone filter.",
+            "We did not patch all files; only the phone filter remains in scope.",
+            "We are not editing all files; only the phone filter remains in scope.",
+            "We have not rewritten all files; only the phone filter remains in scope.",
+        ):
+            with self.subTest(negated_scope=negated_scope):
+                report = self._report(next_action="route: implement").replace(
+                    "Fix Plan: change the filter only",
+                    f"Fix Plan: {negated_scope}",
+                )
+
+                self.assertEqual(
+                    verify_checks.qa_gap_closure_gate_failures(report), []
+                )
+
+    def test_qa_failure_rejects_duplicate_gate_decision_fields(self):
+        cases = (
+            (
+                "Evidence Delta",
+                "- Evidence Delta: no new evidence\n- Source / AC Change: unchanged",
+                "- Source / AC Change: unchanged",
+            ),
+            (
+                "Gap-Closure Admission",
+                "- Gap-Closure Admission: needs_info\n- Gap Closure Plan: change only the phone filter and rerun the original check",
+                "- Gap Closure Plan: change only the phone filter and rerun the original check",
+            ),
+        )
+        for field, duplicate, anchor in cases:
+            with self.subTest(field=field):
+                report = self._report(next_action="route: implement").replace(
+                    anchor, duplicate
+                )
+
+                self.assertIn(
+                    f"{field} must appear exactly once in QA Failure",
+                    verify_checks.qa_gap_closure_gate_failures(report),
+                )
+
+    def test_qa_failure_cardinality_ignores_verification_scope_fields(self):
+        self.assertEqual(verify_checks.qa_gap_closure_gate_failures(self._report()), [])
+
+    def test_qa_failure_rejects_verdict_inside_qa_block(self):
+        report = self._report().replace(
+            "QA Failure\n", "QA Failure\n- Verdict: fail\n"
+        )
+
+        self.assertIn(
+            "Verdict must not appear in QA Failure; keep it in Verification Scope",
+            verify_checks.qa_gap_closure_gate_failures(report),
+        )
+
+    def test_verification_scope_must_precede_qa_failure(self):
+        scope, qa = self._report().split("QA Failure\n", 1)
+        report = "QA Failure\n" + qa + scope
+
+        self.assertIn(
+            "Verification Scope must appear before QA Failure",
+            verify_checks.qa_gap_closure_gate_failures(report),
+        )
+
+    def test_verification_scope_fields_cannot_be_borrowed_from_later_sections(self):
+        report = self._report()
+        for field in (
+            "- Claim: failed filter can enter bounded remediation\n",
+            "- Covered: supplied failure package\n",
+            "- Missing: none\n",
+        ):
+            report = report.replace(field, "")
+        report += """## Later
+- Claim: late claim
+- Covered: late evidence
+- Missing: none
+"""
+
+        self.assertEqual(
+            verify_checks.missing_verify_scope_fields(report),
+            ["Claim", "Covered", "Missing"],
+        )
+
+    def test_empty_duplicate_fields_still_count(self):
+        scope_duplicate = self._report().replace(
+            "- Verdict: fail\nQA Failure",
+            "- Verdict: fail\n- Verdict:\nQA Failure",
+        )
+        self.assertIn(
+            "Verdict must appear exactly once in Verification Scope",
+            verify_checks.qa_gap_closure_gate_failures(scope_duplicate),
+        )
+        qa_duplicate = self._report() + "- Expected:\n"
+        self.assertIn(
+            "Expected must appear exactly once in QA Failure",
+            verify_checks.qa_gap_closure_gate_failures(qa_duplicate),
+        )
+
+    def test_empty_expected_does_not_consume_actual_field(self):
+        report = self._report().replace(
+            "- Expected: filtered result", "- Expected:"
+        )
+
+        self.assertIn(
+            "Expected cannot be unresolved for ready_for_implement",
+            verify_checks.qa_gap_closure_gate_failures(report),
+        )
+
+    def test_router_verdict_scope_empty_fields_do_not_consume_next_lines(self):
+        report = """Verification Scope
+- Claim:
+- Covered:
+- Missing:
+- Verdict: fail
+QA Failure
+- Expected: filtered result
+"""
+
+        self.assertEqual(
+            verdict_model.missing_verify_scope_fields(report),
+            ["Claim", "Covered", "Missing"],
+        )
+
+    def test_qa_failure_requires_exactly_one_explicit_block(self):
+        report = self._report().replace(
+            "QA Failure\n", ""
+        )
+
+        self.assertIn(
+            "QA Failure block must appear exactly once",
+            verify_checks.qa_gap_closure_gate_failures(report),
+        )
+
+    def test_qa_gap_closure_rejects_followup_markdown_section(self):
+        report = self._report()
+        report += """## Follow-up Summary
+- Verdict: fail
+- Scoped Next Action: route: verify
+"""
+
+        self.assertIn(
+            "QA gap closure output must contain only Verification Scope and QA Failure structured fields",
+            verify_checks.qa_gap_closure_gate_failures(report),
+        )
+
+    def test_qa_gap_closure_rejects_qa_fields_inside_verification_scope(self):
+        report = self._report().replace(
+            "- Missing: none\n- Verdict: fail",
+            "- Missing: none\n- Fix Plan: the fix has shipped\n- Verdict: fail",
+        )
+
+        self.assertIn(
+            "Fix Plan must appear only inside QA Failure",
+            verify_checks.qa_gap_closure_gate_failures(report),
+        )
+
+    def test_ready_admission_allows_negated_execution_outside_next_action(self):
+        report = self._report().replace(
+            "Fix Plan: change the filter only",
+            "Fix Plan: do not invoke implement here; change only the phone filter",
+        )
+
+        self.assertEqual(verify_checks.qa_gap_closure_gate_failures(report), [])
+
+    def test_qa_gap_closure_rejects_unstructured_tail_prose(self):
+        report = self._report() + "Only the phone filter remains in scope.\n"
+
+        self.assertIn(
+            "QA gap closure output must contain only Verification Scope and QA Failure structured fields",
+            verify_checks.qa_gap_closure_gate_failures(report),
+        )
+
+    def test_qa_gap_closure_rejects_execution_claims_inside_plan_fields(self):
+        cases = (
+            ("Fix Plan", "deployed the corrected phone filter"),
+            ("Fix Plan", "the corrected phone filter is live"),
+            ("Fix Plan", "the corrected phone filter has shipped"),
+            ("Fix Plan", "ship the corrected phone filter now"),
+            (
+                "Gap Closure Plan",
+                "the corrected phone filter went live; rerun the original check",
+            ),
+            (
+                "Gap Closure Plan",
+                "the corrected phone filter is in production; rerun the original check",
+            ),
+            (
+                "Gap Closure Plan",
+                "deployed the corrected phone filter and rerun the original check",
+            ),
+        )
+        for field, value in cases:
+            with self.subTest(field=field, value=value):
+                original = (
+                    "change the filter only"
+                    if field == "Fix Plan"
+                    else "change only the phone filter and rerun the original check"
+                )
+                report = self._report().replace(
+                    f"- {field}: {original}", f"- {field}: {value}"
+                )
+                self.assertTrue(
+                    any(
+                        f"{field} must remain a bounded proposal" in failure
+                        for failure in verify_checks.qa_gap_closure_gate_failures(report)
+                    )
+                )
+
+    def test_needs_info_can_stay_with_verify(self):
+        self.assertEqual(
+            verify_checks.qa_gap_closure_gate_failures(
+                self._report(
+                    admission="needs_info",
+                    delta="unverified",
+                    next_action="route: verify",
+                    verdict="blocked",
+                )
+            ),
+            [],
+        )
+
+    def test_ready_requires_existing_authority_and_unchanged_risk(self):
+        authority_failures = verify_checks.qa_gap_closure_gate_failures(
+            self._report(authority="approval_required")
+        )
+        self.assertIn(
+            "Implementation Authority must be existing_and_sufficient for ready_for_implement",
+            authority_failures,
+        )
+        risk_failures = verify_checks.qa_gap_closure_gate_failures(
+            self._report(risk_change="new_or_increased")
+        )
+        self.assertIn(
+            "Risk Change must be unchanged_within_boundary for ready_for_implement",
+            risk_failures,
+        )
+
+    def test_human_decision_accepts_new_risk_without_implementation_route(self):
+        self.assertEqual(
+            verify_checks.qa_gap_closure_gate_failures(
+                self._report(
+                    admission="human_decision",
+                    delta="unverified",
+                    next_action="route: human_decision",
+                    authority="approval_required",
+                    risk_change="new_or_increased",
+                )
+            ),
+            [],
+        )
+
+    def test_original_check_identity_must_match_exactly(self):
+        failures = verify_checks.qa_gap_closure_gate_failures(
+            self._report(
+                re_qa="command: node test/tasksearch.test.mjs",
+            )
+        )
+        self.assertIn(
+            "Re-QA Required must name the same original-check identity as Reproduction for ready_for_implement",
+            failures,
+        )
+
+    def test_original_check_identity_rejects_status_placeholders(self):
+        for identity in (
+            "command: echo ok",
+            "command: /bin/echo ok",
+            "command: sh -c 'echo ok'",
+            "command: env X=1 sh -c 'echo ok'",
+            "command: command echo ok",
+            "command: python3 -c 'print(\"ok\")'",
+            "command: node -e \"console.log('ok')\"",
+            "command: VAR=1 sh -c 'echo ok'",
+            "command: timeout 1 sh -c 'echo ok'",
+            "command: xargs -I{} sh -c 'echo ok'",
+            "command: false & true",
+            "command: (echo ok)",
+            "command: :",
+            "command: python3 -cprint('ok')",
+            "command: ruby --eval=puts(1)",
+            "command: deno eval 'console.log(1)'",
+            "command: node test/taskSearch.test.mjs; echo ok",
+            "command: node test/taskSearch.test.mjs || true",
+            "manual: success",
+        ):
+            with self.subTest(identity=identity):
+                failures = verify_checks.qa_gap_closure_gate_failures(
+                    self._report(reproduction=identity, re_qa=identity)
+                )
+                self.assertTrue(
+                    any("Original check identity cannot" in failure for failure in failures)
+                )
+
+    def test_original_manual_check_identity_can_match(self):
+        self.assertEqual(
+            verify_checks.qa_gap_closure_gate_failures(
+                self._report(
+                    reproduction="manual: phone-filter-flow",
+                    re_qa="manual: phone-filter-flow",
+                )
+            ),
+            [],
+        )
+
+    def test_non_ready_still_requires_valid_severity_and_source_state(self):
+        report = self._report(
+            admission="needs_info",
+            delta="unverified",
+            next_action="route: verify",
+            verdict="blocked",
+        )
+        self.assertIn(
+            "Severity must be P0-P3 for QA Failure",
+            verify_checks.qa_gap_closure_gate_failures(
+                report.replace("Severity: P1", "Severity: none")
+            ),
+        )
+        self.assertIn(
+            "Source / AC Change is missing or invalid",
+            verify_checks.qa_gap_closure_gate_failures(
+                report.replace("Source / AC Change: unchanged", "Source / AC Change: banana")
+            ),
+        )
+
+    def test_scoped_next_action_is_a_finite_route_token(self):
+        for action in (
+            "do not wait; implement now; verify later",
+            "proceed immediately to implement",
+            "do not verify; execute the fix now",
+        ):
+            with self.subTest(action=action):
+                self.assertTrue(
+                    verify_checks.qa_gap_closure_gate_failures(
+                        self._report(next_action=action)
+                    )
+                )
+
+    def test_safe_expected_and_no_write_statements_are_not_execution(self):
+        report = self._report().replace(
+            "Expected: filtered result", "Expected: the phone filter is fixed"
+        ).replace(
+            "Fix Plan: change the filter only",
+            "Fix Plan: no production database write is needed; change only the phone filter",
+        )
+
+        self.assertEqual(verify_checks.qa_gap_closure_gate_failures(report), [])
+
+    def test_production_parser_change_is_not_a_data_write(self):
+        report = self._report().replace(
+            "Fix Plan: change the filter only",
+            "Fix Plan: update only the production parser",
+        )
+
+        self.assertEqual(verify_checks.qa_gap_closure_gate_failures(report), [])
+
+    def test_live_or_prod_write_claims_require_human_or_blocked_route(self):
+        for claim in (
+            "We can write to the live database now.",
+            "Delete rows in prod now.",
+            "In prod, update row 42 now.",
+        ):
+            with self.subTest(claim=claim):
+                self.assertIn(
+                    "New authority or risk must route to human_decision or blocked",
+                    verify_checks.qa_gap_closure_gate_failures(self._report() + claim),
+                )
+
+    def test_negation_does_not_hide_later_execution_or_broad_scope(self):
+        cases = (
+            (
+                "I did not wait; we update the filter now.",
+                "QA gap closure must recommend rather than execute implement",
+            ),
+            (
+                "We did not wait. Patch all files in the repository.",
+                "QA gap closure must remain bounded across the full output",
+            ),
+        )
+        for claim, expected in cases:
+            with self.subTest(claim=claim):
+                self.assertIn(
+                    expected,
+                    verify_checks.qa_gap_closure_gate_failures(self._report() + claim),
+                )
 
 
 class ForbiddenPatternTests(unittest.TestCase):

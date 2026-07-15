@@ -19,7 +19,7 @@ Choose the branch that matches the current decision and risk. Gating overrides o
 - `ordinary-implementation`: accepted task or explicit PRD/spec bypass; inspect source and write the five-line mini-plan before editing.
 - `read-only-conformance`: inspect task/PRD, source, tests, and git boundary; report implementation conformance only and do not edit.
 - `gated-implementation`: push, PR, issue closeout, customer-visible, destructive, data-write, deploy, publish, migration, remote mutation, or shared-skill mutation.
-- `review-loop-remediation`: fix only cited verification or clean-review findings; rerun the original or narrowest relevant check and mark prior review stale when material files change.
+- `review-loop-remediation`: fix only cited verification or clean-review findings. For a QA failure, require explicit `qa_gap_closure` admission; otherwise diagnose or stop before edits. Rerun the original or narrowest relevant check and mark prior review stale when material files change.
 
 ## Solution Depth
 

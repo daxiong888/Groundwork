@@ -5,6 +5,11 @@
       "triggering_cases": [
         "trace-ready-forbidden-behavior"
       ],
+      "observation_key": "trace-ready-forbidden-behavior|forbidden_behavior|behavior_contract|trace_ready.code_diff_only_readiness_claim",
+      "occurrence_count": 1,
+      "learning_status": "observed",
+      "promotion_target": "none",
+      "evidence_delta": "Unreviewed first observation in this artifact; cross-run evidence delta and reproduction are unknown.",
       "failure_type": "forbidden_behavior",
       "fix_locus": "behavior_contract",
       "proposed_patch_summary": "Review behavior_contract for failed deterministic checker(s): trace_ready.code_diff_only_readiness_claim.",

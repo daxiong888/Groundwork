@@ -42,6 +42,97 @@ Interactive default: ask one highest-impact question; ask another only after the
 
 Non-interactive gap list: at most five questions, only when the user explicitly asks for a questionnaire/checklist/gap list or a written artifact. Each question must state impact and a recommended default when evidence supports one.
 
+## Spec Convergence Loop
+
+Use this small loop for raw or ambiguous specification work when one material decision still blocks the next route. It runs one user-controlled turn at a time inside the owning route; it does not auto-run skills, create a public `loop` route, or require a workflow artifact.
+
+1. Inspect available facts and the current canonical draft before asking.
+2. Select one decision that can change route, AC, contract, artifact boundary, checkpoint, or evidence requirement.
+3. Ask one question with a recommended answer and consequence when evidence supports a recommendation.
+4. After the answer, record the decision delta, update the canonical facts/assumptions/open questions, and remove the resolved or contradicted stale state.
+5. Route or ask one new question only if a new material blocker remains. Another question requires a new decision delta; repeated reframing of the same unresolved question is not progress.
+
+The loop is done when the next route's material decisions are resolved or explicitly gated, not when every possible unknown has disappeared. Stop or pause when repo/source evidence can answer instead; the user lacks authority; the answer would authorize risky work; no decision delta exists; or the remaining unknown can safely stay as `NEEDS CLARIFICATION` for the next owner.
+
+After a material answer, use this compact write-back when the canonical update is not already obvious in a durable PRD:
+
+```text
+Spec Convergence Checkpoint
+- Decision Delta Status: changed
+- Decision Delta:
+- Canonical Update Status: updated
+- Canonical Update:
+- Resolved / Removed:
+- Next Route or Question: route
+- Next Route: to-prd
+```
+
+`Decision Delta Status` must be exactly `changed`, and `Canonical Update Status` must be exactly `updated`. These tokens assert that the answer materially changed the current decision and that the canonical state was rewritten; prose synonyms do not replace them, and the detail fields must not negate the token with claims such as nothing changed, unchanged, kept as-is, or deferred. If either assertion is not true, do not emit a convergence checkpoint: stop or pause and name the missing evidence, decision, or authority instead.
+
+Use exactly one of three finite states and only its companion fields:
+
+- `route`: include exactly one public `Next Route` from `to-prd`, `to-issues`, `triage`, `write-plan`, `prototype`, `implement`, `verify`, `handoff`, `dispatch`, or `wiki`; do not include `Question`, `Impact / Next route`, or `Stop Reason`.
+- `question`: include exactly one `Question` and one `Impact / Next route`; do not include `Next Route` or `Stop Reason`.
+- `stop`: include exactly one `Stop Reason`; do not include `Next Route`, `Question`, or `Impact / Next route`.
+
+All reserved checkpoint and companion fields must remain inside the single `Spec Convergence Checkpoint`; a later section cannot reintroduce or override them.
+
+For example, the question and stop alternatives are:
+
+```text
+Spec Convergence Checkpoint
+- Decision Delta Status: changed
+- Decision Delta:
+- Canonical Update Status: updated
+- Canonical Update:
+- Resolved / Removed:
+- Next Route or Question: question
+- Question:
+- Impact / Next route:
+```
+
+```text
+Spec Convergence Checkpoint
+- Decision Delta Status: changed
+- Decision Delta:
+- Canonical Update Status: updated
+- Canonical Update:
+- Resolved / Removed:
+- Next Route or Question: stop
+- Stop Reason:
+```
+
+Do not emit this checkpoint for the initial one-question prompt or for a clear spec that does not need iterative clarification.
+
+For a recurring workflow, conditionally apply this loop lens only where it changes the spec:
+
+- recurring unit and any parent loop;
+- trigger (`event`, `schedule`, or explicit manual action);
+- owner, input, output, and falsifiable success evidence;
+- human checkpoint, decision, and decision-ready brief;
+- bounded retry, stop/pause condition, and next route.
+
+Do not turn the lens into a mandatory checklist. Prepare safe, reversible analysis before a checkpoint when useful, but never "push right" past source acceptance, destructive/remote/data/production/shared-skill approval, secrets/PII review, or customer-visible authority.
+
+When an answer would authorize a data write, stop before action and emit this exact checkpoint once. The seven control values are fixed tokens; the four decision details must be non-empty and decision-ready:
+
+```text
+Risky Action Checkpoint
+- Proposed Action:
+- Action Kind: data_mutation
+- Target:
+- Target Kind: data_store
+- Risk:
+- Rollback/Undo:
+- Approval Needed: yes
+- Risk Gate: data_write
+- Approval Status: pending
+- Action State: blocked
+- Checkpoint Position: before_action
+```
+
+The complete checkpoint is exactly the heading plus these eleven structured field lines. Do not add prose, sections, duplicate fields, wrappers, or notes before, inside, or after the card. The four decision-detail fields describe intended, potential, or contingent work only; none may contain timing, present/past execution, or completion claims such as `now`, `immediately`, `before approval`, `already`, `executed`, `finished`, `ran successfully`, `went live`, or `was changed`. Do not claim or imply that the data write can proceed while `Approval Status` is `pending` and `Action State` is `blocked`.
+
 ## Question-quality Gate
 
 Before asking, inspect available context/source when it can answer the question. A valid question is necessary for the next route, answerable by the user, more useful than several lower-impact questions, grounded in known facts/assumptions, and paired with a default/consequence only when evidence supports it.
@@ -86,7 +177,11 @@ Question:
 Impact / Next route:
 ```
 
+`Impact / Next route` is required and must state the route, acceptance, contract, artifact, or evidence consequence of the answer. Deterministic output checks validate the one-question shape and this explicit impact field; the question-quality gate above remains responsible for judging whether that claimed consequence is actually material and source-grounded.
+
 For audit/debug or durable review artifacts, add known facts, why this is highest-impact, current route boundary, and evidence boundary.
+
+After an answered question, add `Decision Delta` and `Remaining Blocking Ambiguity` only when they materially explain why the route changed or why one more question is needed. Do not print empty convergence scaffolding.
 
 ## Evidence Boundary
 

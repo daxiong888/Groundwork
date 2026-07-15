@@ -9,6 +9,9 @@ from pathlib import Path
 
 UNCLASSIFIED_FAILURE_TYPES = {"", "none", "unknown", "unclassified"}
 PASS_VERDICTS = {"pass", "not_applicable"}
+GENERATED_LEARNING_STATUS = "observed"
+GENERATED_PROMOTION_TARGET = "none"
+GENERATED_EVIDENCE_DELTA = "Unreviewed first observation in this artifact; cross-run evidence delta and reproduction are unknown."
 SECRET_PATTERNS = (
     re.compile(r"(Authorization:\s*Bearer\s+)[^\s,;]+", re.IGNORECASE),
     re.compile(r"(token=)[^\s,;]+", re.IGNORECASE),
@@ -205,6 +208,13 @@ def suggestion_from_case(case_id, sources, index):
     suggestion = {
         "suggestion_id": f"ps-{index:03d}",
         "triggering_cases": [case_id],
+        "observation_key": "|".join(
+            [case_id, failure_type, fix_locus] + (checker_ids or ["no_checker"])
+        ),
+        "occurrence_count": 1,
+        "learning_status": GENERATED_LEARNING_STATUS,
+        "promotion_target": GENERATED_PROMOTION_TARGET,
+        "evidence_delta": GENERATED_EVIDENCE_DELTA,
         "failure_type": failure_type,
         "fix_locus": fix_locus,
         "proposed_patch_summary": proposal_summary(failure_type, fix_locus, checker_ids),

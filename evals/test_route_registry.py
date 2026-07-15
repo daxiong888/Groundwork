@@ -58,6 +58,64 @@ class RouteRegistryTests(unittest.TestCase):
         self.assertEqual(len(rules), len(set(rules)))
         self.assertEqual(rules[-1], "direct_fallback")
 
+    def test_feedback_transitions_are_public_bounded_and_non_automatic(self):
+        requirement_states = {
+            "raw",
+            "grilled",
+            "prd_draft",
+            "prd_accepted",
+            "issue_ready",
+            "implementation_ready",
+            "verified",
+            "blocked",
+        }
+        transitions = self.registry["feedback_transitions"]
+
+        self.assertIn("qa_gap_closure", transitions)
+        for name, transition in transitions.items():
+            self.assertIn(transition["from_route"], self.registry["public_routes"], name)
+            self.assertIn(transition["to_route"], self.registry["public_routes"], name)
+            self.assertTrue(transition["accepted_from_states"], name)
+            self.assertTrue(
+                set(transition["accepted_from_states"]).issubset(requirement_states),
+                name,
+            )
+            self.assertIn(
+                transition["preserved_or_produced_state"], requirement_states, name
+            )
+            self.assertTrue(transition["gate"], name)
+            self.assertIs(transition["automatic"], False, name)
+
+    def test_qa_gap_closure_contract_is_documented(self):
+        transition = self.registry["feedback_transitions"]["qa_gap_closure"]
+        self.assertEqual(transition["preserved_or_produced_state"], "implementation_ready")
+        self.assertEqual(
+            set(transition["requires"]),
+            {
+                "unchanged_source_truth",
+                "unchanged_acceptance_criteria",
+                "bounded_failure_package",
+                "matching_original_reqa_identity",
+                "existing_implementation_authority",
+                "no_new_or_increased_risk",
+                "finite_scoped_next_action",
+                "new_evidence_or_changed_hypothesis",
+            },
+        )
+        self.assertIn(
+            "implementation_ready",
+            self.registry["public_routes"]["verify"]["produced_states"],
+        )
+
+        state_machine = (
+            ROOT / "skills" / "_shared" / "WORKFLOW-STATE-MACHINE.md"
+        ).read_text(encoding="utf-8")
+        qa_contract = (ROOT / "skills" / "verify" / "QA-FIX-QA.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("qa_gap_closure", state_machine)
+        self.assertIn("qa_gap_closure", qa_contract)
+
 
 if __name__ == "__main__":
     unittest.main()

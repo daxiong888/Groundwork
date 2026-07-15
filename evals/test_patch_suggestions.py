@@ -23,6 +23,11 @@ class PatchSuggestionTests(unittest.TestCase):
         self.assertEqual(suggestion["failure_type"], "forbidden_behavior")
         self.assertEqual(suggestion["fix_locus"], "behavior_contract")
         self.assertEqual(suggestion["checker_ids"], ["trace_ready.code_diff_only_readiness_claim"])
+        self.assertEqual(
+            suggestion["observation_key"],
+            "trace-ready-forbidden-behavior|forbidden_behavior|behavior_contract|trace_ready.code_diff_only_readiness_claim",
+        )
+        self.assertEqual(suggestion["occurrence_count"], 1)
 
     def test_does_not_generate_for_pass_case(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -41,6 +46,26 @@ class PatchSuggestionTests(unittest.TestCase):
 
         self.assertTrue(artifact["suggestions"])
         self.assertTrue(all(item["auto_apply"] is False for item in artifact["suggestions"]))
+
+    def test_generated_suggestion_stays_observed(self):
+        artifact = patch_suggestions.generate_patch_suggestions(FIXTURE)
+
+        self.assertTrue(artifact["suggestions"])
+        for suggestion in artifact["suggestions"]:
+            self.assertEqual(suggestion["learning_status"], "observed")
+            self.assertEqual(suggestion["promotion_target"], "none")
+            self.assertEqual(suggestion["human_decision"], "none")
+            self.assertIn("cross-run evidence delta", suggestion["evidence_delta"])
+            self.assertIn("reproduction are unknown", suggestion["evidence_delta"])
+
+    def test_generator_never_accepts_or_promotes(self):
+        artifact = patch_suggestions.generate_patch_suggestions(FIXTURE)
+
+        serialized = json.dumps(artifact, sort_keys=True)
+        self.assertNotIn('"learning_status": "accepted"', serialized)
+        self.assertNotIn('"learning_status": "promoted"', serialized)
+        self.assertNotIn('"promotion_target": "source_patch"', serialized)
+        self.assertNotIn('"human_decision": "accepted"', serialized)
 
     def test_unclassified_without_checker_is_skipped(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -70,6 +95,7 @@ class PatchSuggestionTests(unittest.TestCase):
         artifact = json.loads(proc.stdout)
         self.assertEqual(len(artifact["suggestions"]), 1)
         self.assertFalse(artifact["suggestions"][0]["auto_apply"])
+        self.assertEqual(artifact["suggestions"][0]["learning_status"], "observed")
 
     def test_expected_fixture_matches_generated_artifact(self):
         expected = json.loads((FIXTURE / "expected-patch-suggestions.json").read_text(encoding="utf-8"))
@@ -99,6 +125,8 @@ class PatchSuggestionTests(unittest.TestCase):
 
         self.assertIn("Patch suggestion count: 1", output)
         self.assertIn("`ps-001`", output)
+        self.assertIn("learning_status `observed`", output)
+        self.assertIn("promotion_target `none`", output)
         self.assertIn("auto_apply `False`", output)
 
 

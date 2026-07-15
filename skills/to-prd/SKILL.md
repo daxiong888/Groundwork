@@ -36,6 +36,8 @@ Load `skills/_shared/FIRST-PRINCIPLES.md` only when PRD shaping must separate pr
 
 Choose the compact or full path. State target reader, decision, facts, assumptions, open questions, and evidence level; ask only if blocked; mark unknown backend/business/acceptance facts as **NEEDS CLARIFICATION**; keep AC IDs stable; recommend `to-issues` only when accepted enough.
 
+When a raw or ambiguous recurring workflow or multi-turn clarification still has one material decision blocking the next route, use the Spec Convergence Loop from `skills/_shared/GRILLING.md`: resolve one material decision per turn, canonically write back the decision, and continue only when a new blocker remains. A clear recurring spec and an explicitly requested non-interactive gap list stay on their normal paths. Use the workflow loop lens conditionally; do not manufacture triggers, schedules, checkpoints, AI steps, or artifacts the requirement does not need.
+
 ## Hard Stops
 
 - Stop before drafting only when a missing target reader, decision, fact, or acceptance boundary would materially change the spec. Do not print empty fields merely to prove they were considered.
@@ -58,4 +60,4 @@ Full durable PRD fields live in `GRILL-BEFORE-WRITE.md` and `PRD-TEMPLATE.md`.
 
 ## Stop / Artifact Rule
 
-Stop when intent, ACs, open questions, evidence boundary, and next action are reviewable. Default to conversation output. Write/update PRD files only when requested, source-of-truth useful, or artifact promotion is justified. Redact sensitive data.
+Stop when intent, ACs, open questions, evidence boundary, and next action are reviewable, and the next route's material decisions are resolved or explicitly gated. Default to conversation output. Write/update PRD files only when requested, source-of-truth useful, or artifact promotion is justified. Redact sensitive data.

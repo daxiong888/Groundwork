@@ -80,11 +80,12 @@ Use `skills/_shared/REVIEW-LOOP.md` when implementation is performed in a child 
 
 If fixing clean-review or verify findings:
 
-1. Fix only cited findings or explicitly accepted gap-closure items.
-2. Rerun the original failed check or the smallest check that proves the finding closed.
-3. Record `findings_addressed`, checks run, checks not run, remaining risks, and self-check evidence.
-4. Mark prior clean review stale when material files changed.
-5. Route the latest package back to fresh clean review unless a documented low-risk coordinator-intake exception applies.
+1. For a QA failure, load `skills/verify/QA-FIX-QA.md` and confirm `Gap-Closure Admission` is `ready_for_implement` or `diagnose_before_edit`, `Implementation Authority` is `existing_and_sufficient`, `Risk Change` is `unchanged_within_boundary`, `Reproduction` exactly matches `Re-QA Required` as one non-placeholder `command:` or `manual:` identity, and `Scoped Next Action` is exactly `route: implement`. If any gate is missing or another outcome applies, diagnose or stop without editing.
+2. Fix only cited findings or explicitly accepted gap-closure items.
+3. Rerun the original failed check or the smallest check that proves the finding closed.
+4. Record `findings_addressed`, evidence delta, checks run, checks not run, remaining risks, and self-check evidence.
+5. Mark prior clean review stale when material files changed.
+6. Route the latest package back to fresh clean review unless a documented low-risk coordinator-intake exception applies.
 
 ## Failure Branches
 

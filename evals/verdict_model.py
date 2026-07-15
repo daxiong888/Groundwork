@@ -1,6 +1,7 @@
 """Router observability verdict and card helpers."""
 
 from datetime import datetime, timezone
+import re
 
 try:
     from route_detection import detect_route_from_text, has_dispatch_route_marker
@@ -21,11 +22,32 @@ VERIFY_SCOPE_FIELD_ALIASES = {
 
 
 def missing_verify_scope_fields(text):
-    lowered = str(text or "").lower()
+    raw_text = str(text or "")
+    headers = list(
+        re.finditer(
+            r"(?im)^[ \t]*(?:#{1,6}[ \t]*)?(?:\*\*)?Verification Scope(?:\*\*)?[ \t]*:?[ \t]*$",
+            raw_text,
+        )
+    )
+    if len(headers) != 1:
+        return list(VERIFY_SCOPE_FIELD_ALIASES)
+    block = raw_text[headers[0].end() :]
+    end = re.search(
+        r"(?im)^[ \t]*(?:(?:#{1,6}[ \t]+\S[^\r\n]*)|(?:(?:#{1,6}[ \t]*)?(?:\*\*)?QA Failure(?:\*\*)?[ \t]*:?[ \t]*))$",
+        block,
+    )
+    if end:
+        block = block[: end.start()]
     return [
         field
         for field, aliases in VERIFY_SCOPE_FIELD_ALIASES.items()
-        if not any(f"{alias.lower()}:" in lowered for alias in aliases)
+        if not any(
+            re.search(
+                rf"(?im)^[ \t]*(?:[-*][ \t]*)?(?:\*\*)?{re.escape(alias)}(?:\*\*)?[ \t]*:[ \t]*\S[^\r\n]*$",
+                block,
+            )
+            for alias in aliases
+        )
     ]
 
 

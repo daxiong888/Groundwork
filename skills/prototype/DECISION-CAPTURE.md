@@ -18,6 +18,53 @@ Prototype output must name the decision boundary instead of implying product or 
 
 Capture what was decided for the prototype question, what was rejected, what remains unverified, and what should happen next. Do not treat prototype-only mock fields, visual labels, sample payloads, or client-derived logic as backend/API contract truth unless source evidence or explicit user confirmation is present.
 
+## Prototype Learning Loop
+
+Use this small loop only while one bounded prototype question still has a falsifiable uncertainty. It is a conditional behavior inside `prototype`, not a new public route, durable state machine, automatic retry policy, or requirement-state upgrade.
+
+One iteration records:
+
+```text
+Iteration Checkpoint
+- Current Hypothesis:
+- Probe:
+- Observation:
+- Evidence Delta Status: changed
+- Evidence Delta:
+- Decision Delta Status: changed
+- Decision Delta:
+- Next Probe or Stop: propose_probe
+- Proposed Probe:
+```
+
+Use the alternative stop shape when no further probe is proposed:
+
+```text
+Iteration Checkpoint
+- Current Hypothesis:
+- Probe:
+- Observation:
+- Evidence Delta Status: none
+- Evidence Delta:
+- Decision Delta Status: none
+- Decision Delta:
+- Next Probe or Stop: stop
+- Stop Reason:
+```
+
+Rules:
+
+1. Test one material hypothesis with the smallest disposable probe that can distinguish outcomes.
+2. Record observation separately from interpretation. Name browser/runtime/tool evidence when used; otherwise keep the claim at prototype evidence level.
+3. `Evidence Delta Status` accepts only `changed` or `none`. `Evidence Delta` names what is newly observed since the previous iteration; the first probe may use `first probe`, while a repeated probe and result uses status `none` and describes the repetition in the detail field. The detail must not contradict its status by pairing `changed` with an identical/unchanged result or `none` with a new/first/localized observation.
+4. `Decision Delta Status` accepts only `changed` or `none`. `Decision Delta` states what current decision, rejected variant, assumption, contract impact, or next route changed; use status `none` when no decision changed. The detail must not contradict the status by pairing `changed` with no decision change or `none` with an accepted/rejected decision or new route.
+5. If either delta status is `none`, `Next Probe or Stop` must be `stop`. Prose synonyms for changed or unchanged do not replace the status tokens.
+6. `Next Probe or Stop` accepts only `propose_probe` or `stop`. `propose_probe` requires both delta statuses to be `changed`, exactly one non-empty `Proposed Probe`, and no `Stop Reason`; `stop` requires exactly one non-empty `Stop Reason` and forbids `Proposed Probe`. All reserved checkpoint and companion fields must remain inside the single `Iteration Checkpoint`; a later section cannot reintroduce them.
+7. Continue only when the same prototype question remains open and a new probe can add evidence or falsify a changed hypothesis. `propose_probe` is a proposal, not execution; each next iteration requires an explicit continuation and is never auto-run.
+8. Update the current decision fields below as canonical state. Move disproved options to `Rejected Variants` and remove resolved items from `Open Questions`; do not preserve stale intermediate assumptions as current truth.
+
+Stop the loop when the question is answered; the observation creates no evidence delta; a source/API/runtime/browser truth claim requires `verify`; a product/acceptance decision requires `to-prd`; accepted production work requires `implement`; approval or authority is missing; or another pass would only add cosmetic polish. Prototype iteration count, artifact polish, and repeated self-check do not prove convergence.
+
 ## Required Decision Fields
 
 Every decision-oriented prototype output must include:
@@ -30,6 +77,8 @@ Every decision-oriented prototype output must include:
 - `Contract Impact`: `none`, `needs confirmation`, or `confirmed update`.
 - `Open Questions`: the smallest confirmation questions needed before PRD/API/implementation promotion.
 - `Next Route`: `to-prd`, `to-issues`, `implement`, `verify`, `handoff`, `dispatch`, `cleanup`, or `no follow-up`.
+
+Add the `Iteration Checkpoint` only when a prior probe exists or another prototype iteration is actually being considered. Ordinary one-shot prototypes keep the default decision fields without empty loop scaffolding.
 
 ## Decision Status Rules
 

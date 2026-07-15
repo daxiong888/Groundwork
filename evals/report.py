@@ -12,6 +12,13 @@ EVIDENCE_BOUNDARY = (
     "runtime, cache-refresh, release, UAT, or customer-readiness evidence unless "
     "separate runtime evidence is named."
 )
+GENERATED_SUGGESTION_AXES = {
+    "learning_status": "observed",
+    "promotion_target": "none",
+    "human_decision": "none",
+    "auto_apply": False,
+}
+GENERATED_EVIDENCE_DELTA = "Unreviewed first observation in this artifact; cross-run evidence delta and reproduction are unknown."
 
 
 def load_json(path):
@@ -201,6 +208,45 @@ def counts_from_scores(scores, field):
     return sorted_counts(counter)
 
 
+def generated_suggestion_contract_failures(suggestion):
+    """Reject state claims that an automatic patch-suggestion artifact cannot own."""
+
+    failures = []
+    for field, expected in GENERATED_SUGGESTION_AXES.items():
+        value = suggestion.get(field)
+        if type(value) is not type(expected) or value != expected:
+            failures.append(field)
+    triggering_cases = suggestion.get("triggering_cases")
+    checker_ids = suggestion.get("checker_ids") or ["no_checker"]
+    if (
+        not isinstance(triggering_cases, list)
+        or len(triggering_cases) != 1
+        or not isinstance(triggering_cases[0], str)
+        or not triggering_cases[0].strip()
+        or not isinstance(checker_ids, list)
+        or not checker_ids
+        or not all(isinstance(item, str) and item.strip() for item in checker_ids)
+    ):
+        failures.append("observation_key")
+    else:
+        expected_key = "|".join(
+            [
+                triggering_cases[0],
+                str(suggestion.get("failure_type") or "unknown"),
+                str(suggestion.get("fix_locus") or "unknown"),
+                *checker_ids,
+            ]
+        )
+        if suggestion.get("observation_key") != expected_key:
+            failures.append("observation_key")
+    occurrence_count = suggestion.get("occurrence_count")
+    if type(occurrence_count) is not int or occurrence_count != 1:
+        failures.append("occurrence_count")
+    if suggestion.get("evidence_delta") != GENERATED_EVIDENCE_DELTA:
+        failures.append("evidence_delta")
+    return failures
+
+
 def render_report(run_dir):
     run_dir = Path(run_dir)
     summary = load_json(run_dir / "summary.json")
@@ -375,10 +421,19 @@ def render_report(run_dir):
 
     lines.extend(["", "## Patch Suggestions"])
     suggestions = []
+    invalid_suggestion_ids = []
     if isinstance(patch_suggestions, dict):
         raw_suggestions = patch_suggestions.get("suggestions")
         if isinstance(raw_suggestions, list):
-            suggestions = [item for item in raw_suggestions if isinstance(item, dict)]
+            for item in raw_suggestions:
+                if not isinstance(item, dict):
+                    continue
+                if generated_suggestion_contract_failures(item):
+                    invalid_suggestion_ids.append(
+                        str(item.get("suggestion_id") or "unknown")
+                    )
+                    continue
+                suggestions.append(item)
     if suggestions:
         lines.append(f"- Patch suggestion count: {len(suggestions)}")
         for suggestion in suggestions:
@@ -386,10 +441,25 @@ def render_report(run_dir):
                 f"- `{suggestion.get('suggestion_id', 'unknown')}`: "
                 f"{suggestion.get('failure_type', 'unknown')} / "
                 f"{suggestion.get('fix_locus', 'unknown')}; "
+                f"observation_key `{suggestion.get('observation_key', 'unknown')}`; "
+                f"artifact-local occurrences `{suggestion.get('occurrence_count', 'unknown')}`; "
+                f"evidence_delta `{suggestion.get('evidence_delta', 'unknown')}`; "
+                f"learning_status `{suggestion.get('learning_status', 'unknown')}`; "
+                f"promotion_target `{suggestion.get('promotion_target', 'unknown')}`; "
+                f"human_decision `{suggestion.get('human_decision', 'unknown')}`; "
                 f"auto_apply `{suggestion.get('auto_apply')}`"
             )
     else:
-        lines.append("No patch suggestions provided. Patch suggestion generation is deferred.")
+        if invalid_suggestion_ids:
+            lines.append("No valid generated patch suggestions were available for reporting.")
+        else:
+            lines.append("No patch suggestions provided. Patch suggestion generation is deferred.")
+    if invalid_suggestion_ids:
+        lines.append(
+            "- Invalid generated-state suggestion(s) omitted: "
+            + ", ".join(f"`{item}`" for item in invalid_suggestion_ids)
+            + ". Automatic reports accept observed/none/none/false axes only."
+        )
 
     lines.extend(
         [
@@ -399,7 +469,7 @@ def render_report(run_dir):
             "- Trace command diagnostics are event-level heuristics, not strict unique command invocation counts.",
             "- Evidence latency markers are heuristic and can overmatch generic future-looking text such as planned tests.",
             "- Missing optional artifacts are reported as gaps; this command does not promote or redact artifacts.",
-            "- Patch suggestions are proposal-only artifacts and are not accepted patches.",
+            "- Generated patch suggestions are observed signals only; they are not reproduced failures, accepted patches, promoted changes, or readiness evidence.",
         ]
     )
     if warnings:

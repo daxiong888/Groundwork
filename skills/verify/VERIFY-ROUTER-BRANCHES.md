@@ -44,8 +44,9 @@ Task-state recommendation:
 
 ```text
 Task State Recommendation
-- Next Task-State Action: triage closeout / gap closure / re-verify / blocked needs-info
+- Next Task-State Action: triage closeout / qa_gap_closure / product-or-contract rework / re-verify / blocked needs-info / human decision
 - Reason:
+- Evidence Delta:
 - Evidence Needed Before Closeout:
 - Suggested Triage Input:
 ```
@@ -67,3 +68,4 @@ Lifecycle State Update
 - Do not issue a verdict before declaring scope, coverage, and evidence sources.
 - Do not hide source/doc-only or no-command boundaries in prose after the verdict.
 - Do not turn historical evidence into current runtime, browser, data, UAT, release, or customer evidence.
+- Do not route failed QA to `implement` unless `qa_gap_closure` admission is explicit; the route recommendation is non-executing and does not make a failed verdict pass.

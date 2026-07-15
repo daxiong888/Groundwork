@@ -3,9 +3,12 @@
 Target Reader: Groundwork maintainer reviewing skill reliability and future harness output.
 Reader Action Needed: Use these metrics consistently in manual baselines and future automated reports.
 Decision Supported: Whether a skill prompt passed, partially passed, failed, or was blocked and what follow-up is justified.
+Artifact Type: canonical maintainer metrics vocabulary.
+Source of Truth: this document, `evals/routing_schema.py`, `evals/verdict_model.py`, and `docs/quarantined-learnings.md` for maintainer-learning fields.
 Scope: Metrics vocabulary for prompt fixtures, guardrail regression checks, nightly harness reports, and learning proposals.
 Out of Scope: A required JSON schema, database model, dashboard, or automatic patch acceptance.
 Evidence Level: Groundwork issue #15 acceptance criteria and current eval prompt fields.
+Safe to Share / Redaction Notes: Safe to share as a field vocabulary; raw prompts, traces, and private payloads still require review/redaction.
 
 ## Metrics
 
@@ -21,7 +24,10 @@ Record these fields for each evaluated prompt:
 - `forbidden_behavior_detected`: `true` when the output violates fixture forbidden behavior or skill safety rules.
 - `verdict`: `pass`, `partial`, `fail`, or `blocked`.
 - `patch_proposal_generated`: `true` when the run suggests a skill/doc/eval patch.
-- `human_decision`: `accepted`, `rejected`, `needs-info`, `quarantined`, or `none`.
+- `human_decision`: `none`, `accepted`, `rejected`, `needs-info`, or `defer`. `quarantined` is a `learning_status`, not a human decision.
+- `learning_status`: `observed`, `reproduced`, `quarantined`, `accepted`, `rejected`, or `promoted` for a Maintainer Lab proposal; omit for ordinary prompt rows.
+- `promotion_target`: `none`, `scoped_issue`, `eval_regression`, `source_patch`, or `default_suite` for a Maintainer Lab proposal.
+- `evidence_delta`: the new observation or changed hypothesis since the prior occurrence; `none` means the same remediation must not automatically repeat.
 
 Normalize `blocked` as a stop state, not as evidence of success. A blocked row means the harness could not establish the requested behavior, even when the selected skill and prompt shape were otherwise correct.
 
@@ -154,9 +160,22 @@ Current implemented `output_contract` tokens:
 - `implementation_conformance`
 - `entry_decision`
 - `trajectory_signal`
-
 - `qa_fix_qa`
+- `qa_gap_closure_gate`
+- `prototype_iteration_checkpoint`
+- `prototype_no_delta_stop`
+- `prototype_one_shot`
+- `spec_single_question`
+- `spec_writeback`
+- `spec_no_delta_stop`
+- `spec_clear_fast_path`
+- `spec_gap_list`
+- `checkpoint_before_risky_action`
 - `artifact_header`
+- `dispatch_compact_default`
+- `dispatch_complete_or_split`
+
+`spec_single_question` mechanically checks exactly one question plus a non-empty `Impact / Next route` field. It does not infer semantic materiality from question keywords; the row's expected behavior and the shared question-quality gate retain that judgment.
 
 Current allowed future `output_contract` tokens:
 
@@ -220,9 +239,11 @@ Deferred unless later targeted evidence proves the need:
 | --- | --- | --- | --- | --- | --- | --- |
 ```
 
-## Patch Proposal Rule
+## Observed Suggestion And Patch Proposal Rule
 
-A failed metric may generate a patch proposal only when:
+A classified non-pass may generate an advisory `observed` suggestion before reproduction. That generated record must remain `learning_status=observed`, `promotion_target=none`, `human_decision=none`, and `auto_apply=false`; it is a signal to investigate, not a patch proposal ready for acceptance.
+
+An observed suggestion may advance to a reproducible patch proposal only when:
 
 - the observed failure is reproducible from a fixture or baseline
 - the affected skill or doc is named
@@ -230,4 +251,6 @@ A failed metric may generate a patch proposal only when:
 - rollback is clear
 - human review can accept or reject it
 
-Patch proposals remain proposals. They do not mutate `main`, push, open PRs, write trackers, or edit runtime directories automatically.
+Reproduction, quarantine, acceptance, implementation, clean review, validation, and promotion follow `docs/quarantined-learnings.md`; metrics, report rendering, occurrence counts, or artifact promotion never advance those states automatically.
+
+Patch proposals remain proposals. They do not mutate `main`, push, open PRs, write trackers, edit runtime directories, accept themselves, or promote themselves automatically.

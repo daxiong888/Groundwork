@@ -123,6 +123,10 @@ Groundwork should not run the whole workflow automatically. Each skill should fi
 
 The next step runs only after the user says to continue or explicitly asks for it.
 
+Guided continuation may recommend bounded feedback edges as well as forward steps. `verify` may recommend scoped `qa_gap_closure` only when source truth and ACs are unchanged, the failure/re-QA package is complete, scope is bounded, and the iteration has new evidence or a changed hypothesis. Product/contract changes return to `to-prd`; pass evidence returns to `triage`; durable cross-session gaps may use `handoff` only when lifecycle thresholds are met. A recommendation never auto-invokes the next skill, dispatches execution, mutates a tracker, or writes lifecycle state.
+
+Safe reversible investigation may be prepared before a human checkpoint, but approval must remain before destructive, remote, data, production, shared-skill, source-acceptance, or customer-visible action.
+
 ### Artifact Policy
 
 Default to conversation output. Write files only when the result must be reused, reviewed, executed, verified, or handed off.
@@ -466,7 +470,7 @@ MVP is acceptable when:
 7. `write-plan` can produce executable implementation steps without forcing subagent-first or commit-heavy workflow, and does not invent exact file paths, APIs, schemas, or commands before inspection.
 8. `prototype` supports both `LOGIC.md` and `UI.md` branches and always states the question being answered.
 9. `implement` respects PRD/task/plan/source/diff/test evidence, runs diagnosis before speculative bug fixes, does not invent exact file paths, APIs, schemas, or commands before inspection, and does not claim final readiness.
-10. `verify` separates claimed behavior, source evidence, test evidence, runtime/browser evidence, data readiness, environment readiness, customer/UAT readiness, and unverified assumptions, then recommends `triage closeout`, `gap closure`, `re-verify`, or `blocked needs-info` after the verification body.
+10. `verify` separates claimed behavior, source evidence, test evidence, runtime/browser evidence, data readiness, environment readiness, customer/UAT readiness, and unverified assumptions, then recommends `triage closeout`, named `qa_gap_closure`, product/contract reopening, re-verify, human decision, or `blocked needs-info` after the verification body without auto-running the next route.
 11. `handoff` is compact by default and references existing artifacts, including existing `STATE.md`, instead of duplicating them.
 12. All user-facing output defaults to Chinese unless the artifact target requires otherwise.
 13. No first-cut skill requires external tracker API access, hooks, MCP, UI, app auth, source-framework installation, or a local task CLI.

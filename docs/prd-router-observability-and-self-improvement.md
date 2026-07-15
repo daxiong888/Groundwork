@@ -8,7 +8,7 @@ Decision Supported: Which signals belong in the installed runtime, which analyse
 
 Artifact Type: accepted product and architecture contract.
 
-Source of Truth: `scripts/codex-hooks/groundwork_router_event.py`, `scripts/codex-hooks/groundwork_route_registry.json`, `scripts/codex-hooks/groundwork_route_detection.py`, `scripts/codex-hooks/groundwork_router_telemetry.py`, `hooks/hooks.json`, `docs/router-observability-harness.md`, and `evals/verdict_model.py`.
+Source of Truth: `scripts/codex-hooks/groundwork_router_event.py`, `scripts/codex-hooks/groundwork_route_registry.json`, `scripts/codex-hooks/groundwork_route_detection.py`, `scripts/codex-hooks/groundwork_router_telemetry.py`, `hooks/hooks.json`, `docs/router-observability-harness.md`, `docs/quarantined-learnings.md`, `evals/verdict_model.py`, and `evals/patch_suggestions.py`.
 
 Scope: dormant observe-only hooks, project opt-in, privacy controls, minimized telemetry, candidate signal separation, offline evaluation, human-reviewed regression promotion, and runtime complexity limits.
 
@@ -99,6 +99,8 @@ Offline analysis may:
 - generate reviewed router cards or reports;
 - draft regression rows after human review.
 
+`docs/quarantined-learnings.md` owns the Maintainer Lab learning-state and promotion protocol. Automatic telemetry, nightly, report, and patch-suggestion tools may emit `learning_status=observed`, `promotion_target=none`, `human_decision=none`, and `auto_apply=false` only. Reproduction, quarantine, acceptance, ordinary implementation, clean review, target-specific validation, and promotion remain separately owned gates.
+
 Offline analysis must keep three test concerns orthogonal:
 
 | Concern | Question | Required Evidence |
@@ -149,6 +151,7 @@ Routing accuracy, false-positive rate, profile quality, or pass/fail verdicts ar
 - Runtime hook files import no source-only `evals` package.
 - Package boundary checks include every runtime telemetry dependency.
 - Maintainer-side verdict/card helpers remain source-only.
+- Generated patch suggestions remain `observed` and non-applying; they cannot mark themselves reproduced, quarantined, accepted, or promoted.
 
 ## Non-Goals And Hard Negatives
 
@@ -158,6 +161,7 @@ Routing accuracy, false-positive rate, profile quality, or pass/fail verdicts ar
 - Do not generate `dispatch-decision.json`, `router-score.json`, or `router-card.md` at Stop.
 - Do not call output markers actual skill use.
 - Do not automatically mutate skills, eval CSV, GitHub, trackers, or automations.
+- Do not conflate redacted artifact promotion, learning/source promotion, and default-suite promotion.
 
 ## Verification
 

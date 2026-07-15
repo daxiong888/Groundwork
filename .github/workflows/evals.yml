@@ -37,15 +37,13 @@ jobs:
             evals/verdict_model.py \
             evals/report.py \
             evals/patch_suggestions.py \
+            evals/checks/verify_checks.py \
+            evals/checks/loop_checks.py \
             scripts/check_runtime_package_boundary.py \
             scripts/check_skill_entry_budget.py \
             scripts/codex-hooks/groundwork_route_detection.py \
-            scripts/codex-hooks/groundwork_router_telemetry.py \
-            scripts/codex-hooks/user_prompt_submit_groundwork_entry.py \
-            scripts/codex-hooks/pre_tool_use_groundwork_trace.py \
-            scripts/codex-hooks/post_tool_use_groundwork_trace.py \
-            scripts/codex-hooks/permission_request_groundwork_trace.py \
-            scripts/codex-hooks/stop_groundwork_trace.py
+            scripts/codex-hooks/groundwork_router_event.py \
+            scripts/codex-hooks/groundwork_router_telemetry.py
 
       - name: Token budget guardrails
         run: |
@@ -69,6 +67,7 @@ jobs:
           python -m unittest evals.test_schema_validation
           python -m unittest evals.test_scoring
           python -m unittest evals.test_checks
+          python -m unittest evals.test_loop_contracts
           python -m unittest evals.test_trace_diagnostics
           python -m unittest evals.test_report
           python -m unittest evals.test_patch_suggestions

@@ -36,6 +36,7 @@ When no material term conflict exists, do not print a full domain-language bucke
 - Follow `skills/_shared/GRILLING.md` clarification modes: interactive work asks one highest-impact question at a time; non-interactive questionnaire or written PRD gap-list mode may ask at most 5 high-impact questions only when explicitly requested.
 - Include a recommended answer or default decision and the impact of the answer for each clarification question when evidence supports one.
 - Use `skills/_shared/GRILLING.md` to select the single highest route-impact question when competing unknowns are not yet enumerable.
+- For iterative clarification, use the shared Spec Convergence Loop. After each answer, write the confirmed decision into `Known Facts` or the appropriate PRD section, update affected ACs/constraints, remove the resolved item from `Open Questions` / `Needs Confirmation`, and delete contradicted assumptions. Do not append the answer as a conversation-history note while leaving stale canonical state in place.
 
 ## Clarification hardening
 
@@ -56,3 +57,5 @@ You may proceed to PRD writing only when:
 - each listed question has a recommended answer or default and impact when possible,
 - unknown business details are tagged **NEEDS CLARIFICATION**,
 - material term conflicts include an evidence layer and a promotion blocker.
+
+Convergence does not require zero unknowns. It requires that the next route's material decisions are resolved or explicitly gated, remaining unknowns are accurately labeled, and no stale assumption or resolved question still contradicts the current draft.

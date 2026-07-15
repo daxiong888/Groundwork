@@ -23,11 +23,13 @@ Name the prototype question first. Inspect source, PRD, task, data shape, existi
 
 Prototype evidence can classify backend candidates, mock fields, and client-derived logic, but cannot confirm backend/API/source truth without source, schema/API, runtime evidence, or explicit confirmation.
 
-Load one branch extension: `LOGIC.md`, `LOGIC-LAB.md`, `UI.md`, or `UI-VARIANTS.md`. Add `CONTRACT-BOUNDARY.md` for mock/backend separation, `DECISION-CAPTURE.md` for promoted decisions, `skills/_shared/VISUAL-HANDOFF-PACKET.md` for visual packets, and `skills/_shared/REVIEW-LOOP.md` only when downstream ownership matters.
+Load one branch extension: `LOGIC.md`, `LOGIC-LAB.md`, `UI.md`, or `UI-VARIANTS.md`. Add `CONTRACT-BOUNDARY.md` for mock/backend separation, `DECISION-CAPTURE.md` for promoted decisions or any iterative prototype-learning pass, `skills/_shared/VISUAL-HANDOFF-PACKET.md` for visual packets, and `skills/_shared/REVIEW-LOOP.md` only when downstream ownership matters.
 
 ## Workflow
 
 State question, decision, contract sources, and unavailable evidence; grill only if ambiguity blocks scope; pick one branch; keep artifact throwaway; separate confirmed/rejected decisions, mock/client-derived fields, assumptions, and backend candidates; run browser/runtime checks for visual/interaction correctness; draft findings as proposed feedback unless source truth supports promotion; decide cleanup.
+
+For iterative work, run the conditional Prototype Learning Loop from `DECISION-CAPTURE.md`: one falsifiable hypothesis, one minimum probe, one observation, and one evidence/decision delta at a time. Another iteration requires new evidence or a changed hypothesis; it is not an automatic retry.
 
 ## Hard Stops
 
@@ -50,7 +52,7 @@ For an explicitly requested visual handoff packet, include the required sections
 
 ## Stop Condition
 
-Stop when the prototype question is answered, remaining gap is explicit, evidence level is bounded, and cleanup or absorption is decided.
+Stop when the prototype question is answered, remaining gap is explicit, evidence level is bounded, and cleanup or absorption is decided. Also stop when an iteration produces no evidence delta, needs source/API/runtime proof, requires a product/authority decision, or would turn throwaway work into production implementation.
 
 ## Artifact Rule
 

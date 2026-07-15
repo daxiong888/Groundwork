@@ -133,12 +133,28 @@ Supporting behaviors can remain internal at first:
 - `diagnose` for confirm-before-edit bug work
 - `gate` for risky writes and remote mutations
 
-The core task-state chain is:
+The core task-state flow has a forward spine plus bounded feedback edges:
 
-```text
-to-prd -> to-issues -> triage -> dispatch when runtime packaging is requested -> implement/runtime owner -> verify -> triage closeout/gap closure -> handoff when needed
+```mermaid
+flowchart LR
+  A["to-prd"] --> B["to-issues / triage / write-plan"]
+  B --> C["dispatch only when package routing is requested"]
+  B --> P["prototype when a bounded question needs a probe"]
+  P -->|"decision feedback"| A
+  P -->|"source / runtime claim"| F
+  B --> D["implement/runtime owner"]
+  C --> D
+  D --> E["clean review when material"]
+  E -->|"finding"| D
+  E -->|"review current"| F["verify"]
+  F --> G["triage closeout"]
+  F -->|"qa_gap_closure"| D
+  F -->|"product / contract gap"| A
+  F -->|"cross-session open gap"| H["handoff when lifecycle threshold is met"]
 ```
 
-This chain stays tracker-neutral by default. It can produce paste-ready text for external issues, but it does not call GitHub, Linear, Jira, or other tracker APIs unless the user explicitly requests and approves that remote write. It also does not force every task into lifecycle state; `STATE.md` is reserved for workstream-scoped continuation under the lifecycle-state thresholds.
+Every feedback edge is gated by evidence delta or a changed hypothesis and is recommendation-only. It does not auto-run another skill, dispatch execution, mutate a tracker, or create lifecycle state. Identical retries with no new evidence stop; product/contract changes reopen source shaping instead of being smuggled into implementation.
+
+This flow stays tracker-neutral by default. It can produce paste-ready text for external issues, but it does not call GitHub, Linear, Jira, or other tracker APIs unless the user explicitly requests and approves that remote write. It also does not force every task into lifecycle state; `STATE.md` is reserved for workstream-scoped continuation under the lifecycle-state thresholds.
 
 Groundwork should become useful before it becomes broad, but it should still cover the whole R&D loop at a thin level before deepening any single mode.

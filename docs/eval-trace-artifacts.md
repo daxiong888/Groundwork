@@ -4,10 +4,10 @@ Target Reader: Groundwork maintainers, eval harness authors, trace diagnostics a
 Reader Action Needed: Use this policy before creating, promoting, reviewing, or committing trace-first eval artifacts.
 Decision Supported: Whether eval output stays local scratch, can be promoted into `artifacts/evals/<run-id>/`, or must be blocked until redaction and review are complete.
 Artifact Type: maintainer doc
-Source of Truth: `docs/prd-v0.4.x-trace-first-eval-platform-roadmap.md`, `artifacts/v0.4.x-trace-first-eval-platform-roadmap/issue-map.md`, `docs/nightly-harness.md`, and shared artifact directory/redaction policies.
-Scope: Trace-first eval scratch layout, promoted artifact layout, promotion rules, redaction status, forbidden promoted content, artifact relationships, and evidence boundaries for V044-001.
-Out of Scope: Trace parser implementation, report generator implementation, patch suggestion generation, CI gates, default runner output changes, runtime execution, cache refresh, release readiness, UAT readiness, or customer readiness.
-Evidence Level: Documentation and policy only. This file defines safe artifact handling before trace diagnostics, reports, patch suggestions, or CI are implemented.
+Source of Truth: `docs/prd-v0.4.x-trace-first-eval-platform-roadmap.md`, `artifacts/v0.4.x-trace-first-eval-platform-roadmap/issue-map.md`, `docs/nightly-harness.md`, `docs/quarantined-learnings.md`, and shared artifact directory/redaction policies.
+Scope: Trace-first eval scratch layout, promoted artifact layout, promotion rules, redaction status, forbidden promoted content, artifact relationships, and current evidence boundaries.
+Out of Scope: Trace parser implementation details, report or patch-suggestion algorithm changes, CI gates, default runner output changes, runtime execution, cache refresh, release readiness, UAT readiness, or customer readiness.
+Evidence Level: Current artifact-handling policy aligned with the local trace diagnostics, report, and observed-suggestion tools; it is not runtime, cache, release, UAT, or customer evidence.
 Safe to Share / Redaction Notes: Safe to share as maintainer documentation. It contains layout examples, schema-shaped field examples, and policy text only; no secrets, credentials, PII, raw traces, logs, or private payloads.
 
 ## Core Decision
@@ -83,7 +83,7 @@ Promoted files have these roles:
 - `final/<case-id>.txt`: final response text for a case, redacted when needed.
 - `trace/<case-id>.redacted.jsonl`: redacted trace excerpts only.
 - `report.md`: human-readable report generated or assembled from redacted artifacts.
-- `patch-suggestions.json`: non-applying patch suggestion artifact. Suggestions must include `auto_apply: false`.
+- `patch-suggestions.json`: non-applying observation artifact. Generated suggestions must include the deterministic case/failure/fix-locus/checker `observation_key`, artifact-local `occurrence_count: 1`, the exact unreviewed-first-observation `evidence_delta`, `learning_status: observed`, `promotion_target: none`, `human_decision: none`, and `auto_apply: false`; reports omit suggestions that forge or omit this provenance.
 - `redaction-notes.md`: what was reviewed, what was removed, what remains unknown, and who reviewed it.
 
 ## Promotion Rules
@@ -188,7 +188,7 @@ Relationship rules:
 - `score` normalizes case-level verdict shape; it does not prove runtime correctness.
 - `summary` aggregates redacted results; it does not replace trace or final evidence when a case needs inspection.
 - `report` is a reviewer-facing interpretation of redacted artifacts; it must cite source artifacts and limitations.
-- `patch-suggestions.json` is advisory only. It must not auto-apply patches and must include rollback or review context when implemented in a later slice.
+- `patch-suggestions.json` is advisory only. Artifact promotion does not advance learning status. It must not auto-apply, accept, or promote patches and must include rollback or review context when implemented in a later slice.
 
 ## Evidence Boundary
 
@@ -198,7 +198,7 @@ Score JSON is not release readiness.
 
 Reports are not UAT or customer readiness.
 
-Patch suggestions are not accepted patches.
+Patch suggestions are observed signals, not reproduced failures, quarantined proposals, accepted patches, promoted changes, or readiness evidence.
 
 Runtime or release claims still must name:
 
@@ -212,18 +212,15 @@ Runtime or release claims still must name:
 
 Promoted artifacts can support a review claim only to the extent that their source, scope, redaction status, and limitations are explicit.
 
-## Deferred Implementation
+## Current Implementation Boundary
 
-V044-001 is documentation only. It does not implement:
+The source checkout now includes local trace diagnostics in `evals/checks/trace_diagnostics.py`, report assembly in `evals/report.py`, and observed-only suggestion generation in `evals/patch_suggestions.py`. Their unit fixtures are source-validation evidence only; none of these tools automatically advances learning state or proves installed runtime/cache behavior.
 
-- trace parser;
-- trace diagnostics;
-- report generator;
-- patch suggestion generator;
-- CI workflow;
-- default runner output changes;
+Still outside this policy and current local tooling:
+
+- CI promotion gates;
+- default runner output changes beyond the registered local suite behavior;
 - automatic promotion from `.groundwork/harness/` into `artifacts/evals/`;
 - raw trace commits;
-- runtime/cache/release/UAT evidence.
-
-V044-002 should implement trace diagnostics only after this artifact layout and redaction policy are accepted.
+- automatic reproduction, acceptance, source patching, or default-suite promotion;
+- runtime/cache/release/UAT/customer evidence without its separate named gate.

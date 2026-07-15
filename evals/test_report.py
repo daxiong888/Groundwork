@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -93,7 +94,74 @@ class ReportTests(unittest.TestCase):
 
         self.assertIn("Patch suggestion count: 1", output)
         self.assertIn("`ps-001`", output)
+        self.assertIn("observation_key `", output)
+        self.assertIn("artifact-local occurrences `1`", output)
+        self.assertIn("evidence_delta `Unreviewed first observation", output)
+        self.assertIn("learning_status `observed`", output)
+        self.assertIn("promotion_target `none`", output)
+        self.assertIn("human_decision `none`", output)
         self.assertIn("auto_apply `False`", output)
+
+    def test_report_omits_illegal_automatic_suggestion_state(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            (run_dir / "summary.json").write_text(
+                '{"counts":{"fail":1},"suites":["smoke.csv"]}\n',
+                encoding="utf-8",
+            )
+            (run_dir / "results.jsonl").write_text(
+                '{"id":"bad","suite":"smoke.csv","verdict":"fail"}\n',
+                encoding="utf-8",
+            )
+            (run_dir / "patch-suggestions.json").write_text(
+                json.dumps(
+                    {
+                        "suggestions": [
+                            {
+                                "suggestion_id": "ps-bad",
+                                "learning_status": "accepted",
+                                "promotion_target": "source_patch",
+                                "human_decision": "accepted",
+                                "auto_apply": True,
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            output = report.render_report(run_dir)
+
+        self.assertIn("Invalid generated-state suggestion(s) omitted: `ps-bad`", output)
+        self.assertNotIn("learning_status `accepted`", output)
+        self.assertNotIn("promotion_target `source_patch`", output)
+        self.assertNotIn("auto_apply `True`", output)
+
+    def test_generated_suggestion_contract_rejects_forged_provenance(self):
+        fixture = json.loads(
+            Path("evals/fixtures/patch-suggestions/patch-suggestions.json").read_text(
+                encoding="utf-8"
+            )
+        )["suggestions"][0]
+        cases = (
+            ("observation_key", None),
+            ("occurrence_count", 99),
+            ("occurrence_count", True),
+            ("occurrence_count", 1.0),
+            ("evidence_delta", "reproduced and accepted by automation"),
+            ("auto_apply", 0),
+        )
+        for field, value in cases:
+            with self.subTest(field=field):
+                suggestion = dict(fixture)
+                if value is None:
+                    suggestion.pop(field)
+                else:
+                    suggestion[field] = value
+                self.assertIn(
+                    field,
+                    report.generated_suggestion_contract_failures(suggestion),
+                )
 
 
 if __name__ == "__main__":

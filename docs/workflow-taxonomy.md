@@ -8,26 +8,24 @@ Groundwork starts explicit-first: the user can ask for a mode directly, or Codex
 
 ## Task-State Spine
 
-Groundwork's task-state spine is tracker-neutral markdown, not an external tracker integration or task database:
+Groundwork's task-state spine is tracker-neutral markdown, not an external tracker integration or task database. Forward ownership and evidence feedback are both explicit:
 
-```text
-to-prd
-  -> accepted enough
-to-issues
-  -> vertical slice with task-state fields
-triage
-  -> needs-info / ready-for-agent / ready-for-human
-dispatch when package routing is requested
-  -> runtime/package decision only
-write-plan, implement, or approved runtime owner
-  -> execution evidence
-verify
-  -> pass / partial / fail / blocked
-triage
-  -> closeout or gap closure
-handoff
-  -> reference STATE.md only when durable continuation exists
+```mermaid
+flowchart TD
+  A["to-prd: accepted enough"] --> B["to-issues: vertical slices"]
+  B --> C["triage: needs-info / ready-for-agent / ready-for-human"]
+  C --> D["write-plan or implement"]
+  C --> E["dispatch: package decision only, when requested"]
+  E --> D
+  D --> F["clean review when material"]
+  F --> G["verify: pass / partial / fail / blocked"]
+  G --> H["triage: closeout / ownership / severity"]
+  G -->|"qa_gap_closure"| D
+  G -->|"source or AC changed"| A
+  G -->|"durable open gap"| I["handoff: reference STATE.md only when threshold is met"]
 ```
+
+`scripts/codex-hooks/groundwork_route_registry.json` owns the named feedback transitions. A feedback edge requires its gate and does not automatically invoke the destination route. `qa_gap_closure` requires unchanged source truth/ACs, a bounded failure package, the original re-QA check, and new evidence or a changed hypothesis. No-delta retries stop; source/acceptance changes return to `to-prd`; pass evidence returns to `triage` for closeout reasoning.
 
 This flow does not call GitHub, Linear, Jira, or other tracker APIs. External issues may own the task source, but Groundwork outputs remain paste-ready or conversation-local unless the user explicitly requests a remote write.
 
@@ -302,7 +300,7 @@ Output:
 - verification result split into code/test, runtime, data, environment, and customer validation when relevant
 - blockers
 - minimal safe fix path
-- task-state recommendation: `triage closeout`, `gap closure`, `re-verify`, or `blocked needs-info`
+- task-state recommendation: `triage closeout`, named `qa_gap_closure`, product/contract rework, `re-verify`, human decision, or `blocked needs-info`
 - stakeholder-safe wording when needed
 
 Stop when:

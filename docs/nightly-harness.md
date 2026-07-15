@@ -3,13 +3,16 @@
 Target Reader: Groundwork maintainer designing future self-evolution checks.
 Reader Action Needed: Use this as the boundary for a future nightly regression harness before implementing automation.
 Decision Supported: What the harness may measure, what it must not mutate, and which failures become learning proposals.
-Scope: Nightly regression suite design, stress checks, replay checks, metrics collection, failure taxonomy, and quarantined learning proposal flow.
+Artifact Type: maintainer harness design contract.
+Source of Truth: current `evals/prompts/*.csv`, `evals/patch_suggestions.py`, `docs/skill-success-metrics.md`, and `docs/quarantined-learnings.md`.
+Scope: Nightly regression suite design, stress checks, replay checks, metrics collection, failure taxonomy, observed suggestions, and the maintainer improvement handoff.
 Out of Scope: Auto-merge, auto mutation of `main`, production access, tracker writes, dependency installs, or runtime `.groundwork` commits.
 Evidence Level: Groundwork issues #14 and #15 plus current `evals/prompts/*.csv` fixtures.
+Safe to Share / Redaction Notes: Safe to share as design; run artifacts remain private until reviewed and redacted.
 
 ## Purpose
 
-The nightly harness is a future local or Codex Cloud evaluation loop for Groundwork's skill behavior. It should run existing prompt fixtures, record structured outcomes, and produce reviewable failure evidence. It is not a self-editing agent and it must not change repository state without a human-reviewed patch.
+The nightly harness is a future local or Codex Cloud observation loop for Groundwork's skill behavior. It should run existing prompt fixtures, record structured outcomes, and produce reviewable failure evidence. It may emit an `observed` suggestion, but it is not a self-editing agent and must not reproduce, accept, implement, promote, or change repository state automatically.
 
 ## Suite Inputs
 
@@ -37,6 +40,9 @@ Each run should record:
 - artifact write behavior
 - risky write gate behavior
 - patch or learning proposal status
+- `learning_status`, `promotion_target`, `human_decision`, and `evidence_delta` when a maintainer suggestion exists
+
+Human-readable reports label generated `occurrence_count` as artifact-local and show both `observation_key` and `evidence_delta`; a count without cross-run evidence delta is not reproduction evidence.
 
 Local CSV parsing, Python syntax, and source checks are not runtime, cache-refresh, release, UAT, or customer-readiness evidence unless a run also names the installed plugin root and cache/source equivalence or supported refresh step.
 
@@ -59,7 +65,7 @@ Prototype contract fuzzing:
 QA replay:
 
 - verify failure prompts with expected/actual/reproduction gaps
-- expected result: QA failure report, minimal diagnosis, scoped fix plan, and re-QA requirement
+- expected result: QA failure report, minimal diagnosis, evidence delta, source/AC change status, gap-closure admission, scoped fix plan, and original re-QA requirement
 
 Subagent performance tracking:
 
@@ -83,9 +89,23 @@ Use `docs/skill-success-metrics.md` as the metrics vocabulary. The harness shoul
 - `tool-confusion`: Browser, DevTools, extension tooling, Playwright, or Puppeteer roles are mixed up.
 - `runtime-blocked`: required local tool or runtime is unavailable.
 
-## Quarantined Learning Proposals
+## Maintainer Improvement Loop
 
-Repeated failures may produce a quarantined learning proposal. The harness may suggest a patch, but human review decides whether to accept, reject, or promote it. See `docs/quarantined-learnings.md` for the proposal format and promotion boundary.
+A single classified non-pass may produce an advisory suggestion with:
+
+```text
+observation_key: stable case / failure / fix-locus key
+occurrence_count: 1
+learning_status: observed
+promotion_target: none
+human_decision: none
+evidence_delta: cross-run delta unknown until reviewed
+auto_apply: false
+```
+
+The suggestion enters `docs/quarantined-learnings.md` only after a maintainer proves a natural reproduction and source-backed expected behavior. Repeated equivalent failures with no evidence delta update occurrence count rather than creating duplicate suggestions or triggering another patch attempt.
+
+The harness stops after observation. Human review owns reproduction/quarantine/acceptance, ordinary implementation owns source edits, a fresh reviewer owns clean-review evidence for material changes, and target-specific validation plus explicit human decision owns promotion.
 
 ## Non-Goals
 
@@ -97,3 +117,4 @@ Repeated failures may produce a quarantined learning proposal. The harness may s
 - no tracker mutation
 - no dependency upgrades
 - no self-modifying skill changes without human review
+- no automatic `reproduced`, `quarantined`, `accepted`, or `promoted` learning status

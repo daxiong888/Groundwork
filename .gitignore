@@ -5,6 +5,8 @@ coverage/
 .env
 .env.*
 *.log
+__pycache__/
+*.py[cod]
 refer/
 .codegraph/*
 !.codegraph/.gitignore
