@@ -1,6 +1,6 @@
 {
   "name": "groundwork",
-  "version": "0.5.6",
+  "version": "0.5.7",
   "description": "Evidence-first workflow routing for non-trivial Codex R&D tasks: requirements, implementation, verification, handoff, dispatch, and wiki maintenance.",
   "author": {
     "name": "Daxiong"

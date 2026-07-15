@@ -5,7 +5,7 @@ Reader Action Needed: Preserve the Runtime Kernel / Maintainer Lab boundary and 
 Decision Supported: Where a behavior belongs, which component owns it, and which evidence can support a completion claim.
 Artifact Type: canonical current architecture.
 Source of Truth: `.codex-plugin/plugin.json`, `scripts/runtime_package_manifest.json`, the ten public `skills/*/SKILL.md` contracts, `scripts/codex-hooks/groundwork_route_registry.json`, and repo-local `AGENTS.md`.
-Scope: Groundwork v0.5.6 source architecture, package boundary, route ownership, Dispatch contracts, optional observability, eval separation, and evidence boundaries.
+Scope: Groundwork v0.5.7 source architecture, package boundary, route ownership, Dispatch contracts, optional observability, eval separation, and evidence boundaries.
 Out of Scope: Historical design chronology, release approval, installed-cache equivalence, marketplace publication, UAT, or customer readiness.
 Evidence Level: current source contract; stronger runtime and release claims require their own evidence.
 Safe to Share / Redaction Notes: safe to share as-is.
@@ -76,6 +76,9 @@ flowchart LR
   F --> G["clean review when material"]
   G --> H["verify\nclaim evidence"]
   H --> I["triage closeout"]
+  G -->|"finding"| E
+  H -->|"qa_gap_closure"| E
+  H -->|"source / AC changed"| A
 ```
 
 Ownership constraints:
@@ -85,6 +88,7 @@ Ownership constraints:
 - `dispatch` is the sole post-readiness runtime/package decision owner and remains package-only.
 - Runtime adapters execute only with available capability, required approval, and their own runtime evidence.
 - `verify` judges evidence; it does not perform implementation or own closeout state.
+- Public-route feedback edges are non-executing recommendations and use the registry's named gate plus a separately authorized destination owner. Clean-review findings use the fresh finding/remediation gate in `skills/_shared/REVIEW-LOOP.md`, not a public route or registry transition. Both paths require current evidence or a changed hypothesis before another attempt.
 
 ## Dispatch Contract
 
@@ -106,13 +110,14 @@ The Codex App managed-worktree adapter is an internal lazy-loaded adapter contra
 
 ## Routing Truth
 
-`scripts/codex-hooks/groundwork_route_registry.json` owns the public route set, state contracts, prompt precedence identifiers, and default forbidden-route relationships.
+`scripts/codex-hooks/groundwork_route_registry.json` owns the public route set, state contracts, named feedback transitions, prompt precedence identifiers, and default forbidden-route relationships.
 
 Consumers must load or validate against that registry:
 
 - runtime prompt classifier;
 - eval routing schema;
 - workflow-state documentation tests;
+- feedback-transition route/state/non-automatic validation;
 - public skill directory/description validation.
 
 Public skill prose still owns nuanced human-facing trigger boundaries. Regex heuristics and response-shape markers are candidate signals, not authoritative skill-load or route-hit evidence.

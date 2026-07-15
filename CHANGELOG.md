@@ -4,6 +4,34 @@ All notable changes to Groundwork are documented in this file.
 
 ## Unreleased
 
+## v0.5.7 - 2026-07-15
+
+### Added
+
+- Added a bounded Spec Convergence Loop and Prototype Learning Loop that require one material decision or falsifiable hypothesis per iteration, canonical write-back, finite evidence/decision status tokens, and stop rules when another pass cannot add information.
+- Added the named, non-automatic `qa_gap_closure` feedback transition from failed verification to implementation, guarded by unchanged source/acceptance criteria, a reproducible bounded defect, sufficient authority, and new evidence or a changed hypothesis.
+- Added deterministic loop-contract checks and regression coverage for finite prototype/spec control states, mutually exclusive companion fields, blocked data-write checkpoints, no-delta stops, stale canonical state, QA admission outcomes, registry invariants, and observed-only maintainer suggestions.
+
+### Changed
+
+- Bumped plugin metadata to `0.5.7` for the evidence-gated workflow loop and feedback-contract release.
+- Extended the guided R&D delivery flow with evidence-gated feedback edges while keeping route recommendations non-executing and preserving the existing ten-skill public surface.
+- Tightened `to-prd`, `prototype`, `implement`, and `verify` contracts so iterative clarification, probing, remediation, and re-QA use exact control tokens, retain explicit ownership, and cannot silently retry or promote a failed verdict.
+- Expanded trace reports, patch suggestions, harness guidance, success metrics, and learning-state documentation so observations remain quarantined until separately reproduced, reviewed, and accepted.
+
+### Fixed
+
+- Prevented repeated spec questions, prototype probes, and QA repair attempts from continuing without an evidence or decision delta.
+- Prevented failed verification from routing back to `implement` unless scope and QA fields remain in their owning blocks, `Verdict` remains solely in `Verification Scope`, reproduction and re-QA use the same direct non-placeholder identity, authority is existing and sufficient, risk stays within the accepted boundary, and the scoped next action is exactly `route: implement`.
+- Prevented prototype/spec stop or proposal states, later companion-field overrides, and the structured-only eleven-field data-write checkpoint from carrying contradictory timing or execution prose.
+- Prevented generated reports and maintainer suggestions from accepting forged observation provenance, auto-applying patches, or advancing learning, decision, readiness, or release state by themselves.
+- Repaired the GitHub Actions syntax gate to compile the current unified router event entrypoint instead of deleted legacy hook files, added the loop-contract suite to CI, and excluded Python bytecode caches from release staging noise.
+
+### Notes
+
+- No `loop` or `loop-me` public skill was added; the small loops are conditional behavior inside existing workflow owners, and the larger delivery loop remains a non-executing coordination model.
+- Source validation, generated-package validation, installed-cache equivalence, real runtime trials, tag publication, and release publication remain separate evidence layers; installing `0.5.7` requires a fresh cache refresh and post-refresh runtime check.
+
 ## v0.5.6 - 2026-07-14
 
 ### Added
