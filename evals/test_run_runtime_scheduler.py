@@ -12,6 +12,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import route_detection
+import routing_schema
 import run_runtime
 import run_runtime_parallel
 from case_oracles import implement_root_cause
@@ -1217,6 +1218,61 @@ normalizePhone(task.phone) === expected;
         self.assertEqual(normalized[0]["acceptable_routes"], ["to-prd", "direct"])
         self.assertEqual(normalized[0]["output_contract_future_tokens"], ["route_failure_feedback"])
         self.assertEqual(normalized[0]["evidence_required_future_tokens"], ["cache_equivalence"])
+
+    def test_contract_lineage_schema_requires_fail_closed_oracle_metadata(self):
+        lineage_fields = (
+            "lineage_expected_canonical_owner",
+            "lineage_expected_divergence",
+            "lineage_expected_fix_owner",
+            "lineage_expected_hops",
+            "lineage_expected_unverified_hops",
+        )
+        scope_fields = (
+            "lineage_expected_scope_claim",
+            "lineage_expected_scope_covered",
+            "lineage_expected_scope_missing",
+            "lineage_expected_scope_verdict",
+        )
+        self.assertEqual(
+            routing_schema.CONTRACT_LINEAGE_EXPECTATION_FIELDS,
+            lineage_fields,
+        )
+        self.assertEqual(
+            routing_schema.CONTRACT_LINEAGE_SCOPE_EXPECTATION_FIELDS,
+            scope_fields,
+        )
+        base = {
+            "output_contract": "contract_lineage",
+            "lineage_expected_canonical_owner": "canonical_contract",
+            "lineage_expected_divergence": "producer_mapping",
+            "lineage_expected_fix_owner": "producer",
+            "lineage_expected_hops": "canonical_contract(verified)>producer_mapping(verified)",
+            "lineage_expected_unverified_hops": "none",
+        }
+        for field in lineage_fields:
+            case = dict(base)
+            case[field] = ""
+            with self.subTest(field=field):
+                errors, _ = run_runtime.validate_routing_schema([routing_row(**case)])
+                self.assertIn(field, "\n".join(errors))
+
+        scoped = dict(
+            base,
+            output_contract="verify_scope|contract_lineage",
+            lineage_expected_scope_claim="contract_divergence",
+            lineage_expected_scope_covered="canonical_contract|producer_mapping",
+            lineage_expected_scope_missing="runtime",
+            lineage_expected_scope_verdict="partial",
+        )
+        for field in scope_fields:
+            case = dict(scoped)
+            case[field] = ""
+            with self.subTest(field=field):
+                errors, _ = run_runtime.validate_routing_schema([routing_row(**case)])
+                self.assertIn(field, "\n".join(errors))
+
+        errors, _ = run_runtime.validate_routing_schema([routing_row(**scoped)])
+        self.assertEqual(errors, [])
 
     def test_malformed_route_list_is_rejected(self):
         errors, _ = run_runtime.validate_routing_schema(

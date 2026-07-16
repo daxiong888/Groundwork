@@ -159,6 +159,7 @@ OUTPUT_CONTRACT_IMPLEMENTED_TOKENS = {
     "trajectory_signal",
     "qa_fix_qa",
     "qa_gap_closure_gate",
+    "contract_lineage",
     "release_evidence_claim",
     "uat_evidence_window",
     "uat_evidence_window_forbidden",
@@ -180,6 +181,19 @@ OUTPUT_CONTRACT_FUTURE_TOKENS = {
     "handoff_compact_reference",
     "route_failure_feedback",
 }
+CONTRACT_LINEAGE_EXPECTATION_FIELDS = (
+    "lineage_expected_canonical_owner",
+    "lineage_expected_divergence",
+    "lineage_expected_fix_owner",
+    "lineage_expected_hops",
+    "lineage_expected_unverified_hops",
+)
+CONTRACT_LINEAGE_SCOPE_EXPECTATION_FIELDS = (
+    "lineage_expected_scope_claim",
+    "lineage_expected_scope_covered",
+    "lineage_expected_scope_missing",
+    "lineage_expected_scope_verdict",
+)
 UAT_EVIDENCE_WINDOW_EXPECTATION_FIELDS = (
     "uat_expected_claim_scope",
     "uat_expected_fingerprint",
@@ -361,6 +375,20 @@ def measurement_tokens_for_row(row, field, implemented, future):
         raise ValueError(f"{row_location(row)} unknown {field}: {', '.join(unknown)}")
     future_tokens = [token for token in tokens if token in future]
     return tokens, future_tokens
+
+
+def require_contract_lineage_expectations(row, output_contract):
+    if "contract_lineage" not in output_contract:
+        return
+    required = list(CONTRACT_LINEAGE_EXPECTATION_FIELDS)
+    if "verify_scope" in output_contract:
+        required.extend(CONTRACT_LINEAGE_SCOPE_EXPECTATION_FIELDS)
+    missing = [field for field in required if not str(row.get(field) or "").strip()]
+    if missing:
+        raise ValueError(
+            f"{row_location(row)} contract_lineage missing required oracle fields: "
+            + ", ".join(missing)
+        )
 
 
 def require_uat_evidence_window_expectations(row, output_contract):
@@ -556,6 +584,7 @@ def routing_schema_for_row(row):
         OUTPUT_CONTRACT_IMPLEMENTED_TOKENS,
         OUTPUT_CONTRACT_FUTURE_TOKENS,
     )
+    require_contract_lineage_expectations(row, output_contract)
     require_release_evidence_claim_expectations(row, output_contract)
     require_uat_evidence_window_expectations(row, output_contract)
     require_uat_evidence_window_forbidden_contract(row, output_contract)

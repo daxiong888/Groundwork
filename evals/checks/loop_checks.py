@@ -152,6 +152,14 @@ RISK_CHECKPOINT_TOKENS = {
     "Action State": "blocked",
     "Checkpoint Position": "before_action",
 }
+CONTRACT_LINEAGE_FIELDS = (
+    "Canonical Owner / Source",
+    "Hops",
+    "First Confirmed Divergence",
+    "Fix Owner / Boundary",
+    "Unverified / Branched Hops",
+)
+CONTRACT_LINEAGE_SCOPE_FIELDS = ("Claim", "Covered", "Missing", "Verdict")
 UAT_EVIDENCE_WINDOW_FIELDS = (
     "Claim / Delivery Scope",
     "Relevant SUT Fingerprint",
@@ -214,6 +222,11 @@ def _pipe_tokens(value):
         for part in str(value or "").split("|")
         if part.strip()
     ]
+
+
+def _normalized_lineage_graph(value):
+    normalized = str(value or "").lower().replace("`", "").replace("→", "->")
+    return re.sub(r"\s+", "", normalized).replace("->", ">")
 
 
 def _section_block(text, heading):
@@ -967,6 +980,108 @@ def checkpoint_before_risky_action_failures(text):
         failures.append(
             "Risky Action Checkpoint cannot claim execution while Action State is blocked"
         )
+    return failures
+
+
+def contract_lineage_failures(text, row=None):
+    failures = []
+    raw_text = str(text or "")
+    lineage, lineage_count, lineage_range = _section_block(
+        raw_text, "Contract Lineage"
+    )
+    if lineage_count != 1:
+        failures.append("Contract Lineage must appear exactly once")
+
+    values = {field: _field_values(lineage, field) for field in CONTRACT_LINEAGE_FIELDS}
+    for field, field_values in values.items():
+        if len(field_values) != 1:
+            failures.append(f"{field} must appear exactly once in Contract Lineage")
+        elif not field_values[0].strip():
+            failures.append(f"{field} must not be empty")
+        if len(_field_values(raw_text, field)) != 1:
+            failures.append(f"{field} must appear only inside Contract Lineage")
+    if lineage_count == 1 and _without_field_lines(
+        lineage, CONTRACT_LINEAGE_FIELDS
+    ).strip():
+        failures.append("Contract Lineage must contain only structured fields")
+
+    if failures:
+        return failures
+
+    row = row or {}
+    expected_fields = {
+        "Canonical Owner / Source": "lineage_expected_canonical_owner",
+        "First Confirmed Divergence": "lineage_expected_divergence",
+        "Fix Owner / Boundary": "lineage_expected_fix_owner",
+    }
+    for output_field, row_field in expected_fields.items():
+        expected = _exact_token(row.get(row_field))
+        actual = _exact_token(values[output_field][0])
+        if expected and actual != expected:
+            failures.append(f"{output_field} must be {expected}, not {actual}")
+
+    expected_hops = _normalized_lineage_graph(row.get("lineage_expected_hops"))
+    actual_hops = _normalized_lineage_graph(values["Hops"][0])
+    if expected_hops and actual_hops != expected_hops:
+        failures.append(f"Hops must be {expected_hops}, not {actual_hops}")
+
+    expected_unverified = _normalized_lineage_graph(
+        row.get("lineage_expected_unverified_hops")
+    )
+    actual_unverified = _normalized_lineage_graph(
+        values["Unverified / Branched Hops"][0]
+    )
+    if expected_unverified and actual_unverified != expected_unverified:
+        failures.append(
+            "Unverified / Branched Hops must be "
+            f"{expected_unverified}, not {actual_unverified}"
+        )
+
+    start, end = lineage_range
+    outside_lineage = raw_text[:start] + raw_text[end:]
+    output_contract = set(_pipe_tokens(row.get("output_contract")))
+    if "verify_scope" not in output_contract:
+        if outside_lineage.strip():
+            failures.append(
+                "Contract Lineage eval output must not contain extra prose or sections"
+            )
+        return failures
+
+    scope, scope_count, scope_range = _section_block(
+        outside_lineage, "Verification Scope"
+    )
+    if scope_count != 1:
+        failures.append("Verification Scope must appear exactly once with Contract Lineage")
+        return failures
+    scope_values = {
+        field: _field_values(scope, field) for field in CONTRACT_LINEAGE_SCOPE_FIELDS
+    }
+    for field, field_values in scope_values.items():
+        if len(field_values) != 1 or not field_values[0].strip():
+            failures.append(
+                f"{field} must appear exactly once and be non-empty in Verification Scope"
+            )
+    if _without_field_lines(scope, CONTRACT_LINEAGE_SCOPE_FIELDS).strip():
+        failures.append("Verification Scope must contain only structured fields")
+    scope_start, scope_end = scope_range
+    if (outside_lineage[:scope_start] + outside_lineage[scope_end:]).strip():
+        failures.append(
+            "Contract Lineage eval output must contain only Verification Scope and Contract Lineage"
+        )
+    if failures:
+        return failures
+
+    expected_scope_fields = {
+        "Claim": "lineage_expected_scope_claim",
+        "Covered": "lineage_expected_scope_covered",
+        "Missing": "lineage_expected_scope_missing",
+        "Verdict": "lineage_expected_scope_verdict",
+    }
+    for output_field, row_field in expected_scope_fields.items():
+        expected = _exact_token(row.get(row_field))
+        actual = _exact_token(scope_values[output_field][0])
+        if expected and actual != expected:
+            failures.append(f"Verification Scope {output_field} must be {expected}, not {actual}")
     return failures
 
 

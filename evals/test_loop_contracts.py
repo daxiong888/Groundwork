@@ -1665,6 +1665,188 @@ QA Failure
         self.assertEqual(verdict["output_contract_verdict"], "fail")
         self.assertEqual(verdict["overall_verdict"], "fail")
 
+    def test_contract_lineage_rows_accept_opposite_and_unknown_fix_loci(self):
+        cases = (
+            (
+                "tf-cl-001",
+                "implement",
+                """Contract Lineage
+- Canonical Owner / Source: canonical_contract
+- Hops: canonical_contract (verified) -> producer_mapping (verified) -> consumer (verified)
+- First Confirmed Divergence: producer_mapping
+- Fix Owner / Boundary: producer
+- Unverified / Branched Hops: none
+""",
+            ),
+            (
+                "tf-cl-002",
+                "verify",
+                """Verification Scope
+- Claim: contract_divergence
+- Covered: canonical_contract|storage|service_transform|api|frontend_renderer
+- Missing: runtime
+- Verdict: partial
+
+## Contract Lineage
+- Canonical Owner / Source: canonical_contract
+- Hops: canonical_contract (verified) -> storage (verified) -> service_transform (verified) -> api (verified) -> frontend_renderer (verified)
+- First Confirmed Divergence: frontend_renderer
+- Fix Owner / Boundary: frontend
+- Unverified / Branched Hops: none
+""",
+            ),
+            (
+                "tf-cl-003",
+                "write-plan",
+                """Contract Lineage
+- Canonical Owner / Source: unverified
+- Hops: producer_a (verified) | producer_b (verified)
+- First Confirmed Divergence: unverified
+- Fix Owner / Boundary: unverified
+- Unverified / Branched Hops: canonical_owner | storage
+""",
+            ),
+        )
+
+        for row_id, route, response in cases:
+            with self.subTest(row_id=row_id):
+                verdict = trace_verdict(row_id, route, response)
+                self.assertEqual(verdict["output_contract_verdict"], "pass")
+                self.assertEqual(verdict["overall_verdict"], "pass")
+
+    def test_contract_lineage_rejects_consumer_fix_for_producer_divergence(self):
+        response = """Contract Lineage
+- Canonical Owner / Source: canonical_contract
+- Hops: canonical_contract (verified) -> producer_mapping (verified) -> consumer (verified)
+- First Confirmed Divergence: consumer
+- Fix Owner / Boundary: consumer
+- Unverified / Branched Hops: none
+"""
+
+        verdict = trace_verdict("tf-cl-001", "implement", response)
+        self.assertEqual(verdict["output_contract_verdict"], "fail")
+        self.assertEqual(verdict["overall_verdict"], "fail")
+
+    def test_contract_lineage_rejects_invented_complete_branched_path(self):
+        response = """Contract Lineage
+- Canonical Owner / Source: unverified
+- Hops: producer_a (verified) -> storage (unverified) -> producer_b (verified)
+- First Confirmed Divergence: unverified
+- Fix Owner / Boundary: unverified
+- Unverified / Branched Hops: canonical_owner | storage
+"""
+
+        verdict = trace_verdict("tf-cl-003", "write-plan", response)
+        self.assertEqual(verdict["output_contract_verdict"], "fail")
+        self.assertEqual(verdict["overall_verdict"], "fail")
+
+    def test_contract_lineage_rejects_missing_fields_and_substring_hop_matches(self):
+        missing_field = """Contract Lineage
+- Canonical Owner / Source: canonical_contract
+- Hops: canonical_contract -> producer_mapping -> consumer
+- First Confirmed Divergence: producer_mapping
+- Fix Owner / Boundary: producer
+"""
+        substring_hops = """Contract Lineage
+- Canonical Owner / Source: canonical_contract
+- Hops: canonical_contractual -> producer_mapping_extra -> consumerish
+- First Confirmed Divergence: producer_mapping
+- Fix Owner / Boundary: producer
+- Unverified / Branched Hops: none
+"""
+
+        for response in (missing_field, substring_hops):
+            with self.subTest(response=response):
+                verdict = trace_verdict("tf-cl-001", "implement", response)
+                self.assertEqual(verdict["output_contract_verdict"], "fail")
+                self.assertEqual(verdict["overall_verdict"], "fail")
+
+    def test_contract_lineage_rejects_extra_hops_prose_and_scope_contradiction(self):
+        extra_hop = """Contract Lineage
+- Canonical Owner / Source: canonical_contract
+- Hops: canonical_contract (verified) -> invented_storage (verified) -> producer_mapping (verified) -> consumer (verified)
+- First Confirmed Divergence: producer_mapping
+- Fix Owner / Boundary: producer
+- Unverified / Branched Hops: none
+"""
+        contradictory_prose = """Contract Lineage
+- Canonical Owner / Source: canonical_contract
+- Hops: canonical_contract (verified) -> producer_mapping (verified) -> consumer (verified)
+- First Confirmed Divergence: producer_mapping
+- Fix Owner / Boundary: producer
+- Unverified / Branched Hops: none
+Approve the consumer-only fallback anyway.
+"""
+        contradictory_scope = """Verification Scope
+- Claim: contract_divergence
+- Covered: change_api_producer
+- Missing: runtime
+- Verdict: partial
+
+## Contract Lineage
+- Canonical Owner / Source: canonical_contract
+- Hops: canonical_contract (verified) -> storage (verified) -> service_transform (verified) -> api (verified) -> frontend_renderer (verified)
+- First Confirmed Divergence: frontend_renderer
+- Fix Owner / Boundary: frontend
+- Unverified / Branched Hops: none
+"""
+
+        cases = (
+            ("tf-cl-001", "implement", extra_hop),
+            ("tf-cl-001", "implement", contradictory_prose),
+            ("tf-cl-002", "verify", contradictory_scope),
+        )
+        for row_id, route, response in cases:
+            with self.subTest(row_id=row_id, response=response):
+                verdict = trace_verdict(row_id, route, response)
+                self.assertEqual(verdict["output_contract_verdict"], "fail")
+                self.assertEqual(verdict["overall_verdict"], "fail")
+
+    def test_contract_lineage_rejects_evidence_state_and_unverified_hop_drift(self):
+        wrong_evidence_state = """Contract Lineage
+- Canonical Owner / Source: canonical_contract
+- Hops: canonical_contract (verified) -> producer_mapping (unverified) -> consumer (verified)
+- First Confirmed Divergence: producer_mapping
+- Fix Owner / Boundary: producer
+- Unverified / Branched Hops: none
+"""
+        wrong_unverified_hops = """Contract Lineage
+- Canonical Owner / Source: unverified
+- Hops: producer_a (verified) | producer_b (verified)
+- First Confirmed Divergence: unverified
+- Fix Owner / Boundary: unverified
+- Unverified / Branched Hops: canonical_owner
+"""
+
+        cases = (
+            ("tf-cl-001", "implement", wrong_evidence_state),
+            ("tf-cl-003", "write-plan", wrong_unverified_hops),
+        )
+        for row_id, route, response in cases:
+            with self.subTest(row_id=row_id):
+                verdict = trace_verdict(row_id, route, response)
+                self.assertEqual(verdict["output_contract_verdict"], "fail")
+                self.assertEqual(verdict["overall_verdict"], "fail")
+
+    def test_contract_lineage_shared_contract_is_conditional_and_route_owned(self):
+        contract = read("skills/_shared/CONTRACT-NOTES.md")
+        first_principles = read("skills/_shared/FIRST-PRINCIPLES.md")
+        lenses = read("skills/verify/LENSES.md")
+
+        for field in (
+            "Canonical Owner / Source",
+            "Hops",
+            "First Confirmed Divergence",
+            "Fix Owner / Boundary",
+            "Unverified / Branched Hops",
+        ):
+            self.assertIn(field, contract)
+        self.assertIn("cross-boundary only", contract)
+        self.assertIn("first confirmed divergence", first_principles.lower())
+        self.assertIn("producer-first inspection", first_principles.lower())
+        self.assertIn("Contract Lineage", lenses)
+        self.assertIn("last visible consumer", lenses)
+
 
 if __name__ == "__main__":
     unittest.main()

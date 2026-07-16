@@ -26,6 +26,7 @@ try:
     )
     from checks.loop_checks import (
         checkpoint_before_risky_action_failures,
+        contract_lineage_failures,
         prototype_iteration_checkpoint_failures,
         prototype_no_delta_stop_failures,
         prototype_one_shot_failures,
@@ -60,6 +61,7 @@ except ImportError:  # pragma: no cover - package import path
     )
     from evals.checks.loop_checks import (
         checkpoint_before_risky_action_failures,
+        contract_lineage_failures,
         prototype_iteration_checkpoint_failures,
         prototype_no_delta_stop_failures,
         prototype_one_shot_failures,
@@ -1636,6 +1638,15 @@ def output_contract_verdict(row, schema, actual, final_response):
                     "output_contract_failure",
                     "requirement_state_gate",
                     gate_failure,
+                )
+        elif token == "contract_lineage":
+            for lineage_failure in contract_lineage_failures(final_response, row):
+                append_failure(
+                    failures,
+                    notes,
+                    "output_contract_failure",
+                    "skill_output_contract",
+                    lineage_failure,
                 )
         elif token == "release_evidence_claim":
             for release_claim_failure in release_evidence_claim_failures(

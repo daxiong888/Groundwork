@@ -55,6 +55,7 @@ First-Principles Lens
 
 5. Causal Mechanism
    - How do input, state, code path, data, environment, and output produce the observed behavior or required outcome?
+   - For cross-boundary contract behavior, use the optional `Contract Lineage` shape in `skills/_shared/CONTRACT-NOTES.md` to trace applicable hops and identify the first confirmed divergence before choosing a fix owner. Producer-first inspection is not producer-first blame.
 
 6. Root Cause / Core Bottleneck
    - What is the smallest cause or need? Which observations are symptoms, triggers, or unsupported interpretations?

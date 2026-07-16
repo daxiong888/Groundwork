@@ -162,6 +162,7 @@ Current implemented `output_contract` tokens:
 - `trajectory_signal`
 - `qa_fix_qa`
 - `qa_gap_closure_gate`
+- `contract_lineage`
 - `release_evidence_claim`
 - `uat_evidence_window`
 - `uat_evidence_window_forbidden`
@@ -180,6 +181,8 @@ Current implemented `output_contract` tokens:
 - `dispatch_complete_or_split`
 
 `spec_single_question` mechanically checks exactly one question plus a non-empty `Impact / Next route` field. It does not infer semantic materiality from question keywords; the row's expected behavior and the shared question-quality gate retain that judgment.
+
+`contract_lineage` mechanically checks one optional cross-boundary lineage block, its canonical owner, exact ordered/branched hop graph and evidence-state markers, first confirmed divergence, fix owner, and unresolved branches against row-specific fixture tokens. Schema validation fails closed when a lineage row omits its oracle metadata. Contract-lineage eval rows allow only the declared structured block, plus an exact structured `Verification Scope` when that token also applies, so contradictory prose cannot bypass the oracle. It does not make the lineage runtime, UAT, release, or customer evidence.
 
 `release_evidence_claim` mechanically checks the exact shared evidence object, row-specific claim/status/root/refresh/run-scope tokens, named commands or trials, and limitations. UAT evidence-window and compact UAT-handoff rows require this token so a machine-checked output cannot omit the stronger shared claim inventory.
 
