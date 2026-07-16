@@ -1,28 +1,16 @@
 # Child Thread Prompt Template
 
-## Target Reader
+Target Reader: Runtime adapters creating or messaging a Codex App background implementation thread for an admissible Dispatch Package v2 entry.
 
-Runtime adapters creating or messaging a Codex App background implementation thread for an admissible Dispatch Package v2 entry.
+Reader Action Needed: Fill this template from the accepted task package and send it to the managed worktree child thread.
 
-## Reader Action Needed
+Decision Supported: Whether the child thread received enough source truth, Goal Contract, validation expectation, and scope controls to execute exactly one write task.
 
-Fill this template from the accepted task package and send it to the managed worktree child thread.
+Scope: Prompt construction for an already-admissible managed worktree write implementation package.
 
-## Decision Supported
+Out of Scope: Package routing, package admissibility, tool discovery, thread creation approval, remote writes, and clean-review approval.
 
-Whether the child thread received enough source truth, Goal Contract, validation expectation, and scope controls to execute exactly one write task.
-
-## Scope
-
-Prompt construction for an already-admissible managed worktree write implementation package.
-
-## Out of Scope
-
-Package routing, package admissibility, tool discovery, thread creation approval, remote writes, and clean-review approval.
-
-## Evidence Level
-
-Derived from Groundwork Dispatch Package v2, Goal Contract fields, and managed worktree review package requirements.
+Evidence Level: Derived from Groundwork Dispatch Package v2, Goal Contract fields, and managed worktree review package requirements.
 
 `goal_contract.goal_command` must already start with `/goal`; do not prepend another `/goal` when filling this template. The rendered child prompt must use the Goal Command as the first non-empty line. Do not prepend prose, headers, markdown fences, or any other text before it.
 

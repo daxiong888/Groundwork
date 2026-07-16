@@ -1,28 +1,16 @@
 # Managed Worktree Thread Lifecycle
 
-## Target Reader
+Target Reader: Groundwork dispatch maintainers, runtime adapter authors, coordinators, and reviewers handling `codex_app_managed_worktree_thread` results.
 
-Groundwork dispatch maintainers, runtime adapter authors, coordinators, and reviewers handling `codex_app_managed_worktree_thread` results.
+Reader Action Needed: Use this lifecycle to report only managed worktree thread execution state. Track review, merge-back, archive, and branch cleanup on their independent Result Package axes.
 
-## Reader Action Needed
+Decision Supported: Whether one managed worktree child thread is admitted, initializing, active, or has returned/failed/blocked, without inferring downstream review or cleanup state.
 
-Use this lifecycle to report only managed worktree thread execution state. Track review, merge-back, archive, and branch cleanup on their independent Result Package axes.
+Scope: Thread-only states and legal transitions for one Codex App managed worktree child after Dispatch Package v2 admission.
 
-## Decision Supported
+Out of Scope: Public skills, automatic thread tool execution from `dispatch`, automatic archive, branch deletion, commit, push, PR creation, tracker mutation, release readiness, UAT readiness, and replacing `verify` or `triage`.
 
-Whether one managed worktree child thread is admitted, initializing, active, or has returned/failed/blocked, without inferring downstream review or cleanup state.
-
-## Scope
-
-Thread-only states and legal transitions for one Codex App managed worktree child after Dispatch Package v2 admission.
-
-## Out of Scope
-
-Public skills, automatic thread tool execution from `dispatch`, automatic archive, branch deletion, commit, push, PR creation, tracker mutation, release readiness, UAT readiness, and replacing `verify` or `triage`.
-
-## Evidence Level
-
-Derived from PRD v0.3.3 FR-1, Dispatch Package v2, managed worktree review/result package contracts, Groundwork git-boundary rules, and Codex App closeout risks.
+Evidence Level: Derived from PRD v0.3.3 FR-1, Dispatch Package v2, managed worktree review/result package contracts, Groundwork git-boundary rules, and Codex App closeout risks.
 
 ## Core Rules
 

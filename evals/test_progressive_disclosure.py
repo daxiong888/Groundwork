@@ -1,9 +1,39 @@
 import csv
+import re
 import unittest
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def markdown_h2_headings(text):
+    headings = []
+    fence_char = None
+    fence_length = 0
+    for line in text.splitlines():
+        if fence_char is not None:
+            if re.fullmatch(
+                rf" {{0,3}}{re.escape(fence_char)}{{{fence_length},}}[ \t]*",
+                line,
+            ):
+                fence_char = None
+                fence_length = 0
+            continue
+
+        fence = re.match(r" {0,3}(`{3,}|~{3,})", line)
+        if fence is not None:
+            marker = fence.group(1)
+            fence_char = marker[0]
+            fence_length = len(marker)
+            continue
+
+        heading = re.fullmatch(r" {0,3}##(?!#)(?:[ \t]+(.*?))?[ \t]*", line)
+        if heading is not None:
+            value = (heading.group(1) or "").strip()
+            value = re.sub(r"[ \t]+#+[ \t]*$", "", value).strip()
+            headings.append(value)
+    return headings
 
 
 class ProgressiveDisclosureTests(unittest.TestCase):
@@ -421,6 +451,144 @@ class ProgressiveDisclosureTests(unittest.TestCase):
             text = self.read(path)
             missing = [field for field in required_fields if field not in text]
             self.assertEqual(missing, [], path)
+
+    def test_dispatch_reference_headers_use_compact_single_line_fields(self):
+        compact_fields = {
+            "skills/dispatch/CONFLICT-PREFLIGHT.md": (
+                "Target Reader",
+                "Reader Action Needed",
+                "Decision Supported",
+                "Artifact Type",
+                "Source of Truth",
+                "Scope",
+                "Evidence Level",
+                "Safe to Share / Redaction Notes",
+            ),
+            "skills/dispatch/DISPATCH-PACKAGE-DETAILS.md": (
+                "Target Reader", "Reader Action Needed", "Decision Supported",
+                "Scope", "Out of Scope", "Evidence Level",
+            ),
+            "skills/dispatch/RESULT-PACKAGE.md": (
+                "Target Reader", "Reader Action Needed", "Decision Supported",
+                "Scope", "Out of Scope", "Evidence Level",
+            ),
+            "skills/dispatch/ROUTING-PROFILES.md": (
+                "Target Reader",
+                "Reader Action Needed",
+                "Decision Supported",
+                "Scope",
+                "Out of Scope",
+                "Artifact Type",
+                "Source of Truth",
+                "Evidence Level",
+                "Safe to Share / Redaction Notes",
+            ),
+            "skills/dispatch/RUNTIME-ADAPTERS.md": (
+                "Target Reader", "Reader Action Needed", "Decision Supported",
+                "Scope", "Out of Scope", "Evidence Level",
+            ),
+            "skills/dispatch/adapters/codex_app_managed_worktree_thread/ADAPTER.md": (
+                "Target Reader", "Reader Action Needed", "Decision Supported",
+                "Scope", "Evidence Level",
+            ),
+            "skills/dispatch/adapters/codex_app_managed_worktree_thread/DISPATCH-PACKAGE-CONTRACT.md": (
+                "Target Reader", "Reader Action Needed", "Decision Supported",
+                "Scope", "Out of Scope", "Evidence Level",
+            ),
+            "skills/dispatch/adapters/codex_app_managed_worktree_thread/RATIONALE.md": (
+                "Target Reader", "Reader Action Needed", "Decision Supported",
+                "Scope", "Out of Scope", "Evidence Level",
+            ),
+            "skills/dispatch/adapters/codex_app_managed_worktree_thread/REJECT-NOOP-CHECKLIST.md": (
+                "Target Reader", "Reader Action Needed", "Decision Supported",
+                "Scope", "Out of Scope", "Evidence Level",
+            ),
+            "skills/dispatch/adapters/codex_app_managed_worktree_thread/RESULT-PACKAGE-TEMPLATE.md": (
+                "Target Reader", "Reader Action Needed", "Decision Supported",
+                "Scope", "Out of Scope", "Evidence Level",
+            ),
+            "skills/dispatch/adapters/codex_app_managed_worktree_thread/THREAD-LIFECYCLE.md": (
+                "Target Reader", "Reader Action Needed", "Decision Supported",
+                "Scope", "Out of Scope", "Evidence Level",
+            ),
+            "skills/dispatch/adapters/codex_app_managed_worktree_thread/THREAD-PROMPT-TEMPLATE.md": (
+                "Target Reader", "Reader Action Needed", "Decision Supported",
+                "Scope", "Out of Scope", "Evidence Level",
+            ),
+        }
+        self.assertEqual(sum(len(fields) for fields in compact_fields.values()), 76)
+        multiline_sections = {
+            "skills/dispatch/CONFLICT-PREFLIGHT.md": {
+                "Scope": ("## Out of Scope",),
+            },
+            "skills/dispatch/adapters/codex_app_managed_worktree_thread/ADAPTER.md": {
+                "Scope": ("In scope:", "## Out of Scope"),
+            },
+        }
+
+        for path, fields in compact_fields.items():
+            text = self.read(path)
+            lines = text.splitlines()
+            h2_headings = markdown_h2_headings(text)
+            self.assertTrue(lines[0].startswith("# "), path)
+            self.assertEqual(lines[1], "", path)
+            cursor = 2
+
+            for field in fields:
+                self.assertTrue(lines[cursor].startswith(f"{field}: "), (path, field))
+                cursor += 1
+                self.assertEqual(lines[cursor], "", (path, field))
+                cursor += 1
+
+                for marker in multiline_sections.get(path, {}).get(field, ()):
+                    self.assertEqual(lines[cursor], marker, (path, marker))
+                    cursor += 1
+                    self.assertEqual(lines[cursor], "", (path, marker))
+                    cursor += 1
+                    first_bullet = cursor
+                    while cursor < len(lines) and lines[cursor].startswith("- "):
+                        cursor += 1
+                    self.assertGreater(cursor, first_bullet, (path, marker))
+                    self.assertEqual(lines[cursor], "", (path, marker))
+                    cursor += 1
+
+            self.assertLess(cursor, len(lines), path)
+            self.assertNotEqual(lines[cursor], "", path)
+
+            for field in fields:
+                indexes = [index for index, line in enumerate(lines) if line.startswith(f"{field}: ")]
+                self.assertEqual(len(indexes), 1, (path, field))
+                self.assertEqual(lines[indexes[0] + 1], "", (path, field))
+                self.assertNotIn(field, h2_headings, (path, field))
+
+        self.assertIn("## Out of Scope", self.read("skills/dispatch/CONFLICT-PREFLIGHT.md"))
+        self.assertIn(
+            "## Out of Scope",
+            self.read("skills/dispatch/adapters/codex_app_managed_worktree_thread/ADAPTER.md"),
+        )
+        self.assertIn("## Target Reader", self.read("skills/to-prd/PRD-TEMPLATE.md"))
+
+    def test_combined_loop_has_one_canonical_owner(self):
+        first_principles = self.read("skills/_shared/FIRST-PRINCIPLES.md")
+        adversarial_review = self.read("skills/_shared/ADVERSARIAL-REVIEW.md")
+        self.assertEqual(
+            markdown_h2_headings(
+                "````md\n```not-a-close\n## Combined Loop ##\n````\n  ## Real Heading ###"
+            ),
+            ["Real Heading"],
+        )
+        owners = [
+            path.relative_to(ROOT).as_posix()
+            for path in ROOT.glob("skills/**/*.md")
+            if "Combined Loop" in markdown_h2_headings(path.read_text(encoding="utf-8"))
+        ]
+
+        self.assertEqual(owners, ["skills/_shared/ADVERSARIAL-REVIEW.md"])
+        self.assertIn("Construct -> Attack -> Narrow -> Verify", adversarial_review)
+        self.assertNotIn("FIRST-PRINCIPLES.md", adversarial_review)
+        self.assertIn("skills/_shared/ADVERSARIAL-REVIEW.md", first_principles)
+        self.assertNotIn("## Combined Loop", first_principles)
+        self.assertNotIn("Construct -> Attack -> Narrow -> Verify", first_principles)
 
     def test_hot_path_runtime_references_use_compact_purpose_headers(self):
         paths = [

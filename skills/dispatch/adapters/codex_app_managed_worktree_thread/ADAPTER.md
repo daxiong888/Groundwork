@@ -1,20 +1,12 @@
 # Codex App Managed Worktree Thread Adapter
 
-## Target Reader
+Target Reader: Groundwork dispatch users, runtime adapter authors, and reviewers inspecting packages addressed to `codex_app_managed_worktree_thread`.
 
-Groundwork dispatch users, runtime adapter authors, and reviewers inspecting packages addressed to `codex_app_managed_worktree_thread`.
+Reader Action Needed: Use this adapter contract to validate an addressed Dispatch Package v2 task, construct the child-thread prompt, and return a Groundwork-compatible Result Package when an execution-capable runtime is explicitly approved and available.
 
-## Reader Action Needed
+Decision Supported: Whether a managed worktree child thread may be created for a package, what prompt and review package shape it must use, and how rejected or no-op inputs are reported back to Groundwork.
 
-Use this adapter contract to validate an addressed Dispatch Package v2 task, construct the child-thread prompt, and return a Groundwork-compatible Result Package when an execution-capable runtime is explicitly approved and available.
-
-## Decision Supported
-
-Whether a managed worktree child thread may be created for a package, what prompt and review package shape it must use, and how rejected or no-op inputs are reported back to Groundwork.
-
-## Scope
-
-This is an internal dispatch runtime adapter contract. It is intentionally not a public skill and must not contain skill frontmatter.
+Scope: This is an internal dispatch runtime adapter contract. It is intentionally not a public skill and must not contain skill frontmatter.
 
 In scope:
 
@@ -36,9 +28,7 @@ In scope:
 - staging, committing, pushing, opening PRs, closing issues, archiving threads, or mutating trackers without explicit approval
 - claiming worktree, thread, validation, selector, or remote-write execution without adapter evidence
 
-## Evidence Level
-
-Derived from Groundwork Dispatch Package v2, Result Package, Goal Contract, and the prior `codex-managed-worktree-threads` adapter contract.
+Evidence Level: Derived from Groundwork Dispatch Package v2, Result Package, Goal Contract, and the prior `codex-managed-worktree-threads` adapter contract.
 
 ## Ownership Boundary
 

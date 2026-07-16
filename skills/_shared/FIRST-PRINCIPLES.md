@@ -89,18 +89,9 @@ Bug Root-Cause Ladder
 
 If the root cause cannot be confirmed, stop before speculative edits or make only the smallest source-level diagnostic change with an explicit verification gap.
 
-## Combined Loop
+## Adversarial Pairing
 
-Pair this lens with `skills/_shared/ADVERSARIAL-REVIEW.md` for high-risk bugs, material skill changes, readiness claims, release/UAT claims, or Groundwork mechanism changes:
-
-```text
-Construct -> Attack -> Narrow -> Verify
-```
-
-- Construct from primitive facts, constraints, mechanism, root cause, minimal solution, and falsifiable signal.
-- Attack the conclusion with counterexamples, missing evidence, edge states, hidden assumptions, and scope creep.
-- Narrow unsupported actions and downgrade claims that evidence does not prove.
-- Verify through the owning Groundwork route without upgrading source-validation into runtime/cache/UAT/release evidence.
+For high-risk bugs, material skill changes, readiness claims, release/UAT claims, or Groundwork mechanism changes, pair this lens with the canonical Combined Loop in `skills/_shared/ADVERSARIAL-REVIEW.md`.
 
 ## Evidence Boundary
 

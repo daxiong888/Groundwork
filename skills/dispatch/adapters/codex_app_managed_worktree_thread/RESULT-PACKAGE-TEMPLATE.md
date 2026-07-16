@@ -1,28 +1,16 @@
 # Managed Worktree Result Package Template
 
-## Target Reader
+Target Reader: Runtime adapters returning managed worktree execution, rejection, or no-op evidence to Groundwork.
 
-Runtime adapters returning managed worktree execution, rejection, or no-op evidence to Groundwork.
+Reader Action Needed: Wrap adapter outcome before Groundwork routes to `verify`, `triage`, `dispatch_write_task`, `human_decision`, or `done`.
 
-## Reader Action Needed
+Decision Supported: Whether a managed worktree task is ready for review, needs remediation, is blocked, or intentionally did not create a worktree.
 
-Wrap adapter outcome before Groundwork routes to `verify`, `triage`, `dispatch_write_task`, `human_decision`, or `done`.
+Scope: Result wrapping for managed worktree execution, rejection, or no-op outcomes.
 
-## Decision Supported
+Out of Scope: Runtime execution itself, clean-review approval, final readiness, remote writes, selector enforcement without adapter evidence, cache refresh, release readiness, and UAT readiness.
 
-Whether a managed worktree task is ready for review, needs remediation, is blocked, or intentionally did not create a worktree.
-
-## Scope
-
-Result wrapping for managed worktree execution, rejection, or no-op outcomes.
-
-## Out of Scope
-
-Runtime execution itself, clean-review approval, final readiness, remote writes, selector enforcement without adapter evidence, cache refresh, release readiness, and UAT readiness.
-
-## Evidence Level
-
-Derived from Groundwork unified Result Package requirements and managed worktree adapter outcome rules.
+Evidence Level: Derived from Groundwork unified Result Package requirements and managed worktree adapter outcome rules.
 
 ## Base Contract And Adapter Delta
 

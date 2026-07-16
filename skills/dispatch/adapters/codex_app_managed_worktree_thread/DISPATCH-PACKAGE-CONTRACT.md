@@ -1,28 +1,16 @@
 # Managed Worktree Dispatch Package Contract
 
-## Target Reader
+Target Reader: Groundwork dispatch users and runtime adapters validating a Dispatch Package v2 task entry addressed to `codex_app_managed_worktree_thread`.
 
-Groundwork dispatch users and runtime adapters validating a Dispatch Package v2 task entry addressed to `codex_app_managed_worktree_thread`.
+Reader Action Needed: Check every admissibility field before any managed worktree child thread is created.
 
-## Reader Action Needed
+Decision Supported: Whether the package may execute in a Codex App managed worktree thread, must return no-op evidence, or is blocked until corrected.
 
-Check every admissibility field before any managed worktree child thread is created.
+Scope: This contract validates one Dispatch Package v2 task entry addressed to `codex_app_managed_worktree_thread`.
 
-## Decision Supported
+Out of Scope: Task routing, readiness decisions, runtime tool calls, manual worktree creation, remote writes, and final readiness decisions.
 
-Whether the package may execute in a Codex App managed worktree thread, must return no-op evidence, or is blocked until corrected.
-
-## Scope
-
-This contract validates one Dispatch Package v2 task entry addressed to `codex_app_managed_worktree_thread`.
-
-## Out of Scope
-
-Task routing, readiness decisions, runtime tool calls, manual worktree creation, remote writes, and final readiness decisions.
-
-## Evidence Level
-
-Derived from Groundwork Dispatch Package v2, Goal Contract requirements, conflict preflight rules, and the prior managed-worktree adapter contract.
+Evidence Level: Derived from Groundwork Dispatch Package v2, Goal Contract requirements, conflict preflight rules, and the prior managed-worktree adapter contract.
 
 ## Base Contract And Adapter Delta
 

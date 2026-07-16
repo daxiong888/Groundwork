@@ -1,28 +1,16 @@
 # Managed Worktree Adapter Rationale
 
-## Target Reader
+Target Reader: Maintainers deciding whether `codex_app_managed_worktree_thread` belongs inside Groundwork dispatch or as a separate public skill.
 
-Maintainers deciding whether `codex_app_managed_worktree_thread` belongs inside Groundwork dispatch or as a separate public skill.
+Reader Action Needed: Use this rationale only when the adapter boundary is disputed.
 
-## Reader Action Needed
+Decision Supported: Whether `codex_app_managed_worktree_thread` should remain an internal dispatch adapter contract instead of becoming another public skill.
 
-Use this rationale only when the adapter boundary is disputed.
+Scope: Design rationale for adapter co-location, package-only boundaries, and non-substitute runtime workflows.
 
-## Decision Supported
+Out of Scope: Runtime execution, public skill creation, tracker integration, remote writes, and current external repository maintenance.
 
-Whether `codex_app_managed_worktree_thread` should remain an internal dispatch adapter contract instead of becoming another public skill.
-
-## Scope
-
-Design rationale for adapter co-location, package-only boundaries, and non-substitute runtime workflows.
-
-## Out of Scope
-
-Runtime execution, public skill creation, tracker integration, remote writes, and current external repository maintenance.
-
-## Evidence Level
-
-Derived from Groundwork v0.3.1 dispatch boundaries, Dispatch Package v2, Result Package, Goal Contract, and the prior managed-worktree adapter design.
+Evidence Level: Derived from Groundwork v0.3.1 dispatch boundaries, Dispatch Package v2, Result Package, Goal Contract, and the prior managed-worktree adapter design.
 
 ## Decision
 

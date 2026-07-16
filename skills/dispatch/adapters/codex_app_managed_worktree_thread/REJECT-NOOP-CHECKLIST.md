@@ -1,28 +1,16 @@
 # Managed Worktree Reject And No-op Checklist
 
-## Target Reader
+Target Reader: Runtime adapters and dispatch reviewers deciding why no managed worktree child thread should be created.
 
-Runtime adapters and dispatch reviewers deciding why no managed worktree child thread should be created.
+Reader Action Needed: Return a Result Package with the failing field or policy reason instead of creating a thread.
 
-## Reader Action Needed
+Decision Supported: Whether a package should be rejected, no-oped, blocked, or sent back for remediation instead of creating a managed worktree child thread.
 
-Return a Result Package with the failing field or policy reason instead of creating a thread.
+Scope: Reject and no-op decisions for packages that are not admissible managed worktree write implementation tasks.
 
-## Decision Supported
+Out of Scope: Runtime routing, package repair, thread creation, remote writes, and final readiness decisions.
 
-Whether a package should be rejected, no-oped, blocked, or sent back for remediation instead of creating a managed worktree child thread.
-
-## Scope
-
-Reject and no-op decisions for packages that are not admissible managed worktree write implementation tasks.
-
-## Out of Scope
-
-Runtime routing, package repair, thread creation, remote writes, and final readiness decisions.
-
-## Evidence Level
-
-Derived from Dispatch Package v2 admissibility rules, conflict preflight, and managed worktree adapter safety boundaries.
+Evidence Level: Derived from Dispatch Package v2 admissibility rules, conflict preflight, and managed worktree adapter safety boundaries.
 
 ## Reject Or No-op Conditions
 

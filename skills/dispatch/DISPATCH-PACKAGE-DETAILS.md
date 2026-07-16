@@ -1,28 +1,16 @@
 # Dispatch Package v2 Details
 
-## Target Reader
+Target Reader: Groundwork dispatch users, child runtime adapters, and reviewers checking whether a package is adapter-ready.
 
-Groundwork dispatch users, child runtime adapters, and reviewers checking whether a package is adapter-ready.
+Reader Action Needed: Use this only when the compact `DISPATCH-PACKAGE.md` skeleton is not enough because the prompt needs full schema, adapter contract, managed-worktree admissibility, dependency barrier, legacy compatibility, or field-level validation.
 
-## Reader Action Needed
+Decision Supported: Whether a Dispatch Package v2 payload is complete enough for adapter handoff without treating package generation as execution evidence.
 
-Use this only when the compact `DISPATCH-PACKAGE.md` skeleton is not enough because the prompt needs full schema, adapter contract, managed-worktree admissibility, dependency barrier, legacy compatibility, or field-level validation.
+Scope: Extended package completeness, route policy, adapter deltas, dependency barriers, selector enforcement, and result expectations.
 
-## Decision Supported
+Out of Scope: Runtime execution, Codex App thread creation, subagent spawning, remote writes, tracker mutation, branch cleanup, merge, archive, cache refresh, UAT/release/customer readiness, or final verification.
 
-Whether a Dispatch Package v2 payload is complete enough for adapter handoff without treating package generation as execution evidence.
-
-## Scope
-
-Extended package completeness, route policy, adapter deltas, dependency barriers, selector enforcement, and result expectations.
-
-## Out of Scope
-
-Runtime execution, Codex App thread creation, subagent spawning, remote writes, tracker mutation, branch cleanup, merge, archive, cache refresh, UAT/release/customer readiness, or final verification.
-
-## Evidence Level
-
-Source-validation contract derived from Groundwork dispatch runtime router contracts, Goal Contract requirements, routing reliability fixtures, adapter contracts, and the compact default contract in `DISPATCH-PACKAGE.md`.
+Evidence Level: Source-validation contract derived from Groundwork dispatch runtime router contracts, Goal Contract requirements, routing reliability fixtures, adapter contracts, and the compact default contract in `DISPATCH-PACKAGE.md`.
 
 ## Schema
 

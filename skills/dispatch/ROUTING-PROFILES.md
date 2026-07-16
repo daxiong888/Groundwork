@@ -1,40 +1,22 @@
 # Dispatch Routing Profiles
 
-## Target Reader
+Target Reader: Groundwork dispatch users, coordinator threads, runtime adapter authors, and reviewers checking why a task was routed to a runtime.
 
-Groundwork dispatch users, coordinator threads, runtime adapter authors, and reviewers checking why a task was routed to a runtime.
+Reader Action Needed: Choose the lightest appropriate runtime, execution profile, and selector request policy before generating Dispatch Package v2.
 
-## Reader Action Needed
+Decision Supported: Whether a task should run in the main thread, managed worktree thread, subagent, or clean-review path, and which model/reasoning profile should be requested.
 
-Choose the lightest appropriate runtime, execution profile, and selector request policy before generating Dispatch Package v2.
+Scope: Default routing and execution profile recommendations. This document does not execute tools, prove runtime availability, or guarantee selector enforcement.
 
-## Decision Supported
+Out of Scope: Calling thread tools, spawning subagents, creating worktrees, mutating remotes/trackers/data/runtime state, or claiming selectors were applied.
 
-Whether a task should run in the main thread, managed worktree thread, subagent, or clean-review path, and which model/reasoning profile should be requested.
+Artifact Type: Dispatch routing reference.
 
-## Scope
+Source of Truth: `skills/dispatch/RUNTIME-ADAPTERS.md`, `skills/_shared/COGNITIVE-BUDGET.md`, `skills/_shared/RUNTIME-CAPABILITY.md`, and `skills/_shared/REVIEW-LOOP.md`.
 
-Default routing and execution profile recommendations. This document does not execute tools, prove runtime availability, or guarantee selector enforcement.
+Evidence Level: Source-validation routing guidance only; runtime availability and selector application require adapter/tool evidence.
 
-## Out of Scope
-
-Calling thread tools, spawning subagents, creating worktrees, mutating remotes/trackers/data/runtime state, or claiming selectors were applied.
-
-## Artifact Type
-
-Dispatch routing reference.
-
-## Source of Truth
-
-`skills/dispatch/RUNTIME-ADAPTERS.md`, `skills/_shared/COGNITIVE-BUDGET.md`, `skills/_shared/RUNTIME-CAPABILITY.md`, and `skills/_shared/REVIEW-LOOP.md`.
-
-## Evidence Level
-
-Source-validation routing guidance only; runtime availability and selector application require adapter/tool evidence.
-
-## Safe to Share / Redaction Notes
-
-Safe to share as-is; generated packages still require source and payload redaction.
+Safe to Share / Redaction Notes: Safe to share as-is; generated packages still require source and payload redaction.
 
 ## Routing Table
 

@@ -1,28 +1,16 @@
 # Result Package
 
-## Target Reader
+Target Reader: Groundwork verify/triage/handoff users, dispatch reviewers, and runtime adapters returning work to a coordinator.
 
-Groundwork verify/triage/handoff users, dispatch reviewers, and runtime adapters returning work to a coordinator.
+Reader Action Needed: Wrap runtime output before claiming a task is ready for review, needs remediation, is blocked, or can move to the next route.
 
-## Reader Action Needed
+Decision Supported: Whether output is a review package, findings package, diagnosis package, direct result, or reviewer findings, and which Groundwork route owns the next step.
 
-Wrap runtime output before claiming a task is ready for review, needs remediation, is blocked, or can move to the next route.
+Scope: Unified result envelope and runtime-specific output requirements. Runtime execution mechanics are out of scope.
 
-## Decision Supported
+Out of Scope: Runtime execution, clean-review approval, UAT/release readiness, remote writes, tracker mutation, and selector enforcement without adapter evidence.
 
-Whether output is a review package, findings package, diagnosis package, direct result, or reviewer findings, and which Groundwork route owns the next step.
-
-## Scope
-
-Unified result envelope and runtime-specific output requirements. Runtime execution mechanics are out of scope.
-
-## Out of Scope
-
-Runtime execution, clean-review approval, UAT/release readiness, remote writes, tracker mutation, and selector enforcement without adapter evidence.
-
-## Evidence Level
-
-Derived from dispatch contracts, managed worktree package rules, and runtime result envelope requirements.
+Evidence Level: Derived from dispatch contracts, managed worktree package rules, and runtime result envelope requirements.
 
 ## Unified Envelope
 

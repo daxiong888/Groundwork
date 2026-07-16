@@ -1,28 +1,16 @@
 # Dispatch Runtime Adapters
 
-## Target Reader
+Target Reader: Groundwork dispatch users, runtime adapter authors, and reviewers validating runtime route fit.
 
-Groundwork dispatch users, runtime adapter authors, and reviewers validating runtime route fit.
+Reader Action Needed: Use capability profiles to choose a runtime and state what it may and may not do.
 
-## Reader Action Needed
+Decision Supported: Whether a task should become managed worktree package, subagent package, main-thread action, read-only coordinator review, or clean-review assignment.
 
-Use capability profiles to choose a runtime and state what it may and may not do.
+Scope: Initial dispatch runtime capability profiles. This document does not execute tools or prove runtime availability in the current Codex surface.
 
-## Decision Supported
+Out of Scope: Runtime execution, Codex App thread creation, subagent spawning, manual worktree creation, remote writes, tracker mutation, and final readiness decisions.
 
-Whether a task should become managed worktree package, subagent package, main-thread action, read-only coordinator review, or clean-review assignment.
-
-## Scope
-
-Initial dispatch runtime capability profiles. This document does not execute tools or prove runtime availability in the current Codex surface.
-
-## Out of Scope
-
-Runtime execution, Codex App thread creation, subagent spawning, manual worktree creation, remote writes, tracker mutation, and final readiness decisions.
-
-## Evidence Level
-
-Derived from dispatch runtime router contracts, routing profiles, conflict preflight, and Dispatch Package v2 rules.
+Evidence Level: Derived from dispatch runtime router contracts, routing profiles, conflict preflight, and Dispatch Package v2 rules.
 
 ## Capability Profiles
 

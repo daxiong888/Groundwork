@@ -71,7 +71,7 @@ Do not place this block before the required `Verification Scope` block in `verif
 
 ## Combined Loop
 
-Pair this lens with `skills/_shared/FIRST-PRINCIPLES.md` for high-risk bugs, material skill changes, readiness claims, release/UAT claims, or Groundwork mechanism changes:
+Use this canonical loop for high-risk bugs, material skill changes, readiness claims, release/UAT claims, or Groundwork mechanism changes:
 
 ```text
 Construct -> Attack -> Narrow -> Verify

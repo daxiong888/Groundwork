@@ -1,28 +1,16 @@
 # Dispatch Conflict Preflight
 
-## Target Reader
+Target Reader: Groundwork dispatch users, coordinator threads, runtime adapter authors, and reviewers deciding whether multiple tasks can be routed in parallel.
 
-Groundwork dispatch users, coordinator threads, runtime adapter authors, and reviewers deciding whether multiple tasks can be routed in parallel.
+Reader Action Needed: Use this preflight before parallelizing dispatched tasks, especially write tasks, and record conflict group, dependency group, parallelization eligibility, and merge order hints in Dispatch Package v2.
 
-## Reader Action Needed
+Decision Supported: Whether tasks can run in parallel, must be serialized, need approval, or must split into diagnosis and write subtasks before routing.
 
-Use this preflight before parallelizing dispatched tasks, especially write tasks, and record conflict group, dependency group, parallelization eligibility, and merge order hints in Dispatch Package v2.
+Artifact Type: shared dispatch preflight reference
 
-## Decision Supported
+Source of Truth: Dispatch Package v2 schema, managed-worktree routing contracts, and Groundwork conflict-isolation policy.
 
-Whether tasks can run in parallel, must be serialized, need approval, or must split into diagnosis and write subtasks before routing.
-
-## Artifact Type
-
-shared dispatch preflight reference
-
-## Source of Truth
-
-Dispatch Package v2 schema, managed-worktree routing contracts, and Groundwork conflict-isolation policy.
-
-## Scope
-
-This document defines conflict grouping and default parallelization rules for dispatch. It does not inspect a repository automatically, execute tasks, merge work, or resolve conflicts.
+Scope: This document defines conflict grouping and default parallelization rules for dispatch. It does not inspect a repository automatically, execute tasks, merge work, or resolve conflicts.
 
 ## Out of Scope
 
@@ -32,13 +20,9 @@ This document defines conflict grouping and default parallelization rules for di
 - Remote writes.
 - Product truth invention when source evidence is missing.
 
-## Evidence Level
+Evidence Level: Source-validation policy only. This preflight does not prove runtime execution, worktree creation, merge safety, release readiness, UAT readiness, or customer readiness.
 
-Source-validation policy only. This preflight does not prove runtime execution, worktree creation, merge safety, release readiness, UAT readiness, or customer readiness.
-
-## Safe to Share / Redaction Notes
-
-Safe to share as-is; contains no secrets, credentials, PII, private logs, or production payloads.
+Safe to Share / Redaction Notes: Safe to share as-is; contains no secrets, credentials, PII, private logs, or production payloads.
 
 ## Conflict Inputs
 
