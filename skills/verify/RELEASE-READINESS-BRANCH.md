@@ -29,6 +29,10 @@ A verified runtime or cache claim must name:
 - commands or runtime trials used;
 - limitations.
 
+## UAT Evidence Binding
+
+For version/fix attribution, mutable or cross-session UAT, and fix/redeploy/rerun chains, require the conditional `UAT Evidence Window` from `skills/_shared/RELEASE-EVIDENCE-CLAIM.md`: derive coverage from declared delivery scope; keep only causally relevant identities; stop on unmet claim-relevant preconditions; partition changed identities rather than combine mixed-version evidence; after redeploy use a new evidence window and rerun the original check plus affected regression scope; report canonical-writeback closeout separately from observed runtime behavior. Unknown or mismatched identity may support a bounded current observation, but version attribution stays `unverified`; omit the window only when ordinary immutable/UI/runtime context already binds that observation and no broader attribution, mutation, rerun, or continuation claim exists.
+
 ## Branch Rules
 
 - Documentation, schema, fixture, PRD, issue-pack, CSV parse, or git diff checks alone are source-validation evidence.

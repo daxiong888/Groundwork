@@ -1,4 +1,4 @@
-"""Deterministic output checks for bounded prototype and spec loops."""
+"""Deterministic output checks for bounded workflow loops and lenses."""
 
 import re
 
@@ -152,6 +152,43 @@ RISK_CHECKPOINT_TOKENS = {
     "Action State": "blocked",
     "Checkpoint Position": "before_action",
 }
+UAT_EVIDENCE_WINDOW_FIELDS = (
+    "Claim / Delivery Scope",
+    "Relevant SUT Fingerprint",
+    "Preconditions",
+    "Window Stability",
+    "Coverage Basis",
+    "Result / Missing",
+    "Rerun Of / Supersedes",
+)
+UAT_EVIDENCE_WINDOW_SCOPE_FIELDS = ("Claim", "Covered", "Missing", "Verdict")
+UAT_HANDOFF_REFERENCE_FIELDS = (
+    "Canonical Reference",
+    "Claim / Delivery Scope",
+    "Relevant SUT Fingerprint",
+    "Window Stability",
+    "Missing / Closeout Gap",
+    "Rerun Of / Supersedes",
+    "Next Owner Action",
+    "Execution Boundary",
+)
+RELEASE_EVIDENCE_CLAIM_TYPES = {
+    "runtime",
+    "cache",
+    "release",
+    "uat",
+    "marketplace",
+    "cache_refresh",
+    "not_applicable",
+}
+RELEASE_EVIDENCE_STATUSES = {"verified", "unverified", "not_applicable"}
+RELEASE_REFRESH_METHODS = {
+    "refresh_step",
+    "source_equivalence",
+    "not_run",
+    "not_applicable",
+}
+RELEASE_RUN_SCOPES = {"targeted", "full", "not_run", "not_applicable"}
 
 
 def _field_value(text, field):
@@ -169,6 +206,14 @@ def _field_values(text, field):
 
 def _exact_token(value):
     return str(value or "").lower().strip("` ")
+
+
+def _pipe_tokens(value):
+    return [
+        part.strip().lower()
+        for part in str(value or "").split("|")
+        if part.strip()
+    ]
 
 
 def _section_block(text, heading):
@@ -194,6 +239,65 @@ def _without_field_lines(text, fields):
             result,
         )
     return result
+
+
+def _release_evidence_claim_block(text):
+    raw_text = str(text or "")
+    pattern = re.compile(
+        r"(?ms)^[ \t]*```yaml[ \t]*\r?\n"
+        r"(?P<body>[ \t]*release_evidence_claim:[ \t]*\r?\n.*?)"
+        r"^[ \t]*```[ \t]*(?:\r?\n|$)"
+    )
+    matches = list(pattern.finditer(raw_text))
+    if len(matches) != 1:
+        return "", len(matches), (0, 0)
+    match = matches[0]
+    return match.group("body").strip(), 1, (match.start(), match.end())
+
+
+def _parse_release_evidence_claim(body):
+    pattern = re.compile(
+        r"release_evidence_claim:[ \t]*\r?\n"
+        r"[ ]{2}claim_type:[ \t]*(?P<claim_type>[^\r\n]+)\r?\n"
+        r"[ ]{2}claim:[ \t]*(?P<claim>[^\r\n]+)\r?\n"
+        r"[ ]{2}evidence_status:[ \t]*(?P<evidence_status>[^\r\n]+)\r?\n"
+        r"[ ]{2}installed_plugin_root:[ \t]*(?P<installed_plugin_root>[^\r\n]+)\r?\n"
+        r"[ ]{2}source_root:[ \t]*(?P<source_root>[^\r\n]+)\r?\n"
+        r"[ ]{2}cache_or_source_refresh:[ \t]*\r?\n"
+        r"[ ]{4}method:[ \t]*(?P<refresh_method>[^\r\n]+)\r?\n"
+        r"[ ]{4}evidence:[ \t]*(?P<refresh_evidence>[^\r\n]+)\r?\n"
+        r"[ ]{2}run_scope:[ \t]*(?P<run_scope>[^\r\n]+)\r?\n"
+        r"[ ]{2}commands_or_trials:[ \t]*(?P<commands_or_trials>[^\r\n]+)\r?\n"
+        r"[ ]{2}limitations:[ \t]*(?P<limitations>[^\r\n]+)"
+    )
+    match = pattern.fullmatch(str(body or "").strip())
+    return match.groupdict() if match else None
+
+
+def _yaml_scalar_token(value):
+    return str(value or "").strip().strip("`\"'").lower()
+
+
+def _yaml_inline_list(value):
+    raw_value = str(value or "").strip()
+    if not (raw_value.startswith("[") and raw_value.endswith("]")):
+        return None
+    inner = raw_value[1:-1].strip()
+    if not inner:
+        return []
+    items = inner.split(",")
+    if any(not item.strip() for item in items):
+        return None
+    return [_yaml_scalar_token(item) for item in items]
+
+
+def _without_release_evidence_claim(text):
+    raw_text = str(text or "")
+    _body, count, block_range = _release_evidence_claim_block(raw_text)
+    if count != 1:
+        return raw_text
+    start, end = block_range
+    return raw_text[:start] + raw_text[end:]
 
 
 def _has_immediate_probe_execution(text):
@@ -863,4 +967,260 @@ def checkpoint_before_risky_action_failures(text):
         failures.append(
             "Risky Action Checkpoint cannot claim execution while Action State is blocked"
         )
+    return failures
+
+
+def release_evidence_claim_failures(text, row=None):
+    failures = []
+    body, claim_count, _claim_range = _release_evidence_claim_block(text)
+    if claim_count != 1:
+        return ["release_evidence_claim must appear exactly once in a yaml block"]
+
+    values = _parse_release_evidence_claim(body)
+    if values is None:
+        return [
+            "release_evidence_claim must use the exact shared structured object with no extra fields"
+        ]
+
+    scalar_values = {
+        field: _yaml_scalar_token(value)
+        for field, value in values.items()
+        if field not in {"commands_or_trials", "limitations"}
+    }
+    commands_or_trials = _yaml_inline_list(values["commands_or_trials"])
+    limitations = _yaml_inline_list(values["limitations"])
+    if commands_or_trials is None:
+        failures.append("commands_or_trials must be an inline yaml list")
+    elif not commands_or_trials:
+        failures.append("commands_or_trials must name qualifying evidence")
+    if limitations is None:
+        failures.append("limitations must be an inline yaml list")
+
+    enum_fields = {
+        "claim_type": RELEASE_EVIDENCE_CLAIM_TYPES,
+        "evidence_status": RELEASE_EVIDENCE_STATUSES,
+        "refresh_method": RELEASE_REFRESH_METHODS,
+        "run_scope": RELEASE_RUN_SCOPES,
+    }
+    for field, allowed in enum_fields.items():
+        if scalar_values[field] not in allowed:
+            failures.append(f"release_evidence_claim {field} has an invalid token")
+
+    for field in (
+        "claim",
+        "installed_plugin_root",
+        "source_root",
+        "refresh_evidence",
+    ):
+        if not scalar_values[field]:
+            failures.append(f"release_evidence_claim {field} must not be empty")
+
+    if scalar_values["evidence_status"] == "verified":
+        if scalar_values["source_root"] in {"unverified", "not_run", "not_applicable"}:
+            failures.append("verified release_evidence_claim must name a source_root")
+        if scalar_values["run_scope"] in {"not_run", "not_applicable"}:
+            failures.append("verified release_evidence_claim must name a run_scope")
+
+    row = row or {}
+    expected_scalars = {
+        "claim_type": "release_expected_claim_type",
+        "claim": "release_expected_claim",
+        "evidence_status": "release_expected_evidence_status",
+        "installed_plugin_root": "release_expected_installed_plugin_root",
+        "source_root": "release_expected_source_root",
+        "refresh_method": "release_expected_refresh_method",
+        "refresh_evidence": "release_expected_refresh_evidence",
+        "run_scope": "release_expected_run_scope",
+    }
+    for output_field, row_field in expected_scalars.items():
+        expected = _exact_token(row.get(row_field))
+        actual = scalar_values[output_field]
+        if expected and actual != expected:
+            failures.append(
+                f"release_evidence_claim {output_field} must be {expected}, not {actual}"
+            )
+
+    expected_lists = {
+        "commands_or_trials": (
+            "release_expected_commands_or_trials",
+            commands_or_trials,
+        ),
+        "limitations": ("release_expected_limitations", limitations),
+    }
+    for output_field, (row_field, actual) in expected_lists.items():
+        expected_raw = _exact_token(row.get(row_field))
+        if not expected_raw or actual is None:
+            continue
+        expected = [] if expected_raw in {"none", "[]"} else _pipe_tokens(expected_raw)
+        if actual != expected:
+            failures.append(
+                f"release_evidence_claim {output_field} must be {expected}, not {actual}"
+            )
+    return failures
+
+
+def uat_evidence_window_failures(text, row=None):
+    failures = []
+    raw_text = _without_release_evidence_claim(text)
+    window, window_count, window_range = _section_block(
+        raw_text, "UAT Evidence Window"
+    )
+    if window_count != 1:
+        failures.append("UAT Evidence Window must appear exactly once")
+
+    values = {
+        field: _field_values(window, field) for field in UAT_EVIDENCE_WINDOW_FIELDS
+    }
+    for field, field_values in values.items():
+        if len(field_values) != 1:
+            failures.append(
+                f"{field} must appear exactly once in UAT Evidence Window"
+            )
+        elif not field_values[0].strip():
+            failures.append(f"{field} must not be empty")
+        if len(_field_values(raw_text, field)) != 1:
+            failures.append(f"{field} must appear only inside UAT Evidence Window")
+    if window_count == 1 and _without_field_lines(
+        window, UAT_EVIDENCE_WINDOW_FIELDS
+    ).strip():
+        failures.append("UAT Evidence Window must contain only structured fields")
+
+    if failures:
+        return failures
+
+    row = row or {}
+    expected_fields = {
+        "Claim / Delivery Scope": "uat_expected_claim_scope",
+        "Relevant SUT Fingerprint": "uat_expected_fingerprint",
+        "Preconditions": "uat_expected_preconditions",
+        "Window Stability": "uat_expected_window_stability",
+        "Coverage Basis": "uat_expected_coverage_basis",
+        "Result / Missing": "uat_expected_result_missing",
+        "Rerun Of / Supersedes": "uat_expected_rerun_supersedes",
+    }
+    for output_field, row_field in expected_fields.items():
+        expected = _exact_token(row.get(row_field))
+        actual = _exact_token(values[output_field][0])
+        if expected and actual != expected:
+            failures.append(f"{output_field} must be {expected}, not {actual}")
+
+    start, end = window_range
+    outside_window = raw_text[:start] + raw_text[end:]
+    scope, scope_count, scope_range = _section_block(
+        outside_window, "Verification Scope"
+    )
+    if scope_count != 1:
+        failures.append(
+            "Verification Scope must appear exactly once with UAT Evidence Window"
+        )
+        return failures
+    scope_values = {
+        field: _field_values(scope, field)
+        for field in UAT_EVIDENCE_WINDOW_SCOPE_FIELDS
+    }
+    for field, field_values in scope_values.items():
+        if len(field_values) != 1 or not field_values[0].strip():
+            failures.append(
+                f"{field} must appear exactly once and be non-empty in Verification Scope"
+            )
+    if _without_field_lines(scope, UAT_EVIDENCE_WINDOW_SCOPE_FIELDS).strip():
+        failures.append("Verification Scope must contain only structured fields")
+    scope_start, scope_end = scope_range
+    if (outside_window[:scope_start] + outside_window[scope_end:]).strip():
+        failures.append(
+            "UAT evidence-window eval output must contain only Verification Scope, UAT Evidence Window, and release_evidence_claim"
+        )
+    if failures:
+        return failures
+
+    expected_scope_fields = {
+        "Claim": "uat_expected_scope_claim",
+        "Covered": "uat_expected_scope_covered",
+        "Missing": "uat_expected_scope_missing",
+        "Verdict": "uat_expected_scope_verdict",
+    }
+    for output_field, row_field in expected_scope_fields.items():
+        expected = _exact_token(row.get(row_field))
+        actual = _exact_token(scope_values[output_field][0])
+        if expected and actual != expected:
+            failures.append(
+                f"Verification Scope {output_field} must be {expected}, not {actual}"
+            )
+    return failures
+
+
+def uat_evidence_window_absence_failures(text):
+    _window, window_count, _window_range = _section_block(
+        text, "UAT Evidence Window"
+    )
+    variant_heading = bool(
+        re.search(
+            r"(?im)^[ \t]*(?:#{1,6}[ \t]*)?(?:\*\*)?UAT[ \t-]+Evidence[ \t-]+Window\b[^\r\n]*$",
+            str(text or ""),
+        )
+    )
+    orphan_fields = any(
+        _field_values(text, field) for field in UAT_EVIDENCE_WINDOW_FIELDS
+    )
+    if window_count or variant_heading or orphan_fields:
+        return [
+            "UAT Evidence Window heading or fields are forbidden for this bounded current-behavior observation"
+        ]
+    return []
+
+
+def uat_handoff_reference_failures(text, row=None):
+    failures = []
+    raw_text = _without_release_evidence_claim(text)
+    handoff, handoff_count, _handoff_range = _section_block(
+        raw_text, "UAT Evidence-Window Continuation"
+    )
+    if handoff_count != 1:
+        failures.append("UAT Evidence-Window Continuation must appear exactly once")
+
+    values = {
+        field: _field_values(handoff, field) for field in UAT_HANDOFF_REFERENCE_FIELDS
+    }
+    for field, field_values in values.items():
+        if len(field_values) != 1:
+            failures.append(
+                f"{field} must appear exactly once in UAT Evidence-Window Continuation"
+            )
+        elif not field_values[0].strip():
+            failures.append(f"{field} must not be empty")
+        if len(_field_values(raw_text, field)) != 1:
+            failures.append(
+                f"{field} must appear only inside UAT Evidence-Window Continuation"
+            )
+    if handoff_count == 1 and _without_field_lines(
+        handoff, UAT_HANDOFF_REFERENCE_FIELDS
+    ).strip():
+        failures.append(
+            "UAT Evidence-Window Continuation must contain only structured fields"
+        )
+    if handoff_count == 1:
+        start, end = _handoff_range
+        if (raw_text[:start] + raw_text[end:]).strip():
+            failures.append(
+                "UAT handoff eval output must contain only UAT Evidence-Window Continuation and release_evidence_claim"
+            )
+    if failures:
+        return failures
+
+    row = row or {}
+    expected_fields = {
+        "Canonical Reference": "uat_handoff_expected_canonical_reference",
+        "Claim / Delivery Scope": "uat_handoff_expected_claim_scope",
+        "Relevant SUT Fingerprint": "uat_handoff_expected_fingerprint",
+        "Window Stability": "uat_handoff_expected_window_stability",
+        "Missing / Closeout Gap": "uat_handoff_expected_gap",
+        "Rerun Of / Supersedes": "uat_handoff_expected_rerun_supersedes",
+        "Next Owner Action": "uat_handoff_expected_next_owner_action",
+        "Execution Boundary": "uat_handoff_expected_execution_boundary",
+    }
+    for output_field, row_field in expected_fields.items():
+        expected = _exact_token(row.get(row_field))
+        actual = _exact_token(values[output_field][0])
+        if expected and actual != expected:
+            failures.append(f"{output_field} must be {expected}, not {actual}")
     return failures

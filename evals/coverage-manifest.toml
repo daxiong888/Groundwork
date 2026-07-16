@@ -150,6 +150,8 @@ positives = [
   "evals/prompts/verify.csv::verify-001",
   "evals/prompts/verify.csv::verify-002",
   "evals/prompts/verify.csv::verify-003",
+  "evals/prompts/uat-evidence-window.csv::uat-window-001",
+  "evals/prompts/uat-evidence-window.csv::uat-window-004",
 ]
 route_negatives = [
   "evals/prompts/verify.csv::verify-004",
@@ -161,8 +163,11 @@ hard_negatives = [
   "evals/prompts/routing-reliability.csv::rr-016",
   "evals/prompts/verify.csv::verify-017#hard:runtime_evidence_boundary",
   "evals/prompts/verify.csv::verify-022#hard:runtime_evidence_boundary",
+  "evals/prompts/uat-evidence-window.csv::uat-window-002#hard:runtime_evidence_boundary",
+  "evals/prompts/uat-evidence-window.csv::uat-window-003#hard:runtime_evidence_boundary",
+  "evals/prompts/uat-evidence-window.csv::uat-window-005#hard:runtime_evidence_boundary",
 ]
-default_suite_coverage = ["routing-reliability.csv"]
+default_suite_coverage = ["routing-reliability.csv", "uat-evidence-window.csv"]
 targeted_only_coverage = ["verify.csv"]
 gaps = []
 
@@ -171,6 +176,7 @@ positives = [
   "evals/prompts/handoff.csv::handoff-001",
   "evals/prompts/handoff.csv::handoff-002",
   "evals/prompts/handoff.csv::handoff-003",
+  "evals/prompts/uat-evidence-window.csv::uat-window-007",
 ]
 route_negatives = [
   "evals/prompts/handoff.csv::handoff-004",
@@ -183,7 +189,7 @@ hard_negatives = [
   "evals/prompts/handoff.csv::handoff-014#hard:executable_next_action",
   "evals/prompts/handoff.csv::handoff-018#hard:runtime_evidence_boundary",
 ]
-default_suite_coverage = ["routing-reliability.csv", "trace-first-verify-review.csv"]
+default_suite_coverage = ["routing-reliability.csv", "trace-first-verify-review.csv", "uat-evidence-window.csv"]
 targeted_only_coverage = ["handoff.csv"]
 gaps = []
 

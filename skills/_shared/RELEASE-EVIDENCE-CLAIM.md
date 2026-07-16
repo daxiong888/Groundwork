@@ -27,6 +27,23 @@ release_evidence_claim:
   limitations: []
 ```
 
+## Conditional UAT Evidence Window
+
+After the required `release_evidence_claim`, add this conditional block when UAT behavior is attributed to a fix/artifact/deployed version, the environment can change, the run crosses sessions, or a finding is fixed, redeployed, and rerun:
+
+```text
+UAT Evidence Window
+- Claim / Delivery Scope:
+- Relevant SUT Fingerprint:
+- Preconditions:
+- Window Stability:
+- Coverage Basis:
+- Result / Missing:
+- Rerun Of / Supersedes:
+```
+
+Bind only the causally relevant SUT identities: scope comes from declared delivery scope (plans/diffs are inputs, not complete truth); fingerprint records expected/observed identity or `unverified`; preconditions are claim-relevant gates; stability is `stable`, `changed`, or `unverified`; coverage names inputs and exclusions; result distinguishes `pass`, `partial`, `fail`, `blocked`, and `observed_only`; rerun links the original check and superseded window. Partition or invalidate evidence after an identity change, and use a new fingerprint/window after redeploy. Omit the block for a one-shot current behavior observation already bound by ordinary scope/UI/runtime context with no broader version attribution, redeploy/rerun, mutable-window risk, or continuation need. The block binds evidence; it is not deployment, runtime, browser, UAT, or release evidence by itself.
+
 Rules:
 
 - Documentation, schema, fixture, PRD, issue-pack, implementation summary, handoff, wiki, or diff-only evidence must set runtime, cache, release, UAT, marketplace, and cache-refresh evidence to `unverified` or `not_applicable`.

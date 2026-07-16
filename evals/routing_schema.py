@@ -68,6 +68,7 @@ TRACE_READY_SUITES = {
     "routing-reliability.csv",
     "routing-blind.csv",
     "trace-first-verify-review.csv",
+    "uat-evidence-window.csv",
     "clean-review-fanout.csv",
     "zh-trigger-parity.csv",
 }
@@ -158,6 +159,10 @@ OUTPUT_CONTRACT_IMPLEMENTED_TOKENS = {
     "trajectory_signal",
     "qa_fix_qa",
     "qa_gap_closure_gate",
+    "release_evidence_claim",
+    "uat_evidence_window",
+    "uat_evidence_window_forbidden",
+    "uat_handoff_reference",
     "prototype_iteration_checkpoint",
     "prototype_no_delta_stop",
     "prototype_one_shot",
@@ -175,6 +180,43 @@ OUTPUT_CONTRACT_FUTURE_TOKENS = {
     "handoff_compact_reference",
     "route_failure_feedback",
 }
+UAT_EVIDENCE_WINDOW_EXPECTATION_FIELDS = (
+    "uat_expected_claim_scope",
+    "uat_expected_fingerprint",
+    "uat_expected_preconditions",
+    "uat_expected_window_stability",
+    "uat_expected_coverage_basis",
+    "uat_expected_result_missing",
+    "uat_expected_rerun_supersedes",
+)
+UAT_EVIDENCE_WINDOW_SCOPE_EXPECTATION_FIELDS = (
+    "uat_expected_scope_claim",
+    "uat_expected_scope_covered",
+    "uat_expected_scope_missing",
+    "uat_expected_scope_verdict",
+)
+RELEASE_EVIDENCE_CLAIM_EXPECTATION_FIELDS = (
+    "release_expected_claim_type",
+    "release_expected_claim",
+    "release_expected_evidence_status",
+    "release_expected_installed_plugin_root",
+    "release_expected_source_root",
+    "release_expected_refresh_method",
+    "release_expected_refresh_evidence",
+    "release_expected_run_scope",
+    "release_expected_commands_or_trials",
+    "release_expected_limitations",
+)
+UAT_HANDOFF_REFERENCE_EXPECTATION_FIELDS = (
+    "uat_handoff_expected_canonical_reference",
+    "uat_handoff_expected_claim_scope",
+    "uat_handoff_expected_fingerprint",
+    "uat_handoff_expected_window_stability",
+    "uat_handoff_expected_gap",
+    "uat_handoff_expected_rerun_supersedes",
+    "uat_handoff_expected_next_owner_action",
+    "uat_handoff_expected_execution_boundary",
+)
 EVIDENCE_REQUIRED_IMPLEMENTED_TOKENS = {
     "none",
     "no_file_changes",
@@ -321,6 +363,77 @@ def measurement_tokens_for_row(row, field, implemented, future):
     return tokens, future_tokens
 
 
+def require_uat_evidence_window_expectations(row, output_contract):
+    if "uat_evidence_window" not in output_contract:
+        return
+    if "verify_scope" not in output_contract:
+        raise ValueError(
+            f"{row_location(row)} uat_evidence_window requires verify_scope"
+        )
+    if "release_evidence_claim" not in output_contract:
+        raise ValueError(
+            f"{row_location(row)} uat_evidence_window requires release_evidence_claim"
+        )
+    required = list(UAT_EVIDENCE_WINDOW_EXPECTATION_FIELDS)
+    required.extend(UAT_EVIDENCE_WINDOW_SCOPE_EXPECTATION_FIELDS)
+    missing = [field for field in required if not str(row.get(field) or "").strip()]
+    if missing:
+        raise ValueError(
+            f"{row_location(row)} uat_evidence_window missing required oracle fields: "
+            + ", ".join(missing)
+        )
+
+
+def require_release_evidence_claim_expectations(row, output_contract):
+    if "release_evidence_claim" not in output_contract:
+        return
+    missing = [
+        field
+        for field in RELEASE_EVIDENCE_CLAIM_EXPECTATION_FIELDS
+        if not str(row.get(field) or "").strip()
+    ]
+    if missing:
+        raise ValueError(
+            f"{row_location(row)} release_evidence_claim missing required oracle fields: "
+            + ", ".join(missing)
+        )
+
+
+def require_uat_evidence_window_forbidden_contract(row, output_contract):
+    if "uat_evidence_window_forbidden" not in output_contract:
+        return
+    required = {"verify_scope", "release_evidence_claim"}
+    missing = sorted(required - set(output_contract))
+    if missing:
+        raise ValueError(
+            f"{row_location(row)} uat_evidence_window_forbidden requires "
+            + ", ".join(missing)
+        )
+    if "uat_evidence_window" in output_contract:
+        raise ValueError(
+            f"{row_location(row)} uat_evidence_window_forbidden conflicts with uat_evidence_window"
+        )
+
+
+def require_uat_handoff_reference_expectations(row, output_contract):
+    if "uat_handoff_reference" not in output_contract:
+        return
+    if "release_evidence_claim" not in output_contract:
+        raise ValueError(
+            f"{row_location(row)} uat_handoff_reference requires release_evidence_claim"
+        )
+    missing = [
+        field
+        for field in UAT_HANDOFF_REFERENCE_EXPECTATION_FIELDS
+        if not str(row.get(field) or "").strip()
+    ]
+    if missing:
+        raise ValueError(
+            f"{row_location(row)} uat_handoff_reference missing required oracle fields: "
+            + ", ".join(missing)
+        )
+
+
 def route_expectations_for_row(row):
     expected_best = expected_skill_for_row(row)
     acceptable_routes = parse_pipe_list(
@@ -443,6 +556,10 @@ def routing_schema_for_row(row):
         OUTPUT_CONTRACT_IMPLEMENTED_TOKENS,
         OUTPUT_CONTRACT_FUTURE_TOKENS,
     )
+    require_release_evidence_claim_expectations(row, output_contract)
+    require_uat_evidence_window_expectations(row, output_contract)
+    require_uat_evidence_window_forbidden_contract(row, output_contract)
+    require_uat_handoff_reference_expectations(row, output_contract)
     evidence_required, future_evidence_required = measurement_tokens_for_row(
         row,
         "evidence_required",

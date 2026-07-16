@@ -36,3 +36,4 @@ Rules:
 - If no UI tool is available, mark the visual or interaction claim `unverified`.
 - State why a tool was chosen when switching from Browser to DevTools, extension tooling, Playwright, or Puppeteer.
 - Do not bypass security or certificate interstitials as a verification shortcut.
+- When the UI observation is used to attribute UAT behavior to a fix, artifact, deployed version, mutable shared environment, or rerun, follow the UI evidence with the conditional `UAT Evidence Window` from `skills/_shared/RELEASE-EVIDENCE-CLAIM.md` or cite its canonical reference. Do not duplicate the full window inside every UI check.

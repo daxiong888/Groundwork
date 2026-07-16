@@ -33,6 +33,10 @@ When a P1, public API, migration, schema, security, privacy, auth, permissions, 
 
 Never describe self-check evidence as clean review. A prior clean review becomes stale when material files changed after it.
 
+## UAT Evidence-Window Continuation
+
+For version-attributed or mutable-environment UAT continuation, cite the canonical UAT evidence-window reference and preserve only: canonical reference, claim/delivery scope, relevant SUT fingerprint, window stability, missing/closeout gap, rerun/supersedes link, next owner action, and `Execution Boundary: reference_only|groundwork_non_executor`. Include the shared `release_evidence_claim`; do not copy reports, transcripts, DB rows, or logs. Missing canonical writeback is a continuation/closeout gap with an owner; it does not invalidate separately qualifying runtime/browser observations. Never claim that Groundwork performed deployment, rerun, or writeback.
+
 ## Compactness Rule
 
 Small, low-risk continuation notes should remain compact. Do not force a full separation package when no separation threshold applies and a concise handoff can safely identify source truth, current state, gaps, and next action.

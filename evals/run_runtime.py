@@ -34,6 +34,10 @@ try:
         spec_no_delta_stop_failures,
         spec_single_question_failures,
         spec_writeback_failures,
+        release_evidence_claim_failures,
+        uat_evidence_window_absence_failures,
+        uat_evidence_window_failures,
+        uat_handoff_reference_failures,
     )
     from checks.verify_checks import (
         ARTIFACT_HEADER_FIELDS,
@@ -64,6 +68,10 @@ except ImportError:  # pragma: no cover - package import path
         spec_no_delta_stop_failures,
         spec_single_question_failures,
         spec_writeback_failures,
+        release_evidence_claim_failures,
+        uat_evidence_window_absence_failures,
+        uat_evidence_window_failures,
+        uat_handoff_reference_failures,
     )
     from evals.checks.verify_checks import (
         ARTIFACT_HEADER_FIELDS,
@@ -1628,6 +1636,50 @@ def output_contract_verdict(row, schema, actual, final_response):
                     "output_contract_failure",
                     "requirement_state_gate",
                     gate_failure,
+                )
+        elif token == "release_evidence_claim":
+            for release_claim_failure in release_evidence_claim_failures(
+                final_response, row
+            ):
+                append_failure(
+                    failures,
+                    notes,
+                    "output_contract_failure",
+                    "skill_output_contract",
+                    release_claim_failure,
+                )
+        elif token == "uat_evidence_window":
+            for uat_window_failure in uat_evidence_window_failures(
+                final_response, row
+            ):
+                append_failure(
+                    failures,
+                    notes,
+                    "output_contract_failure",
+                    "skill_output_contract",
+                    uat_window_failure,
+                )
+        elif token == "uat_evidence_window_forbidden":
+            for uat_window_failure in uat_evidence_window_absence_failures(
+                final_response
+            ):
+                append_failure(
+                    failures,
+                    notes,
+                    "output_contract_failure",
+                    "skill_output_contract",
+                    uat_window_failure,
+                )
+        elif token == "uat_handoff_reference":
+            for uat_handoff_failure in uat_handoff_reference_failures(
+                final_response, row
+            ):
+                append_failure(
+                    failures,
+                    notes,
+                    "output_contract_failure",
+                    "skill_output_contract",
+                    uat_handoff_failure,
                 )
         elif token in {
             "prototype_iteration_checkpoint",

@@ -162,6 +162,10 @@ Current implemented `output_contract` tokens:
 - `trajectory_signal`
 - `qa_fix_qa`
 - `qa_gap_closure_gate`
+- `release_evidence_claim`
+- `uat_evidence_window`
+- `uat_evidence_window_forbidden`
+- `uat_handoff_reference`
 - `prototype_iteration_checkpoint`
 - `prototype_no_delta_stop`
 - `prototype_one_shot`
@@ -176,6 +180,14 @@ Current implemented `output_contract` tokens:
 - `dispatch_complete_or_split`
 
 `spec_single_question` mechanically checks exactly one question plus a non-empty `Impact / Next route` field. It does not infer semantic materiality from question keywords; the row's expected behavior and the shared question-quality gate retain that judgment.
+
+`release_evidence_claim` mechanically checks the exact shared evidence object, row-specific claim/status/root/refresh/run-scope tokens, named commands or trials, and limitations. UAT evidence-window and compact UAT-handoff rows require this token so a machine-checked output cannot omit the stronger shared claim inventory.
+
+`uat_evidence_window` mechanically checks the conditional UAT binding block and exact scope oracle for declared delivery scope, relevant SUT fingerprint, preconditions, window stability, coverage basis, result/missing boundary, and rerun/supersedes link. It accepts only the structured scope, conditional window, and required `release_evidence_claim`; it does not prove that a deployment identity, browser run, runtime observation, UAT pass, artifact writeback, or release action actually occurred.
+
+`uat_evidence_window_forbidden` requires `verify_scope` plus `release_evidence_claim`, conflicts with `uat_evidence_window`, and mechanically rejects exact, annotated, or separator-variant window headings plus orphan window fields for a bounded immutable/current-behavior observation. This prevents partial or malformed blocks from bypassing conditionality through a missing field marker.
+
+`uat_handoff_reference` mechanically checks the compact canonical reference, scope, fingerprint, stability, closeout gap, rerun/supersedes link, next owner action, and non-executor boundary. It does not perform or prove deployment, rerun, browser/DB work, canonical writeback, or closeout.
 
 Current allowed future `output_contract` tokens:
 

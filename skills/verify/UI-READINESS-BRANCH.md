@@ -16,6 +16,7 @@ Safe to Share / Redaction Notes: Safe to share as-is; contains no secrets, crede
 - Apply `EB-VISUAL-001` from `skills/_shared/EVIDENCE-BOUNDARY.md` before using visual packets, screenshots, generated images, HTML packets, or prototype output.
 - Load `UI-TOOL-ROUTER.md` for tool choice and `UI Evidence` shape.
 - Load `skills/_shared/VISUAL-HANDOFF-PACKET.md` when the claim depends on a visual handoff packet, HTML packet, screenshot set, generated image, or prototype output.
+- Load the conditional `UAT Evidence Window` in `skills/_shared/RELEASE-EVIDENCE-CLAIM.md` when UI observations are attributed to a fix, artifact, deployed version, mutable shared environment, or redeploy/rerun chain.
 
 ## Branch Rules
 
@@ -25,3 +26,4 @@ Safe to Share / Redaction Notes: Safe to share as-is; contains no secrets, crede
 - Do not treat mock fields from a visual packet or prototype as confirmed API/schema/source truth; classify them as `mock / illustrative / not backend contract` or `proposed contract hypothesis`.
 - If the chosen UI tool does not cover the claim, mark the uncovered claim `unverified`.
 - Do not claim browser/runtime/UAT/release evidence from a visual packet unless separately named qualifying evidence is inspected.
+- When UI evidence supports a version-attributed UAT claim, bind it to the matching UAT evidence window or its canonical reference. If the relevant SUT fingerprint changes, partition or invalidate affected UI observations instead of combining them into one pass.
