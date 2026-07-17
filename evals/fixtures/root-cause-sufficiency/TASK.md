@@ -17,7 +17,7 @@ Phone matching must treat spaces and hyphens as formatting in both list filterin
 Run:
 
 ```bash
-node test/taskSearch.test.mjs
+node --test test/taskSearch.test.mjs
 ```
 
 Before the fix, the formatted-phone assertions fail in both call paths. After the fix, all assertions pass.

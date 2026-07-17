@@ -67,19 +67,17 @@ def routing_row(**kwargs):
     return data
 
 
-def command_event(command, *, output="ok", exit_code=0):
-    return json.dumps(
-        {
-            "type": "item.completed",
-            "item": {
-                "type": "command_execution",
-                "command": command,
-                "aggregated_output": output,
-                "exit_code": exit_code,
-                "status": "completed" if exit_code == 0 else "failed",
-            },
-        }
-    )
+def command_event(command, *, output="ok", exit_code=0, cwd=None):
+    item = {
+        "type": "command_execution",
+        "command": command,
+        "aggregated_output": output,
+        "exit_code": exit_code,
+        "status": "completed" if exit_code == 0 else "failed",
+    }
+    if cwd is not None:
+        item["cwd"] = str(cwd)
+    return json.dumps({"type": "item.completed", "item": item})
 
 
 def tool_event(server, tool, result, **arguments):
@@ -186,15 +184,26 @@ class RuntimeSchedulerTests(unittest.TestCase):
         self._trusted_bin = tempfile.TemporaryDirectory()
         self.addCleanup(self._trusted_bin.cleanup)
         trusted_root = Path(self._trusted_bin.name)
+        location_patch = mock.patch.object(
+            run_runtime,
+            "_proof_executable_location_is_safe",
+            return_value=True,
+        )
+        location_patch.start()
+        self.addCleanup(location_patch.stop)
         executable_names = set(
             run_runtime.PROOF_EXECUTABLE_BASELINES
         ) | {"python3"}
         self._trusted_executables = {}
+        self._trusted_identities = {}
         for executable in executable_names:
             path = trusted_root / executable
             path.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
             path.chmod(0o755)
             self._trusted_executables[executable] = path.resolve()
+            self._trusted_identities[executable] = (
+                run_runtime._proof_executable_identity(path)
+            )
 
         baseline_patch = mock.patch.dict(
             run_runtime.PROOF_EXECUTABLE_BASELINES,
@@ -207,28 +216,60 @@ class RuntimeSchedulerTests(unittest.TestCase):
         baseline_patch.start()
         self.addCleanup(baseline_patch.stop)
 
-        python_patch = mock.patch.object(
+        identity_patch = mock.patch.dict(
+            run_runtime.PROOF_EXECUTABLE_IDENTITIES,
+            {
+                executable: self._trusted_identities[executable]
+                for executable in run_runtime.PROOF_EXECUTABLE_IDENTITIES
+            },
+            clear=False,
+        )
+        identity_patch.start()
+        self.addCleanup(identity_patch.stop)
+
+        launcher_patch = mock.patch.dict(
+            run_runtime.PROOF_EXECUTABLE_LAUNCHERS,
+            {
+                executable: self._trusted_executables[executable]
+                for executable in run_runtime.PROOF_EXECUTABLE_LAUNCHERS
+            },
+            clear=False,
+        )
+        launcher_patch.start()
+        self.addCleanup(launcher_patch.stop)
+
+        python_baseline_patch = mock.patch.object(
             run_runtime,
             "PYTHON_EXECUTABLE_BASELINE",
             self._trusted_executables["python3"],
         )
-        python_patch.start()
-        self.addCleanup(python_patch.stop)
+        python_baseline_patch.start()
+        self.addCleanup(python_baseline_patch.stop)
 
-        def trusted_which(executable):
-            name = Path(str(executable)).name
-            if name.startswith("python"):
-                return str(self._trusted_executables["python3"])
-            path = self._trusted_executables.get(name)
-            return str(path) if path else None
-
-        which_patch = mock.patch.object(
-            run_runtime.shutil,
-            "which",
-            side_effect=trusted_which,
+        python_identity_patch = mock.patch.object(
+            run_runtime,
+            "PYTHON_EXECUTABLE_IDENTITY",
+            self._trusted_identities["python3"],
         )
-        which_patch.start()
-        self.addCleanup(which_patch.stop)
+        python_identity_patch.start()
+        self.addCleanup(python_identity_patch.stop)
+
+        python_identities_patch = mock.patch.dict(
+            run_runtime.PYTHON_EXECUTABLE_IDENTITIES,
+            {"python3": self._trusted_identities["python3"]},
+            clear=True,
+        )
+        python_identities_patch.start()
+        self.addCleanup(python_identities_patch.stop)
+
+        proof_path_patch = mock.patch.object(
+            run_runtime,
+            "PROOF_EXECUTABLE_PATH",
+            str(trusted_root),
+        )
+        proof_path_patch.start()
+        self.addCleanup(proof_path_patch.stop)
+        run_runtime._PROOF_EXECUTABLE_VERIFICATION_CACHE.clear()
 
     def copy_root_cause_fixture(self, target_root):
         source = Path(run_runtime.REPO) / "evals" / "fixtures" / "root-cause-sufficiency"
@@ -236,7 +277,12 @@ class RuntimeSchedulerTests(unittest.TestCase):
         shutil.copytree(source, workspace)
         return workspace
 
-    def run_mock_implement_root_cause_case(self, *, apply_fix):
+    def run_mock_implement_root_cause_case(
+        self,
+        *,
+        apply_fix,
+        return_environment=False,
+    ):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             workspace = self.copy_root_cause_fixture(root)
@@ -251,13 +297,16 @@ class RuntimeSchedulerTests(unittest.TestCase):
             old_last = run_runtime.LAST
             old_cases = run_runtime.CASES
             real_subprocess_run = subprocess.run
+            captured_codex_environment = None
             try:
                 run_runtime.LOGS = logs
                 run_runtime.LAST = last
                 run_runtime.CASES = cases
 
                 def fake_subprocess_run(command, **kwargs):
+                    nonlocal captured_codex_environment
                     if command == ["codex-mock"]:
+                        captured_codex_environment = kwargs.get("env")
                         if apply_fix:
                             source_path = workspace / "src" / "taskSearch.mjs"
                             source = source_path.read_text(encoding="utf-8")
@@ -275,7 +324,7 @@ class RuntimeSchedulerTests(unittest.TestCase):
                         (last / "implement-013.txt").write_text(
                             "Implementation Summary\n"
                             "Changed the shared normalizePhone seam.\n"
-                            "Verification: node test/taskSearch.test.mjs passed.\n",
+                            "Verification: node --test test/taskSearch.test.mjs passed.\n",
                             encoding="utf-8",
                         )
                         return subprocess.CompletedProcess(command, 0, stdout="mock codex output")
@@ -310,7 +359,10 @@ class RuntimeSchedulerTests(unittest.TestCase):
                     ),
                     mock.patch.object(run_runtime.subprocess, "run", side_effect=fake_subprocess_run),
                 ):
-                    return run_runtime.run_row(case, timeout_s=20)
+                    result = run_runtime.run_row(case, timeout_s=20)
+                    if return_environment:
+                        return result, captured_codex_environment
+                    return result
             finally:
                 run_runtime.LOGS = old_logs
                 run_runtime.LAST = old_last
@@ -478,7 +530,11 @@ class RuntimeSchedulerTests(unittest.TestCase):
                 bypass_cmd = run_runtime.codex_exec_command(root, "read-only", last_path, "prompt")
 
         self.assertNotIn("--dangerously-bypass-hook-trust", default_cmd)
-        self.assertEqual(bypass_cmd[0:2], ["codex", "--dangerously-bypass-hook-trust"])
+        self.assertEqual(Path(bypass_cmd[0]).name, "codex")
+        self.assertEqual(
+            bypass_cmd[1],
+            "--dangerously-bypass-hook-trust",
+        )
         self.assertIn("exec", bypass_cmd)
         self.assertIn("prompt", bypass_cmd)
 
@@ -671,6 +727,229 @@ normalizePhone(task.phone) === expected;
 
         self.assertEqual(result["verdict"], "pass", result["notes"])
         self.assertEqual(result["case_validation_errors"], [])
+
+    def test_run_row_sanitizes_inherited_proof_environment(self):
+        inherited = {
+            "BASH_ENV": "/tmp/groundwork-fake-bash-env",
+            "CARGO_TARGET_DIR": "/tmp/groundwork-fake-cargo-target",
+            "CC": "/tmp/groundwork-fake-cc",
+            "GIT_DIR": "/tmp/groundwork-fake-git-dir",
+            "GOCACHE": "/tmp/groundwork-fake-go-cache",
+            "GOFLAGS": "-mod=mod",
+            "GROUNDWORK_REPO": "/tmp/groundwork-fake-repo",
+            "JAVA_TOOL_OPTIONS": "-javaagent:/tmp/groundwork-fake.jar",
+            "NODE_OPTIONS": "--trace-warnings",
+            "NPM_CONFIG_CACHE": "/tmp/groundwork-fake-npm-cache",
+            "PYTEST_ADDOPTS": "-p attacker_plugin",
+            "PYTHONPATH": "/tmp/groundwork-fake-pythonpath",
+            "RUSTFLAGS": "-C linker=/tmp/groundwork-fake-linker",
+        }
+        control = {"GROUNDWORK_ROUTER_OBSERVABILITY": "1"}
+        with mock.patch.dict(
+            os.environ,
+            {**inherited, **control},
+            clear=False,
+        ):
+            result, child_environment = self.run_mock_implement_root_cause_case(
+                apply_fix=True,
+                return_environment=True,
+            )
+
+        self.assertIsNotNone(child_environment)
+        for key in inherited:
+            self.assertNotIn(key, child_environment)
+        self.assertEqual(
+            child_environment["GROUNDWORK_ROUTER_OBSERVABILITY"],
+            "1",
+        )
+        self.assertEqual(
+            child_environment["PATH"],
+            run_runtime.PROOF_EXECUTABLE_PATH,
+        )
+        self.assertEqual(
+            result["proof_execution_context"]["environment_policy"],
+            run_runtime.PROOF_ENVIRONMENT_POLICY_VERSION,
+        )
+        self.assertTrue(
+            set(inherited).issubset(
+                result["proof_execution_context"][
+                    "removed_environment_keys"
+                ]
+            )
+        )
+        self.assertEqual(
+            result["proof_execution_context"][
+                "retained_control_environment_keys"
+            ],
+            ["GROUNDWORK_ROUTER_OBSERVABILITY"],
+        )
+        self.assertRegex(
+            result["proof_execution_context"][
+                "retained_control_environment_sha256"
+            ],
+            r"^[0-9a-f]{64}$",
+        )
+        self.assertRegex(
+            result["proof_execution_context"][
+                "codex_control_environment_sha256"
+            ],
+            r"^[0-9a-f]{64}$",
+        )
+        self.assertEqual(
+            child_environment["HOME"],
+            str(run_runtime.PROOF_HOME.resolve(strict=False)),
+        )
+        self.assertEqual(
+            child_environment["GIT_CONFIG_GLOBAL"],
+            os.devnull,
+        )
+        self.assertEqual(
+            child_environment["PYTEST_DISABLE_PLUGIN_AUTOLOAD"],
+            "1",
+        )
+
+    def test_evaluator_owned_subprocesses_sanitize_inherited_environment(self):
+        completed = subprocess.CompletedProcess(
+            ["proof-command"],
+            0,
+            stdout="ok",
+        )
+        inherited = {
+            "GIT_DIR": "/tmp/groundwork-fake-git-dir",
+            "NODE_OPTIONS": "--require=/tmp/groundwork-fake-node.js",
+        }
+        with (
+            mock.patch.dict(os.environ, inherited, clear=False),
+            mock.patch.object(
+                run_runtime.subprocess,
+                "run",
+                return_value=completed,
+            ) as run,
+        ):
+            run_runtime.run_fixture_command(
+                run_runtime.REPO,
+                ["git", "status", "--short"],
+            )
+            run_runtime.run_static_gated_evaluator_check(
+                run_runtime.REPO,
+                ["node", "--test"],
+            )
+
+        self.assertEqual(run.call_count, 2)
+        for call in run.call_args_list:
+            child_environment = call.kwargs["env"]
+            for key in inherited:
+                self.assertNotIn(key, child_environment)
+            self.assertEqual(
+                child_environment["PATH"],
+                run_runtime.PROOF_EXECUTABLE_PATH,
+            )
+
+    def test_sanitized_environment_reaches_real_child_process(self):
+        inherited = {
+            "CC": "/tmp/groundwork-fake-cc",
+            "GOCACHE": "/tmp/groundwork-fake-go-cache",
+            "HOME": "/tmp/groundwork-fake-home",
+            "NODE_OPTIONS": "--require=/tmp/groundwork-fake-node.js",
+            "PYTHONPATH": "/tmp/groundwork-fake-pythonpath",
+            "XDG_CONFIG_HOME": "/tmp/groundwork-fake-xdg-config",
+        }
+        control = {"GROUNDWORK_ROUTER_OBSERVABILITY": "1"}
+        with mock.patch.dict(
+            os.environ,
+            {**inherited, **control},
+            clear=False,
+        ):
+            child_environment, _context = (
+                run_runtime.sanitized_codex_environment()
+            )
+            code = (
+                "import json, os\n"
+                "keys = ('CC', 'GOCACHE', 'NODE_OPTIONS', 'PYTHONPATH', "
+                "'GROUNDWORK_ROUTER_OBSERVABILITY', 'PATH', 'HOME', "
+                "'XDG_CONFIG_HOME', 'GIT_CONFIG_GLOBAL', "
+                "'PYTEST_DISABLE_PLUGIN_AUTOLOAD', 'CODEX_HOME')\n"
+                "print(json.dumps({key: os.environ.get(key) for key in keys}))\n"
+            )
+            proc = subprocess.run(
+                [sys.executable, "-I", "-c", code],
+                env=child_environment,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                check=False,
+            )
+
+        self.assertEqual(proc.returncode, 0, proc.stdout)
+        observed = json.loads(proc.stdout)
+        self.assertIsNone(observed["CC"])
+        self.assertIsNone(observed["GOCACHE"])
+        self.assertIsNone(observed["NODE_OPTIONS"])
+        self.assertIsNone(observed["PYTHONPATH"])
+        self.assertEqual(
+            observed["GROUNDWORK_ROUTER_OBSERVABILITY"],
+            "1",
+        )
+        self.assertEqual(observed["PATH"], run_runtime.PROOF_EXECUTABLE_PATH)
+        proof_home = run_runtime.PROOF_HOME.resolve(strict=False)
+        self.assertEqual(observed["HOME"], str(proof_home))
+        self.assertEqual(
+            observed["XDG_CONFIG_HOME"],
+            str(proof_home / ".config"),
+        )
+        self.assertEqual(observed["GIT_CONFIG_GLOBAL"], os.devnull)
+        self.assertEqual(observed["PYTEST_DISABLE_PLUGIN_AUTOLOAD"], "1")
+        self.assertNotEqual(
+            observed["CODEX_HOME"],
+            "/tmp/groundwork-fake-home/.codex",
+        )
+
+    def test_sanitized_environment_drops_invalid_explicit_codex_home(self):
+        for value in (
+            "relative-codex-home",
+            "/tmp/groundwork-attacker-codex-home",
+        ):
+            with self.subTest(codex_home=value):
+                child_environment, context = (
+                    run_runtime.sanitized_codex_environment(
+                        {"CODEX_HOME": value}
+                    )
+                )
+
+                self.assertNotIn("CODEX_HOME", child_environment)
+                self.assertIn(
+                    "CODEX_HOME",
+                    context["removed_environment_keys"],
+                )
+                self.assertEqual(
+                    context["codex_control_environment_keys"],
+                    [],
+                )
+
+    def test_runtime_path_state_rebinds_proof_home(self):
+        path_state = run_runtime.runtime_path_state()
+        with tempfile.TemporaryDirectory() as tmp:
+            run_root = Path(tmp) / "runtime"
+            try:
+                run_runtime.set_runtime_paths(run_root)
+                self.assertEqual(
+                    run_runtime.PROOF_HOME,
+                    run_root / "proof-home",
+                )
+                child_environment, _context = (
+                    run_runtime.sanitized_codex_environment({})
+                )
+                self.assertEqual(
+                    child_environment["HOME"],
+                    str((run_root / "proof-home").resolve(strict=False)),
+                )
+            finally:
+                run_runtime.restore_runtime_path_state(path_state)
+
+        self.assertEqual(
+            run_runtime.PROOF_HOME,
+            path_state["PROOF_HOME"],
+        )
 
     def test_router_observability_runtime_mode_defaults_to_disabled(self):
         with mock.patch.dict(os.environ, {}, clear=True):
@@ -2547,7 +2826,11 @@ normalizePhone(task.phone) === expected;
             0,
             [],
             [],
-            stdout=command_event("git status --short"),
+            stdout=command_event(
+                "git status --short",
+                cwd=run_runtime.REPO,
+            ),
+            case_workspace=run_runtime.REPO,
         )
 
         self.assertEqual(model["overall_verdict"], "pass")
@@ -3713,7 +3996,10 @@ normalizePhone(task.phone) === expected;
             rc=0,
             changes=[],
             lifecycle_errors=[],
-            stdout=command_event("python3 -m unittest tests.test_app"),
+            stdout=command_event(
+                "python3 -I -m unittest tests.test_app",
+                output="Ran 1 test in 0.001s\n\nOK",
+            ),
         )
         runtime = run_runtime.routing_verdict_model(
             routing_row(evidence_required="runtime_or_unverified"),
@@ -3978,28 +4264,28 @@ normalizePhone(task.phone) === expected;
             ("tests", "PATH=/tmp/fake pytest tests", "1 passed"),
             (
                 "tests",
-                "/tmp/fake/env python3 -m unittest tests.test_app",
+                "/tmp/fake/env python3 -I -m unittest tests.test_app",
                 "Ran 1 test in 0.001s\n\nOK",
             ),
             (
                 "tests",
-                "/tmp/fake/command python3 -m unittest tests.test_app",
+                "/tmp/fake/command python3 -I -m unittest tests.test_app",
                 "Ran 1 test in 0.001s\n\nOK",
             ),
             (
                 "tests",
                 "/tmp/fake/bash -lc "
-                "'python3 -m unittest tests.test_app'",
+                "'python3 -I -m unittest tests.test_app'",
                 "Ran 1 test in 0.001s\n\nOK",
             ),
             (
                 "tests",
-                "bash -c 'python3 -m unittest tests.test_app'",
+                "bash -c 'python3 -I -m unittest tests.test_app'",
                 "Ran 1 test in 0.001s\n\nOK",
             ),
             (
                 "tests",
-                "zsh -lc 'python3 -m unittest tests.test_app'",
+                "zsh -lc 'python3 -I -m unittest tests.test_app'",
                 "Ran 1 test in 0.001s\n\nOK",
             ),
             (
@@ -4009,7 +4295,7 @@ normalizePhone(task.phone) === expected;
             ),
             (
                 "tests",
-                "env -i python3 -m unittest tests.test_app",
+                "env -i python3 -I -m unittest tests.test_app",
                 "Ran 1 test in 0.001s\n\nOK",
             ),
             (
@@ -4049,22 +4335,22 @@ normalizePhone(task.phone) === expected;
             (
                 "tests",
                 "env --ignore-environment "
-                "python3 -m unittest tests.test_app",
+                "python3 -I -m unittest tests.test_app",
                 "Ran 1 test in 0.001s\n\nOK",
             ),
             (
                 "tests",
-                "env -u PATH python3 -m unittest tests.test_app",
+                "env -u PATH python3 -I -m unittest tests.test_app",
                 "Ran 1 test in 0.001s\n\nOK",
             ),
             (
                 "tests",
-                "env --unset=PATH python3 -m unittest tests.test_app",
+                "env --unset=PATH python3 -I -m unittest tests.test_app",
                 "Ran 1 test in 0.001s\n\nOK",
             ),
             (
                 "tests",
-                "env -uPATH python3 -m unittest tests.test_app",
+                "env -uPATH python3 -I -m unittest tests.test_app",
                 "Ran 1 test in 0.001s\n\nOK",
             ),
         ):
@@ -4081,10 +4367,10 @@ normalizePhone(task.phone) === expected;
                 )
 
         for command in (
-            "env FOO=bar python3 -m unittest tests.test_app",
-            "env -u FOO python3 -m unittest tests.test_app",
-            "command python3 -m unittest tests.test_app",
-            "nohup python3 -m unittest tests.test_app",
+            "env FOO=bar python3 -I -m unittest tests.test_app",
+            "env -u FOO python3 -I -m unittest tests.test_app",
+            "command python3 -I -m unittest tests.test_app",
+            "nohup python3 -I -m unittest tests.test_app",
         ):
             with self.subTest(trusted_wrapper=command):
                 self.assertTrue(
@@ -4109,6 +4395,125 @@ normalizePhone(task.phone) === expected;
         )
         self.assertEqual(git_status["evidence_verdict"], "fail")
         self.assertEqual(git_status["overall_verdict"], "fail")
+
+    def test_proof_baseline_rejects_same_path_replacement(self):
+        invocation = run_runtime.command_invocations("npm test")[0]
+        self.assertTrue(
+            run_runtime._proof_executable_is_trusted(invocation)
+        )
+
+        executable = self._trusted_executables["npm"]
+        executable.write_text(
+            "#!/bin/sh\nprintf '1 passed\\n'\n",
+            encoding="utf-8",
+        )
+        executable.chmod(0o755)
+
+        self.assertFalse(
+            run_runtime._proof_executable_is_trusted(invocation)
+        )
+
+    def test_proof_baseline_rejects_poisoned_startup_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            fake_bin = Path(tmp) / "fake-bin"
+            fake_bin.mkdir()
+            fake_executables = {}
+            for executable in ("codex", "node", "npm", "pytest"):
+                fake_path = fake_bin / executable
+                fake_path.write_text(
+                    "#!/bin/sh\nprintf '1 passed\\n'\n",
+                    encoding="utf-8",
+                )
+                fake_path.chmod(0o755)
+                fake_executables[executable] = fake_path
+            module_root = Path(run_runtime.REPO) / "evals"
+            code = (
+                "import json, pathlib, sys\n"
+                f"sys.path.insert(0, {str(module_root)!r})\n"
+                "import run_runtime\n"
+                "names = ('codex', 'node', 'npm', 'pytest')\n"
+                "values = {name: str(run_runtime.PROOF_EXECUTABLE_BASELINES.get(name) or '') for name in names}\n"
+                "print(json.dumps({'baselines': values}))\n"
+            )
+            environment = os.environ.copy()
+            environment["PATH"] = (
+                str(fake_bin)
+                + os.pathsep
+                + environment.get("PATH", "")
+            )
+            proc = subprocess.run(
+                [sys.executable, "-I", "-c", code],
+                cwd=run_runtime.REPO,
+                env=environment,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                check=False,
+            )
+
+        self.assertEqual(proc.returncode, 0, proc.stdout)
+        payload = json.loads(proc.stdout.splitlines()[-1])
+        for executable, fake_path in fake_executables.items():
+            with self.subTest(executable=executable):
+                self.assertNotEqual(
+                    Path(payload["baselines"][executable]).resolve(
+                        strict=False
+                    ),
+                    fake_path.resolve(),
+                )
+
+    def test_proof_baseline_rejects_owner_writable_non_temp_path(self):
+        with tempfile.TemporaryDirectory(dir=run_runtime.REPO) as tmp:
+            fake_bin = Path(tmp) / "fake-bin"
+            fake_bin.mkdir()
+            fake_executables = {}
+            for executable in ("codex", "node"):
+                fake_path = fake_bin / executable
+                fake_path.write_text(
+                    "#!/bin/sh\nprintf '1 passed\\n'\n",
+                    encoding="utf-8",
+                )
+                fake_path.chmod(0o755)
+                fake_executables[executable] = fake_path
+            module_root = Path(run_runtime.REPO) / "evals"
+            code = (
+                "import json, pathlib, sys\n"
+                f"sys.path.insert(0, {str(module_root)!r})\n"
+                "import run_runtime\n"
+                "run_runtime.REPO = pathlib.Path('/nonexistent/groundwork-source')\n"
+                "run_runtime.ROOT = pathlib.Path('/nonexistent/groundwork-runtime')\n"
+                "launcher = run_runtime._codex_control_launcher()\n"
+                "identity = run_runtime._trusted_executable_identity_from_path(\n"
+                f"    'node', path_value={str(fake_bin)!r}\n"
+                ")\n"
+                "print(json.dumps({\n"
+                "    'launcher': str(launcher or ''),\n"
+                "    'node_identity': identity,\n"
+                "}))\n"
+            )
+            environment = os.environ.copy()
+            environment["PATH"] = (
+                str(fake_bin)
+                + os.pathsep
+                + environment.get("PATH", "")
+            )
+            proc = subprocess.run(
+                [sys.executable, "-I", "-c", code],
+                cwd=run_runtime.REPO,
+                env=environment,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                check=False,
+            )
+
+        self.assertEqual(proc.returncode, 0, proc.stdout)
+        payload = json.loads(proc.stdout.splitlines()[-1])
+        self.assertNotEqual(
+            Path(payload["launcher"]).resolve(strict=False),
+            fake_executables["codex"].resolve(),
+        )
+        self.assertIsNone(payload["node_identity"])
 
     def test_structured_browser_observation_requires_tool_specific_payload(self):
         observations = (
@@ -5039,19 +5444,19 @@ normalizePhone(task.phone) === expected;
     def test_tests_or_unverified_requires_executed_tests(self):
         nonexecuting = (
             command_event(
-                "python3 -m unittest",
+                "python3 -I -m unittest",
                 output="Ran 0 tests in 0.000s\n\nOK",
             ),
             command_event(
-                "python3 -m unittest",
+                "python3 -I -m unittest",
                 output="Ran 0 tests in 0.000s\n1 error",
             ),
             command_event(
-                "python3 -m unittest tests.test_app",
+                "python3 -I -m unittest tests.test_app",
                 output="s\nRan 1 test in 0.001s\n\nOK (skipped=1)",
             ),
             command_event(
-                "python3 -m pytest --collect-only -q",
+                "pytest --collect-only -q",
                 output="3 tests collected in 0.01s",
             ),
             command_event(
@@ -5210,19 +5615,19 @@ normalizePhone(task.phone) === expected;
                 output="BUILD SUCCESSFUL in 1s",
             ),
             command_event(
-                "python3 -m pytest tests",
+                "pytest tests",
                 output="1 skipped",
             ),
             command_event(
-                "python3 -m pytest tests",
+                "pytest tests",
                 output="0 passed, 2 skipped",
             ),
             command_event(
-                "python3 -m pytest tests",
+                "pytest tests",
                 output="no tests were run",
             ),
             command_event(
-                "python3 -m pytest tests",
+                "pytest tests",
                 output="",
             ),
         )
@@ -5249,16 +5654,8 @@ normalizePhone(task.phone) === expected;
 
         for stdout in (
             command_event(
-                "python3 -m unittest tests.test_app",
+                "python3 -I -m unittest tests.test_app",
                 output="Ran 1 test in 0.001s\n\nOK",
-            ),
-            command_event(
-                "python3 -m pytest tests",
-                output="2 passed, 1 skipped in 0.04s",
-            ),
-            command_event(
-                "python3 -m pytest tests",
-                output="0 passed, 1 xfailed in 0.04s",
             ),
             command_event(
                 "cargo test",
@@ -5267,14 +5664,6 @@ normalizePhone(task.phone) === expected;
                     "test works ... ok\n"
                     "test result: ok. 1 passed; 0 failed; 0 ignored"
                 ),
-            ),
-            command_event(
-                "npm test",
-                output="Tests: 1 passed, 1 total",
-            ),
-            command_event(
-                "npm test",
-                output="tests 1\npass 1\nfail 0",
             ),
             command_event(
                 "node --test",
@@ -5301,13 +5690,6 @@ normalizePhone(task.phone) === expected;
                     "ℹ skipped 0\n"
                     "ℹ todo 0\n"
                     "ℹ duration_ms 1"
-                ),
-            ),
-            command_event(
-                "mvn test",
-                output=(
-                    "Tests run: 1, Failures: 0, Errors: 0, "
-                    "Skipped: 0"
                 ),
             ),
         ):
@@ -5341,23 +5723,126 @@ normalizePhone(task.phone) === expected;
             run_runtime._is_test_invocation(node_invocations[0])
         )
 
+    def test_test_evidence_rejects_repo_controlled_delegated_runner(self):
+        forged = (
+            command_event("npm test", output="1 passed"),
+            command_event("npm --prefix web test", output="OK"),
+            command_event("node test/fake.js", output="OK"),
+            command_event(
+                "python3 -m pytest tests",
+                output="1 passed in 0.01s",
+            ),
+            command_event(
+                "pytest tests",
+                output="1 passed in 0.01s",
+            ),
+            command_event("mvn test", output="all tests passed"),
+            command_event("gradle test", output="1 passed"),
+        )
+        for stdout in forged:
+            with self.subTest(stdout=stdout):
+                self.assertFalse(
+                    run_runtime.has_observed_evidence(
+                        stdout,
+                        "tests",
+                        require_success=True,
+                    )
+                )
+                verdict = run_runtime.routing_verdict_model(
+                    routing_row(evidence_required="tests_or_unverified"),
+                    actual="direct",
+                    last="Focused tests passed.",
+                    rc=0,
+                    changes=[],
+                    lifecycle_errors=[],
+                    stdout=stdout,
+                )
+                self.assertEqual(verdict["evidence_verdict"], "fail")
+                self.assertEqual(verdict["overall_verdict"], "fail")
+
+        self.assertFalse(
+            run_runtime.has_observed_evidence(
+                command_event("npx playwright test", output="1 passed"),
+                "browser",
+                require_success=True,
+            )
+        )
+
+    def test_test_evidence_rejects_real_repo_controlled_python_module(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            (workspace / "pytest.py").write_text(
+                "print('1 passed in 0.01s')\n",
+                encoding="utf-8",
+            )
+            proc = subprocess.run(
+                [sys.executable, "-m", "pytest"],
+                cwd=workspace,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                check=False,
+            )
+
+        self.assertEqual(proc.returncode, 0, proc.stdout)
+        self.assertIn("1 passed", proc.stdout)
+        self.assertFalse(
+            run_runtime.has_observed_evidence(
+                command_event(
+                    "python3 -m pytest",
+                    output=proc.stdout,
+                ),
+                "tests",
+                require_success=True,
+            )
+        )
+
+    @unittest.skipUnless(shutil.which("pytest"), "pytest is unavailable")
+    def test_test_evidence_rejects_real_repo_controlled_pytest_hook(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            (workspace / "conftest.py").write_text(
+                "def pytest_cmdline_main(config):\n"
+                "    print('1 passed in 0.01s')\n"
+                "    return 0\n",
+                encoding="utf-8",
+            )
+            proc = subprocess.run(
+                [shutil.which("pytest")],
+                cwd=workspace,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                check=False,
+            )
+
+        self.assertEqual(proc.returncode, 0, proc.stdout)
+        self.assertIn("1 passed", proc.stdout)
+        self.assertFalse(
+            run_runtime.has_observed_evidence(
+                command_event("pytest", output=proc.stdout),
+                "tests",
+                require_success=True,
+            )
+        )
+
     def test_expected_test_failure_is_narrowly_bound_to_qa_reproduction(self):
         qa_row = routing_row(
             route_boundary="verify-qa-failure",
             source_truth="test_evidence",
             output_contract="verify_scope|qa_fix_qa",
             input_scenario=(
-                "Reproduction: command: node test/taskSearch.test.mjs."
+                "Reproduction: command: node --test test/taskSearch.test.mjs."
             ),
         )
         response = (
             "Verification Scope\n"
             "- Verdict: fail\n"
             "QA Failure\n"
-            "- Reproduction: command: node test/taskSearch.test.mjs\n"
+            "- Reproduction: command: node --test test/taskSearch.test.mjs\n"
         )
         reproduced_failure = command_event(
-            "node test/taskSearch.test.mjs",
+            "node --test test/taskSearch.test.mjs",
             output=(
                 "AssertionError [ERR_ASSERTION]: phone filter should return "
                 "only exact matches\n"
@@ -5390,7 +5875,7 @@ normalizePhone(task.phone) === expected;
                 self.assertTrue(
                     run_runtime.has_observed_expected_test_failure(
                         command_event(
-                            "node test/taskSearch.test.mjs",
+                            "node --test test/taskSearch.test.mjs",
                             output=assertion_output,
                             exit_code=1,
                         ),
@@ -5401,7 +5886,7 @@ normalizePhone(task.phone) === expected;
         self.assertTrue(
             run_runtime.has_observed_expected_test_failure(
                 command_event(
-                    "node test/taskSearch.test.mjs",
+                    "node --test test/taskSearch.test.mjs",
                     output=(
                         "Expected: ['task-2']\n"
                         "Actual: ['task-1', 'task-2', 'task-3']"
@@ -5413,7 +5898,7 @@ normalizePhone(task.phone) === expected;
             )
         )
         canonical_fixture_marker = command_event(
-            "node test/taskSearch.test.mjs",
+            "node --test test/taskSearch.test.mjs",
             output="expected failure reproduced",
             exit_code=1,
         )
@@ -5437,45 +5922,45 @@ normalizePhone(task.phone) === expected;
 
         rejected = (
             command_event(
-                "node test/other.test.mjs",
+                "node --test test/other.test.mjs",
                 output="unrelated failure",
                 exit_code=1,
             ),
             command_event(
-                "node test/taskSearch.test.mjs || true",
+                "node --test test/taskSearch.test.mjs || true",
                 output="masked failure",
             ),
             command_event(
-                "node test/taskSearch.test.mjs",
+                "node --test test/taskSearch.test.mjs",
                 output="test passed",
             ),
             command_event(
-                "node test/taskSearch.test.mjs",
+                "node --test test/taskSearch.test.mjs",
                 output="Error: Cannot find module test/taskSearch.test.mjs",
                 exit_code=1,
             ),
             command_event(
-                "node test/taskSearch.test.mjs",
+                "node --test test/taskSearch.test.mjs",
                 output="SyntaxError: Unexpected token }",
                 exit_code=1,
             ),
             command_event(
-                "node test/taskSearch.test.mjs",
+                "node --test test/taskSearch.test.mjs",
                 output="TypeError: expected is not a function",
                 exit_code=1,
             ),
             command_event(
-                "node test/taskSearch.test.mjs",
+                "node --test test/taskSearch.test.mjs",
                 output="Tests failed to start: connection refused",
                 exit_code=1,
             ),
             command_event(
-                "node test/taskSearch.test.mjs",
+                "node --test test/taskSearch.test.mjs",
                 output="0 failed, runner crashed",
                 exit_code=1,
             ),
             command_event(
-                "node test/taskSearch.test.mjs",
+                "node --test test/taskSearch.test.mjs",
                 output=(
                     "================ ERRORS ================\n"
                     "ERROR collecting test_widget.py\n"
@@ -5485,7 +5970,7 @@ normalizePhone(task.phone) === expected;
                 exit_code=1,
             ),
             command_event(
-                "node test/taskSearch.test.mjs",
+                "node --test test/taskSearch.test.mjs",
                 output=(
                     "ERROR during setup of test_widget\n"
                     "AssertionError: setup fixture failed"
@@ -5493,7 +5978,7 @@ normalizePhone(task.phone) === expected;
                 exit_code=1,
             ),
             command_event(
-                "node test/taskSearch.test.mjs",
+                "node --test test/taskSearch.test.mjs",
                 output=(
                     "ImportError while importing test module\n"
                     "E   assert False"
@@ -5501,7 +5986,7 @@ normalizePhone(task.phone) === expected;
                 exit_code=1,
             ),
             command_event(
-                "node test/taskSearch.test.mjs",
+                "node --test test/taskSearch.test.mjs",
                 output="collected 0 items\nE   assert False",
                 exit_code=1,
             ),
@@ -5518,11 +6003,11 @@ normalizePhone(task.phone) === expected;
 
     def test_success_required_evidence_rejects_masked_shell_commands(self):
         masked_commands = (
-            "python3 -m pytest tests || true",
-            "python3 -m pytest tests; true",
-            "python3 -m pytest tests | tee test.log",
-            "python3 -m pytest tests\ntrue",
-            "bash -lc 'python3 -m pytest tests || true'",
+            "pytest tests || true",
+            "pytest tests; true",
+            "pytest tests | tee test.log",
+            "pytest tests\ntrue",
+            "bash -lc 'pytest tests || true'",
         )
         for command in masked_commands:
             with self.subTest(command=command):
@@ -5584,8 +6069,8 @@ normalizePhone(task.phone) === expected;
         self.assertFalse(
             run_runtime.has_observed_evidence(
                 command_event(
-                    "python3 -m pytest tests && printf done",
-                    output="tests passed\ndone",
+                    "python3 -I -m unittest tests.test_app && printf done",
+                    output="Ran 1 test in 0.001s\n\nOK\ndone",
                 ),
                 "tests",
                 require_success=True,
@@ -5594,8 +6079,8 @@ normalizePhone(task.phone) === expected;
         self.assertTrue(
             run_runtime.has_observed_evidence(
                 command_event(
-                    "python3 -m pytest tests",
-                    output="tests passed",
+                    "python3 -I -m unittest tests.test_app",
+                    output="Ran 1 test in 0.001s\n\nOK",
                 ),
                 "tests",
                 require_success=True,
@@ -5624,7 +6109,10 @@ normalizePhone(task.phone) === expected;
             rc=0,
             changes=[],
             lifecycle_errors=[],
-            stdout=command_event("git -C /workspace status --short"),
+            stdout=command_event(
+                f"git -C {run_runtime.REPO} status --short"
+            ),
+            case_workspace=run_runtime.REPO,
         )
         self.assertEqual(git_status["evidence_verdict"], "pass")
 
@@ -5632,33 +6120,31 @@ normalizePhone(task.phone) === expected;
             (
                 "source",
                 "git -C /workspace diff -- src/app.py",
+                "diff --git a/src/app.py b/src/app.py\n",
             ),
             (
                 "tests",
-                "npm --prefix web test",
+                "python3 -I -m unittest tests.test_app",
+                "Ran 1 test in 0.001s\n\nOK",
             ),
             (
                 "browser",
-                "npx playwright test",
+                "playwright test",
+                "1 passed",
             ),
             (
                 "runtime",
                 'codex -c model="gpt-test" --profile eval exec --json prompt',
+                "ok",
             ),
         )
-        for evidence_kind, command in classified:
+        for evidence_kind, command, output in classified:
             with self.subTest(evidence_kind=evidence_kind, command=command):
                 self.assertTrue(
                     run_runtime.has_observed_evidence(
                         command_event(
                             command,
-                            output=(
-                                "diff --git a/src/app.py b/src/app.py\n"
-                                if evidence_kind == "source"
-                                else "1 passed"
-                                if evidence_kind == "browser"
-                                else "ok"
-                            ),
+                            output=output,
                         ),
                         evidence_kind,
                         require_success=True,
@@ -5766,7 +6252,12 @@ normalizePhone(task.phone) === expected;
             rc=0,
             changes=[],
             lifecycle_errors=[],
-            stdout=command_event("git status --short", output=""),
+            stdout=command_event(
+                "git status --short",
+                output="",
+                cwd=run_runtime.REPO,
+            ),
+            case_workspace=run_runtime.REPO,
         )
 
         self.assertEqual(self_report["evidence_verdict"], "fail")
@@ -5780,12 +6271,88 @@ normalizePhone(task.phone) === expected;
             changes=[],
             lifecycle_errors=[],
             stdout=command_event(
-                "git status --short", output="not a repository", exit_code=1
+                "git status --short",
+                output="not a repository",
+                exit_code=1,
+                cwd=run_runtime.REPO,
             ),
+            case_workspace=run_runtime.REPO,
         )
         self.assertEqual(failed["evidence_verdict"], "fail")
 
-    def test_verified_claim_rejects_untrusted_executables_and_resolution_overrides(self):
+    def test_git_status_evidence_binds_case_workspace(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            case_workspace = root / "case-workspace"
+            unrelated_workspace = root / "unrelated-workspace"
+            case_workspace.mkdir()
+            unrelated_workspace.mkdir()
+
+            def verdict(command, *, event_cwd=None):
+                return run_runtime.routing_verdict_model(
+                    routing_row(evidence_required="git_status"),
+                    actual="direct",
+                    last="Git state inspected.",
+                    rc=0,
+                    changes=[],
+                    lifecycle_errors=[],
+                    stdout=command_event(
+                        command,
+                        output="",
+                        cwd=event_cwd,
+                    ),
+                    case_workspace=case_workspace,
+                )
+
+            self.assertEqual(
+                verdict(
+                    "git status --short",
+                    event_cwd=case_workspace,
+                )["evidence_verdict"],
+                "pass",
+            )
+            self.assertEqual(
+                verdict("git status --short")["evidence_verdict"],
+                "fail",
+            )
+            self.assertEqual(
+                verdict(
+                    f"git -C {case_workspace} status --short"
+                )["evidence_verdict"],
+                "pass",
+            )
+            self.assertEqual(
+                verdict(
+                    f"git -C {case_workspace} status --short",
+                    event_cwd=unrelated_workspace,
+                )["evidence_verdict"],
+                "pass",
+            )
+
+            rejected = (
+                f"git -C {unrelated_workspace} status --short",
+                "git -C relative-workspace status --short",
+                (
+                    f"git --git-dir={unrelated_workspace / '.git'} "
+                    f"--work-tree={unrelated_workspace} status --short"
+                ),
+                (
+                    f"GIT_DIR={unrelated_workspace / '.git'} "
+                    f"GIT_WORK_TREE={unrelated_workspace} git status --short"
+                ),
+                f"cd {unrelated_workspace} && git status --short",
+            )
+            for command in rejected:
+                with self.subTest(command=command):
+                    self.assertEqual(
+                        verdict(
+                            command,
+                            event_cwd=case_workspace,
+                        )["evidence_verdict"],
+                        "fail",
+                    )
+
+    def test_verified_claim_rejects_untrusted_executables_and_ignores_late_resolution_overrides(self):
         claim = verified_plugin_claim()
         installed_root = claim["installed_plugin_root"]
         source_root = claim["source_root"]
@@ -5819,7 +6386,7 @@ normalizePhone(task.phone) === expected;
         with mock.patch.object(
             run_runtime.shutil, "which", return_value=None
         ):
-            self.assertFalse(
+            self.assertTrue(
                 run_runtime.has_verified_groundwork_claim_evidence(
                     chain("codex", "diff", "python3"),
                     claim,
@@ -5832,7 +6399,7 @@ normalizePhone(task.phone) === expected;
                 f"/tmp/fake/{Path(executable).name}"
             ),
         ):
-            self.assertFalse(
+            self.assertTrue(
                 run_runtime.has_verified_groundwork_claim_evidence(
                     chain("codex", "diff", "python3"),
                     claim,
@@ -7984,7 +8551,11 @@ release_evidence_claim:
             rc=0,
             changes=[],
             lifecycle_errors=[],
-            stdout=command_event("git status --short"),
+            stdout=command_event(
+                "git status --short",
+                cwd=run_runtime.REPO,
+            ),
+            case_workspace=run_runtime.REPO,
         )
 
         self.assertEqual(verdict["routing_verdict"], "pass")
@@ -8066,7 +8637,11 @@ release_evidence_claim:
             rc=0,
             changes=[],
             lifecycle_errors=[],
-            stdout=command_event("git status --short"),
+            stdout=command_event(
+                "git status --short",
+                cwd=run_runtime.REPO,
+            ),
+            case_workspace=run_runtime.REPO,
         )
 
         self.assertEqual(verdict["output_contract_verdict"], "pass")

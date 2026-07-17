@@ -3,6 +3,7 @@ import csv
 import json
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from evals import patch_suggestions
 from evals import routing_schema
@@ -90,7 +91,7 @@ def trace_verdict(
                 "type": "item.completed",
                 "item": {
                     "type": "command_execution",
-                    "command": "node test/taskSearch.test.mjs",
+                    "command": "node --test test/taskSearch.test.mjs",
                     "aggregated_output": "expected failure reproduced",
                     "exit_code": 1,
                     "status": "failed",
@@ -1436,7 +1437,7 @@ Continue with the same question now.
 QA Failure
 - Expected: filtered result
 - Actual: unfiltered result
-- Reproduction: command: node test/taskSearch.test.mjs
+- Reproduction: command: node --test test/taskSearch.test.mjs
 - Severity: P1
 - Minimal Diagnosis: filter is not applied
 - Evidence Delta: first observed failure
@@ -1446,7 +1447,7 @@ QA Failure
 - Fix Plan: rewrite every module in the system
 - Gap-Closure Admission: ready_for_implement
 - Gap Closure Plan: change every file in the repository and rerun the check
-- Re-QA Required: command: node test/taskSearch.test.mjs
+- Re-QA Required: command: node --test test/taskSearch.test.mjs
 - Regression Note: adjacent status filter
 - Scoped Next Action: route: implement
 I am invoking implement now.
@@ -1465,7 +1466,7 @@ I am invoking implement now.
 QA Failure
 - Expected: filtered result
 - Actual: unfiltered result
-- Reproduction: command: node test/taskSearch.test.mjs
+- Reproduction: command: node --test test/taskSearch.test.mjs
 - Severity: P1
 - Minimal Diagnosis: filter is not applied
 - Evidence Delta: first observed failure
@@ -1477,7 +1478,7 @@ QA Failure
 - Gap-Closure Admission: ready_for_implement
 - Gap Closure Plan: change only the phone filter and rerun the original check
   Then change every file in the repository.
-- Re-QA Required: command: node test/taskSearch.test.mjs
+- Re-QA Required: command: node --test test/taskSearch.test.mjs
 - Regression Note: adjacent status filter
 - Scoped Next Action: route: implement
 I patched the filter and rewrote every module now.
@@ -1496,7 +1497,7 @@ I patched the filter and rewrote every module now.
 QA Failure
 - Expected: filtered result
 - Actual: unfiltered result
-- Reproduction: command: node test/taskSearch.test.mjs
+- Reproduction: command: node --test test/taskSearch.test.mjs
 - Severity: P1
 - Minimal Diagnosis: filter is not applied
 - Evidence Delta: first observed failure
@@ -1506,7 +1507,7 @@ QA Failure
 - Fix Plan: change the filter only
 - Gap-Closure Admission: ready_for_implement
 - Gap Closure Plan: change only the phone filter and rerun the original check
-- Re-QA Required: command: node test/taskSearch.test.mjs
+- Re-QA Required: command: node --test test/taskSearch.test.mjs
 - Regression Note: adjacent status filter
 - Scoped Next Action: route: implement
 """
@@ -1535,7 +1536,7 @@ QA Failure
 QA Failure
 - Expected: filtered result
 - Actual: unfiltered result
-- Reproduction: command: node test/taskSearch.test.mjs
+- Reproduction: command: node --test test/taskSearch.test.mjs
 - Severity: P1
 - Minimal Diagnosis: filter is not applied
 - Evidence Delta: first observed failure
@@ -1545,12 +1546,17 @@ QA Failure
 - Fix Plan: change the filter only
 - Gap-Closure Admission: ready_for_implement
 - Gap Closure Plan: change only the phone filter and rerun the original check
-- Re-QA Required: command: node test/taskSearch.test.mjs
+- Re-QA Required: command: node --test test/taskSearch.test.mjs
 - Regression Note: adjacent status filter
 - Scoped Next Action: route: implement
 """
 
-        verdict = trace_verdict("tf-vr-004", "verify", response)
+        with mock.patch.object(
+            run_runtime,
+            "_observed_invocation_uses_trusted_executable",
+            return_value=True,
+        ):
+            verdict = trace_verdict("tf-vr-004", "verify", response)
         self.assertEqual(verdict["output_contract_verdict"], "pass")
         self.assertEqual(verdict["overall_verdict"], "pass")
 
@@ -1562,7 +1568,7 @@ QA Failure
 - Verdict: fail
 - Expected: filtered result
 - Actual: unfiltered result
-- Reproduction: command: node test/taskSearch.test.mjs
+- Reproduction: command: node --test test/taskSearch.test.mjs
 - Severity: P1
 - Minimal Diagnosis: filter is not applied
 - Evidence Delta: first observed failure
@@ -1572,7 +1578,7 @@ QA Failure
 - Fix Plan: change the filter only
 - Gap-Closure Admission: ready_for_implement
 - Gap Closure Plan: change only the phone filter and rerun the original check
-- Re-QA Required: command: node test/taskSearch.test.mjs
+- Re-QA Required: command: node --test test/taskSearch.test.mjs
 - Regression Note: adjacent status filter
 - Scoped Next Action: route: implement
 """
@@ -1590,7 +1596,7 @@ QA Failure
 QA Failure
 - Expected: filtered result
 - Actual: unfiltered result
-- Reproduction: command: node test/taskSearch.test.mjs
+- Reproduction: command: node --test test/taskSearch.test.mjs
 - Severity: P1
 - Minimal Diagnosis: filter is not applied
 - Evidence Delta: first observed failure
@@ -1600,7 +1606,7 @@ QA Failure
 - Fix Plan: change the filter only
 - Gap-Closure Admission: ready_for_implement
 - Gap Closure Plan: change only the phone filter and rerun the original check
-- Re-QA Required: command: node test/taskSearch.test.mjs
+- Re-QA Required: command: node --test test/taskSearch.test.mjs
 - Regression Note: adjacent status filter
 - Scoped Next Action: route: implement
 ## Follow-up Summary
@@ -1621,7 +1627,7 @@ QA Failure
 QA Failure
 - Expected: filtered result
 - Actual: unfiltered result
-- Reproduction: command: node test/taskSearch.test.mjs
+- Reproduction: command: node --test test/taskSearch.test.mjs
 - Severity: P1
 - Minimal Diagnosis: filter is not applied
 - Evidence Delta: first observed failure
@@ -1631,7 +1637,7 @@ QA Failure
 - Fix Plan: change the filter only
 - Gap-Closure Admission: ready_for_implement
 - Gap Closure Plan: change only the phone filter and rerun the original check
-- Re-QA Required: command: node test/taskSearch.test.mjs
+- Re-QA Required: command: node --test test/taskSearch.test.mjs
 - Regression Note: adjacent status filter
 - Scoped Next Action: route: implement
 """

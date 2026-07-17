@@ -19,7 +19,7 @@
 Run:
 
 ```bash
-node test/taskSearch.test.mjs
+node --test test/taskSearch.test.mjs
 ```
 
 Before the fix, the phone-filter assertion should fail. After the fix, all

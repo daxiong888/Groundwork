@@ -4,11 +4,16 @@ import argparse
 import hashlib
 import json
 import os
+try:
+    import pwd
+except ImportError:  # pragma: no cover - unavailable on Windows
+    pwd = None
 import re
 import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
@@ -209,6 +214,7 @@ LAST = RUN / "last"
 WORKSPACES = RUN / "workspaces"
 RESULTS = RUN / "results.jsonl"
 CASES = RUN / "cases"
+PROOF_HOME = RUN / "proof-home"
 SUMMARY = RUN / "summary.json"
 FAILURES = RUN / "failures.md"
 RUNTIME_SELECTOR = {"model": "", "profile": "", "codex_config": []}
@@ -661,11 +667,12 @@ def runtime_path_state():
         "CASES": CASES,
         "SUMMARY": SUMMARY,
         "FAILURES": FAILURES,
+        "PROOF_HOME": PROOF_HOME,
     }
 
 
 def set_runtime_paths(run_root):
-    global RUN, LOGS, LAST, WORKSPACES, RESULTS, CASES, SUMMARY, FAILURES
+    global RUN, LOGS, LAST, WORKSPACES, RESULTS, CASES, SUMMARY, FAILURES, PROOF_HOME
     RUN = Path(run_root)
     LOGS = RUN / "logs"
     LAST = RUN / "last"
@@ -674,10 +681,11 @@ def set_runtime_paths(run_root):
     CASES = RUN / "cases"
     SUMMARY = RUN / "summary.json"
     FAILURES = RUN / "failures.md"
+    PROOF_HOME = RUN / "proof-home"
 
 
 def restore_runtime_path_state(state):
-    global RUN, LOGS, LAST, WORKSPACES, RESULTS, CASES, SUMMARY, FAILURES
+    global RUN, LOGS, LAST, WORKSPACES, RESULTS, CASES, SUMMARY, FAILURES, PROOF_HOME
     RUN = state["RUN"]
     LOGS = state["LOGS"]
     LAST = state["LAST"]
@@ -686,6 +694,7 @@ def restore_runtime_path_state(state):
     CASES = state["CASES"]
     SUMMARY = state["SUMMARY"]
     FAILURES = state["FAILURES"]
+    PROOF_HOME = state["PROOF_HOME"]
 
 
 def normalize_router_observability_mode(value):
@@ -799,8 +808,30 @@ def prompt_for_row(row):
     return row.get("prompt") or row.get("input_scenario") or ""
 
 
+def prompt_with_evidence_bindings(prompt, row, cwd):
+    evidence_tokens = {
+        token.strip()
+        for token in str(row.get("evidence_required") or "").split("|")
+        if token.strip()
+    }
+    if "git_status" not in evidence_tokens:
+        return prompt
+    workspace = Path(cwd).resolve(strict=True)
+    command = "git -C " + shlex.quote(str(workspace)) + " status --short"
+    return (
+        prompt.rstrip()
+        + "\n\nEvaluator evidence binding: when collecting git_status evidence, "
+        + f"run `{command}`. Plain or differently targeted git status commands "
+        + "are unverified."
+    )
+
+
 def codex_exec_command(cwd, sandbox, last_path, prompt, row=None):
-    cmd = ["codex"]
+    cmd = [
+        str(CODEX_CONTROL_LAUNCHER)
+        if CODEX_CONTROL_LAUNCHER is not None
+        else "codex"
+    ]
     if hook_trust_bypass_enabled():
         cmd.append("--dangerously-bypass-hook-trust")
     for item in RUNTIME_SELECTOR.get("codex_config") or []:
@@ -832,6 +863,7 @@ def codex_exec_command(cwd, sandbox, last_path, prompt, row=None):
 
 
 def run_fixture_command(cwd, cmd):
+    child_environment, _context = sanitized_codex_environment()
     proc = subprocess.run(
         cmd,
         cwd=cwd,
@@ -839,6 +871,7 @@ def run_fixture_command(cwd, cmd):
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
+        env=child_environment,
     )
     if proc.returncode != 0:
         raise RuntimeError(f"fixture setup command failed ({proc.returncode}): {' '.join(cmd)}\n{proc.stdout}")
@@ -1815,6 +1848,7 @@ def completed_tool_activities(stdout):
                         {
                             "kind": "command_execution",
                             "command": command,
+                            "cwd": str(item.get("cwd") or ""),
                             "server": "",
                             "tool": "",
                             "detail": json.dumps(
@@ -2461,6 +2495,20 @@ def _python_module(args):
     return str(target["target"]).lower()
 
 
+def _python_uses_isolated_mode(args):
+    for token in (str(argument) for argument in args):
+        if token == "--" or token in {"-c", "-m"} or token.startswith(("-c", "-m")):
+            break
+        if token == "-I" or (
+            len(token) > 2
+            and token.startswith("-")
+            and "I" in token[1:]
+            and set(token[1:]).issubset(PYTHON_INTERPRETER_CLUSTER_FLAGS)
+        ):
+            return True
+    return False
+
+
 def _python_script_and_args(args):
     target = _python_execution_target(args)
     if not target or target["kind"] != "script":
@@ -2595,6 +2643,70 @@ def _is_git_status_invocation(invocation):
     )
 
 
+def _canonical_existing_directory(value):
+    if value is None or str(value).strip() == "":
+        return None
+    path = Path(str(value))
+    try:
+        resolved = path.resolve(strict=True)
+    except (OSError, RuntimeError):
+        return None
+    return resolved if resolved.is_dir() else None
+
+
+def _git_status_workspace_override(args):
+    if _has_help_or_version(args):
+        return None, False
+    override = None
+    tokens = [str(token) for token in args]
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        if token == "status":
+            return override, True
+        if token == "-C":
+            if override is not None or index + 1 >= len(tokens):
+                return None, False
+            override = tokens[index + 1]
+            index += 2
+            continue
+        if token.startswith("-C") and token != "-C":
+            if override is not None:
+                return None, False
+            override = token[2:]
+            index += 1
+            continue
+        if token.startswith("-"):
+            return None, False
+        return None, False
+    return None, False
+
+
+def _git_status_activity_targets_workspace(activity, case_workspace):
+    workspace = _canonical_existing_directory(case_workspace)
+    if workspace is None:
+        return False
+    invocations = command_invocations(activity.get("command"))
+    if len(invocations) != 1:
+        return False
+    invocation = invocations[0]
+    if (
+        not _is_git_status_invocation(invocation)
+        or not _observed_invocation_uses_trusted_executable(invocation)
+    ):
+        return False
+    override, valid = _git_status_workspace_override(invocation.get("args") or [])
+    if not valid:
+        return False
+    event_cwd = _canonical_existing_directory(activity.get("cwd"))
+    if override is None:
+        return event_cwd == workspace
+    override_path = Path(override)
+    if not override_path.is_absolute():
+        return False
+    return _canonical_existing_directory(override_path) == workspace
+
+
 TEST_NONEXECUTING_OPTIONS = {
     "--co",
     "--collect-only",
@@ -2653,39 +2765,18 @@ def _is_test_invocation(invocation):
     args = invocation["args"]
     if _test_invocation_is_nonexecuting(invocation):
         return False
-    if executable in {"pytest", "py.test"}:
-        return True
     if executable.startswith("python"):
-        return _python_module(args) in {"unittest", "pytest"}
-    if executable in {"npm", "pnpm", "yarn"}:
-        positional = _package_manager_positionals(args)
-        if not positional:
-            return False
-        if positional[0] == "test":
-            return True
         return (
-            positional[0] == "run"
-            and len(positional) > 1
-            and bool(re.search(r"(?:^|:)test(?:$|:)", positional[1]))
+            _python_module(args) == "unittest"
+            and _python_uses_isolated_mode(args)
         )
     if executable == "cargo":
         return _first_non_option(args).lower() == "test"
     if executable == "go":
         return _first_non_option(args).lower() == "test"
-    if executable in {"mvn", "mvnw", "gradle", "gradlew"}:
-        return any(token.lower() == "test" for token in args)
     if executable == "node":
-        if "--test" in args:
-            return _node_test_reporter_is_trusted(args)
-        script = _first_non_option(args)
-        return bool(
-            script
-            and (
-                re.search(r"(^|[/_.-])tests?([/_.-]|$)", script, re.IGNORECASE)
-                or Path(script).name.lower().startswith(("test_", "check_"))
-            )
-        )
-    return executable.startswith(("test_", "check_"))
+        return "--test" in args and _node_test_reporter_is_trusted(args)
+    return False
 
 
 def _node_test_reporter_is_trusted(args):
@@ -2882,48 +2973,13 @@ def _is_runtime_invocation(invocation):
         return Path(script).name.lower() == "run_runtime.py"
     if executable == "run_runtime.py":
         return True
-    if executable in {"npm", "pnpm", "yarn"}:
-        positional = _package_manager_positionals(args)
-        if not positional:
-            return False
-        if positional[0] in {"dev", "start", "serve"}:
-            return True
-        return (
-            positional[0] == "run"
-            and len(positional) > 1
-            and positional[1] in {"dev", "start", "serve"}
-        )
     return False
 
 
 def _observed_invocation_uses_trusted_executable(invocation):
     npx_wrapper = invocation.get("npx_wrapper")
     if isinstance(npx_wrapper, dict):
-        if (
-            npx_wrapper.get("package_override")
-            or npx_wrapper.get("call_mode")
-            or npx_wrapper.get("option_override")
-        ):
-            return False
-        wrapper_invocation = {
-            "executable": "npx",
-            "raw_executable": npx_wrapper.get("raw_executable") or "npx",
-            "args": [],
-            "environment": invocation.get("environment") or {},
-            "environment_provenance": invocation.get(
-                "environment_provenance"
-            )
-            or {},
-        }
-        return (
-            invocation.get("executable") == "playwright"
-            and invocation.get("raw_executable") == "playwright"
-            and npx_wrapper.get("raw_executable") == "npx"
-            and _proof_command_wrappers_are_trusted(invocation)
-            and _proof_invocation_environment_is_safe(invocation)
-            and _proof_invocation_environment_is_safe(wrapper_invocation)
-            and _proof_invocation_uses_trusted_executable(wrapper_invocation)
-        )
+        return False
     return (
         _proof_invocation_environment_is_safe(invocation)
         and _proof_invocation_uses_trusted_executable(invocation)
@@ -3749,10 +3805,16 @@ def _is_node_test_invocation(invocation):
 
 def _test_command_output_is_substantive(output, invocation=None):
     text = str(output or "").strip()
-    if not text:
+    if not text or not invocation or not _is_test_invocation(invocation):
         return False
     if _is_node_test_invocation(invocation):
         return _node_test_output_is_substantive(text)
+    executable = str(invocation.get("executable") or "").casefold()
+    python_module = (
+        _python_module(invocation.get("args") or [])
+        if executable.startswith("python")
+        else ""
+    )
     lowered = text.casefold()
     zero_execution_patterns = (
         r"\bran\s+0\s+tests?\b",
@@ -3779,84 +3841,34 @@ def _test_command_output_is_substantive(output, invocation=None):
         match = re.search(pattern, lowered)
         return int(match.group(1)) if match else None
 
-    unittest_run = count(r"\bran\s+(\d+)\s+tests?\b")
-    if unittest_run is not None:
+    if python_module == "unittest":
+        unittest_run = count(r"\bran\s+(\d+)\s+tests?\b")
+        if unittest_run is None:
+            return False
         unittest_skipped = count(r"\bskipped\s*=\s*(\d+)\b") or 0
         return unittest_run > unittest_skipped
 
-    junit_run = count(r"\btests?\s+run\s*:\s*(\d+)\b")
-    if junit_run is not None:
-        junit_skipped = count(r"\bskipped\s*:\s*(\d+)\b") or 0
-        return junit_run > junit_skipped
-
-    completed = count(r"\b(\d+)\s+tests?\s+completed\b")
-    if completed is not None:
-        completed_skipped = count(r"\b(\d+)\s+skipped\b") or 0
-        return completed > completed_skipped
-
-    rust_summary = re.search(
-        r"\btest\s+result\s*:[^\n]*?"
-        r"(\d+)\s+passed;\s*(\d+)\s+failed;[^\n]*?"
-        r"(\d+)\s+ignored\b",
-        lowered,
-    )
-    if rust_summary:
+    if executable == "cargo":
+        rust_summary = re.search(
+            r"\btest\s+result\s*:[^\n]*?"
+            r"(\d+)\s+passed;\s*(\d+)\s+failed;[^\n]*?"
+            r"(\d+)\s+ignored\b",
+            lowered,
+        )
+        if not rust_summary:
+            return False
         passed, failed, _ignored = (
             int(value) for value in rust_summary.groups()
         )
         return passed + failed > 0
 
-    jest_line = re.search(r"(?m)^\s*tests\s*:\s*([^\n]+)$", lowered)
-    if jest_line:
-        summary = jest_line.group(1)
-        passed = re.search(r"\b(\d+)\s+passed\b", summary)
-        failed = re.search(r"\b(\d+)\s+failed\b", summary)
-        skipped = re.search(r"\b(\d+)\s+skipped\b", summary)
-        todo = re.search(r"\b(\d+)\s+todo\b", summary)
-        total = re.search(r"\b(\d+)\s+total\b", summary)
-        executed = sum(
-            int(match.group(1))
-            for match in (passed, failed)
-            if match
+    if executable == "go":
+        return bool(
+            re.search(
+                r"(?m)^ok\s+\S+(?:\s+(?:\d+(?:\.\d+)?s|\(cached\)))?\s*$",
+                lowered,
+            )
         )
-        if executed:
-            return True
-        if total or skipped or todo:
-            return False
-        return False
-
-    node_tests = count(r"(?m)^\s*(?:#\s*)?tests\s+(\d+)\s*$")
-    if node_tests is not None:
-        node_passed = count(
-            r"(?m)^\s*(?:#\s*)?pass\s+(\d+)\s*$"
-        ) or 0
-        node_failed = count(
-            r"(?m)^\s*(?:#\s*)?fail\s+(\d+)\s*$"
-        ) or 0
-        return node_tests > 0 and node_passed + node_failed > 0
-
-    positive_execution_patterns = (
-        r"\b[1-9]\d*\s+"
-        r"(?:passed|failed|failures?|errors?|xfailed|xpassed)\b",
-        r"\b(?:passed|failed|failures?|errors?|executed|tests?|xfailed|xpassed)"
-        r"\s*:\s*[1-9]\d*\b",
-    )
-    if any(
-        re.search(pattern, lowered)
-        for pattern in positive_execution_patterns
-    ):
-        return True
-    normalized = " ".join(lowered.split())
-    if normalized == "ok" or re.search(
-        r"\b(?:all\s+)?(?:checks?|tests?)\s+passed\b",
-        normalized,
-    ):
-        return True
-    if re.search(
-        r"(?m)^ok\s+\S+(?:\s+(?:\d+(?:\.\d+)?s|\(cached\)))?\s*$",
-        lowered,
-    ):
-        return True
     return False
 
 
@@ -4073,7 +4085,8 @@ def _canonical_expected_failure_fixture_marker(
     return (
         str(row.get("fixture") or "").rstrip("/")
         == "evals/fixtures/minimal-task-search"
-        and expected_tokens == ["node", "test/taskSearch.test.mjs"]
+        and expected_tokens
+        == ["node", "--test", "test/taskSearch.test.mjs"]
         and str(output or "").strip().casefold()
         == "expected failure reproduced"
     )
@@ -4125,22 +4138,110 @@ def release_evidence_status(final_response):
     return release_evidence_claim_status(final_response)
 
 
+PROOF_ENVIRONMENT_POLICY_VERSION = "proof-environment-v2"
+PROOF_EXECUTABLE_POLICY_VERSION = "proof-executable-v2"
 UNSAFE_PROOF_ENVIRONMENT_KEYS = {
+    "AR",
+    "AS",
     "BASH_ENV",
+    "BASHOPTS",
+    "CC",
+    "CFLAGS",
+    "CDPATH",
+    "CLASSPATH",
+    "COMPILER_PATH",
+    "CPATH",
+    "CPPFLAGS",
+    "CPLUS_INCLUDE_PATH",
+    "CXX",
+    "CXXFLAGS",
+    "DEVELOPER_DIR",
     "DIFF_OPTIONS",
     "DYLD_INSERT_LIBRARIES",
     "ENV",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_CEILING_DIRECTORIES",
+    "GIT_COMMON_DIR",
     "GIT_CONFIG_PARAMETERS",
+    "GIT_CONFIG_GLOBAL",
+    "GIT_CONFIG_SYSTEM",
+    "GIT_CONFIG_NOSYSTEM",
+    "GIT_DIR",
     "GIT_EXEC_PATH",
     "GIT_EXTERNAL_DIFF",
+    "GIT_INDEX_FILE",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_WORK_TREE",
+    "GOCACHE",
+    "GOENV",
+    "GOFLAGS",
+    "GOMOD",
+    "GOMODCACHE",
+    "GOPATH",
+    "GOROOT",
+    "GOTOOLCHAIN",
+    "GOWORK",
+    "HOME",
+    "JAVA_HOME",
+    "JAVA_TOOL_OPTIONS",
+    "JDK_JAVA_OPTIONS",
+    "LD",
+    "LDFLAGS",
     "LD_PRELOAD",
+    "LIBRARY_PATH",
+    "MACOSX_DEPLOYMENT_TARGET",
+    "MAKEFLAGS",
+    "MFLAGS",
+    "NM",
+    "OBJC",
+    "PAGER",
+    "PERL5OPT",
     "PATH",
     "PYTHONHOME",
     "PYTHONINSPECT",
     "PYTHONPATH",
     "PYTHONSTARTUP",
+    "RANLIB",
+    "RUBYOPT",
+    "SDKROOT",
+    "SHELLOPTS",
+    "STRIP",
+    "USERPROFILE",
     "VIRTUAL_ENV",
+    "XDG_CACHE_HOME",
+    "XDG_CONFIG_HOME",
+    "XDG_DATA_HOME",
+    "XDG_RUNTIME_DIR",
+    "XDG_STATE_HOME",
     "ZDOTDIR",
+    "_JAVA_OPTIONS",
+}
+UNSAFE_PROOF_ENVIRONMENT_PREFIXES = (
+    "CARGO_",
+    "DYLD_",
+    "GIT_",
+    "GIT_CONFIG_KEY_",
+    "GIT_CONFIG_VALUE_",
+    "GRADLE_",
+    "LD_",
+    "MAVEN_",
+    "NPM_CONFIG_",
+    "NODE_",
+    "PYTEST_",
+    "PYTHON",
+    "RUST",
+)
+PROOF_CONTROL_ENVIRONMENT_KEYS = {
+    "GROUNDWORK_ROUTER_OBSERVABILITY",
+    "GROUNDWORK_ROUTER_OBSERVABILITY_DEBUG",
+    "GROUNDWORK_ROUTER_OBSERVABILITY_DISABLED",
+    "GROUNDWORK_ROUTER_OBSERVABILITY_MODE",
+}
+INHERITED_ONLY_UNSAFE_PROOF_ENVIRONMENT_KEYS = {
+    "GROUNDWORK_CODEX_BYPASS_HOOK_TRUST",
+    "GROUNDWORK_CODEX_TIMEOUT",
+    "GROUNDWORK_REPO",
+    "GROUNDWORK_RUNTIME_ROOT",
 }
 ALLOWED_GROUNDWORK_PROOF_ENVIRONMENT_KEYS = {
     "GROUNDWORK_CODEX_TIMEOUT",
@@ -4161,46 +4262,512 @@ def _resolved_executable_path(value):
         return None
 
 
-PROOF_EXECUTABLE_BASELINES = {
-    executable: _resolved_executable_path(shutil.which(executable))
-    for executable in (
-        "bash",
-        "cargo",
-        "cat",
-        "chrome-headless-shell",
-        "chromium",
-        "chromium-browser",
-        "codegraph",
-        "codex",
-        "dash",
-        "diff",
-        "env",
-        "go",
-        "git",
-        "google-chrome",
-        "gradle",
-        "gradlew",
-        "grep",
-        "head",
-        "mvn",
-        "mvnw",
-        "node",
-        "nohup",
-        "npm",
-        "npx",
-        "playwright",
-        "pnpm",
-        "py.test",
-        "pytest",
-        "rg",
-        "sed",
-        "sh",
-        "tail",
-        "yarn",
-        "zsh",
+PROOF_EXECUTABLE_NAMES = (
+    "bash",
+    "cargo",
+    "cat",
+    "chrome-headless-shell",
+    "chromium",
+    "chromium-browser",
+    "codegraph",
+    "codex",
+    "dash",
+    "diff",
+    "env",
+    "go",
+    "git",
+    "google-chrome",
+    "gradle",
+    "gradlew",
+    "grep",
+    "head",
+    "mvn",
+    "mvnw",
+    "node",
+    "nohup",
+    "npm",
+    "npx",
+    "playwright",
+    "pnpm",
+    "py.test",
+    "pytest",
+    "rg",
+    "sed",
+    "sh",
+    "tail",
+    "yarn",
+    "zsh",
+)
+PROOF_EXECUTABLE_IDENTITY_FIELDS = (
+    "launcher_path",
+    "launcher_device",
+    "launcher_inode",
+    "launcher_mode",
+    "launcher_uid",
+    "launcher_gid",
+    "launcher_size",
+    "launcher_mtime_ns",
+    "launcher_ctime_ns",
+    "resolved_path",
+    "resolved_device",
+    "resolved_inode",
+    "resolved_mode",
+    "resolved_uid",
+    "resolved_gid",
+    "resolved_size",
+    "resolved_mtime_ns",
+    "resolved_ctime_ns",
+)
+
+
+def _sha256_file(path):
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as handle:
+        while True:
+            chunk = handle.read(1024 * 1024)
+            if not chunk:
+                break
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _path_is_within(path, root):
+    try:
+        Path(path).relative_to(Path(root))
+        return True
+    except ValueError:
+        return False
+
+
+def _proof_untrusted_roots():
+    roots = [
+        REPO,
+        ROOT,
+        Path("/tmp"),
+        Path("/private/tmp"),
+        Path("/var/tmp"),
+        Path(tempfile.gettempdir()),
+    ]
+    return tuple(
+        root.resolve(strict=False)
+        for root in roots
     )
+
+
+def _proof_path_has_untrusted_write_control(path):
+    try:
+        path_stat = Path(path).stat()
+    except OSError:
+        return True
+    uid_getter = getattr(os, "geteuid", None) or getattr(
+        os,
+        "getuid",
+        None,
+    )
+    current_uid = uid_getter() if uid_getter is not None else None
+    if current_uid is not None and path_stat.st_uid == current_uid:
+        return True
+    if path_stat.st_mode & 0o022:
+        return True
+    try:
+        return os.access(path, os.W_OK)
+    except OSError:
+        return True
+
+
+def _proof_executable_location_is_safe(path):
+    candidate = Path(path)
+    if not candidate.is_absolute():
+        return False
+    resolved = candidate.resolve(strict=False)
+    if any(
+        _path_is_within(candidate, root)
+        or _path_is_within(resolved, root)
+        for root in _proof_untrusted_roots()
+    ):
+        return False
+    for executable_path in {candidate, resolved}:
+        if _proof_path_has_untrusted_write_control(executable_path):
+            return False
+    current = candidate.parent
+    while True:
+        if _proof_path_has_untrusted_write_control(current):
+            return False
+        if current == current.parent:
+            break
+        current = current.parent
+    return True
+
+
+def _proof_executable_identity(value, *, include_hash=True):
+    if not value:
+        return None
+    raw_path = Path(value)
+    if not raw_path.is_absolute():
+        return None
+    try:
+        launcher = raw_path.parent.resolve(strict=True) / raw_path.name
+        if not launcher.is_file() or not os.access(launcher, os.X_OK):
+            return None
+        resolved = launcher.resolve(strict=True)
+        if (
+            not _proof_executable_location_is_safe(launcher)
+            or not _proof_executable_location_is_safe(resolved)
+        ):
+            return None
+        launcher_stat = launcher.lstat()
+        resolved_stat = resolved.stat()
+        if resolved_stat.st_mode & 0o022:
+            return None
+        identity = {
+            "launcher_path": str(launcher),
+            "launcher_device": launcher_stat.st_dev,
+            "launcher_inode": launcher_stat.st_ino,
+            "launcher_mode": launcher_stat.st_mode,
+            "launcher_uid": launcher_stat.st_uid,
+            "launcher_gid": launcher_stat.st_gid,
+            "launcher_size": launcher_stat.st_size,
+            "launcher_mtime_ns": launcher_stat.st_mtime_ns,
+            "launcher_ctime_ns": launcher_stat.st_ctime_ns,
+            "resolved_path": str(resolved),
+            "resolved_device": resolved_stat.st_dev,
+            "resolved_inode": resolved_stat.st_ino,
+            "resolved_mode": resolved_stat.st_mode,
+            "resolved_uid": resolved_stat.st_uid,
+            "resolved_gid": resolved_stat.st_gid,
+            "resolved_size": resolved_stat.st_size,
+            "resolved_mtime_ns": resolved_stat.st_mtime_ns,
+            "resolved_ctime_ns": resolved_stat.st_ctime_ns,
+        }
+        if include_hash:
+            identity["sha256"] = _sha256_file(resolved)
+        return identity
+    except OSError:
+        return None
+
+
+def _codex_control_launcher():
+    search_path = str(os.environ.get("PATH") or os.defpath)
+    for entry in search_path.split(os.pathsep):
+        directory = Path(entry)
+        if not entry or not directory.is_absolute():
+            continue
+        try:
+            canonical_directory = directory.resolve(strict=True)
+        except OSError:
+            continue
+        candidate = shutil.which("codex", path=str(canonical_directory))
+        if not candidate:
+            continue
+        raw_path = Path(candidate)
+        try:
+            launcher = raw_path.parent.resolve(strict=True) / raw_path.name
+        except OSError:
+            continue
+        if (
+            launcher.is_file()
+            and os.access(launcher, os.X_OK)
+            and _proof_executable_location_is_safe(launcher)
+        ):
+            return launcher
+    return None
+
+
+CODEX_CONTROL_LAUNCHER = _codex_control_launcher()
+
+
+def _proof_executable_discovery_path():
+    directories = []
+    candidates = []
+    if CODEX_CONTROL_LAUNCHER is not None:
+        candidates.append(CODEX_CONTROL_LAUNCHER.parent)
+    candidates.extend(
+        [
+            Path(sys.executable).resolve(strict=True).parent,
+            Path("/usr/local/go/bin"),
+            Path("/usr/local/bin"),
+            Path("/Library/Apple/usr/bin"),
+            Path("/usr/bin"),
+            Path("/bin"),
+            Path("/usr/sbin"),
+            Path("/sbin"),
+        ]
+    )
+    for directory in candidates:
+        try:
+            canonical = directory.resolve(strict=True)
+        except OSError:
+            continue
+        value = str(canonical)
+        if value not in directories:
+            directories.append(value)
+    return os.pathsep.join(directories)
+
+
+PROOF_EXECUTABLE_DISCOVERY_PATH = _proof_executable_discovery_path()
+
+
+def _trusted_executable_identity_from_path(executable, path_value=None):
+    search_path = str(
+        path_value
+        if path_value is not None
+        else PROOF_EXECUTABLE_DISCOVERY_PATH
+    )
+    for entry in search_path.split(os.pathsep):
+        directory = Path(entry)
+        if not entry or not directory.is_absolute():
+            continue
+        try:
+            canonical_directory = directory.resolve(strict=True)
+        except OSError:
+            continue
+        candidate = shutil.which(executable, path=str(canonical_directory))
+        identity = _proof_executable_identity(candidate)
+        if identity is not None:
+            return identity
+    return None
+
+
+PROOF_EXECUTABLE_IDENTITIES = {
+    executable: _trusted_executable_identity_from_path(executable)
+    for executable in PROOF_EXECUTABLE_NAMES
 }
-PYTHON_EXECUTABLE_BASELINE = _resolved_executable_path(sys.executable)
+PROOF_EXECUTABLE_BASELINES = {
+    executable: (
+        Path(identity["resolved_path"])
+        if identity is not None
+        else None
+    )
+    for executable, identity in PROOF_EXECUTABLE_IDENTITIES.items()
+}
+PROOF_EXECUTABLE_LAUNCHERS = {
+    executable: (
+        Path(identity["launcher_path"])
+        if identity is not None
+        else None
+    )
+    for executable, identity in PROOF_EXECUTABLE_IDENTITIES.items()
+}
+PYTHON_EXECUTABLE_IDENTITY = _proof_executable_identity(sys.executable)
+PYTHON_EXECUTABLE_BASELINE = (
+    Path(PYTHON_EXECUTABLE_IDENTITY["resolved_path"])
+    if PYTHON_EXECUTABLE_IDENTITY is not None
+    else None
+)
+PYTHON_EXECUTABLE_IDENTITIES = {}
+if PYTHON_EXECUTABLE_IDENTITY is not None:
+    python_directory = Path(sys.executable).resolve(strict=True).parent
+    for python_name in {
+        "python",
+        "python3",
+        Path(sys.executable).name,
+    }:
+        python_candidate = shutil.which(
+            python_name,
+            path=str(python_directory),
+        )
+        python_identity = _proof_executable_identity(python_candidate)
+        if (
+            python_identity is not None
+            and python_identity["resolved_path"]
+            == PYTHON_EXECUTABLE_IDENTITY["resolved_path"]
+        ):
+            PYTHON_EXECUTABLE_IDENTITIES[python_name.casefold()] = python_identity
+
+
+def _proof_executable_path():
+    directories = []
+    if CODEX_CONTROL_LAUNCHER is not None:
+        directories.append(str(CODEX_CONTROL_LAUNCHER.parent))
+    identities = list(PYTHON_EXECUTABLE_IDENTITIES.values()) + [
+        identity
+        for identity in PROOF_EXECUTABLE_IDENTITIES.values()
+        if identity is not None
+    ]
+    for identity in identities:
+        directory = str(Path(identity["launcher_path"]).parent)
+        if directory not in directories:
+            directories.append(directory)
+    if CODEX_CONTROL_LAUNCHER is not None:
+        control_directory = str(CODEX_CONTROL_LAUNCHER.parent)
+        if control_directory not in directories:
+            directories.append(control_directory)
+    return os.pathsep.join(directories)
+
+
+PROOF_EXECUTABLE_PATH = _proof_executable_path()
+_PROOF_EXECUTABLE_VERIFICATION_CACHE = set()
+
+
+def _proof_executable_identity_matches(candidate, baseline):
+    if baseline is None:
+        return False
+    current = _proof_executable_identity(candidate, include_hash=False)
+    if current is None or any(
+        current.get(field) != baseline.get(field)
+        for field in PROOF_EXECUTABLE_IDENTITY_FIELDS
+    ):
+        return False
+    cache_key = tuple(
+        current.get(field)
+        for field in PROOF_EXECUTABLE_IDENTITY_FIELDS
+    ) + (baseline.get("sha256"),)
+    if cache_key in _PROOF_EXECUTABLE_VERIFICATION_CACHE:
+        return True
+    try:
+        matches = (
+            _sha256_file(current["resolved_path"])
+            == baseline.get("sha256")
+        )
+    except OSError:
+        return False
+    if matches:
+        _PROOF_EXECUTABLE_VERIFICATION_CACHE.add(cache_key)
+    return matches
+
+
+def _proof_environment_key_is_unsafe(key, *, inherited=False):
+    normalized = str(key).upper()
+    return (
+        normalized in UNSAFE_PROOF_ENVIRONMENT_KEYS
+        or (
+            inherited
+            and normalized
+            in INHERITED_ONLY_UNSAFE_PROOF_ENVIRONMENT_KEYS
+        )
+        or any(
+            normalized.startswith(prefix)
+            for prefix in UNSAFE_PROOF_ENVIRONMENT_PREFIXES
+        )
+    )
+
+
+def _proof_executable_manifest_digest():
+    payload = {
+        "policy": PROOF_EXECUTABLE_POLICY_VERSION,
+        "executables": PROOF_EXECUTABLE_IDENTITIES,
+        "python": PYTHON_EXECUTABLE_IDENTITIES,
+    }
+    return hashlib.sha256(
+        json.dumps(
+            payload,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+
+
+def _codex_home_from_environment(environment):
+    candidate = str(environment.get("CODEX_HOME") or "").strip()
+    if not candidate and pwd is not None:
+        try:
+            candidate = str(
+                Path(pwd.getpwuid(os.getuid()).pw_dir) / ".codex"
+            )
+        except (KeyError, OSError):
+            candidate = ""
+    if not candidate:
+        return None
+    path = Path(candidate)
+    if not path.is_absolute():
+        return None
+    resolved = path.resolve(strict=False)
+    if any(
+        _path_is_within(resolved, root)
+        for root in _proof_untrusted_roots()
+    ):
+        return None
+    return str(resolved)
+
+
+def sanitized_codex_environment(environment=None):
+    source = dict(os.environ if environment is None else environment)
+    raw_codex_home = str(source.get("CODEX_HOME") or "").strip()
+    codex_home = _codex_home_from_environment(source)
+    removed = sorted(
+        {
+            key
+            for key in source
+            if _proof_environment_key_is_unsafe(key, inherited=True)
+        }
+        | (
+            {"CODEX_HOME"}
+            if raw_codex_home and codex_home is None
+            else set()
+        )
+    )
+    sanitized = {
+        key: value
+        for key, value in source.items()
+        if key not in removed
+    }
+    sanitized.pop("CODEX_HOME", None)
+    sanitized["PATH"] = PROOF_EXECUTABLE_PATH
+    proof_home = PROOF_HOME.resolve(strict=False)
+    enforced_environment = {
+        "GIT_CONFIG_GLOBAL": os.devnull,
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_CONFIG_SYSTEM": os.devnull,
+        "GOENV": "off",
+        "HOME": str(proof_home),
+        "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
+        "PYTHONNOUSERSITE": "1",
+        "XDG_CACHE_HOME": str(proof_home / ".cache"),
+        "XDG_CONFIG_HOME": str(proof_home / ".config"),
+        "XDG_DATA_HOME": str(proof_home / ".local" / "share"),
+        "XDG_STATE_HOME": str(proof_home / ".local" / "state"),
+    }
+    sanitized.update(enforced_environment)
+    if codex_home is not None:
+        sanitized["CODEX_HOME"] = codex_home
+    codex_control_environment = (
+        {"CODEX_HOME": codex_home}
+        if codex_home is not None
+        else {}
+    )
+    retained_control_environment = {
+        key: sanitized[key]
+        for key in sorted(PROOF_CONTROL_ENVIRONMENT_KEYS)
+        if key in sanitized
+    }
+    summary = {
+        "environment_policy": PROOF_ENVIRONMENT_POLICY_VERSION,
+        "executable_policy": PROOF_EXECUTABLE_POLICY_VERSION,
+        "controlled_path_sha256": hashlib.sha256(
+            PROOF_EXECUTABLE_PATH.encode("utf-8")
+        ).hexdigest(),
+        "tool_manifest_sha256": _proof_executable_manifest_digest(),
+        "removed_environment_keys": removed,
+        "retained_control_environment_keys": list(
+            retained_control_environment
+        ),
+        "retained_control_environment_sha256": hashlib.sha256(
+            json.dumps(
+                retained_control_environment,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest(),
+        "enforced_environment_keys": sorted(enforced_environment),
+        "enforced_environment_sha256": hashlib.sha256(
+            json.dumps(
+                enforced_environment,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest(),
+        "codex_control_environment_keys": list(
+            codex_control_environment
+        ),
+        "codex_control_environment_sha256": hashlib.sha256(
+            json.dumps(
+                codex_control_environment,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest(),
+    }
+    return sanitized, summary
 
 
 def _proof_invocation_environment_is_safe(invocation):
@@ -4212,10 +4779,10 @@ def _proof_invocation_environment_is_safe(invocation):
         invocation.get("environment_provenance")
     )
     return (
-        not UNSAFE_PROOF_ENVIRONMENT_KEYS.intersection(environment)
-        and "NODE_OPTIONS" not in environment
-        and "NODE_PATH" not in environment
-        and not any(key.startswith("NPM_CONFIG_") for key in environment)
+        not any(
+            _proof_environment_key_is_unsafe(key)
+            for key in environment
+        )
         and not provenance["ignore_environment"]
         and "PATH" not in provenance["unset_variables"]
     )
@@ -4266,23 +4833,18 @@ def _proof_executable_is_trusted(invocation):
     if Path(raw_executable).name.lower() != executable:
         return False
     baseline = (
-        PYTHON_EXECUTABLE_BASELINE
+        PYTHON_EXECUTABLE_IDENTITIES.get(executable)
         if executable.startswith("python")
-        else PROOF_EXECUTABLE_BASELINES.get(executable)
+        else PROOF_EXECUTABLE_IDENTITIES.get(executable)
     )
-    resolved_from_path = _resolved_executable_path(
-        shutil.which(raw_executable)
-        if "/" not in raw_executable and "\\" not in raw_executable
-        else shutil.which(executable)
-    )
-    if baseline is None or resolved_from_path != baseline:
+    if baseline is None:
         return False
     candidate = (
-        resolved_from_path
+        baseline["launcher_path"]
         if "/" not in raw_executable and "\\" not in raw_executable
-        else _resolved_executable_path(raw_executable)
+        else raw_executable
     )
-    return candidate == baseline
+    return _proof_executable_identity_matches(candidate, baseline)
 
 
 def _proof_command_wrappers_are_trusted(invocation):
@@ -6133,7 +6695,16 @@ def output_contract_verdict(row, schema, actual, final_response):
     return "pass", notes, failures
 
 
-def evidence_verdict(row, schema, actual, final_response, changes, stdout):
+def evidence_verdict(
+    row,
+    schema,
+    actual,
+    final_response,
+    changes,
+    stdout,
+    *,
+    case_workspace=None,
+):
     notes = []
     failures = []
     tokens = schema["evidence_required"]
@@ -6250,12 +6821,9 @@ def evidence_verdict(row, schema, actual, final_response, changes, stdout):
                 activity["kind"] == "command_execution"
                 and activity["succeeded"]
                 and command_success_is_attributable(activity["command"])
-                and any(
-                    _is_git_status_invocation(invocation)
-                    and _observed_invocation_uses_trusted_executable(
-                        invocation
-                    )
-                    for invocation in command_invocations(activity["command"])
+                and _git_status_activity_targets_workspace(
+                    activity,
+                    case_workspace,
                 )
                 for activity in completed_tool_activities(stdout)
             ):
@@ -6711,6 +7279,7 @@ def routing_verdict_model(
     sandbox="unknown",
     case_validation_errors=None,
     response_shape_candidate=None,
+    case_workspace=None,
 ):
     schema = routing_schema_for_row(row)
     behavior_route = response_shape_candidate or actual
@@ -6738,7 +7307,13 @@ def routing_verdict_model(
         host_verdict, host_notes, host_failures = host_preemption_verdict_details(row, behavior_route, last, changes)
         output_verdict, output_notes, output_failures = output_contract_verdict(row, schema, behavior_route, last)
         evidence_status, evidence_notes, evidence_failures = evidence_verdict(
-            row, schema, behavior_route, last, changes, stdout
+            row,
+            schema,
+            behavior_route,
+            last,
+            changes,
+            stdout,
+            case_workspace=case_workspace,
         )
         behavior_status, behavior_notes, behavior_failures = behavior_verdict(
             row,
@@ -6824,6 +7399,7 @@ def changed_file_paths(changes):
 
 def run_static_gated_evaluator_check(cwd, command):
     """Run evaluator-owned commands only after the fixture purity gate passes."""
+    child_environment, _context = sanitized_codex_environment()
     try:
         return subprocess.run(
             command,
@@ -6833,6 +7409,7 @@ def run_static_gated_evaluator_check(cwd, command):
             stderr=subprocess.STDOUT,
             text=True,
             timeout=20,
+            env=child_environment,
         )
     except FileNotFoundError as exc:
         return subprocess.CompletedProcess(command, 127, stdout=str(exc))
@@ -6974,17 +7551,22 @@ def write_case_result(result):
 
 def run_row(row, timeout_s=None, attempt=1):
     row_id = row["id"]
-    prompt = prompt_for_row(row)
     expected = expected_skill_for_row(row)
     metadata = case_metadata(row)
     timeout_s = timeout_s or metadata["timeout_s"]
     cwd, sandbox, workspace_note = choose_workspace(row)
+    prompt = prompt_with_evidence_bindings(
+        prompt_for_row(row),
+        row,
+        cwd,
+    )
     before = snapshot(cwd)
 
     attempt_suffix = "" if attempt == 1 else f"-attempt{attempt}"
     log_path = LOGS / f"{row_id}{attempt_suffix}.jsonl"
     last_path = LAST / f"{row_id}{attempt_suffix}.txt"
     cmd = codex_exec_command(cwd, sandbox, last_path, prompt, row=row)
+    child_environment, proof_execution_context = sanitized_codex_environment()
 
     started = datetime.now(timezone.utc).isoformat()
     try:
@@ -6995,6 +7577,7 @@ def run_row(row, timeout_s=None, attempt=1):
             stderr=subprocess.STDOUT,
             text=True,
             timeout=timeout_s,
+            env=child_environment,
         )
         stdout = proc.stdout
         rc = proc.returncode
@@ -7003,6 +7586,9 @@ def run_row(row, timeout_s=None, attempt=1):
         if isinstance(stdout, bytes):
             stdout = stdout.decode("utf-8", errors="replace")
         rc = 124
+    except OSError as exc:
+        stdout = f"codex exec launch failed: {exc}\n"
+        rc = 127
 
     log_path.write_text(stdout, encoding="utf-8")
     last = last_path.read_text(encoding="utf-8") if last_path.exists() else ""
@@ -7030,6 +7616,7 @@ def run_row(row, timeout_s=None, attempt=1):
         sandbox=sandbox,
         case_validation_errors=case_validation_errors,
         response_shape_candidate=response_shape_candidate,
+        case_workspace=cwd,
     )
     result = {
         "id": row_id,
@@ -7057,6 +7644,7 @@ def run_row(row, timeout_s=None, attempt=1):
         "sandbox": sandbox,
         "hook_trust_bypass": hook_trust_bypass_enabled(),
         "runtime_mode": runtime_mode,
+        "proof_execution_context": proof_execution_context,
         "observed_evidence": observed_evidence_kinds(stdout),
         "score_eligibility": score_eligibility_for_runtime_mode(runtime_mode),
         "acceptable_routes": acceptable_routes,
@@ -7497,6 +8085,14 @@ def main(argv=None):
     LAST.mkdir(parents=True, exist_ok=True)
     WORKSPACES.mkdir(parents=True, exist_ok=True)
     CASES.mkdir(parents=True, exist_ok=True)
+    for path in (
+        PROOF_HOME,
+        PROOF_HOME / ".cache",
+        PROOF_HOME / ".config",
+        PROOF_HOME / ".local" / "share",
+        PROOF_HOME / ".local" / "state",
+    ):
+        path.mkdir(parents=True, exist_ok=True)
 
     for index, row in enumerate(rows):
         row["_input_index"] = index
