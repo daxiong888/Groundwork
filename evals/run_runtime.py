@@ -1488,9 +1488,24 @@ def _has_unverified_evidence_marker(clause):
         " ",
         lowered,
     )
+    lowered = re.sub(
+        r"\b(?:no|neither|nothing)\s+"
+        r"(?:[a-z0-9_-]+\s+){0,4}"
+        r"(?:is|are|remains?|was|were)\s+"
+        r"(?:missing|unverified|unknown|blocked|insufficient)\b",
+        " ",
+        lowered,
+    )
+    lowered = re.sub(
+        r"\bneither\s+(?:missing|unverified|unknown|blocked|insufficient)"
+        r"\s+nor\s+(?:missing|unverified|unknown|blocked|insufficient)\b",
+        " ",
+        lowered,
+    )
     chinese_positive_patterns = (
         r"没有测试(?:失败|报错|错误)",
-        r"(?:并非|不是|不再)(?:缺少|未验证|未知|阻塞|不足)",
+        r"(?:并不|并非|并未|不是|不再)(?:存在)?"
+        r"(?:缺少|缺失|未验证|未知|阻塞|不足)",
     )
     original = str(clause or "")
     for pattern in chinese_positive_patterns:
@@ -2366,33 +2381,63 @@ def _is_git_status_invocation(invocation):
     )
 
 
+TEST_NONEXECUTING_OPTIONS = {
+    "--co",
+    "--collect-only",
+    "--dry-run",
+    "--fixtures",
+    "--fixtures-per-test",
+    "--list",
+    "--list-only",
+    "--list-tests",
+    "--listtests",
+    "--markers",
+    "--no-run",
+    "--setup-only",
+    "-list",
+}
+
+
+def _test_invocation_is_nonexecuting(invocation):
+    executable = invocation["executable"]
+    args = [str(argument) for argument in invocation.get("args") or []]
+    lowered_args = [argument.casefold() for argument in args]
+    if _has_help_or_version(args) or any(
+        argument in TEST_NONEXECUTING_OPTIONS
+        or any(
+            argument.startswith(option + "=")
+            for option in TEST_NONEXECUTING_OPTIONS
+            if option.startswith("--")
+        )
+        for argument in lowered_args
+    ):
+        return True
+    if executable in {"mvn", "mvnw"}:
+        skip_properties = {
+            "-dskiptests",
+            "-dskiptests=true",
+            "-dmaven.test.skip",
+            "-dmaven.test.skip=true",
+        }
+        if any(argument in skip_properties for argument in lowered_args):
+            return True
+    if executable in {"gradle", "gradlew"}:
+        for index, argument in enumerate(lowered_args):
+            if argument in {"-x", "--exclude-task"}:
+                if (
+                    index + 1 < len(lowered_args)
+                    and lowered_args[index + 1] == "test"
+                ):
+                    return True
+            if argument in {"-xtest", "--exclude-task=test"}:
+                return True
+    return False
+
+
 def _is_test_invocation(invocation):
     executable = invocation["executable"]
     args = invocation["args"]
-    nonexecuting_options = {
-        "--co",
-        "--collect-only",
-        "--dry-run",
-        "--fixtures",
-        "--fixtures-per-test",
-        "--list",
-        "--list-only",
-        "--list-tests",
-        "--listtests",
-        "--markers",
-        "--no-run",
-        "--setup-only",
-        "-list",
-    }
-    if _has_help_or_version(args) or any(
-        str(argument).casefold() in nonexecuting_options
-        or any(
-            str(argument).casefold().startswith(option + "=")
-            for option in nonexecuting_options
-            if option.startswith("--")
-        )
-        for argument in args
-    ):
+    if _test_invocation_is_nonexecuting(invocation):
         return False
     if executable in {"pytest", "py.test"}:
         return True
@@ -3316,38 +3361,80 @@ def _test_command_output_is_substantive(output):
         r"\bran\s+0\s+tests?\b",
         r"\brunning\s+0\s+tests?\b",
         r"\bcollected\s+0\s+(?:items?|tests?)\b",
+        r"\bno\s+test\s+files?\s+found\b",
+        r"\[no\s+test\s+files?\]",
         r"\bno\s+tests?\s+to\s+run\b",
         r"\bno\s+tests?\s+(?:were\s+)?"
         r"(?:collected|discovered|executed|found|ran|run)\b",
         r"\b0\s+tests?\s+(?:collected|discovered|executed|found|ran|run)\b",
         r"\b(?:executed|tests?)\s*:\s*0\b",
+        r"(?m)^\s*tests\s+0\s*$",
         r"\ball\s+tests?\s+(?:were\s+)?skipped\b",
+        r"\btests?\s+are\s+skipped\b",
     )
     if any(
         re.search(pattern, lowered)
         for pattern in zero_execution_patterns
     ):
         return False
-    unittest_run = re.search(r"\bran\s+([1-9]\d*)\s+tests?\b", lowered)
-    unittest_skipped = re.search(r"\bskipped\s*=\s*([1-9]\d*)\b", lowered)
-    if (
-        unittest_run
-        and unittest_skipped
-        and int(unittest_run.group(1)) == int(unittest_skipped.group(1))
-    ):
+
+    def count(pattern):
+        match = re.search(pattern, lowered)
+        return int(match.group(1)) if match else None
+
+    unittest_run = count(r"\bran\s+(\d+)\s+tests?\b")
+    if unittest_run is not None:
+        unittest_skipped = count(r"\bskipped\s*=\s*(\d+)\b") or 0
+        return unittest_run > unittest_skipped
+
+    junit_run = count(r"\btests?\s+run\s*:\s*(\d+)\b")
+    if junit_run is not None:
+        junit_skipped = count(r"\bskipped\s*:\s*(\d+)\b") or 0
+        return junit_run > junit_skipped
+
+    completed = count(r"\b(\d+)\s+tests?\s+completed\b")
+    if completed is not None:
+        completed_skipped = count(r"\b(\d+)\s+skipped\b") or 0
+        return completed > completed_skipped
+
+    rust_summary = re.search(
+        r"\btest\s+result\s*:[^\n]*?"
+        r"(\d+)\s+passed;\s*(\d+)\s+failed;[^\n]*?"
+        r"(\d+)\s+ignored\b",
+        lowered,
+    )
+    if rust_summary:
+        passed, failed, _ignored = (
+            int(value) for value in rust_summary.groups()
+        )
+        return passed + failed > 0
+
+    jest_line = re.search(r"(?m)^\s*tests\s*:\s*([^\n]+)$", lowered)
+    if jest_line:
+        summary = jest_line.group(1)
+        passed = re.search(r"\b(\d+)\s+passed\b", summary)
+        failed = re.search(r"\b(\d+)\s+failed\b", summary)
+        skipped = re.search(r"\b(\d+)\s+skipped\b", summary)
+        todo = re.search(r"\b(\d+)\s+todo\b", summary)
+        total = re.search(r"\b(\d+)\s+total\b", summary)
+        executed = sum(
+            int(match.group(1))
+            for match in (passed, failed)
+            if match
+        )
+        if executed:
+            return True
+        if total or skipped or todo:
+            return False
         return False
-    junit_run = re.search(r"\btests?\s+run\s*:\s*([1-9]\d*)\b", lowered)
-    junit_skipped = re.search(r"\bskipped\s*:\s*([1-9]\d*)\b", lowered)
-    if (
-        junit_run
-        and junit_skipped
-        and int(junit_run.group(1)) == int(junit_skipped.group(1))
-    ):
-        return False
+
+    node_tests = count(r"(?m)^\s*tests\s+(\d+)\s*$")
+    if node_tests is not None:
+        node_passed = count(r"(?m)^\s*pass\s+(\d+)\s*$") or 0
+        node_failed = count(r"(?m)^\s*fail\s+(\d+)\s*$") or 0
+        return node_tests > 0 and node_passed + node_failed > 0
+
     positive_execution_patterns = (
-        r"\bran\s+[1-9]\d*\s+tests?\b",
-        r"\brunning\s+[1-9]\d*\s+tests?\b",
-        r"\btests?\s+run\s*:\s*[1-9]\d*\b",
         r"\b[1-9]\d*\s+"
         r"(?:passed|failed|failures?|errors?|xfailed|xpassed)\b",
         r"\b(?:passed|failed|failures?|errors?|executed|tests?|xfailed|xpassed)"
@@ -3358,15 +3445,18 @@ def _test_command_output_is_substantive(output):
         for pattern in positive_execution_patterns
     ):
         return True
-    if (
-        re.search(
-            r"\b(?:[1-9]\d*)\s+(?:deselected|ignored|skipped)\b",
-            lowered,
-        )
-        or re.search(r"\bcollected\s+[1-9]\d*\s+(?:items?|tests?)\b", lowered)
+    normalized = " ".join(lowered.split())
+    if normalized == "ok" or re.search(
+        r"\b(?:all\s+)?(?:checks?|tests?)\s+passed\b",
+        normalized,
     ):
-        return False
-    return True
+        return True
+    if re.search(
+        r"(?m)^ok\s+\S+(?:\s+(?:\d+(?:\.\d+)?s|\(cached\)))?\s*$",
+        lowered,
+    ):
+        return True
+    return False
 
 
 def has_observed_evidence(stdout, evidence_kind, *, require_success=False):
@@ -3407,6 +3497,14 @@ def has_observed_evidence(stdout, evidence_kind, *, require_success=False):
                 for invocation in invocations
                 if predicate(invocation)
             ]
+            if evidence_kind in {"source", "tests"}:
+                matching_invocations = [
+                    invocation
+                    for invocation in matching_invocations
+                    if _observed_invocation_uses_trusted_executable(
+                        invocation
+                    )
+                ]
             if (
                 evidence_kind == "source"
                 and matching_invocations
@@ -3603,6 +3701,9 @@ def has_observed_expected_test_failure(stdout, row, final_response):
             and status == "failed"
             and len(invocations) == 1
             and _is_test_invocation(invocations[0])
+            and _observed_invocation_uses_trusted_executable(
+                invocations[0]
+            )
             and (
                 _expected_test_failure_output_is_substantive(
                     activity.get("output")
@@ -3661,17 +3762,33 @@ def _resolved_executable_path(value):
 PROOF_EXECUTABLE_BASELINES = {
     executable: _resolved_executable_path(shutil.which(executable))
     for executable in (
+        "cargo",
+        "cat",
         "chrome-headless-shell",
         "chromium",
         "chromium-browser",
+        "codegraph",
         "codex",
         "diff",
+        "go",
         "git",
         "google-chrome",
+        "gradle",
+        "gradlew",
+        "grep",
+        "head",
+        "mvn",
+        "mvnw",
+        "node",
         "npm",
         "npx",
         "playwright",
         "pnpm",
+        "py.test",
+        "pytest",
+        "rg",
+        "sed",
+        "tail",
         "yarn",
     )
 }
@@ -5134,6 +5251,9 @@ def has_required_fixture_source_evidence(stdout, source_files):
                     _is_passive_fixture_read_invocation(
                         invocations[0], source_file
                     )
+                    and _observed_invocation_uses_trusted_executable(
+                        invocations[0]
+                    )
                     and str(activity.get("output") or "").strip()
                     == canonical_content
                 ):
@@ -5199,6 +5319,9 @@ def has_uat_fixture_source_evidence(stdout, row_id):
             if any(
                 _is_passive_fixture_read_invocation(
                     invocation, records_path
+                )
+                and _observed_invocation_uses_trusted_executable(
+                    invocation
                 )
                 for invocation in invocations
             ):
@@ -5675,6 +5798,9 @@ def evidence_verdict(row, schema, actual, final_response, changes, stdout):
                 and command_success_is_attributable(activity["command"])
                 and any(
                     _is_git_status_invocation(invocation)
+                    and _observed_invocation_uses_trusted_executable(
+                        invocation
+                    )
                     for invocation in command_invocations(activity["command"])
                 )
                 for activity in completed_tool_activities(stdout)

@@ -116,7 +116,7 @@ v0.5 must not:
 - silently substitute subagents for child threads, child threads for subagents, or prompt preferences for selector enforcement;
 - hardcode a permanent global model list as runtime truth;
 - claim current official OpenAI/Codex behavior from unrefreshed local planning notes;
-- mutate plugin metadata, release packaging, remotes, trackers, worktrees, or marketplace state in this PRD-only branch.
+- mutate plugin metadata, release packaging, remotes, trackers, worktrees, or marketplace state in this source-validation feature branch.
 
 ---
 
@@ -454,7 +454,7 @@ A skill author must not be the final authority that approves its own material sk
 
 - AC-D1: Implementation final reports distinguish self-check, clean review, independent verification, runtime evidence, browser evidence, UAT evidence, and release evidence.
 - AC-D2: Runtime/cache claims name installed plugin root and cache/source refresh or equivalence evidence, or explicitly state that runtime evidence was not refreshed.
-- AC-D3: No plugin version bump, package release claim, marketplace claim, installed-plugin cache claim, UAT claim, or customer readiness claim is made by this PRD-only branch.
+- AC-D3: No plugin version bump, package release claim, marketplace claim, installed-plugin cache claim, UAT claim, or customer readiness claim is made by this source-validation feature branch.
 
 ---
 

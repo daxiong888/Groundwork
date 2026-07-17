@@ -3566,9 +3566,12 @@ normalizePhone(task.phone) === expected;
             "Tests: no tests were failing; all checks passed.",
             "Tests are not missing; all passed.",
             "Tests have no missing evidence; all passed.",
+            "Tests: no evidence is missing; all checks passed.",
+            "Tests are neither missing nor unverified; all passed.",
             "The tests are not unverified; all passed.",
             "测试：没有测试失败，全部通过。",
             "测试并非未验证，全部通过。",
+            "测试证据并不缺少，全部通过。",
         ):
             with self.subTest(response=response):
                 verdict = run_runtime.routing_verdict_model(
@@ -3930,6 +3933,37 @@ normalizePhone(task.phone) === expected;
                 unknown_exit_event, "tests", require_success=True
             )
         )
+
+    def test_command_evidence_requires_trusted_executables(self):
+        for evidence_kind, command, output in (
+            ("source", "/tmp/cat README.md", "project source"),
+            ("source", "PATH=/tmp/fake cat README.md", "project source"),
+            ("tests", "/tmp/test_fake", "1 passed"),
+            ("tests", "PATH=/tmp/fake pytest tests", "1 passed"),
+        ):
+            with self.subTest(
+                evidence_kind=evidence_kind,
+                command=command,
+            ):
+                self.assertFalse(
+                    run_runtime.has_observed_evidence(
+                        command_event(command, output=output),
+                        evidence_kind,
+                        require_success=True,
+                    )
+                )
+
+        git_status = run_runtime.routing_verdict_model(
+            routing_row(evidence_required="git_status"),
+            actual="direct",
+            last="Git status inspected.",
+            rc=0,
+            changes=[],
+            lifecycle_errors=[],
+            stdout=command_event("/tmp/git status --short", output=""),
+        )
+        self.assertEqual(git_status["evidence_verdict"], "fail")
+        self.assertEqual(git_status["overall_verdict"], "fail")
 
     def test_structured_browser_observation_requires_tool_specific_payload(self):
         observations = (
@@ -4542,6 +4576,16 @@ normalizePhone(task.phone) === expected;
                     )
                 )
 
+        self.assertFalse(
+            run_runtime.has_uat_fixture_source_evidence(
+                command_event(
+                    f"/tmp/sed -n 15,48p {records_path}",
+                    output=canonical_section,
+                ),
+                row_id,
+            )
+        )
+
     def test_required_fixture_source_requires_trusted_exact_content(self):
         source_file = (
             run_runtime.REPO
@@ -4610,6 +4654,10 @@ normalizePhone(task.phone) === expected;
             command_event(
                 f"cat {source_file}",
                 output="PREFIX\n" + canonical_content,
+            ),
+            command_event(
+                f"/tmp/cat {source_file}",
+                output=canonical_content,
             ),
             tool_event(
                 "functions",
@@ -4863,6 +4911,14 @@ normalizePhone(task.phone) === expected;
                 output="running 0 tests\ntest result: ok.",
             ),
             command_event(
+                "cargo test",
+                output=(
+                    "running 1 test\n"
+                    "test ignored_case ... ignored\n"
+                    "test result: ok. 0 passed; 0 failed; 1 ignored"
+                ),
+            ),
+            command_event(
                 "go test ./...",
                 output="testing: warning: no tests to run\nPASS",
             ),
@@ -4872,6 +4928,30 @@ normalizePhone(task.phone) === expected;
                     "Tests run: 2, Failures: 0, Errors: 0, "
                     "Skipped: 2"
                 ),
+            ),
+            command_event(
+                "npm test",
+                output="Tests: 1 skipped, 1 total",
+            ),
+            command_event(
+                "npm test",
+                output="tests 0\npass 0\nfail 0",
+            ),
+            command_event(
+                "npm test -- --passWithNoTests",
+                output="No test files found, exiting with code 0",
+            ),
+            command_event(
+                "mvn -DskipTests test",
+                output="Tests are skipped.\nBUILD SUCCESS",
+            ),
+            command_event(
+                "mvn -Dmaven.test.skip=true test",
+                output="No sources to compile\nBUILD SUCCESS",
+            ),
+            command_event(
+                "gradle test -x test",
+                output="BUILD SUCCESSFUL in 1s",
             ),
             command_event(
                 "python3 -m pytest tests",
@@ -4924,6 +5004,29 @@ normalizePhone(task.phone) === expected;
                 "python3 -m pytest tests",
                 output="0 passed, 1 xfailed in 0.04s",
             ),
+            command_event(
+                "cargo test",
+                output=(
+                    "running 1 test\n"
+                    "test works ... ok\n"
+                    "test result: ok. 1 passed; 0 failed; 0 ignored"
+                ),
+            ),
+            command_event(
+                "npm test",
+                output="Tests: 1 passed, 1 total",
+            ),
+            command_event(
+                "npm test",
+                output="tests 1\npass 1\nfail 0",
+            ),
+            command_event(
+                "mvn test",
+                output=(
+                    "Tests run: 1, Failures: 0, Errors: 0, "
+                    "Skipped: 0"
+                ),
+            ),
         ):
             with self.subTest(stdout=stdout):
                 self.assertTrue(
@@ -4932,6 +5035,21 @@ normalizePhone(task.phone) === expected;
                         "tests",
                         require_success=True,
                     )
+                )
+
+        for command in (
+            "mvn -DskipTests test",
+            "mvn -DskipTests=true test",
+            "mvn -Dmaven.test.skip test",
+            "mvn -Dmaven.test.skip=true test",
+            "gradle test -x test",
+            "gradlew test --exclude-task=test",
+        ):
+            with self.subTest(nonexecuting_command=command):
+                invocations = run_runtime.command_invocations(command)
+                self.assertEqual(len(invocations), 1)
+                self.assertFalse(
+                    run_runtime._is_test_invocation(invocations[0])
                 )
 
     def test_expected_test_failure_is_narrowly_bound_to_qa_reproduction(self):
