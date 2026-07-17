@@ -269,6 +269,13 @@ class RuntimeSchedulerTests(unittest.TestCase):
         )
         proof_path_patch.start()
         self.addCleanup(proof_path_patch.stop)
+        codex_launcher_patch = mock.patch.object(
+            run_runtime,
+            "CODEX_CONTROL_LAUNCHER",
+            self._trusted_executables["codex"],
+        )
+        codex_launcher_patch.start()
+        self.addCleanup(codex_launcher_patch.stop)
         run_runtime._PROOF_EXECUTABLE_VERIFICATION_CACHE.clear()
 
     def copy_root_cause_fixture(self, target_root):
@@ -523,11 +530,28 @@ class RuntimeSchedulerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             last_path = root / "last.txt"
-
-            with mock.patch.dict(os.environ, {"GROUNDWORK_CODEX_BYPASS_HOOK_TRUST": "0"}):
-                default_cmd = run_runtime.codex_exec_command(root, "read-only", last_path, "prompt")
-            with mock.patch.dict(os.environ, {"GROUNDWORK_CODEX_BYPASS_HOOK_TRUST": "1"}):
-                bypass_cmd = run_runtime.codex_exec_command(root, "read-only", last_path, "prompt")
+            old_selector = dict(run_runtime.RUNTIME_SELECTOR)
+            try:
+                with mock.patch.dict(
+                    os.environ,
+                    {"GROUNDWORK_CODEX_BYPASS_HOOK_TRUST": "1"},
+                ):
+                    default_cmd = run_runtime.codex_exec_command(
+                        root,
+                        "read-only",
+                        last_path,
+                        "prompt",
+                    )
+                run_runtime.RUNTIME_SELECTOR["hook_trust_bypass"] = True
+                bypass_cmd = run_runtime.codex_exec_command(
+                    root,
+                    "read-only",
+                    last_path,
+                    "prompt",
+                )
+            finally:
+                run_runtime.RUNTIME_SELECTOR.clear()
+                run_runtime.RUNTIME_SELECTOR.update(old_selector)
 
         self.assertNotIn("--dangerously-bypass-hook-trust", default_cmd)
         self.assertEqual(Path(bypass_cmd[0]).name, "codex")
@@ -537,6 +561,26 @@ class RuntimeSchedulerTests(unittest.TestCase):
         )
         self.assertIn("exec", bypass_cmd)
         self.assertIn("prompt", bypass_cmd)
+
+    def test_codex_exec_command_fails_closed_without_trusted_launcher(self):
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            mock.patch.object(
+                run_runtime,
+                "CODEX_CONTROL_LAUNCHER",
+                None,
+            ),
+        ):
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "trusted Codex launcher",
+            ):
+                run_runtime.codex_exec_command(
+                    Path(tmp),
+                    "read-only",
+                    Path(tmp) / "last.txt",
+                    "prompt",
+                )
 
     def test_codex_exec_command_accepts_runtime_selector(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -837,6 +881,7 @@ normalizePhone(task.phone) === expected;
 
         self.assertEqual(run.call_count, 2)
         for call in run.call_args_list:
+            self.assertTrue(Path(call.args[0][0]).is_absolute())
             child_environment = call.kwargs["env"]
             for key in inherited:
                 self.assertNotIn(key, child_environment)
@@ -844,6 +889,68 @@ normalizePhone(task.phone) === expected;
                 child_environment["PATH"],
                 run_runtime.PROOF_EXECUTABLE_PATH,
             )
+
+    def test_evaluator_owned_subprocesses_fail_closed_without_captured_launcher(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            marker = workspace / "executed.txt"
+            for executable in ("git", "node"):
+                fake = workspace / executable
+                fake.write_text(
+                    "#!/bin/sh\n"
+                    f"printf executed > {marker}\n",
+                    encoding="utf-8",
+                )
+                fake.chmod(0o755)
+            with (
+                mock.patch.dict(
+                    run_runtime.PROOF_EXECUTABLE_IDENTITIES,
+                    {"git": None, "node": None},
+                    clear=False,
+                ),
+                mock.patch.object(
+                    run_runtime,
+                    "PROOF_EXECUTABLE_PATH",
+                    "",
+                ),
+            ):
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    "trusted evaluator launcher",
+                ):
+                    run_runtime.run_fixture_command(
+                        workspace,
+                        ["git", "--version"],
+                    )
+                completed = (
+                    run_runtime.run_static_gated_evaluator_check(
+                        workspace,
+                        ["node", "--test"],
+                    )
+                )
+
+        self.assertEqual(completed.returncode, 127)
+        self.assertIn("trusted evaluator launcher", completed.stdout)
+        self.assertFalse(marker.exists())
+
+    def test_sanitized_environment_never_emits_empty_path(self):
+        with mock.patch.object(
+            run_runtime,
+            "PROOF_EXECUTABLE_PATH",
+            "",
+        ):
+            child_environment, context = (
+                run_runtime.sanitized_codex_environment({})
+            )
+
+        self.assertEqual(
+            child_environment["PATH"],
+            run_runtime.EMPTY_PROOF_EXECUTABLE_PATH,
+        )
+        self.assertRegex(
+            context["controlled_path_sha256"],
+            r"^[0-9a-f]{64}$",
+        )
 
     def test_sanitized_environment_reaches_real_child_process(self):
         inherited = {
@@ -980,9 +1087,48 @@ normalizePhone(task.phone) === expected;
 
         self.assertTrue(mode["router_observability_enabled"])
         self.assertEqual(mode["router_observability_mode"], "observe_only")
-        self.assertTrue(mode["hook_trust_bypass"])
+        self.assertFalse(mode["hook_trust_bypass"])
         self.assertEqual(run_runtime.score_eligibility_for_runtime_mode(mode), "baseline_eligible")
         self.assertIn("no route hints injected", mode["evidence_boundary"])
+
+    def test_explicit_hook_trust_bypass_is_insufficient_evidence(self):
+        old_selector = dict(run_runtime.RUNTIME_SELECTOR)
+        try:
+            run_runtime.RUNTIME_SELECTOR["hook_trust_bypass"] = True
+            with mock.patch.dict(
+                os.environ,
+                {"GROUNDWORK_CODEX_BYPASS_HOOK_TRUST": "1"},
+                clear=False,
+            ):
+                mode = run_runtime.router_observability_runtime_mode()
+                child_environment, context = (
+                    run_runtime.sanitized_codex_environment()
+                )
+        finally:
+            run_runtime.RUNTIME_SELECTOR.clear()
+            run_runtime.RUNTIME_SELECTOR.update(old_selector)
+
+        self.assertTrue(mode["hook_trust_bypass"])
+        self.assertNotIn(
+            "GROUNDWORK_CODEX_BYPASS_HOOK_TRUST",
+            child_environment,
+        )
+        self.assertIn(
+            "GROUNDWORK_CODEX_BYPASS_HOOK_TRUST",
+            context["removed_environment_keys"],
+        )
+        self.assertEqual(
+            context["argv_controls"],
+            {"hook_trust_bypass": True},
+        )
+        self.assertRegex(
+            context["argv_control_sha256"],
+            r"^[0-9a-f]{64}$",
+        )
+        self.assertEqual(
+            run_runtime.score_eligibility_for_runtime_mode(mode),
+            "insufficient_evidence",
+        )
 
     def test_write_summary_records_observe_only_runtime_boundary(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1006,6 +1152,7 @@ normalizePhone(task.phone) === expected;
                 run_runtime.RUNTIME_SELECTOR["model"] = "gpt-5.4-mini"
                 run_runtime.RUNTIME_SELECTOR["profile"] = ""
                 run_runtime.RUNTIME_SELECTOR["codex_config"] = []
+                run_runtime.RUNTIME_SELECTOR["hook_trust_bypass"] = True
 
                 with mock.patch.dict(os.environ, env, clear=True):
                     summary = run_runtime.write_summary(
@@ -1028,6 +1175,10 @@ normalizePhone(task.phone) === expected;
                 self.assertEqual(runtime_mode["router_observability_mode"], "observe_only")
                 self.assertTrue(runtime_mode["router_observability_enabled"])
                 self.assertTrue(runtime_mode["hook_trust_bypass"])
+                self.assertEqual(
+                    summary["score_eligibility"],
+                    "insufficient_evidence",
+                )
                 self.assertIn("no route hints injected", runtime_mode["evidence_boundary"])
 
                 failures = run_runtime.FAILURES.read_text(encoding="utf-8")
@@ -5537,6 +5688,30 @@ normalizePhone(task.phone) === expected;
                 ),
             ),
             command_event(
+                "node fake.mjs --test",
+                output=(
+                    "# tests 1\n# suites 0\n# pass 1\n# fail 0\n"
+                    "# cancelled 0\n# skipped 0\n# todo 0\n"
+                    "# duration_ms 1"
+                ),
+            ),
+            command_event(
+                "node fake.mjs --test-reporter=tap --test",
+                output=(
+                    "# tests 1\n# suites 0\n# pass 1\n# fail 0\n"
+                    "# cancelled 0\n# skipped 0\n# todo 0\n"
+                    "# duration_ms 1"
+                ),
+            ),
+            command_event(
+                "node -- fake.mjs --test",
+                output=(
+                    "# tests 1\n# suites 0\n# pass 1\n# fail 0\n"
+                    "# cancelled 0\n# skipped 0\n# todo 0\n"
+                    "# duration_ms 1"
+                ),
+            ),
+            command_event(
                 "node --test --test-reporter=/tmp/fake-reporter.mjs",
                 output=(
                     "# tests 1\n# suites 0\n# pass 1\n# fail 0\n"
@@ -5722,6 +5897,23 @@ normalizePhone(task.phone) === expected;
         self.assertTrue(
             run_runtime._is_test_invocation(node_invocations[0])
         )
+        for command in (
+            "node fake.mjs --test",
+            "node fake.mjs --test-reporter=tap --test",
+            "node -- fake.mjs --test",
+            "node -e --test",
+            "node --eval --test",
+            "node --require --test",
+            "node --trace-event-categories --test",
+        ):
+            with self.subTest(positional_node_test_option=command):
+                invocation = run_runtime.command_invocations(command)[0]
+                self.assertFalse(
+                    run_runtime._is_test_invocation(invocation)
+                )
+                self.assertFalse(
+                    run_runtime._is_node_test_invocation(invocation)
+                )
 
     def test_test_evidence_rejects_repo_controlled_delegated_runner(self):
         forged = (
@@ -7349,6 +7541,31 @@ release_evidence_claim:
             trial_label_in_sibling_command["evidence_verdict"], "fail"
         )
         self.assertEqual(passed["evidence_verdict"], "pass")
+        bypassed = run_runtime.routing_verdict_model(
+            routing_row(evidence_required="runtime_or_unverified"),
+            actual="direct",
+            last=verified_claim,
+            rc=0,
+            changes=[],
+            lifecycle_errors=[],
+            stdout="\n".join(
+                [
+                    inventory_event,
+                    equivalence_event,
+                    installed_runtime_event,
+                ]
+            ),
+            proof_execution_context={
+                "argv_controls": {
+                    "hook_trust_bypass": True,
+                },
+            },
+        )
+        self.assertEqual(bypassed["evidence_verdict"], "fail")
+        self.assertIn(
+            "hook trust bypass",
+            bypassed["notes"],
+        )
 
     def test_verified_runtime_chain_rejects_provenance_and_order_spoofs(self):
         installed_root = (

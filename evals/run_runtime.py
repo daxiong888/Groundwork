@@ -217,7 +217,12 @@ CASES = RUN / "cases"
 PROOF_HOME = RUN / "proof-home"
 SUMMARY = RUN / "summary.json"
 FAILURES = RUN / "failures.md"
-RUNTIME_SELECTOR = {"model": "", "profile": "", "codex_config": []}
+RUNTIME_SELECTOR = {
+    "model": "",
+    "profile": "",
+    "codex_config": [],
+    "hook_trust_bypass": False,
+}
 
 ROUTING_RELIABILITY_SUITE = "routing-reliability.csv"
 TRACE_FIRST_VERIFY_REVIEW_SUITE = "trace-first-verify-review.csv"
@@ -644,7 +649,7 @@ def changed_files(before, after):
 
 
 def hook_trust_bypass_enabled():
-    return os.environ.get("GROUNDWORK_CODEX_BYPASS_HOOK_TRUST") == "1"
+    return bool(RUNTIME_SELECTOR.get("hook_trust_bypass"))
 
 
 ROUTER_OBSERVABILITY_CONFIG = Path(".groundwork") / "harness" / "router-observability" / "config.json"
@@ -757,6 +762,8 @@ def router_observability_runtime_mode(cwd=None):
 
 
 def score_eligibility_for_runtime_mode(runtime_mode):
+    if bool((runtime_mode or {}).get("hook_trust_bypass")):
+        return "insufficient_evidence"
     mode = str((runtime_mode or {}).get("router_observability_mode") or "disabled")
     if mode == "observe_only":
         return "baseline_eligible"
@@ -784,7 +791,10 @@ def aggregate_runtime_mode(results):
         "router_observability_enabled": any(bool(item.get("router_observability_enabled")) for item in observed),
         "router_observability_mode": primary_mode,
         "router_observability_modes": modes,
-        "hook_trust_bypass": hook_trust_bypass_enabled(),
+        "hook_trust_bypass": any(
+            bool(item.get("hook_trust_bypass"))
+            for item in observed
+        ),
         "evidence_boundary": router_observability_evidence_boundary(primary_mode),
         "activation_sources": sorted({str(item.get("activation_source") or "unknown") for item in observed}),
     }
@@ -827,11 +837,11 @@ def prompt_with_evidence_bindings(prompt, row, cwd):
 
 
 def codex_exec_command(cwd, sandbox, last_path, prompt, row=None):
-    cmd = [
-        str(CODEX_CONTROL_LAUNCHER)
-        if CODEX_CONTROL_LAUNCHER is not None
-        else "codex"
-    ]
+    if CODEX_CONTROL_LAUNCHER is None:
+        raise RuntimeError(
+            "no trusted Codex launcher is available"
+        )
+    cmd = [str(CODEX_CONTROL_LAUNCHER)]
     if hook_trust_bypass_enabled():
         cmd.append("--dangerously-bypass-hook-trust")
     for item in RUNTIME_SELECTOR.get("codex_config") or []:
@@ -864,8 +874,9 @@ def codex_exec_command(cwd, sandbox, last_path, prompt, row=None):
 
 def run_fixture_command(cwd, cmd):
     child_environment, _context = sanitized_codex_environment()
+    captured_command = _captured_evaluator_command(cmd)
     proc = subprocess.run(
-        cmd,
+        captured_command,
         cwd=cwd,
         stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
@@ -874,7 +885,10 @@ def run_fixture_command(cwd, cmd):
         env=child_environment,
     )
     if proc.returncode != 0:
-        raise RuntimeError(f"fixture setup command failed ({proc.returncode}): {' '.join(cmd)}\n{proc.stdout}")
+        raise RuntimeError(
+            "fixture setup command failed "
+            f"({proc.returncode}): {' '.join(cmd)}\n{proc.stdout}"
+        )
     return proc.stdout
 
 
@@ -2775,28 +2789,94 @@ def _is_test_invocation(invocation):
     if executable == "go":
         return _first_non_option(args).lower() == "test"
     if executable == "node":
-        return "--test" in args and _node_test_reporter_is_trusted(args)
+        node_options = _node_test_option_prefix(args)
+        return (
+            node_options is not None
+            and "--test" in node_options
+            and _node_test_reporter_is_trusted(node_options)
+        )
     return False
 
 
-def _node_test_reporter_is_trusted(args):
+def _node_test_option_prefix(args):
+    """Return only Node interpreter options before the script/eval target."""
+    options = []
+    index = 0
+    options_with_separate_values = {
+        "--test-concurrency",
+        "--test-name-pattern",
+        "--test-reporter",
+        "--test-reporter-destination",
+        "--test-shard",
+        "--test-timeout",
+    }
+    options_without_values = {
+        "--experimental-test-coverage",
+        "--test",
+        "--test-force-exit",
+        "--test-only",
+        "--test-update-snapshots",
+    }
+    options_with_inline_values = (
+        "--test-concurrency=",
+        "--test-coverage-branches=",
+        "--test-coverage-exclude=",
+        "--test-coverage-functions=",
+        "--test-coverage-include=",
+        "--test-coverage-lines=",
+        "--test-isolation=",
+        "--test-name-pattern=",
+        "--test-reporter=",
+        "--test-reporter-destination=",
+        "--test-shard=",
+        "--test-timeout=",
+    )
+    reporter_options = {
+        "--test-reporter",
+        "--test-reporter-destination",
+    }
+    while index < len(args):
+        argument = str(args[index])
+        if argument == "--":
+            break
+        if not argument.startswith("-") or argument == "-":
+            break
+        if (
+            argument not in options_without_values
+            and argument not in options_with_separate_values
+            and not argument.startswith(options_with_inline_values)
+        ):
+            return None
+        options.append(argument)
+        if argument in options_with_separate_values:
+            if index + 1 >= len(args):
+                return None
+            if argument in reporter_options:
+                options.append(str(args[index + 1]))
+            index += 2
+            continue
+        index += 1
+    return options
+
+
+def _node_test_reporter_is_trusted(node_options):
     reporters = []
     destinations = []
     index = 0
-    while index < len(args):
-        argument = str(args[index])
+    while index < len(node_options):
+        argument = str(node_options[index])
         if argument == "--test-reporter":
-            if index + 1 >= len(args):
+            if index + 1 >= len(node_options):
                 return False
-            reporters.append(str(args[index + 1]).casefold())
+            reporters.append(str(node_options[index + 1]).casefold())
             index += 2
             continue
         if argument.startswith("--test-reporter="):
             reporters.append(argument.split("=", 1)[1].casefold())
         elif argument == "--test-reporter-destination":
-            if index + 1 >= len(args):
+            if index + 1 >= len(node_options):
                 return False
-            destinations.append(str(args[index + 1]))
+            destinations.append(str(node_options[index + 1]))
             index += 2
             continue
         elif argument.startswith("--test-reporter-destination="):
@@ -3796,10 +3876,14 @@ def _node_test_output_is_substantive(output):
 
 
 def _is_node_test_invocation(invocation):
+    node_options = _node_test_option_prefix(
+        (invocation or {}).get("args") or []
+    )
     return bool(
         invocation
         and invocation.get("executable") == "node"
-        and "--test" in (invocation.get("args") or [])
+        and node_options is not None
+        and "--test" in node_options
     )
 
 
@@ -4138,8 +4222,8 @@ def release_evidence_status(final_response):
     return release_evidence_claim_status(final_response)
 
 
-PROOF_ENVIRONMENT_POLICY_VERSION = "proof-environment-v2"
-PROOF_EXECUTABLE_POLICY_VERSION = "proof-executable-v2"
+PROOF_ENVIRONMENT_POLICY_VERSION = "proof-environment-v3"
+PROOF_EXECUTABLE_POLICY_VERSION = "proof-executable-v3"
 UNSAFE_PROOF_ENVIRONMENT_KEYS = {
     "AR",
     "AS",
@@ -4595,8 +4679,54 @@ def _proof_executable_path():
     return os.pathsep.join(directories)
 
 
-PROOF_EXECUTABLE_PATH = _proof_executable_path()
+EMPTY_PROOF_EXECUTABLE_PATH = os.path.join(
+    os.sep,
+    "nonexistent",
+    "groundwork-proof-bin",
+)
+PROOF_EXECUTABLE_PATH = (
+    _proof_executable_path()
+    or EMPTY_PROOF_EXECUTABLE_PATH
+)
 _PROOF_EXECUTABLE_VERIFICATION_CACHE = set()
+
+
+def _controlled_proof_executable_path():
+    return (
+        str(PROOF_EXECUTABLE_PATH).strip()
+        or EMPTY_PROOF_EXECUTABLE_PATH
+    )
+
+
+def _captured_evaluator_command(command):
+    if not command:
+        raise RuntimeError(
+            "trusted evaluator launcher is required for an empty command"
+        )
+    raw_executable = str(command[0])
+    executable = Path(raw_executable).name.casefold()
+    identities = (
+        PYTHON_EXECUTABLE_IDENTITIES
+        if executable.startswith("python")
+        else PROOF_EXECUTABLE_IDENTITIES
+    )
+    identity = identities.get(executable)
+    if identity is None:
+        raise RuntimeError(
+            f"no trusted evaluator launcher is available for {executable}"
+        )
+    launcher = str(identity["launcher_path"])
+    if (
+        ("/" in raw_executable or "\\" in raw_executable)
+        and not _proof_executable_identity_matches(
+            raw_executable,
+            identity,
+        )
+    ):
+        raise RuntimeError(
+            f"the evaluator launcher is not the captured {executable} identity"
+        )
+    return [launcher, *[str(item) for item in command[1:]]]
 
 
 def _proof_executable_identity_matches(candidate, baseline):
@@ -4702,7 +4832,8 @@ def sanitized_codex_environment(environment=None):
         if key not in removed
     }
     sanitized.pop("CODEX_HOME", None)
-    sanitized["PATH"] = PROOF_EXECUTABLE_PATH
+    controlled_path = _controlled_proof_executable_path()
+    sanitized["PATH"] = controlled_path
     proof_home = PROOF_HOME.resolve(strict=False)
     enforced_environment = {
         "GIT_CONFIG_GLOBAL": os.devnull,
@@ -4730,11 +4861,14 @@ def sanitized_codex_environment(environment=None):
         for key in sorted(PROOF_CONTROL_ENVIRONMENT_KEYS)
         if key in sanitized
     }
+    argv_controls = {
+        "hook_trust_bypass": hook_trust_bypass_enabled(),
+    }
     summary = {
         "environment_policy": PROOF_ENVIRONMENT_POLICY_VERSION,
         "executable_policy": PROOF_EXECUTABLE_POLICY_VERSION,
         "controlled_path_sha256": hashlib.sha256(
-            PROOF_EXECUTABLE_PATH.encode("utf-8")
+            controlled_path.encode("utf-8")
         ).hexdigest(),
         "tool_manifest_sha256": _proof_executable_manifest_digest(),
         "removed_environment_keys": removed,
@@ -4762,6 +4896,15 @@ def sanitized_codex_environment(environment=None):
         "codex_control_environment_sha256": hashlib.sha256(
             json.dumps(
                 codex_control_environment,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest(),
+        "argv_control_keys": sorted(argv_controls),
+        "argv_controls": argv_controls,
+        "argv_control_sha256": hashlib.sha256(
+            json.dumps(
+                argv_controls,
                 sort_keys=True,
                 separators=(",", ":"),
             ).encode("utf-8")
@@ -6704,6 +6847,7 @@ def evidence_verdict(
     stdout,
     *,
     case_workspace=None,
+    proof_execution_context=None,
 ):
     notes = []
     failures = []
@@ -6717,6 +6861,22 @@ def evidence_verdict(
         (claim_values or {}).get("claim_type") or ""
     ).lower()
     allow_unverified_boundary = claim_status != "verified"
+    bypassed_hook_trust = bool(
+        (
+            (proof_execution_context or {}).get(
+                "argv_controls"
+            )
+            or {}
+        ).get("hook_trust_bypass")
+    )
+    if claim_status == "verified" and bypassed_hook_trust:
+        append_failure(
+            failures,
+            notes,
+            "evidence_failure",
+            "evidence_collection",
+            "verified claims are unavailable when the explicit hook trust bypass is active",
+        )
     if (
         claim_status == "verified"
         and claim_type in {"runtime", "cache", "marketplace", "cache_refresh"}
@@ -7280,6 +7440,7 @@ def routing_verdict_model(
     case_validation_errors=None,
     response_shape_candidate=None,
     case_workspace=None,
+    proof_execution_context=None,
 ):
     schema = routing_schema_for_row(row)
     behavior_route = response_shape_candidate or actual
@@ -7314,6 +7475,7 @@ def routing_verdict_model(
             changes,
             stdout,
             case_workspace=case_workspace,
+            proof_execution_context=proof_execution_context,
         )
         behavior_status, behavior_notes, behavior_failures = behavior_verdict(
             row,
@@ -7401,8 +7563,9 @@ def run_static_gated_evaluator_check(cwd, command):
     """Run evaluator-owned commands only after the fixture purity gate passes."""
     child_environment, _context = sanitized_codex_environment()
     try:
+        captured_command = _captured_evaluator_command(command)
         return subprocess.run(
-            command,
+            captured_command,
             cwd=cwd,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
@@ -7411,7 +7574,7 @@ def run_static_gated_evaluator_check(cwd, command):
             timeout=20,
             env=child_environment,
         )
-    except FileNotFoundError as exc:
+    except (FileNotFoundError, RuntimeError) as exc:
         return subprocess.CompletedProcess(command, 127, stdout=str(exc))
     except subprocess.TimeoutExpired as exc:
         output = exc.stdout or ""
@@ -7565,8 +7728,8 @@ def run_row(row, timeout_s=None, attempt=1):
     attempt_suffix = "" if attempt == 1 else f"-attempt{attempt}"
     log_path = LOGS / f"{row_id}{attempt_suffix}.jsonl"
     last_path = LAST / f"{row_id}{attempt_suffix}.txt"
-    cmd = codex_exec_command(cwd, sandbox, last_path, prompt, row=row)
     child_environment, proof_execution_context = sanitized_codex_environment()
+    cmd = codex_exec_command(cwd, sandbox, last_path, prompt, row=row)
 
     started = datetime.now(timezone.utc).isoformat()
     try:
@@ -7617,6 +7780,7 @@ def run_row(row, timeout_s=None, attempt=1):
         case_validation_errors=case_validation_errors,
         response_shape_candidate=response_shape_candidate,
         case_workspace=cwd,
+        proof_execution_context=proof_execution_context,
     )
     result = {
         "id": row_id,
@@ -7642,7 +7806,11 @@ def run_row(row, timeout_s=None, attempt=1):
         "attempt": attempt,
         "cwd": str(cwd),
         "sandbox": sandbox,
-        "hook_trust_bypass": hook_trust_bypass_enabled(),
+        "hook_trust_bypass": bool(
+            proof_execution_context["argv_controls"][
+                "hook_trust_bypass"
+            ]
+        ),
         "runtime_mode": runtime_mode,
         "proof_execution_context": proof_execution_context,
         "observed_evidence": observed_evidence_kinds(stdout),
@@ -7886,6 +8054,9 @@ def write_summary(
         "executed_case_ids": executed_case_ids,
         "rerun_failures": str(rerun_failures or ""),
         "runtime_mode": runtime_mode,
+        "score_eligibility": score_eligibility_for_runtime_mode(
+            runtime_mode
+        ),
         "rows": len(ordered),
         "counts": counts,
         "failures": failures,
@@ -7952,6 +8123,14 @@ def parse_args(argv=None):
         action="append",
         default=[],
         help="Optional codex exec -c key=value override. May be repeated.",
+    )
+    parser.add_argument(
+        "--bypass-hook-trust",
+        action="store_true",
+        help=(
+            "Debug-only Codex hook trust bypass. The control is recorded "
+            "and makes the run insufficient as verified evidence."
+        ),
     )
     parser.add_argument(
         "--resource-policy",
@@ -8068,6 +8247,9 @@ def main(argv=None):
     RUNTIME_SELECTOR["model"] = str(args.model or "")
     RUNTIME_SELECTOR["profile"] = str(args.profile or "")
     RUNTIME_SELECTOR["codex_config"] = [str(item) for item in (args.codex_config or [])]
+    RUNTIME_SELECTOR["hook_trust_bypass"] = bool(
+        args.bypass_hook_trust
+    )
 
     if target_ids:
         rows = [row for row in rows if row["id"] in target_ids]
