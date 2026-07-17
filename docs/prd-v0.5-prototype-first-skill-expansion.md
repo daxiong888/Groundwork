@@ -28,7 +28,7 @@ Execution Topology: canonical source-checkout artifact on the current repository
 Risk Gate: documentation-state maintenance only; no runtime, remote, release, or public-surface mutation.
 Verification Strategy: documentation consistency checks, stale-state search, `git diff --check`, and broad repository metadata/CSV validation if applicable.
 Lifecycle State: canonical maintenance; the intended Git boundary is committed and clean-checkout source/package validation is complete, while post-integration fresh read-only review remains open.
-Stop Condition: PRD and issue map express one coherent current state, with only post-integration clean-review evidence and the optional HITL publicization decisions left open.
+Stop Condition: PRD and issue map express one coherent current state, with only post-integration clean-review evidence, PR publication and CI result, and the optional HITL publicization decisions left open.
 
 ---
 

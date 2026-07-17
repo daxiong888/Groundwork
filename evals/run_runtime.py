@@ -1443,6 +1443,7 @@ def has_prototype_contract_boundary(text):
 
 UNVERIFIED_EVIDENCE_MARKERS = (
     "not run",
+    "never run",
     "not covered",
     "not provided",
     "unverified",
@@ -1457,6 +1458,7 @@ UNVERIFIED_EVIDENCE_MARKERS = (
     "insufficient",
     "无法运行",
     "无法验证",
+    "从未运行",
     "未运行",
     "未验证",
     "未覆盖",
@@ -1478,38 +1480,51 @@ def _has_unverified_evidence_marker(clause):
     negative_evidence_marker = (
         r"(?:missing|unverified|unknown|blocked|insufficient)"
     )
+    negative_evidence_qualifier = (
+        r"(?:(?:currently|actually|still|presently|explicitly)\s+)*"
+    )
     lowered = re.sub(
         rf"\bneither\b[^;.!?]{{0,64}}\bnor\s+"
-        rf"(?:(?:is|are|was|were)\s+)?{negative_evidence_marker}\b",
+        rf"(?:(?:is|are|was|were)\s+)?"
+        rf"{negative_evidence_qualifier}{negative_evidence_marker}\b",
         " ",
         lowered,
     )
     lowered = re.sub(
         rf"\b(?:not|never)\s+"
         rf"(?:(?:considered|deemed|classified|regarded|treated)"
-        rf"(?:\s+as)?\s+){negative_evidence_marker}\b",
+        rf"(?:\s+as)?\s+){negative_evidence_qualifier}"
+        rf"{negative_evidence_marker}"
+        rf"(?:\s+(?:or|nor)\s+{negative_evidence_qualifier}"
+        rf"{negative_evidence_marker})*\b",
         " ",
         lowered,
     )
     lowered = re.sub(
-        rf"\b(?:not|never)\s+{negative_evidence_marker}"
-        rf"(?:\s*,\s*{negative_evidence_marker})*"
-        rf"\s*,?\s*(?:or|nor)\s+{negative_evidence_marker}\b",
+        rf"\b(?:not|never)\s+{negative_evidence_qualifier}"
+        rf"{negative_evidence_marker}"
+        rf"(?:\s*,\s*{negative_evidence_qualifier}"
+        rf"{negative_evidence_marker})*"
+        rf"\s*,?\s*(?:or|nor)\s+{negative_evidence_qualifier}"
+        rf"{negative_evidence_marker}\b",
         " ",
         lowered,
     )
     lowered = re.sub(
-        rf"\bno\s+{negative_evidence_marker}"
+        rf"\bno\s+{negative_evidence_qualifier}"
+        rf"{negative_evidence_marker}"
         rf"(?:\s+[a-z0-9_-]+)?"
-        rf"(?:\s+(?:or|nor)\s+{negative_evidence_marker}"
+        rf"(?:\s+(?:or|nor)\s+{negative_evidence_qualifier}"
+        rf"{negative_evidence_marker}"
         rf"(?:\s+[a-z0-9_-]+)?)+\b",
         " ",
         lowered,
     )
     lowered = re.sub(
         rf"\b(?:isn['’]t|aren['’]t|wasn['’]t|weren['’]t)\s+"
-        rf"(?:(?:currently|actually|still)\s+)?"
-        rf"{negative_evidence_marker}\b",
+        rf"{negative_evidence_qualifier}{negative_evidence_marker}"
+        rf"(?:\s+(?:or|nor)\s+{negative_evidence_qualifier}"
+        rf"{negative_evidence_marker})*\b",
         " ",
         lowered,
     )
@@ -1530,7 +1545,10 @@ def _has_unverified_evidence_marker(clause):
         r"\b(?:no|neither|nothing)\s+"
         r"(?:[a-z0-9_-]+\s+){0,4}"
         r"(?:is|are|remains?|was|were)\s+"
-        r"(?:missing|unverified|unknown|blocked|insufficient)\b",
+        r"(?:missing|unverified|unknown|blocked|insufficient)"
+        r"(?:\s+(?:or|nor)\s+"
+        r"(?:(?:currently|actually|still|presently|explicitly)\s+)?"
+        r"(?:missing|unverified|unknown|blocked|insufficient))*\b",
         " ",
         lowered,
     )
@@ -1555,6 +1573,9 @@ def _has_unverified_evidence_marker(clause):
         r"没有(?:处于|属于|被视为)"
         r"(?:缺少|缺失|未验证|未知|阻塞|不足)(?:状态|项|内容|证据)?",
         r"没有被(?:标记|视为|认为|判定)为"
+        r"(?:缺少|缺失|未验证|未知|阻塞|不足)(?:状态|项|内容|证据)?",
+        r"不(?:缺少|缺失|未验证|未知|阻塞|不足)"
+        r"(?:，|,)?(?:也)?不(?:处于|属于|被视为)?"
         r"(?:缺少|缺失|未验证|未知|阻塞|不足)(?:状态|项|内容|证据)?",
         r"(?:不存在|并无)(?:任何)?"
         r"(?:缺少|缺失|未验证|未知|阻塞|不足)"
@@ -1592,15 +1613,61 @@ def has_scoped_unverified_boundary(text, domain_markers):
             return bool(re.search(rf"\b{re.escape(marker)}\b", lowered_line))
         return marker in lowered_line or marker in original_line
 
+    all_domain_markers = (
+        "source truth",
+        "source evidence",
+        "source",
+        "canonical",
+        "源码",
+        "源真相",
+        "test",
+        "tests",
+        "check",
+        "checks",
+        "测试",
+        "自测",
+        "验证命令",
+        "browser",
+        "ui evidence",
+        "runtime / browser",
+        "浏览器",
+        "截图",
+        "录屏",
+        "前端",
+        "ui",
+        "runtime",
+        "runtime evidence",
+        "codex exec",
+        "run_runtime",
+        "运行时",
+        "运行证据",
+        "运行结果",
+        "执行证据",
+        "执行结果",
+    )
+    current_domain_markers = tuple(domain_markers)
+    other_domain_markers = tuple(
+        marker
+        for marker in all_domain_markers
+        if marker not in current_domain_markers
+    )
     for line in str(text or "").splitlines():
+        domain_scope_active = False
         for clause in re.split(r"[;.!?。；！？]+", line):
             lowered = clause.lower()
-            if not any(
+            has_current_domain = any(
                 marker_present(marker, lowered, clause)
-                for marker in domain_markers
-            ):
-                continue
-            if _has_unverified_evidence_marker(clause):
+                for marker in current_domain_markers
+            )
+            has_other_domain = any(
+                marker_present(marker, lowered, clause)
+                for marker in other_domain_markers
+            )
+            if has_current_domain:
+                domain_scope_active = True
+            elif has_other_domain:
+                domain_scope_active = False
+            if domain_scope_active and _has_unverified_evidence_marker(clause):
                 return True
     return False
 
@@ -2038,6 +2105,7 @@ def _unwrap_npx_tokens(
     environment_provenance=None,
 ):
     remaining = list(tokens[1:])
+    option_override = False
     package_override = any(
         token in {"--package", "-p"}
         or token.startswith("--package=")
@@ -2053,6 +2121,7 @@ def _unwrap_npx_tokens(
                 "raw_executable": tokens[0],
                 "package_override": package_override,
                 "call_mode": call_mode,
+                "option_override": option_override,
             }
             marked.append(invocation)
         return marked
@@ -2098,6 +2167,7 @@ def _unwrap_npx_tokens(
         )
         if updated == remaining:
             break
+        option_override = True
         remaining = updated
     return with_npx_provenance(
         _unwrap_command_segment(
@@ -2793,7 +2863,11 @@ def _is_runtime_invocation(invocation):
 def _observed_invocation_uses_trusted_executable(invocation):
     npx_wrapper = invocation.get("npx_wrapper")
     if isinstance(npx_wrapper, dict):
-        if npx_wrapper.get("package_override") or npx_wrapper.get("call_mode"):
+        if (
+            npx_wrapper.get("package_override")
+            or npx_wrapper.get("call_mode")
+            or npx_wrapper.get("option_override")
+        ):
             return False
         wrapper_invocation = {
             "executable": "npx",
@@ -2807,6 +2881,7 @@ def _observed_invocation_uses_trusted_executable(invocation):
         }
         return (
             invocation.get("executable") == "playwright"
+            and invocation.get("raw_executable") == "playwright"
             and _proof_command_wrappers_are_trusted(invocation)
             and _proof_invocation_environment_is_safe(invocation)
             and _proof_invocation_environment_is_safe(wrapper_invocation)
@@ -3571,6 +3646,30 @@ def _node_test_output_is_substantive(output):
         return False
 
     tests_index = counter_indexes["tests"][0]
+    summary_key_order = (
+        "tests",
+        "suites",
+        "pass",
+        "fail",
+        "cancelled",
+        "skipped",
+        "todo",
+    )
+    observed_key_order = tuple(
+        key
+        for key, _index in sorted(
+            (
+                (key, indexes[0])
+                for key, indexes in counter_indexes.items()
+            ),
+            key=lambda item: item[1],
+        )
+    )
+    expected_key_order = tuple(
+        key for key in summary_key_order if key in counters
+    )
+    if observed_key_order != expected_key_order:
+        return False
     final_nonempty_index = next(
         (
             index
@@ -4114,6 +4213,7 @@ def _proof_runtime_environment_is_safe(invocation):
 
 
 PROOF_SHELL_BUILTIN_WRAPPERS = {"builtin", "command", "exec"}
+PROOF_SHELL_WRAPPERS = {"bash", "dash", "sh", "zsh"}
 
 
 def _proof_executable_is_trusted(invocation):
@@ -4156,6 +4256,8 @@ def _proof_command_wrappers_are_trusted(invocation):
             wrapper.get("raw_executable") or ""
         ).strip()
         executable = str(wrapper.get("executable") or "").lower()
+        if executable in PROOF_SHELL_WRAPPERS:
+            return False
         if executable in PROOF_SHELL_BUILTIN_WRAPPERS:
             if (
                 raw_executable != executable

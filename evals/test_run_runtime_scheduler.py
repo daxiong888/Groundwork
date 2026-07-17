@@ -3572,9 +3572,12 @@ normalizePhone(task.phone) === expected;
             "Tests: nothing missing; all passed.",
             "The tests are not unverified; all passed.",
             "Tests are neither missing evidence nor unverified; all passed.",
+            "Tests are neither missing evidence nor currently unverified; all passed.",
             "Tests are not considered unverified; all passed.",
+            "Tests are not considered currently unverified; all passed.",
             "Tests are not missing, unknown, or unverified; all passed.",
             "Tests have no missing or unverified evidence; all passed.",
+            "Tests: No evidence is missing or unverified; all passed.",
             "Tests aren't unverified; all passed.",
             "Tests aren’t unverified; all passed.",
             "测试：没有测试失败，全部通过。",
@@ -3586,6 +3589,7 @@ normalizePhone(task.phone) === expected;
             "测试不存在未验证项，全部通过。",
             "测试并无缺失或未验证项，全部通过。",
             "测试没有被标记为未验证，全部通过。",
+            "测试证据不缺失，也不处于未验证状态，全部通过。",
         ):
             with self.subTest(response=response):
                 verdict = run_runtime.routing_verdict_model(
@@ -3619,6 +3623,7 @@ normalizePhone(task.phone) === expected;
             "Test evidence: unverified.",
             "Tests: no tests were run.",
             "Tests are not missing but still unverified.",
+            "Tests are not unverified; they were never run.",
             "测试证据：没有测试可运行。",
             "测试不缺失但仍未验证。",
         ):
@@ -3973,6 +3978,16 @@ normalizePhone(task.phone) === expected;
                 "Ran 1 test in 0.001s\n\nOK",
             ),
             (
+                "tests",
+                "bash -c 'python3 -m unittest tests.test_app'",
+                "Ran 1 test in 0.001s\n\nOK",
+            ),
+            (
+                "tests",
+                "zsh -lc 'python3 -m unittest tests.test_app'",
+                "Ran 1 test in 0.001s\n\nOK",
+            ),
+            (
                 "browser",
                 "/tmp/fake/env npx playwright test",
                 "1 passed",
@@ -4026,7 +4041,6 @@ normalizePhone(task.phone) === expected;
             "env -u FOO python3 -m unittest tests.test_app",
             "command python3 -m unittest tests.test_app",
             "nohup python3 -m unittest tests.test_app",
-            "bash -lc 'python3 -m unittest tests.test_app'",
         ):
             with self.subTest(trusted_wrapper=command):
                 self.assertTrue(
@@ -4264,16 +4278,22 @@ normalizePhone(task.phone) === expected;
                     )
                 )
 
-        self.assertTrue(
-            run_runtime.has_observed_evidence(
-                command_event(
-                    "bash -lc 'python3 -m pytest tests'",
-                    output="1 passed",
-                ),
-                "tests",
-                require_success=True,
-            )
-        )
+        for command in (
+            "bash -c 'python3 -m pytest tests'",
+            "bash -lc 'python3 -m pytest tests'",
+            "zsh -c 'python3 -m pytest tests'",
+            "zsh -lc 'python3 -m pytest tests'",
+            "sh -c 'python3 -m pytest tests'",
+            "dash -c 'python3 -m pytest tests'",
+        ):
+            with self.subTest(shell_wrapped_evidence=command):
+                self.assertFalse(
+                    run_runtime.has_observed_evidence(
+                        command_event(command, output="1 passed"),
+                        "tests",
+                        require_success=True,
+                    )
+                )
 
     def test_legacy_tool_call_status_and_falsy_results_are_classified(self):
         def legacy_event(status, result, *, tool="evaluate"):
@@ -5070,6 +5090,30 @@ normalizePhone(task.phone) === expected;
             command_event(
                 "node --test",
                 output=(
+                    "# pass 1\n"
+                    "# tests 1\n"
+                    "# fail 0\n"
+                    "# cancelled 0\n"
+                    "# skipped 0\n"
+                    "# todo 0\n"
+                    "# duration_ms 1"
+                ),
+            ),
+            command_event(
+                "node --test",
+                output=(
+                    "ℹ pass 1\n"
+                    "ℹ tests 1\n"
+                    "ℹ fail 0\n"
+                    "ℹ cancelled 0\n"
+                    "ℹ skipped 0\n"
+                    "ℹ todo 0\n"
+                    "ℹ duration_ms 1"
+                ),
+            ),
+            command_event(
+                "node --test",
+                output=(
                     "# tests 1\n"
                     "# suites 0\n"
                     "# pass 1\n"
@@ -5570,6 +5614,20 @@ normalizePhone(task.phone) === expected;
                 require_success=True,
             )
         )
+        for command in (
+            "npx /tmp/fake/playwright test",
+            "npx --shell=/tmp/fake-shell playwright test",
+            "npx --cache=/tmp/fake playwright test",
+            "npx --yes playwright test",
+        ):
+            with self.subTest(untrusted_npx_resolution=command):
+                self.assertFalse(
+                    run_runtime.has_observed_evidence(
+                        command_event(command, output="1 passed"),
+                        "browser",
+                        require_success=True,
+                    )
+                )
         self.assertFalse(
             run_runtime.has_observed_evidence(
                 command_event(
