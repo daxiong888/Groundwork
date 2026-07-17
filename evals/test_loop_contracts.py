@@ -5,11 +5,15 @@ import unittest
 from pathlib import Path
 
 from evals import patch_suggestions
+from evals import routing_schema
 from evals import run_runtime
+from evals import suite_registry
 from evals.checks import loop_checks
 
 
 ROOT = Path(__file__).resolve().parents[1]
+TRACE_SUITE = ROOT / "evals/prompts/trace-first-verify-review.csv"
+CONTRACT_LINEAGE_SUITE = ROOT / "evals/prompts/contract-lineage.csv"
 
 
 def read(relative_path):
@@ -17,7 +21,7 @@ def read(relative_path):
 
 
 def trace_row(row_id):
-    path = ROOT / "evals/prompts/trace-first-verify-review.csv"
+    path = CONTRACT_LINEAGE_SUITE if row_id.startswith("tf-cl-") else TRACE_SUITE
     with path.open(newline="", encoding="utf-8") as handle:
         rows = list(csv.DictReader(handle))
     row = next(item.copy() for item in rows if item["id"] == row_id)
@@ -27,9 +31,80 @@ def trace_row(row_id):
     return row
 
 
-def trace_verdict(row_id, actual_route, response):
+def lineage_route_companion(actual_route):
+    if actual_route == "implement":
+        return """## Diagnosis Outcome
+- Confirmed Cause: producer_mapping is the first confirmed divergence
+- Decisive Evidence: canonical_contract differs from producer_mapping
+- Smallest Safe Next Action: fix producer then reverify consumer
+"""
+    if actual_route == "verify":
+        return """## Verification Continuation
+- Next Check: reverify frontend_renderer after the frontend boundary is corrected
+"""
+    if actual_route == "write-plan":
+        return """## Implementation Plan
+- Accepted Goal: resolve canonical_owner and storage without inventing ownership
+- Ordered Steps: inspect canonical_owner then storage then producer_a and producer_b
+- Dependencies / Gates: canonical_owner and storage remain unverified so implementation is blocked
+- Verification Checkpoints: compare each inspected unverified hop with the accepted contract
+- Stop Condition: canonical_owner and storage become evidence-backed or remain blocked
+"""
+    return ""
+
+
+def source_observation_event(row_id):
+    row = trace_row(row_id)
+    scenario = (
+        ROOT / row["fixture"] / "SCENARIO.md"
+    ).read_text(encoding="utf-8")
+    return json.dumps(
+        {
+            "type": "item.completed",
+            "item": {
+                "type": "command_execution",
+                "command": "sed -n '1,240p' SCENARIO.md",
+                "aggregated_output": scenario,
+                "exit_code": 0,
+                "status": "completed",
+            },
+        }
+    )
+
+
+def trace_verdict(
+    row_id,
+    actual_route,
+    response,
+    *,
+    include_lineage_companion=True,
+    stdout=None,
+):
+    if row_id.startswith("tf-cl-") and include_lineage_companion:
+        response = response.rstrip() + "\n\n" + lineage_route_companion(actual_route)
+    if stdout is None and row_id.startswith("tf-cl-"):
+        stdout = source_observation_event(row_id)
+    if stdout is None and row_id in {"tf-vr-003", "tf-vr-004"}:
+        stdout = json.dumps(
+            {
+                "type": "item.completed",
+                "item": {
+                    "type": "command_execution",
+                    "command": "node test/taskSearch.test.mjs",
+                    "aggregated_output": "expected failure reproduced",
+                    "exit_code": 1,
+                    "status": "failed",
+                },
+            }
+        )
     return run_runtime.routing_verdict_model(
-        trace_row(row_id), actual_route, response, 0, [], []
+        trace_row(row_id),
+        actual_route,
+        response,
+        0,
+        [],
+        [],
+        stdout=stdout or "",
     )
 
 
@@ -1706,6 +1781,23 @@ QA Failure
 - Unverified / Branched Hops: canonical_owner | storage
 """,
             ),
+            (
+                "tf-cl-004",
+                "verify",
+                """Verification Scope
+- Claim: contract_divergence
+- Covered: canonical_contract|storage|service_transform|api|frontend_renderer
+- Missing: runtime
+- Verdict: partial
+
+## Contract Lineage
+- Canonical Owner / Source: canonical_contract
+- Hops: canonical_contract (verified) -> storage (verified) -> service_transform (verified) -> api (verified) -> frontend_renderer (verified)
+- First Confirmed Divergence: frontend_renderer
+- Fix Owner / Boundary: frontend
+- Unverified / Branched Hops: none
+""",
+            ),
         )
 
         for row_id, route, response in cases:
@@ -1713,6 +1805,202 @@ QA Failure
                 verdict = trace_verdict(row_id, route, response)
                 self.assertEqual(verdict["output_contract_verdict"], "pass")
                 self.assertEqual(verdict["overall_verdict"], "pass")
+
+    def test_contract_lineage_suite_is_isolated_from_default_suite(self):
+        with TRACE_SUITE.open(newline="", encoding="utf-8") as handle:
+            default_ids = {row["id"] for row in csv.DictReader(handle)}
+        with CONTRACT_LINEAGE_SUITE.open(newline="", encoding="utf-8") as handle:
+            lineage_ids = {row["id"] for row in csv.DictReader(handle)}
+
+        self.assertEqual(
+            lineage_ids,
+            {"tf-cl-001", "tf-cl-002", "tf-cl-003", "tf-cl-004"},
+        )
+        self.assertFalse(default_ids & lineage_ids)
+        self.assertIn(TRACE_SUITE.name, suite_registry.DEFAULT_SUITES)
+        self.assertNotIn(CONTRACT_LINEAGE_SUITE.name, suite_registry.DEFAULT_SUITES)
+        self.assertIn(
+            CONTRACT_LINEAGE_SUITE.name,
+            routing_schema.TRACE_READY_SUITES,
+        )
+
+    def test_uncoached_lineage_row_uses_the_normal_verify_contract(self):
+        prompt = run_runtime.prompt_for_row(trace_row("tf-cl-004"))
+
+        self.assertIn("normal verify path", prompt)
+        for leaked_contract_token in (
+            "Verification Scope",
+            "Contract Lineage",
+            "Verification Continuation",
+            "Next Check",
+            "Canonical Owner / Source",
+            "First Confirmed Divergence",
+            "frontend_renderer",
+            "canonical_contract|storage",
+        ):
+            with self.subTest(token=leaked_contract_token):
+                self.assertNotIn(leaked_contract_token, prompt)
+
+    def test_contract_lineage_requires_owning_route_output(self):
+        cases = (
+            (
+                "tf-cl-001",
+                "implement",
+                """Contract Lineage
+- Canonical Owner / Source: canonical_contract
+- Hops: canonical_contract (verified) -> producer_mapping (verified) -> consumer (verified)
+- First Confirmed Divergence: producer_mapping
+- Fix Owner / Boundary: producer
+- Unverified / Branched Hops: none
+""",
+            ),
+            (
+                "tf-cl-002",
+                "verify",
+                """Verification Scope
+- Claim: contract_divergence
+- Covered: canonical_contract|storage|service_transform|api|frontend_renderer
+- Missing: runtime
+- Verdict: partial
+
+Contract Lineage
+- Canonical Owner / Source: canonical_contract
+- Hops: canonical_contract (verified) -> storage (verified) -> service_transform (verified) -> api (verified) -> frontend_renderer (verified)
+- First Confirmed Divergence: frontend_renderer
+- Fix Owner / Boundary: frontend
+- Unverified / Branched Hops: none
+""",
+            ),
+            (
+                "tf-cl-003",
+                "write-plan",
+                """Contract Lineage
+- Canonical Owner / Source: unverified
+- Hops: producer_a (verified) | producer_b (verified)
+- First Confirmed Divergence: unverified
+- Fix Owner / Boundary: unverified
+- Unverified / Branched Hops: canonical_owner | storage
+""",
+            ),
+        )
+
+        for row_id, route, response in cases:
+            with self.subTest(row_id=row_id):
+                verdict = trace_verdict(
+                    row_id,
+                    route,
+                    response,
+                    include_lineage_companion=False,
+                )
+                self.assertEqual(verdict["output_contract_verdict"], "fail")
+                self.assertEqual(verdict["overall_verdict"], "fail")
+
+    def test_contract_lineage_requires_observed_source_or_explicit_boundary(self):
+        verified_response = """Contract Lineage
+- Canonical Owner / Source: canonical_contract
+- Hops: canonical_contract (verified) -> producer_mapping (verified) -> consumer (verified)
+- First Confirmed Divergence: producer_mapping
+- Fix Owner / Boundary: producer
+- Unverified / Branched Hops: none
+"""
+        unverified_response = """Contract Lineage
+- Canonical Owner / Source: unverified
+- Hops: producer_a (verified) | producer_b (verified)
+- First Confirmed Divergence: unverified
+- Fix Owner / Boundary: unverified
+- Unverified / Branched Hops: canonical_owner | storage
+"""
+
+        verified = trace_verdict(
+            "tf-cl-001",
+            "implement",
+            verified_response,
+            stdout="",
+        )
+        bounded = trace_verdict(
+            "tf-cl-003",
+            "write-plan",
+            unverified_response,
+            stdout="",
+        )
+        wrong_source = trace_verdict(
+            "tf-cl-001",
+            "implement",
+            verified_response,
+            stdout=json.dumps(
+                {
+                    "type": "item.completed",
+                    "item": {
+                        "type": "command_execution",
+                        "command": "sed -n '1,240p' unrelated.md",
+                        "aggregated_output": "unrelated source",
+                        "exit_code": 0,
+                        "status": "completed",
+                    },
+                }
+            ),
+        )
+        failed_source = trace_verdict(
+            "tf-cl-001",
+            "implement",
+            verified_response,
+            stdout=json.dumps(
+                {
+                    "type": "item.completed",
+                    "item": {
+                        "type": "command_execution",
+                        "command": "sed -n '1,240p' SCENARIO.md",
+                        "aggregated_output": "No such file",
+                        "exit_code": 2,
+                        "status": "failed",
+                    },
+                }
+            ),
+        )
+        same_basename_wrong_path = trace_verdict(
+            "tf-cl-001",
+            "implement",
+            verified_response,
+            stdout=json.dumps(
+                {
+                    "type": "item.completed",
+                    "item": {
+                        "type": "command_execution",
+                        "command": "cat /tmp/SCENARIO.md",
+                        "aggregated_output": (
+                            ROOT
+                            / trace_row("tf-cl-001")["fixture"]
+                            / "SCENARIO.md"
+                        ).read_text(encoding="utf-8"),
+                        "exit_code": 0,
+                        "status": "completed",
+                    },
+                }
+            ),
+        )
+
+        self.assertEqual(verified["evidence_verdict"], "fail")
+        self.assertEqual(verified["overall_verdict"], "fail")
+        self.assertEqual(wrong_source["evidence_verdict"], "fail")
+        self.assertEqual(failed_source["evidence_verdict"], "fail")
+        self.assertEqual(
+            same_basename_wrong_path["evidence_verdict"], "fail"
+        )
+        self.assertEqual(bounded["evidence_verdict"], "pass")
+
+    def test_contract_lineage_accepts_reordered_sibling_branches(self):
+        response = """Contract Lineage
+- Canonical Owner / Source: unverified
+- Hops: producer_b (verified) | producer_a (verified)
+- First Confirmed Divergence: unverified
+- Fix Owner / Boundary: unverified
+- Unverified / Branched Hops: storage | canonical_owner
+"""
+
+        verdict = trace_verdict("tf-cl-003", "write-plan", response)
+
+        self.assertEqual(verdict["output_contract_verdict"], "pass")
+        self.assertEqual(verdict["overall_verdict"], "pass")
 
     def test_contract_lineage_rejects_consumer_fix_for_producer_divergence(self):
         response = """Contract Lineage
@@ -1726,6 +2014,223 @@ QA Failure
         verdict = trace_verdict("tf-cl-001", "implement", response)
         self.assertEqual(verdict["output_contract_verdict"], "fail")
         self.assertEqual(verdict["overall_verdict"], "fail")
+
+    def test_contract_lineage_rejects_contradictory_or_hidden_route_companion(self):
+        lineage = """Contract Lineage
+- Canonical Owner / Source: canonical_contract
+- Hops: canonical_contract (verified) -> producer_mapping (verified) -> consumer (verified)
+- First Confirmed Divergence: producer_mapping
+- Fix Owner / Boundary: producer
+- Unverified / Branched Hops: none
+"""
+        contradictory = lineage + """
+## Diagnosis Outcome
+- Confirmed Cause: consumer rejects the old producer result
+- Decisive Evidence: canonical_contract differs from producer_mapping
+- Smallest Safe Next Action: keep producer unchanged and add consumer fallback
+"""
+        competing_clauses = lineage + """
+## Diagnosis Outcome
+- Confirmed Cause: producer_mapping is the first confirmed divergence; consumer is the actual cause
+- Decisive Evidence: canonical_contract differs from producer_mapping; the contracts are actually aligned
+- Smallest Safe Next Action: fix producer then reverify consumer
+"""
+        hidden_html_contradiction = lineage + """
+## Diagnosis Outcome
+- Confirmed Cause: producer_mapping is the first confirmed divergence <script>consumer is the actual cause</script>
+- Decisive Evidence: canonical_contract differs from producer_mapping
+- Smallest Safe Next Action: fix producer then reverify consumer
+"""
+        hidden_html_positive_only = lineage + """
+## Diagnosis Outcome
+- Confirmed Cause: <span hidden>producer_mapping is the first confirmed divergence</span>
+- Decisive Evidence: <span hidden>canonical_contract differs from producer_mapping</span>
+- Smallest Safe Next Action: <span hidden>fix producer</span>
+"""
+        hidden = lineage + """
+<!--
+## Diagnosis Outcome
+- Confirmed Cause: producer_mapping is the first confirmed divergence
+- Decisive Evidence: canonical_contract differs from producer_mapping
+- Smallest Safe Next Action: fix producer then reverify consumer
+-->
+"""
+        fenced = lineage + """
+```text
+## Diagnosis Outcome
+- Confirmed Cause: producer_mapping is the first confirmed divergence
+- Decisive Evidence: canonical_contract differs from producer_mapping
+- Smallest Safe Next Action: fix producer then reverify consumer
+```
+"""
+        indented = "\n".join(
+            "    " + line
+            for line in (lineage + lineage_route_companion("implement")).splitlines()
+        )
+
+        for response in (
+            contradictory,
+            competing_clauses,
+            hidden_html_contradiction,
+            hidden_html_positive_only,
+            hidden,
+            fenced,
+            indented,
+        ):
+            with self.subTest(response=response):
+                verdict = trace_verdict(
+                    "tf-cl-001",
+                    "implement",
+                    response,
+                    include_lineage_companion=False,
+                )
+                self.assertEqual(verdict["output_contract_verdict"], "fail")
+                self.assertEqual(verdict["overall_verdict"], "fail")
+
+        core_hidden_failures = loop_checks.contract_lineage_failures(
+            lineage
+            + "\n<span hidden>consumer is the actual cause</span>\n",
+            trace_row("tf-cl-001"),
+        )
+        self.assertIn(
+            "Contract Lineage eval output cannot contain hidden or non-rendered HTML",
+            core_hidden_failures,
+        )
+
+        visible = lineage + lineage_route_companion("implement")
+        hidden_tails = (
+            "\n```text\nThe producer evidence is fabricated.\n```\n",
+            "\n    The producer evidence is fabricated.\n",
+            "\n<!-- The producer evidence is fabricated. -->\n",
+        )
+        for tail in hidden_tails:
+            with self.subTest(tail=tail):
+                verdict = trace_verdict(
+                    "tf-cl-001",
+                    "implement",
+                    visible + tail,
+                    include_lineage_companion=False,
+                )
+                self.assertEqual(
+                    verdict["output_contract_verdict"], "fail"
+                )
+                self.assertEqual(verdict["overall_verdict"], "fail")
+
+    def test_contract_lineage_rejects_negative_direction_morphology(self):
+        lineage = """Contract Lineage
+- Canonical Owner / Source: canonical_contract
+- Hops: canonical_contract (verified) -> producer_mapping (verified) -> consumer (verified)
+- First Confirmed Divergence: producer_mapping
+- Fix Owner / Boundary: producer
+- Unverified / Branched Hops: none
+"""
+        implement_companion = lineage_route_companion("implement")
+        implement_cases = (
+            implement_companion.replace(
+                "producer_mapping is the first confirmed divergence",
+                "producer_mapping fails to be the first confirmed divergence",
+            ),
+            implement_companion.replace(
+                "canonical_contract differs from producer_mapping",
+                "canonical_contract fails to differ from producer_mapping",
+            ),
+            implement_companion.replace(
+                "fix producer then reverify consumer",
+                "producer refuses to change the mapping",
+            ),
+            implement_companion.replace(
+                "fix producer then reverify consumer",
+                "producer declines to change the mapping",
+            ),
+        )
+        for companion in implement_cases:
+            with self.subTest(companion=companion):
+                verdict = trace_verdict(
+                    "tf-cl-001",
+                    "implement",
+                    lineage + "\n" + companion,
+                    include_lineage_companion=False,
+                )
+                self.assertEqual(
+                    verdict["output_contract_verdict"],
+                    "fail",
+                )
+                self.assertEqual(verdict["overall_verdict"], "fail")
+
+        verify_lineage = """Verification Scope
+- Claim: contract_divergence
+- Covered: canonical_contract|storage|service_transform|api|frontend_renderer
+- Missing: runtime
+- Verdict: partial
+
+Contract Lineage
+- Canonical Owner / Source: canonical_contract
+- Hops: canonical_contract (verified) -> storage (verified) -> service_transform (verified) -> api (verified) -> frontend_renderer (verified)
+- First Confirmed Divergence: frontend_renderer
+- Fix Owner / Boundary: frontend
+- Unverified / Branched Hops: none
+"""
+        for next_check in (
+            "frontend is unable to check the corrected boundary",
+            "frontend declines to verify the corrected boundary",
+        ):
+            with self.subTest(next_check=next_check):
+                verdict = trace_verdict(
+                    "tf-cl-002",
+                    "verify",
+                    verify_lineage
+                    + "\n## Verification Continuation\n"
+                    + f"- Next Check: {next_check}\n",
+                    include_lineage_companion=False,
+                )
+                self.assertEqual(
+                    verdict["output_contract_verdict"],
+                    "fail",
+                )
+                self.assertEqual(verdict["overall_verdict"], "fail")
+
+    def test_contract_lineage_rejects_empty_branches_and_split_tokens(self):
+        responses = (
+            """Contract Lineage
+- Canonical Owner / Source: unverified
+- Hops: producer_a (verified) || producer_b (verified) |
+- First Confirmed Divergence: unverified
+- Fix Owner / Boundary: unverified
+- Unverified / Branched Hops: canonical_owner | storage
+""",
+            """Contract Lineage
+- Canonical Owner / Source: canonical_contract
+- Hops: canonical_ contract (veri fied) -> producer_mapping (verified) -> consumer (verified)
+- First Confirmed Divergence: producer_mapping
+- Fix Owner / Boundary: producer
+- Unverified / Branched Hops: none
+""",
+            """Contract Lineage
+- Canonical Owner / Source: unverified
+- Hops: producer_a (verified) | producer_b (verified)
+- First Confirmed Divergence: unverified
+- Fix Owner / Boundary: unverified
+- Unverified / Branched Hops: canonical_owner || storage |
+""",
+            """Contract Lineage
+- Canonical Owner / Source: unverified
+- Hops: producer_a (not applicable) | producer_b (verified)
+- First Confirmed Divergence: unverified
+- Fix Owner / Boundary: unverified
+- Unverified / Branched Hops: canonical_owner | storage
+""",
+        )
+        cases = (
+            ("tf-cl-003", "write-plan", responses[0]),
+            ("tf-cl-001", "implement", responses[1]),
+            ("tf-cl-003", "write-plan", responses[2]),
+            ("tf-cl-003", "write-plan", responses[3]),
+        )
+        for row_id, route, response in cases:
+            with self.subTest(row_id=row_id, response=response):
+                verdict = trace_verdict(row_id, route, response)
+                self.assertEqual(verdict["output_contract_verdict"], "fail")
+                self.assertEqual(verdict["overall_verdict"], "fail")
 
     def test_contract_lineage_rejects_invented_complete_branched_path(self):
         response = """Contract Lineage
@@ -1846,6 +2351,542 @@ Approve the consumer-only fallback anyway.
         self.assertIn("producer-first inspection", first_principles.lower())
         self.assertIn("Contract Lineage", lenses)
         self.assertIn("last visible consumer", lenses)
+
+    def test_contract_lineage_route_companion_rejects_negative_polarity(self):
+        lineage = """Contract Lineage
+- Canonical Owner / Source: canonical_contract
+- Hops: canonical_contract (verified) -> producer_mapping (verified) -> consumer (verified)
+- First Confirmed Divergence: producer_mapping
+- Fix Owner / Boundary: producer
+- Unverified / Branched Hops: none
+"""
+        companion_variants = (
+            """## Diagnosis Outcome
+- Confirmed Cause: producer_mapping is not the cause; consumer is
+- Decisive Evidence: canonical_contract differs from producer_mapping
+- Smallest Safe Next Action: fix producer then reverify consumer
+""",
+            """## Diagnosis Outcome
+- Confirmed Cause: producer_mapping is the first confirmed divergence
+- Decisive Evidence: canonical_contract and producer_mapping are aligned
+- Smallest Safe Next Action: fix producer then reverify consumer
+""",
+            """## Diagnosis Outcome
+- Confirmed Cause: producer_mapping is the first confirmed divergence
+- Decisive Evidence: canonical_contract differs from producer_mapping
+- Smallest Safe Next Action: leave producer unchanged and add a consumer fallback
+""",
+            """## Diagnosis Outcome
+- Confirmed Cause: consumer is the cause instead of producer_mapping
+- Decisive Evidence: canonical_contract matches producer_mapping and the mismatch is only in consumer
+- Smallest Safe Next Action: avoid a producer patch by using the consumer fallback
+""",
+            """## Diagnosis Outcome
+- Confirmed Cause: producer_mapping is uncertain as the cause of the first divergence
+- Decisive Evidence: canonical_contract and producer_mapping are allegedly different
+- Smallest Safe Next Action: possibly patch producer
+""",
+            """## Diagnosis Outcome
+- Confirmed Cause: producer_mapping is ostensibly the cause of the first divergence
+- Decisive Evidence: canonical_contract and producer_mapping are reportedly different
+- Smallest Safe Next Action: presumably patch producer
+""",
+            """## Diagnosis Outcome
+- Confirmed Cause: producer_mapping is purportedly the cause of the first divergence
+- Decisive Evidence: canonical_contract and producer_mapping are apparently different
+- Smallest Safe Next Action: plausibly patch producer
+""",
+            """## Diagnosis Outcome
+- Confirmed Cause: it is false that producer_mapping is the first confirmed divergence
+- Decisive Evidence: canonical_contract differs from producer_mapping
+- Smallest Safe Next Action: fix producer then reverify consumer
+""",
+            """## Diagnosis Outcome
+- Confirmed Cause: producer_mapping is the first confirmed divergence
+- Decisive Evidence: it is untrue that canonical_contract differs from producer_mapping
+- Smallest Safe Next Action: fix producer then reverify consumer
+""",
+            """## Diagnosis Outcome
+- Confirmed Cause: producer_mapping is the first confirmed divergence
+- Decisive Evidence: canonical_contract differs from producer_mapping
+- Smallest Safe Next Action: it is incorrect that we should fix producer
+""",
+            """## Diagnosis Outcome
+- Confirmed Cause: I deny that producer_mapping is the first confirmed divergence
+- Decisive Evidence: canonical_contract differs from producer_mapping
+- Smallest Safe Next Action: fix producer then reverify consumer
+""",
+            """## Diagnosis Outcome
+- Confirmed Cause: producer_mapping is the first confirmed divergence
+- Decisive Evidence: I refute that canonical_contract differs from producer_mapping
+- Smallest Safe Next Action: fix producer then reverify consumer
+""",
+            """## Diagnosis Outcome
+- Confirmed Cause: contrary to the claim that producer_mapping is the first confirmed divergence
+- Decisive Evidence: canonical_contract differs from producer_mapping
+- Smallest Safe Next Action: fix producer then reverify consumer
+""",
+            """## Diagnosis Outcome
+- Confirmed Cause: 事实并非 producer_mapping 是首个已确认分歧
+- Decisive Evidence: canonical_contract differs from producer_mapping
+- Smallest Safe Next Action: fix producer then reverify consumer
+""",
+            """## Diagnosis Outcome
+- Confirmed Cause: producer_mapping is the first confirmed divergence
+- Decisive Evidence: 我否认 canonical_contract 与 producer_mapping 存在差异
+- Smallest Safe Next Action: fix producer then reverify consumer
+""",
+        )
+        for companion in companion_variants:
+            with self.subTest(companion=companion):
+                verdict = trace_verdict(
+                    "tf-cl-001",
+                    "implement",
+                    lineage + companion,
+                    include_lineage_companion=False,
+                )
+                self.assertEqual(verdict["output_contract_verdict"], "fail")
+                self.assertEqual(verdict["overall_verdict"], "fail")
+
+        unresolved_lineage = """Contract Lineage
+- Canonical Owner / Source: unverified
+- Hops: producer_a (verified) | producer_b (verified)
+- First Confirmed Divergence: unverified
+- Fix Owner / Boundary: unverified
+- Unverified / Branched Hops: canonical_owner | storage
+"""
+        false_resolution = """## Implementation Plan
+- Accepted Goal: resolve canonical_owner and storage without inventing ownership
+- Ordered Steps: skip canonical_owner and storage inspection
+- Dependencies / Gates: canonical_owner and storage are no longer unverified; no work is blocked
+- Verification Checkpoints: compare any available contract
+- Stop Condition: continue implementation
+"""
+        verdict = trace_verdict(
+            "tf-cl-003",
+            "write-plan",
+            unresolved_lineage + false_resolution,
+            include_lineage_companion=False,
+        )
+        self.assertEqual(verdict["output_contract_verdict"], "fail")
+        self.assertEqual(verdict["overall_verdict"], "fail")
+
+        verify_lineage = """Contract Lineage
+- Canonical Owner / Source: canonical_contract
+- Hops: canonical_contract (verified) -> storage (verified) -> service_transform (verified) -> api (verified) -> frontend_renderer (verified)
+- First Confirmed Divergence: frontend_renderer
+- Fix Owner / Boundary: frontend
+- Unverified / Branched Hops: none
+
+Verification Scope
+- Claim: contract_divergence
+- Covered: canonical_contract|storage|service_transform|api|frontend_renderer
+- Missing: runtime
+- Verdict: partial
+"""
+        avoid_check = """## Verification Continuation
+- Next Check: avoid a frontend check by validating the API instead
+"""
+        verify_verdict = trace_verdict(
+            "tf-cl-002",
+            "verify",
+            verify_lineage + avoid_check,
+            include_lineage_companion=False,
+        )
+        self.assertEqual(verify_verdict["output_contract_verdict"], "fail")
+        self.assertEqual(verify_verdict["overall_verdict"], "fail")
+
+        optional_gate = """## Implementation Plan
+- Accepted Goal: resolve canonical_owner and storage without inventing ownership
+- Ordered Steps: avoid the canonical_owner and storage inspect gate
+- Dependencies / Gates: canonical_owner and storage are optional dependencies that unblock implementation
+- Verification Checkpoints: compare available contracts
+- Stop Condition: continue implementation
+"""
+        optional_verdict = trace_verdict(
+            "tf-cl-003",
+            "write-plan",
+            unresolved_lineage + optional_gate,
+            include_lineage_companion=False,
+        )
+        self.assertEqual(optional_verdict["output_contract_verdict"], "fail")
+        self.assertEqual(optional_verdict["overall_verdict"], "fail")
+
+    def test_contract_lineage_rejects_each_isolated_hedge_and_confusable_negation(
+        self,
+    ):
+        lineage = """Contract Lineage
+- Canonical Owner / Source: canonical_contract
+- Hops: canonical_contract (verified) -> producer_mapping (verified) -> consumer (verified)
+- First Confirmed Divergence: producer_mapping
+- Fix Owner / Boundary: producer
+- Unverified / Branched Hops: none
+"""
+        companion = """## Diagnosis Outcome
+- Confirmed Cause: {cause}
+- Decisive Evidence: canonical_contract differs from producer_mapping
+- Smallest Safe Next Action: fix producer then reverify consumer
+"""
+        english_hedges = (
+            "ostensibly",
+            "reportedly",
+            "purportedly",
+            "apparently",
+            "plausibly",
+            "presumably",
+            "supposedly",
+            "arguably",
+            "seemingly",
+            "probably",
+            "potentially",
+            "putatively",
+        )
+        chinese_hedges = (
+            "表面上",
+            "据报道",
+            "据说",
+            "号称",
+            "所谓",
+            "看似",
+            "貌似",
+            "推测",
+            "大概",
+            "或许",
+        )
+        causes = [
+            (
+                f"producer_mapping is {hedge} the cause of the first "
+                "divergence"
+            )
+            for hedge in english_hedges
+        ]
+        causes.extend(
+            f"producer_mapping {hedge}是首个已确认分歧"
+            for hedge in chinese_hedges
+        )
+        causes.extend(
+            (
+                "producer_mapping is the probable cause of the first "
+                "divergence",
+                "producer_mapping is a potential cause of the first "
+                "divergence",
+                "producer_mapping is the putative cause of the first "
+                "divergence",
+            )
+        )
+        causes.append(
+            "producer_mapping is nоt the cause; producer_mapping is the "
+            "first confirmed divergence"
+        )
+
+        for cause in causes:
+            with self.subTest(cause=cause):
+                verdict = trace_verdict(
+                    "tf-cl-001",
+                    "implement",
+                    lineage + companion.format(cause=cause),
+                    include_lineage_companion=False,
+                )
+                self.assertEqual(
+                    verdict["output_contract_verdict"],
+                    "fail",
+                )
+                self.assertEqual(verdict["overall_verdict"], "fail")
+
+        assertive_causes = (
+            "producer_mapping is definitively the first confirmed divergence",
+            "producer_mapping is definitively the first confirmed divergence "
+            "with potential downstream impact",
+            "producer_mapping 已确认为首个分歧",
+        )
+        for cause in assertive_causes:
+            with self.subTest(assertive_cause=cause):
+                verdict = trace_verdict(
+                    "tf-cl-001",
+                    "implement",
+                    lineage + companion.format(cause=cause),
+                    include_lineage_companion=False,
+                )
+                self.assertEqual(
+                    verdict["output_contract_verdict"],
+                    "pass",
+                )
+                self.assertEqual(verdict["overall_verdict"], "pass")
+
+    def test_contract_lineage_rejects_detached_field_polarity_bypasses(self):
+        implement_lineage = """Contract Lineage
+- Canonical Owner / Source: canonical_contract
+- Hops: canonical_contract (verified) -> producer_mapping (verified) -> consumer (verified)
+- First Confirmed Divergence: producer_mapping
+- Fix Owner / Boundary: producer
+- Unverified / Branched Hops: none
+"""
+        implement_companions = (
+            """## Diagnosis Outcome
+- Confirmed Cause: Maybe; producer_mapping is the first confirmed divergence
+- Decisive Evidence: canonical_contract differs from producer_mapping
+- Smallest Safe Next Action: fix producer then reverify consumer
+""",
+            """## Diagnosis Outcome
+- Confirmed Cause: producer_mapping is the first confirmed divergence
+- Decisive Evidence: nоt sure; canonical_contract differs from producer_mapping
+- Smallest Safe Next Action: fix producer then reverify consumer
+""",
+            """## Diagnosis Outcome
+- Confirmed Cause: producer_mapping is the first confirmed divergence
+- Decisive Evidence: canonical_contract differs from producer_mapping
+- Smallest Safe Next Action: Maybe; fix producer then reverify consumer
+""",
+        )
+        for companion in implement_companions:
+            with self.subTest(route="implement", companion=companion):
+                verdict = trace_verdict(
+                    "tf-cl-001",
+                    "implement",
+                    implement_lineage + companion,
+                    include_lineage_companion=False,
+                )
+                self.assertEqual(
+                    verdict["output_contract_verdict"],
+                    "fail",
+                )
+                self.assertEqual(verdict["overall_verdict"], "fail")
+
+        verify_response = """Contract Lineage
+- Canonical Owner / Source: canonical_contract
+- Hops: canonical_contract (verified) -> storage (verified) -> service_transform (verified) -> api (verified) -> frontend_renderer (verified)
+- First Confirmed Divergence: frontend_renderer
+- Fix Owner / Boundary: frontend
+- Unverified / Branched Hops: none
+
+Verification Scope
+- Claim: contract_divergence
+- Covered: canonical_contract|storage|service_transform|api|frontend_renderer
+- Missing: runtime
+- Verdict: partial
+
+## Verification Continuation
+- Next Check: nоt sure; reverify frontend_renderer after the frontend boundary is corrected
+"""
+        verify_verdict = trace_verdict(
+            "tf-cl-002",
+            "verify",
+            verify_response,
+            include_lineage_companion=False,
+        )
+        self.assertEqual(
+            verify_verdict["output_contract_verdict"],
+            "fail",
+        )
+        self.assertEqual(verify_verdict["overall_verdict"], "fail")
+
+        write_plan_lineage = """Contract Lineage
+- Canonical Owner / Source: unverified
+- Hops: producer_a (verified) | producer_b (verified)
+- First Confirmed Divergence: unverified
+- Fix Owner / Boundary: unverified
+- Unverified / Branched Hops: canonical_owner | storage
+"""
+        write_plan_companions = (
+            """## Implementation Plan
+- Accepted Goal: resolve canonical_owner and storage without inventing ownership
+- Ordered Steps: inspect canonical_owner then storage then producer_a and producer_b
+- Dependencies / Gates: Maybe; canonical_owner and storage remain unverified so implementation is blocked
+- Verification Checkpoints: compare each inspected unverified hop with the accepted contract
+- Stop Condition: canonical_owner and storage become evidence-backed or remain blocked
+""",
+            """## Implementation Plan
+- Accepted Goal: resolve canonical_owner and storage without inventing ownership
+- Ordered Steps: nоt sure; inspect canonical_owner then storage then producer_a and producer_b
+- Dependencies / Gates: canonical_owner and storage remain unverified so implementation is blocked
+- Verification Checkpoints: compare each inspected unverified hop with the accepted contract
+- Stop Condition: canonical_owner and storage become evidence-backed or remain blocked
+""",
+        )
+        for companion in write_plan_companions:
+            with self.subTest(route="write-plan", companion=companion):
+                verdict = trace_verdict(
+                    "tf-cl-003",
+                    "write-plan",
+                    write_plan_lineage + companion,
+                    include_lineage_companion=False,
+                )
+                self.assertEqual(
+                    verdict["output_contract_verdict"],
+                    "fail",
+                )
+                self.assertEqual(verdict["overall_verdict"], "fail")
+
+        assertive_write_plan = """## Implementation Plan
+- Accepted Goal: resolve canonical_owner and storage without inventing ownership
+- Ordered Steps: inspect canonical_owner then storage then producer_a and producer_b
+- Dependencies / Gates: canonical_owner and storage remain unverified; the pending gate blocks implementation
+- Verification Checkpoints: compare each inspected unverified hop with the accepted contract
+- Stop Condition: canonical_owner and storage become evidence-backed or remain blocked
+"""
+        assertive_verdict = trace_verdict(
+            "tf-cl-003",
+            "write-plan",
+            write_plan_lineage + assertive_write_plan,
+            include_lineage_companion=False,
+        )
+        self.assertEqual(
+            assertive_verdict["output_contract_verdict"],
+            "pass",
+        )
+        self.assertEqual(assertive_verdict["overall_verdict"], "pass")
+
+    def test_contract_lineage_route_companion_accepts_assertive_synonyms(self):
+        response = """Contract Lineage
+- Canonical Owner / Source: canonical_contract
+- Hops: canonical_contract (verified) -> producer_mapping (verified) -> consumer (verified)
+- First Confirmed Divergence: producer_mapping
+- Fix Owner / Boundary: producer
+- Unverified / Branched Hops: none
+
+## Diagnosis Outcome
+- Confirmed Cause: the contract first diverges at producer_mapping
+- Decisive Evidence: producer_mapping contradicts canonical_contract
+- Smallest Safe Next Action: bring producer back into alignment, then reverify consumer
+"""
+
+        verdict = trace_verdict(
+            "tf-cl-001",
+            "implement",
+            response,
+            include_lineage_companion=False,
+        )
+
+        self.assertEqual(verdict["output_contract_verdict"], "pass")
+        self.assertEqual(verdict["overall_verdict"], "pass")
+
+    def test_verified_plugin_claim_rejects_tautological_roots(self):
+        claim = """```yaml
+release_evidence_claim:
+  claim_type: runtime
+  claim: runtime_smoke
+  evidence_status: verified
+  installed_plugin_root: /installed/groundwork
+  source_root: /installed/groundwork
+  cache_or_source_refresh:
+    method: source_equivalence
+    evidence: installed_source_matches
+  run_scope: targeted
+  commands_or_trials: [run_runtime_smoke]
+  limitations: []
+```"""
+
+        failures = loop_checks.release_evidence_claim_failures(claim)
+
+        self.assertTrue(
+            any("independent paths" in failure for failure in failures),
+            failures,
+        )
+
+        installed_inside_source = claim.replace(
+            "installed_plugin_root: /installed/groundwork\n"
+            "  source_root: /installed/groundwork",
+            "installed_plugin_root: /workspace/source/.codex/plugins/cache/groundwork\n"
+            "  source_root: /workspace/source",
+        )
+        ancestry_failures = (
+            loop_checks.release_evidence_claim_failures(
+                installed_inside_source
+            )
+        )
+        self.assertTrue(
+            any(
+                "ancestor/descendant relationship" in failure
+                for failure in ancestry_failures
+            ),
+            ancestry_failures,
+        )
+
+    def test_release_evidence_claim_yaml_scalars_require_balanced_quotes(self):
+        template = """```yaml
+release_evidence_claim:
+  claim_type: runtime
+  claim: runtime_smoke
+  evidence_status: {status}
+  installed_plugin_root: /installed/groundwork
+  source_root: /workspace/source
+  cache_or_source_refresh:
+    method: source_equivalence
+    evidence: installed_source_matches
+  run_scope: targeted
+  commands_or_trials: [run_runtime_smoke]
+  limitations: []
+```"""
+        balanced = template.format(status='"verified"')
+        self.assertEqual(
+            loop_checks.release_evidence_claim_status(balanced), "verified"
+        )
+        self.assertEqual(
+            loop_checks.release_evidence_claim_failures(balanced), []
+        )
+
+        for malformed_status in ('verified"', '"verified', "'verified\""):
+            with self.subTest(status=malformed_status):
+                malformed = template.format(status=malformed_status)
+                self.assertEqual(
+                    loop_checks.release_evidence_claim_status(malformed), ""
+                )
+                self.assertTrue(
+                    loop_checks.release_evidence_claim_failures(malformed)
+                )
+
+        malformed_claim = balanced.replace(
+            "claim: runtime_smoke", "claim: 'runtime's smoke'"
+        )
+        self.assertEqual(
+            loop_checks.release_evidence_claim_status(malformed_claim), ""
+        )
+        self.assertTrue(
+            loop_checks.release_evidence_claim_failures(malformed_claim)
+        )
+
+    def test_release_evidence_claim_must_be_visible_markdown(self):
+        claim = """```yaml
+release_evidence_claim:
+  claim_type: runtime
+  claim: runtime_smoke
+  evidence_status: unverified
+  installed_plugin_root: unverified
+  source_root: /workspace/source
+  cache_or_source_refresh:
+    method: not_run
+    evidence: not_run
+  run_scope: not_run
+  commands_or_trials: []
+  limitations: [runtime_not_run]
+```"""
+        hidden_candidates = (
+            "<!--\n" + claim + "\n-->",
+            "\n".join("    " + line for line in claim.splitlines()),
+            "````text\n" + claim + "\n````",
+        )
+        for candidate in hidden_candidates:
+            with self.subTest(candidate=candidate):
+                self.assertEqual(
+                    loop_checks.release_evidence_claim_status(candidate), ""
+                )
+                self.assertTrue(
+                    loop_checks.release_evidence_claim_failures(candidate)
+                )
+
+    def test_uat_absence_guard_normalizes_visible_heading_variants(self):
+        variants = (
+            "## <span>UAT Evidence Window</span>",
+            "## UAT&#32;Evidence&#32;Window",
+            "## [UAT Evidence Window][window]",
+            "## UAT Evi<!--hidden-->dence Window",
+            "## " + "[" * 1100 + "UAT Evidence Window" + "]" * 1100,
+        )
+        for response in variants:
+            with self.subTest(response=response):
+                self.assertTrue(
+                    loop_checks.uat_evidence_window_absence_failures(response)
+                )
 
 
 if __name__ == "__main__":

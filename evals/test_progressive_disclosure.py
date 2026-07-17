@@ -7,10 +7,135 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def markdown_h2_headings(text):
+def normalize_markdown_heading(value):
+    value = value.strip()
+    attribute_token = (
+        r"(?:[#.][\w:-]+|"
+        r"[A-Za-z_:][\w:.-]*=(?:\"[^\"]*\"|'[^']*'|[^\s{}]+))"
+    )
+    attributes = re.search(r"[ \t]*\{([^{}\n]+)\}[ \t]*$", value)
+    if attributes is not None and re.fullmatch(
+        rf"{attribute_token}(?:[ \t]+{attribute_token})*",
+        attributes.group(1),
+    ):
+        value = value[: attributes.start()].rstrip()
+
+    code_spans = []
+    inline_code = re.compile(r"(?<!`)(`+)(?!`)(.*?)(?<!`)\1(?!`)")
+
+    def preserve_inline_code(match):
+        content = match.group(2).replace("\r\n", " ").replace("\r", " ").replace("\n", " ")
+        if (
+            content.startswith(" ")
+            and content.endswith(" ")
+            and content.strip(" ")
+        ):
+            content = content[1:-1]
+        placeholder = f"\x00code-span-{len(code_spans)}\x00"
+        code_spans.append((placeholder, content))
+        return placeholder
+
+    value = inline_code.sub(preserve_inline_code, value)
+    value = markdown_link_visible_text(value)
+
+    simple_emphasis = re.compile(
+        r"(?<!\w)(\*\*|__|\*|_)(?=\S)(.+?)(?<=\S)\1(?!\w)"
+    )
+    previous = None
+    while value != previous:
+        previous = value
+        value = simple_emphasis.sub(r"\2", value).strip()
+    for placeholder, content in code_spans:
+        value = value.replace(placeholder, content)
+    return " ".join(value.split())
+
+
+def matching_markdown_delimiter(value, start, opener, closer):
+    depth = 0
+    index = start
+    while index < len(value):
+        character = value[index]
+        if character == "\\" and index + 1 < len(value):
+            index += 2
+            continue
+        if character == opener:
+            depth += 1
+        elif character == closer:
+            depth -= 1
+            if depth == 0:
+                return index
+        index += 1
+    return None
+
+
+def markdown_link_visible_text(value):
+    visible = []
+    index = 0
+    while index < len(value):
+        if value[index] == "\\" and index + 1 < len(value):
+            visible.append(value[index + 1])
+            index += 2
+            continue
+
+        image = value[index] == "!" and index + 1 < len(value) and value[index + 1] == "["
+        label_start = index + 1 if image else index
+        if value[label_start] != "[":
+            visible.append(value[index])
+            index += 1
+            continue
+
+        label_end = matching_markdown_delimiter(value, label_start, "[", "]")
+        if label_end is None:
+            visible.append(value[index])
+            index += 1
+            continue
+
+        consumed_end = label_end + 1
+        if consumed_end < len(value) and value[consumed_end] == "(":
+            destination_end = matching_markdown_delimiter(
+                value, consumed_end, "(", ")"
+            )
+            if destination_end is not None:
+                consumed_end = destination_end + 1
+        else:
+            reference_start = consumed_end
+            while (
+                reference_start < len(value)
+                and value[reference_start] in " \t"
+            ):
+                reference_start += 1
+            if (
+                reference_start < len(value)
+                and value[reference_start] == "["
+            ):
+                reference_end = matching_markdown_delimiter(
+                    value, reference_start, "[", "]"
+                )
+                if reference_end is not None:
+                    consumed_end = reference_end + 1
+
+        label = value[label_start + 1 : label_end]
+        visible.append(markdown_link_visible_text(label))
+        index = consumed_end
+    return "".join(visible)
+
+
+def markdown_fence_opener(line):
+    fence = re.match(r" {0,3}(`{3,}|~{3,})(.*)$", line)
+    if fence is None:
+        return None
+    marker, info_string = fence.groups()
+    if marker.startswith("`") and "`" in info_string:
+        return None
+    return marker
+
+
+def markdown_headings(text, levels=range(1, 7)):
+    allowed_levels = set(levels)
     headings = []
     fence_char = None
     fence_length = 0
+    setext_candidate = None
     for line in text.splitlines():
         if fence_char is not None:
             if re.fullmatch(
@@ -21,19 +146,68 @@ def markdown_h2_headings(text):
                 fence_length = 0
             continue
 
-        fence = re.match(r" {0,3}(`{3,}|~{3,})", line)
-        if fence is not None:
-            marker = fence.group(1)
+        marker = markdown_fence_opener(line)
+        if marker is not None:
             fence_char = marker[0]
             fence_length = len(marker)
+            setext_candidate = None
             continue
 
-        heading = re.fullmatch(r" {0,3}##(?!#)(?:[ \t]+(.*?))?[ \t]*", line)
+        heading = re.fullmatch(
+            r" {0,3}(#{1,6})(?!#)(?:[ \t]+(.*?))?[ \t]*",
+            line,
+        )
         if heading is not None:
-            value = (heading.group(1) or "").strip()
+            level = len(heading.group(1))
+            value = (heading.group(2) or "").strip()
             value = re.sub(r"[ \t]+#+[ \t]*$", "", value).strip()
-            headings.append(value)
+            if level in allowed_levels:
+                headings.append(normalize_markdown_heading(value))
+            setext_candidate = None
+            continue
+
+        setext_underline = re.fullmatch(r" {0,3}(-+|=+)[ \t]*", line)
+        if setext_underline is not None:
+            level = 1 if setext_underline.group(1).startswith("=") else 2
+            if setext_candidate is not None and level in allowed_levels:
+                headings.append(normalize_markdown_heading(setext_candidate))
+            setext_candidate = None
+            continue
+
+        if line.strip() and not re.match(r"(?: {4}|\t)", line):
+            setext_candidate = line.strip()
+        else:
+            setext_candidate = None
     return headings
+
+
+def markdown_h2_headings(text):
+    return markdown_headings(text, levels=(2,))
+
+
+def markdown_heading_owners(documents, heading):
+    heading_key = heading.casefold()
+    return [
+        path
+        for path, text in documents
+        if heading_key
+        in {
+            candidate.casefold()
+            for candidate in markdown_headings(text)
+        }
+    ]
+
+
+def artifact_header_h2_conflicts(text, fields):
+    heading_keys = {
+        heading.casefold()
+        for heading in markdown_h2_headings(text)
+    }
+    return [
+        field
+        for field in fields
+        if field.casefold() in heading_keys
+    ]
 
 
 class ProgressiveDisclosureTests(unittest.TestCase):
@@ -353,6 +527,44 @@ class ProgressiveDisclosureTests(unittest.TestCase):
         self.assertLess(default_path_index, evidence_boundary_index)
         self.assertLess(evidence_boundary_index, load_only_index)
 
+    def test_verify_contract_lineage_reference_is_conditional_and_within_entry_budget(self):
+        skill = self.read("skills/verify/SKILL.md")
+        default_section = skill.split(
+            "## Default Path: Named Evidence Verification", 1
+        )[1].split("## Evidence Boundary", 1)[0]
+        load_only_section = skill.split("## Load Only What Fits", 1)[1].split(
+            "## Stop Conditions", 1
+        )[0]
+
+        self.assertIn("Cross-boundary contract lineage or fix-owner tracing", load_only_section)
+        self.assertIn("skills/_shared/CONTRACT-NOTES.md", load_only_section)
+        self.assertIn(
+            "only when the claim crosses ownership or representation boundaries",
+            load_only_section,
+        )
+        self.assertIn("do not load it for ordinary verification", load_only_section)
+        self.assertEqual(skill.count("skills/_shared/CONTRACT-NOTES.md"), 1)
+        self.assertNotIn("CONTRACT-NOTES.md", default_section)
+        self.assertLessEqual(len(skill.splitlines()), 140)
+
+    def test_prototype_annotation_hard_stop_preserves_the_conditional_contract(self):
+        skill = self.read("skills/prototype/SKILL.md")
+        required_evidence = skill.split("## Required Evidence", 1)[1].split(
+            "## Workflow", 1
+        )[0]
+        hard_stops = skill.split("## Hard Stops", 1)[1].split(
+            "## Failure Handling", 1
+        )[0]
+
+        self.assertIn("DECISION-CAPTURE.md", required_evidence)
+        self.assertIn("author/reviewer annotation layer", required_evidence)
+        self.assertIn("stable `Annotation ID`", hard_stops)
+        self.assertIn("purpose, presentation disposition", hard_stops)
+        self.assertIn(
+            "when applicable, the same-block `Audience-facing Source` or `Companion Reference`",
+            hard_stops,
+        )
+
     def test_verify_scope_branch_is_not_loaded_by_other_branch_files(self):
         non_scope_branch_files = [
             "skills/verify/QA-FAILURE-BRANCH.md",
@@ -453,29 +665,30 @@ class ProgressiveDisclosureTests(unittest.TestCase):
             self.assertEqual(missing, [], path)
 
     def test_dispatch_reference_headers_use_compact_single_line_fields(self):
+        decision_fields = (
+            "Target Reader",
+            "Reader Action Needed",
+            "Decision Supported",
+        )
+        scoped_fields = (
+            *decision_fields,
+            "Scope",
+            "Out of Scope",
+            "Evidence Level",
+        )
         compact_fields = {
             "skills/dispatch/CONFLICT-PREFLIGHT.md": (
-                "Target Reader",
-                "Reader Action Needed",
-                "Decision Supported",
+                *decision_fields,
                 "Artifact Type",
                 "Source of Truth",
                 "Scope",
                 "Evidence Level",
                 "Safe to Share / Redaction Notes",
             ),
-            "skills/dispatch/DISPATCH-PACKAGE-DETAILS.md": (
-                "Target Reader", "Reader Action Needed", "Decision Supported",
-                "Scope", "Out of Scope", "Evidence Level",
-            ),
-            "skills/dispatch/RESULT-PACKAGE.md": (
-                "Target Reader", "Reader Action Needed", "Decision Supported",
-                "Scope", "Out of Scope", "Evidence Level",
-            ),
+            "skills/dispatch/DISPATCH-PACKAGE-DETAILS.md": scoped_fields,
+            "skills/dispatch/RESULT-PACKAGE.md": scoped_fields,
             "skills/dispatch/ROUTING-PROFILES.md": (
-                "Target Reader",
-                "Reader Action Needed",
-                "Decision Supported",
+                *decision_fields,
                 "Scope",
                 "Out of Scope",
                 "Artifact Type",
@@ -483,64 +696,47 @@ class ProgressiveDisclosureTests(unittest.TestCase):
                 "Evidence Level",
                 "Safe to Share / Redaction Notes",
             ),
-            "skills/dispatch/RUNTIME-ADAPTERS.md": (
-                "Target Reader", "Reader Action Needed", "Decision Supported",
-                "Scope", "Out of Scope", "Evidence Level",
-            ),
+            "skills/dispatch/RUNTIME-ADAPTERS.md": scoped_fields,
             "skills/dispatch/adapters/codex_app_managed_worktree_thread/ADAPTER.md": (
-                "Target Reader", "Reader Action Needed", "Decision Supported",
-                "Scope", "Evidence Level",
+                *decision_fields,
+                "Scope",
+                "Evidence Level",
             ),
-            "skills/dispatch/adapters/codex_app_managed_worktree_thread/DISPATCH-PACKAGE-CONTRACT.md": (
-                "Target Reader", "Reader Action Needed", "Decision Supported",
-                "Scope", "Out of Scope", "Evidence Level",
-            ),
-            "skills/dispatch/adapters/codex_app_managed_worktree_thread/RATIONALE.md": (
-                "Target Reader", "Reader Action Needed", "Decision Supported",
-                "Scope", "Out of Scope", "Evidence Level",
-            ),
-            "skills/dispatch/adapters/codex_app_managed_worktree_thread/REJECT-NOOP-CHECKLIST.md": (
-                "Target Reader", "Reader Action Needed", "Decision Supported",
-                "Scope", "Out of Scope", "Evidence Level",
-            ),
-            "skills/dispatch/adapters/codex_app_managed_worktree_thread/RESULT-PACKAGE-TEMPLATE.md": (
-                "Target Reader", "Reader Action Needed", "Decision Supported",
-                "Scope", "Out of Scope", "Evidence Level",
-            ),
-            "skills/dispatch/adapters/codex_app_managed_worktree_thread/THREAD-LIFECYCLE.md": (
-                "Target Reader", "Reader Action Needed", "Decision Supported",
-                "Scope", "Out of Scope", "Evidence Level",
-            ),
-            "skills/dispatch/adapters/codex_app_managed_worktree_thread/THREAD-PROMPT-TEMPLATE.md": (
-                "Target Reader", "Reader Action Needed", "Decision Supported",
-                "Scope", "Out of Scope", "Evidence Level",
-            ),
+            "skills/dispatch/adapters/codex_app_managed_worktree_thread/DISPATCH-PACKAGE-CONTRACT.md": scoped_fields,
+            "skills/dispatch/adapters/codex_app_managed_worktree_thread/RATIONALE.md": scoped_fields,
+            "skills/dispatch/adapters/codex_app_managed_worktree_thread/REJECT-NOOP-CHECKLIST.md": scoped_fields,
+            "skills/dispatch/adapters/codex_app_managed_worktree_thread/RESULT-PACKAGE-TEMPLATE.md": scoped_fields,
+            "skills/dispatch/adapters/codex_app_managed_worktree_thread/THREAD-LIFECYCLE.md": scoped_fields,
+            "skills/dispatch/adapters/codex_app_managed_worktree_thread/THREAD-PROMPT-TEMPLATE.md": scoped_fields,
         }
         self.assertEqual(sum(len(fields) for fields in compact_fields.values()), 76)
-        multiline_sections = {
-            "skills/dispatch/CONFLICT-PREFLIGHT.md": {
-                "Scope": ("## Out of Scope",),
-            },
-            "skills/dispatch/adapters/codex_app_managed_worktree_thread/ADAPTER.md": {
-                "Scope": ("In scope:", "## Out of Scope"),
-            },
+        sections_after_scope = {
+            "skills/dispatch/CONFLICT-PREFLIGHT.md": ("## Out of Scope",),
+            "skills/dispatch/adapters/codex_app_managed_worktree_thread/ADAPTER.md": (
+                "In scope:",
+                "## Out of Scope",
+            ),
         }
 
         for path, fields in compact_fields.items():
             text = self.read(path)
             lines = text.splitlines()
-            h2_headings = markdown_h2_headings(text)
             self.assertTrue(lines[0].startswith("# "), path)
             self.assertEqual(lines[1], "", path)
             cursor = 2
 
             for field in fields:
-                self.assertTrue(lines[cursor].startswith(f"{field}: "), (path, field))
+                self.assertRegex(
+                    lines[cursor],
+                    rf"^{re.escape(field)}: \S(?:.*\S)?$",
+                    (path, field),
+                )
                 cursor += 1
                 self.assertEqual(lines[cursor], "", (path, field))
                 cursor += 1
 
-                for marker in multiline_sections.get(path, {}).get(field, ()):
+                markers = sections_after_scope.get(path, ()) if field == "Scope" else ()
+                for marker in markers:
                     self.assertEqual(lines[cursor], marker, (path, marker))
                     cursor += 1
                     self.assertEqual(lines[cursor], "", (path, marker))
@@ -556,32 +752,136 @@ class ProgressiveDisclosureTests(unittest.TestCase):
             self.assertNotEqual(lines[cursor], "", path)
 
             for field in fields:
-                indexes = [index for index, line in enumerate(lines) if line.startswith(f"{field}: ")]
+                indexes = [
+                    index
+                    for index, line in enumerate(lines)
+                    if line.startswith(f"{field}:")
+                ]
                 self.assertEqual(len(indexes), 1, (path, field))
-                self.assertEqual(lines[indexes[0] + 1], "", (path, field))
-                self.assertNotIn(field, h2_headings, (path, field))
+            self.assertEqual(artifact_header_h2_conflicts(text, fields), [], path)
 
-        self.assertIn("## Out of Scope", self.read("skills/dispatch/CONFLICT-PREFLIGHT.md"))
-        self.assertIn(
-            "## Out of Scope",
-            self.read("skills/dispatch/adapters/codex_app_managed_worktree_thread/ADAPTER.md"),
-        )
         self.assertIn("## Target Reader", self.read("skills/to-prd/PRD-TEMPLATE.md"))
+
+    def test_markdown_h2_parser_handles_fences_setext_and_normalization(self):
+        self.assertEqual(
+            markdown_h2_headings(
+                "````md\n"
+                "```not-a-close\n"
+                "## Combined Loop ##\n"
+                "_Combined Loop_ {.hidden}\n"
+                "--------------------------\n"
+                "````\n"
+                "~~~md\n"
+                "## **Combined Loop** {#also-hidden}\n"
+                "~~~\n"
+                "## **Combined Loop** {#combined-loop} ##\n"
+                "_CoMbInEd LoOp_ {.alias}\n"
+                "--------------------------\n"
+                "  ## Real Heading ###"
+            ),
+            ["Combined Loop", "CoMbInEd LoOp", "Real Heading"],
+        )
+
+    def test_markdown_heading_parser_covers_all_atx_and_setext_levels_outside_fences(self):
+        self.assertEqual(
+            markdown_headings(
+                "```md\n"
+                "# Hidden ATX One\n"
+                "Hidden Setext One\n"
+                "=================\n"
+                "```\n"
+                "# ATX One\n"
+                "## ATX Two\n"
+                "### ATX Three\n"
+                "#### ATX Four\n"
+                "##### ATX Five\n"
+                "###### ATX Six\n"
+                "####### Not A Heading\n"
+                "Setext One\n"
+                "==========\n"
+                "Setext Two\n"
+                "----------"
+            ),
+            [
+                "ATX One",
+                "ATX Two",
+                "ATX Three",
+                "ATX Four",
+                "ATX Five",
+                "ATX Six",
+                "Setext One",
+                "Setext Two",
+            ],
+        )
+
+    def test_markdown_h2_parser_normalizes_link_and_inline_code_visible_text(self):
+        self.assertEqual(
+            markdown_h2_headings(
+                "## [Target Reader](https://example.test/a_(b))\n"
+                "## `Reader Action Needed`\n"
+                "**[Decision Supported][decision]**\n"
+                "----------------------------------"
+            ),
+            ["Target Reader", "Reader Action Needed", "Decision Supported"],
+        )
+
+    def test_markdown_h2_parser_normalizes_nested_destinations_labels_and_references(self):
+        self.assertEqual(
+            markdown_h2_headings(
+                "## [Target Reader](https://example.test/a_(b_(c)))\n"
+                "## [Reader [Action] Needed](https://example.test/action)\n"
+                "**[Decision [Supported]][decision[nested]]**\n"
+                "------------------------------------------"
+            ),
+            ["Target Reader", "Reader Action Needed", "Decision Supported"],
+        )
+
+        for hidden_heading in (
+            "[Target Reader](https://example.test/a_(b_(c)))",
+            "[Target [Reader]](https://example.test/reader)",
+            "[Target [Reader]][target[nested]]",
+        ):
+            with self.subTest(hidden_heading=hidden_heading):
+                self.assertEqual(
+                    artifact_header_h2_conflicts(
+                        f"## {hidden_heading}",
+                        ("Target Reader", "Reader Action Needed"),
+                    ),
+                    ["Target Reader"],
+                )
+
+    def test_markdown_h2_parser_rejects_backtick_info_string_with_backtick(self):
+        self.assertEqual(
+            markdown_h2_headings(
+                "```python `invalid-info`\n"
+                "## Target Reader"
+            ),
+            ["Target Reader"],
+        )
+
+    def test_artifact_header_h2_conflicts_are_case_insensitive(self):
+        self.assertEqual(
+            artifact_header_h2_conflicts(
+                "## TARGET READER\n"
+                "## unrelated",
+                ("Target Reader", "Reader Action Needed"),
+            ),
+            ["Target Reader"],
+        )
 
     def test_combined_loop_has_one_canonical_owner(self):
         first_principles = self.read("skills/_shared/FIRST-PRINCIPLES.md")
         adversarial_review = self.read("skills/_shared/ADVERSARIAL-REVIEW.md")
-        self.assertEqual(
-            markdown_h2_headings(
-                "````md\n```not-a-close\n## Combined Loop ##\n````\n  ## Real Heading ###"
+        owners = markdown_heading_owners(
+            (
+                (
+                    path.relative_to(ROOT).as_posix(),
+                    path.read_text(encoding="utf-8"),
+                )
+                for path in sorted(ROOT.glob("skills/**/*.md"))
             ),
-            ["Real Heading"],
+            "Combined Loop",
         )
-        owners = [
-            path.relative_to(ROOT).as_posix()
-            for path in ROOT.glob("skills/**/*.md")
-            if "Combined Loop" in markdown_h2_headings(path.read_text(encoding="utf-8"))
-        ]
 
         self.assertEqual(owners, ["skills/_shared/ADVERSARIAL-REVIEW.md"])
         self.assertIn("Construct -> Attack -> Narrow -> Verify", adversarial_review)
@@ -589,6 +889,25 @@ class ProgressiveDisclosureTests(unittest.TestCase):
         self.assertIn("skills/_shared/ADVERSARIAL-REVIEW.md", first_principles)
         self.assertNotIn("## Combined Loop", first_principles)
         self.assertNotIn("Construct -> Attack -> Narrow -> Verify", first_principles)
+
+    def test_combined_loop_owner_detection_catches_h1_and_h3_reintroduction(self):
+        canonical = ("skills/_shared/ADVERSARIAL-REVIEW.md", "## Combined Loop")
+        for duplicate_heading in ("# Combined Loop", "### Combined Loop"):
+            with self.subTest(duplicate_heading=duplicate_heading):
+                owners = markdown_heading_owners(
+                    (
+                        canonical,
+                        ("skills/_shared/DUPLICATE.md", duplicate_heading),
+                    ),
+                    "Combined Loop",
+                )
+                self.assertEqual(
+                    owners,
+                    [
+                        "skills/_shared/ADVERSARIAL-REVIEW.md",
+                        "skills/_shared/DUPLICATE.md",
+                    ],
+                )
 
     def test_hot_path_runtime_references_use_compact_purpose_headers(self):
         paths = [

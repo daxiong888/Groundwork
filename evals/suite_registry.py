@@ -12,5 +12,4 @@ DEFAULT_SUITES = (
     "routing-reliability.csv",
     "routing-blind.csv",
     "trace-first-verify-review.csv",
-    "uat-evidence-window.csv",
 )

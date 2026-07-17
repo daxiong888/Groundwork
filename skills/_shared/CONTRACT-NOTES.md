@@ -43,7 +43,40 @@ Rules:
 - `Unverified assumptions` must remain assumptions until `verify`, source inspection, runtime/browser evidence, or explicit confirmation resolves them.
 - `Next verification route` should usually be `verify` for source-truth/readiness claims, or `prototype` when a throwaway artifact is needed before source truth exists.
 - `Canonical Owner / Source` names the accepted contract, schema, inspected source, or contract-scoped confirmation; a producer is not authoritative merely because it appears first.
-- `Hops` may branch and may include producer, persistence/index, transforms/mappings, consumer/API, display/export, and fallback only when applicable. Mark material hops `verified`, `unverified`, or `not applicable` instead of inventing a linear chain.
+- `Hops` may branch and may include producer, persistence/index, transforms/mappings, consumer/API, display/export, and fallback only when applicable. The machine token is `hop_id(verified|unverified|not_applicable)`; use `>` for ordered stages and `|` only for sibling branches. Do not add empty branches, repeat a hop ID, split tokens with whitespace, or substitute the prose spelling `not applicable`.
 - `First Confirmed Divergence` is the earliest inspected hop whose actual meaning contradicts the canonical contract. If an earlier material hop is uninspected, keep the divergence and fix owner `unverified`.
 - Fix ownership follows the first confirmed divergence. Producer-first inspection is not producer-first blame, and an intentional source-backed raw-to-display transform is not itself a failure.
 - Do not infer semantics from field names or copy internal lineage details into consumer-facing contract docs unless that reader needs them.
+
+## Route-owned Lineage Companions
+
+When `Contract Lineage` is emitted as a machine-checked route output, preserve the route's ordinary result under exactly one owning section. Do not put these fields in code fences, HTML comments, or unrelated prose.
+
+`implement`:
+
+```text
+Diagnosis Outcome
+- Confirmed Cause: <must name First Confirmed Divergence>
+- Decisive Evidence: <must bind Canonical Owner / Source and First Confirmed Divergence>
+- Smallest Safe Next Action: <must name Fix Owner / Boundary>
+```
+
+`verify`:
+
+```text
+Verification Continuation
+- Next Check: <must name Fix Owner / Boundary>
+```
+
+`write-plan`:
+
+```text
+Implementation Plan
+- Accepted Goal:
+- Ordered Steps:
+- Dependencies / Gates:
+- Verification Checkpoints:
+- Stop Condition:
+```
+
+When lineage ownership or a material hop remains unverified, the plan companion must preserve the exact unresolved hop IDs and an explicit `unverified` or `blocked` gate. The structured lineage sections and their route companion must not be followed by a contradictory recommendation.

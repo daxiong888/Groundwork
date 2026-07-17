@@ -1,11 +1,11 @@
 # Complex Handoff Branches
 
 Target Reader: Codex preparing handoff for managed worktree, role separation, visual packet, runtime/cache/release/wiki, or clean-review-sensitive continuation.
-Reader Action Needed: Preserve continuation state and ownership boundaries without upgrading evidence.
-Decision Supported: Which claims remain open gaps, which next role owns them, and which references must be cited for continuation.
+Reader Action Needed: Preserve continuation state, prototype annotation presentation decisions, and ownership boundaries without upgrading evidence.
+Decision Supported: Which claims remain open gaps, which annotation decisions must be preserved or referenced, which next role owns them, and which references must be cited for continuation.
 Artifact Type: branch-specific handoff reference
-Source of Truth: `skills/handoff/SKILL.md`, `skills/_shared/EVIDENCE-BOUNDARY.md`, `skills/_shared/REVIEW-LOOP.md`, and `skills/dispatch/COMPLEX-WORK-SEPARATION.md`.
-Scope: Complex handoff evidence boundaries, visual packet rules, wiki boundaries, release/runtime/cache continuation, and clean-review gaps.
+Source of Truth: `skills/handoff/SKILL.md`, `skills/_shared/EVIDENCE-BOUNDARY.md`, `skills/_shared/REVIEW-LOOP.md`, `skills/dispatch/COMPLEX-WORK-SEPARATION.md`, `skills/prototype/DECISION-CAPTURE.md`, `docs/prd-v0.5-prototype-first-skill-expansion.md` GW-PROT-ANNOT-001, and `artifacts/v0.5-prototype-first-skill-expansion/issue-map.md` GW-PROT-ANNOT-001.
+Scope: Complex handoff evidence boundaries, visual packet rules, prototype annotation decision carry-through, wiki boundaries, release/runtime/cache continuation, and clean-review gaps.
 Out of Scope: Runtime execution, clean review, verification, coordinator closeout, archive, branch cleanup, commit, push, PR, tracker mutation, or native Handoff Git operations.
 Evidence Level: Source-validation rule only.
 Safe to Share / Redaction Notes: Safe to share after redacting secrets, credentials, PII, sensitive logs, screenshots, requests, and database rows.
@@ -24,8 +24,34 @@ Use:
 
 - Runtime/cache/release/UAT/marketplace/cache-refresh claims require `skills/_shared/RELEASE-EVIDENCE-CLAIM.md`. If the handoff only references source-validation or continuation evidence, set stronger claims to `unverified` or `not_applicable`.
 - Runtime/model selector claims require `skills/_shared/RUNTIME-CAPABILITY.md`; do not claim selector enforcement from prompt preference or package text.
-- Visual packets require `skills/_shared/VISUAL-HANDOFF-PACKET.md`. Put unsupported API/schema/source, browser, runtime, UAT, release, and customer-readiness claims under `Do-Not-Assume` unless separate qualifying evidence is named.
+- Visual packets require `skills/_shared/VISUAL-HANDOFF-PACKET.md`. Apply the annotation carry-through contract below when a source prototype or packet contains `Annotation Presentation Decision` blocks. Put unsupported API/schema/source, browser, runtime, UAT, release, and customer-readiness claims under `Do-Not-Assume` unless separate qualifying evidence is named.
 - Wiki pages are orientation or claim inventory only. Apply `skills/_shared/LLM-WIKI.md`; do not turn every handoff into a wiki diary or update wiki pages without explicit wiki-maintenance scope.
+
+## Prototype Annotation Decision Carry-through
+
+When a source prototype or visual packet contains one or more `Annotation Presentation Decision` blocks, use exactly one handoff mode:
+
+1. `inline`: repeat every source block without changing its stable `Annotation ID`, `Annotation Purpose`, `Presentation Disposition`, or required disposition-specific field.
+2. `reference`: cite one resolvable canonical artifact and section that contains the complete blocks, then list the complete set of carried `Annotation ID` values.
+
+Use this reference shape for reference mode:
+
+```text
+Annotation Decision Carry-through
+- Mode: reference
+- Annotation Decision Reference: <artifact path or durable reference plus section>
+- Annotation IDs: <complete pipe-separated stable ID set>
+- Evidence Boundary: source_reference_only
+```
+
+Do not replace item-level carry-through with a generic statement such as `annotations handled`. Do not merge heterogeneous items into one ID or assign new IDs in the handoff. For `retain_as_audience_content_candidate`, the referenced or inline block must keep its same-block `Audience-facing Source`. For `separate_review_companion`, it must keep its same-block `Companion Reference`. For `remove_before_final`, it must keep the removal disposition and omit both conditional fields.
+
+An explicitly named targeted contract-only adapter may request only the inline
+decision blocks plus `Prototype Evidence Boundary`, or only the reference-mode
+`Annotation Decision Carry-through` section. This is an isolated
+machine-checkable fragment, not an ordinary handoff package and not a waiver
+of `skills/handoff/SKILL.md` required output. The adapter prompt must state
+that the fragment-only shape is intentional.
 
 ## Material Clean Review Gap
 
@@ -35,7 +61,7 @@ Never describe self-check evidence as clean review. A prior clean review becomes
 
 ## UAT Evidence-Window Continuation
 
-For version-attributed or mutable-environment UAT continuation, cite the canonical UAT evidence-window reference and preserve only: canonical reference, claim/delivery scope, relevant SUT fingerprint, window stability, missing/closeout gap, rerun/supersedes link, next owner action, and `Execution Boundary: reference_only|groundwork_non_executor`. Include the shared `release_evidence_claim`; do not copy reports, transcripts, DB rows, or logs. Missing canonical writeback is a continuation/closeout gap with an owner; it does not invalidate separately qualifying runtime/browser observations. Never claim that Groundwork performed deployment, rerun, or writeback.
+For version-attributed or mutable-environment UAT continuation, cite the canonical UAT evidence-window reference and preserve only: canonical reference, claim/delivery scope, relevant SUT fingerprint, window stability, missing/closeout gap, rerun/supersedes link, next owner action, and `Execution Boundary: reference_only|groundwork_non_executor`. Include the shared `release_evidence_claim`; do not copy reports, transcripts, DB rows, or logs. A verified UAT continuation requires `Window Stability: stable` and an attributed, non-placeholder SUT fingerprint; changed, restart-required, observed-only, stability-unverified, or unverified windows cannot be handed off as verified. Missing canonical writeback is a continuation/closeout gap with an owner; it does not invalidate separately qualifying runtime/browser observations. Never claim that Groundwork performed deployment, rerun, or writeback.
 
 ## Compactness Rule
 

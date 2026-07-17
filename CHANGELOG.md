@@ -4,6 +4,26 @@ All notable changes to Groundwork are documented in this file.
 
 ## Unreleased
 
+### Added
+
+- Added conditional prototype annotation presentation decisions with stable `Annotation ID` carry-through, disposition-specific audience-source or companion-reference fields, and targeted prototype/handoff/verify regression coverage.
+- Added targeted UAT evidence-window and cross-boundary contract-lineage contracts with canonical fixture binding, conservative evidence boundaries, and deterministic schema/output checks.
+
+### Changed
+
+- Hardened runtime-packaged `prototype`, `verify`, `handoff`, and shared evidence/reference contracts while preserving the existing ten-skill public surface and conditional progressive-disclosure paths.
+
+### Fixed
+
+- Made full prompt-schema validation cover targeted-only and fixture-only rows before runtime filtering; reject malformed, header-only/zero-row, incomplete trace-ready, non-canonical-ID, and confusable-label CSV/source contracts; and bind the sole legacy internal route exception to the registered, non-symlink canonical repository `evals/prompts/goal-contract.csv`.
+- Prevented lossy suite/group/case/prompt-file trial identities and case-result filename collisions through exact selector identities plus reversible artifact encoding; also rejected arbitrary same-named browser/runtime executables, non-canonical runtime runners, collection/setup failures masquerading as QA reproductions, and Playwright option values masquerading as observed targets.
+- Tightened contract-lineage negative polarity across every clause of each structured implement/verify/write-plan field, including cross-script and modal/adjectival/adverbial non-assertive language; also tightened bidirectional installed/source-root independence, canonical HTML body visibility including non-presentational containers, annotation purpose binding, exact browser target identity, and forbidden UAT-window reverse constraints across headings, fields, tables, definition lists, hidden, non-rendered, Unicode, and contradictory variants.
+
+### Notes
+
+- This section describes source changes after the `v0.5.7` tag. The current source is unreleased and must not be described as the released `v0.5.7` artifact; plugin metadata intentionally remains `0.5.7` until a separate release scope approves a version bump.
+- Local source, unit, schema, and generated-package validation remain distinct from installed-cache equivalence, runtime execution, release publication, UAT, and customer-readiness evidence.
+
 ## v0.5.7 - 2026-07-15
 
 ### Added

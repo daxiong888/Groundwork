@@ -1,5 +1,13 @@
 # Producer-side Contract Divergence
 
+## Canonical Lineage Facts
+
+- Canonical Owner / Source: canonical_contract
+- Hops: canonical_contract(verified)>producer_mapping(verified)>consumer(verified)
+- First Confirmed Divergence: producer_mapping
+- Fix Owner / Boundary: producer
+- Unverified / Branched Hops: none
+
 Canonical owner token: `canonical_contract`.
 
 - The accepted contract says any valid keypad value matching `[0-9#*]{1,5}` produces `callResult=connected`.

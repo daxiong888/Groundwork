@@ -1,6 +1,11 @@
 """Deterministic output checks for bounded workflow loops and lenses."""
 
+import html
 import re
+import unicodedata
+from decimal import Decimal, InvalidOperation
+from html.parser import HTMLParser
+from pathlib import Path
 
 
 PLACEHOLDER_VALUES = {"", "not provided", "unverified", "unknown", "none", "n/a"}
@@ -160,6 +165,61 @@ CONTRACT_LINEAGE_FIELDS = (
     "Unverified / Branched Hops",
 )
 CONTRACT_LINEAGE_SCOPE_FIELDS = ("Claim", "Covered", "Missing", "Verdict")
+CONTRACT_LINEAGE_ROUTE_SECTIONS = {
+    "implement": (
+        "Diagnosis Outcome",
+        (
+            "Confirmed Cause",
+            "Decisive Evidence",
+            "Smallest Safe Next Action",
+        ),
+    ),
+    "verify": (
+        "Verification Continuation",
+        ("Next Check",),
+    ),
+    "write-plan": (
+        "Implementation Plan",
+        (
+            "Accepted Goal",
+            "Ordered Steps",
+            "Dependencies / Gates",
+            "Verification Checkpoints",
+            "Stop Condition",
+        ),
+    ),
+}
+ANNOTATION_PRESENTATION_FIELDS = (
+    "Annotation ID",
+    "Annotation Purpose",
+    "Presentation Disposition",
+    "Audience-facing Source",
+    "Companion Reference",
+)
+ANNOTATION_PRESENTATION_REQUIRED_FIELDS = (
+    "Annotation ID",
+    "Annotation Purpose",
+    "Presentation Disposition",
+)
+ANNOTATION_PRESENTATION_DISPOSITIONS = {
+    "remove_before_final",
+    "separate_review_companion",
+    "retain_as_audience_content_candidate",
+}
+ANNOTATION_CARRYTHROUGH_FIELDS = (
+    "Annotation ID",
+    "Source Purpose",
+    "Source Disposition",
+    "Required Conditional Field",
+    "Observed Target or Reference",
+    "Carry-through Verdict",
+)
+ANNOTATION_HANDOFF_REFERENCE_FIELDS = (
+    "Mode",
+    "Annotation Decision Reference",
+    "Annotation IDs",
+    "Evidence Boundary",
+)
 UAT_EVIDENCE_WINDOW_FIELDS = (
     "Claim / Delivery Scope",
     "Relevant SUT Fingerprint",
@@ -197,6 +257,176 @@ RELEASE_REFRESH_METHODS = {
     "not_applicable",
 }
 RELEASE_RUN_SCOPES = {"targeted", "full", "not_run", "not_applicable"}
+RELEASE_PLUGIN_BOUND_CLAIM_TYPES = {
+    "runtime",
+    "cache",
+    "marketplace",
+    "cache_refresh",
+}
+STRUCTURED_SECTION_HEADINGS = (
+    "Verification Scope",
+    "Contract Lineage",
+    "Diagnosis Outcome",
+    "Verification Continuation",
+    "Implementation Plan",
+    "UAT Evidence Window",
+    "UAT Evidence-Window Continuation",
+    "Annotation Presentation Decision",
+    "Annotation Decision Carry-through",
+    "Annotation Carry-through Check",
+    "Prototype Evidence Boundary",
+)
+
+
+def _blank_non_newline_characters(value):
+    return "".join(character if character in "\r\n" else " " for character in value)
+
+
+def _normalized_html_attribute_name(value):
+    return unicodedata.normalize(
+        "NFKC",
+        str(value or ""),
+    ).casefold()
+
+
+def _inline_style_hides_content(value):
+    style = re.sub(
+        r"\s+",
+        "",
+        re.sub(
+            r"(?s)/\*.*?\*/",
+            "",
+            str(value or "").casefold(),
+        ),
+    )
+    for declaration in style.split(";"):
+        property_name, separator, property_value = declaration.partition(":")
+        if not separator:
+            continue
+        property_value = re.sub(
+            r"!important$",
+            "",
+            property_value,
+        )
+        if (
+            property_name == "display"
+            and property_value == "none"
+        ) or (
+            property_name == "visibility"
+            and property_value in {"hidden", "collapse"}
+        ) or (
+            property_name == "content-visibility"
+            and property_value == "hidden"
+        ):
+            return True
+        if property_name != "opacity" or re.fullmatch(
+            r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?",
+            property_value,
+        ) is None:
+            continue
+        try:
+            if Decimal(property_value).is_zero():
+                return True
+        except InvalidOperation:
+            continue
+    return False
+
+
+def _visible_markdown_contract_text(text):
+    raw_text = str(text or "")
+    without_comments = re.sub(
+        r"(?s)<!--.*?-->",
+        lambda match: "".join(
+            character
+            for character in match.group(0)
+            if character in "\r\n"
+        ),
+        raw_text,
+    )
+    visible_lines = []
+    fence_character = None
+    fence_length = 0
+    for line in without_comments.splitlines(keepends=True):
+        line_without_ending = line.rstrip("\r\n")
+        if fence_character is not None:
+            closing = re.fullmatch(
+                rf" {{0,3}}{re.escape(fence_character)}{{{fence_length},}}[ \t]*",
+                line_without_ending,
+            )
+            visible_lines.append(_blank_non_newline_characters(line))
+            if closing is not None:
+                fence_character = None
+                fence_length = 0
+            continue
+
+        if re.match(r"(?: {4}|\t)", line_without_ending):
+            visible_lines.append(_blank_non_newline_characters(line))
+            continue
+
+        opener = re.fullmatch(
+            r" {0,3}(?P<fence>`{3,}|~{3,})(?P<info>[^\r\n]*)",
+            line_without_ending,
+        )
+        if opener is not None:
+            marker = opener.group("fence")
+            info = opener.group("info")
+            if marker.startswith("`") and "`" in info:
+                visible_lines.append(line)
+                continue
+            fence_character = marker[0]
+            fence_length = len(marker)
+            visible_lines.append(_blank_non_newline_characters(line))
+            continue
+
+        visible_lines.append(line)
+    return "".join(visible_lines)
+
+
+def _has_hidden_markdown_payload(text):
+    raw_text = str(text or "")
+    comment_matches = list(
+        re.finditer(r"(?s)<!--(.*?)-->", raw_text)
+    )
+    if any(
+        match.group(1).strip()
+        for match in comment_matches
+    ):
+        return True
+    without_comments = re.sub(
+        r"(?s)<!--.*?-->",
+        "",
+        raw_text,
+    )
+    if "<!--" in without_comments or "-->" in without_comments:
+        return True
+    fence_character = None
+    fence_length = 0
+    for line in raw_text.splitlines():
+        if fence_character is not None:
+            if re.fullmatch(
+                rf" {{0,3}}{re.escape(fence_character)}"
+                rf"{{{fence_length},}}[ \t]*",
+                line,
+            ):
+                fence_character = None
+                fence_length = 0
+            elif line.strip():
+                return True
+            continue
+        opener = re.fullmatch(
+            r" {0,3}(?P<fence>`{3,}|~{3,})(?P<info>[^\r\n]*)",
+            line,
+        )
+        if opener is not None:
+            marker = opener.group("fence")
+            fence_character = marker[0]
+            fence_length = len(marker)
+            if opener.group("info").strip():
+                return True
+            continue
+        if re.match(r"(?: {4}|\t)\S", line):
+            return True
+    return fence_character is not None
 
 
 def _field_value(text, field):
@@ -205,15 +435,20 @@ def _field_value(text, field):
 
 
 def _field_values(text, field):
+    visible_text = _visible_markdown_contract_text(text)
     pattern = rf"(?im)^[ \t]*(?:[-*][ \t]*)?(?:\*\*)?{re.escape(field)}(?:\*\*)?[ \t]*:[ \t]*([^\r\n]*)[ \t]*$"
     return [
         match.group(1).strip()
-        for match in re.finditer(pattern, str(text or ""))
+        for match in re.finditer(pattern, visible_text)
     ]
 
 
 def _exact_token(value):
     return str(value or "").lower().strip("` ")
+
+
+def _opaque_value(value):
+    return str(value or "").strip().strip("`\"'")
 
 
 def _pipe_tokens(value):
@@ -225,12 +460,62 @@ def _pipe_tokens(value):
 
 
 def _normalized_lineage_graph(value):
-    normalized = str(value or "").lower().replace("`", "").replace("→", "->")
-    return re.sub(r"\s+", "", normalized).replace("->", ">")
+    normalized = _opaque_value(value).replace("→", ">").replace("->", ">")
+    normalized = re.sub(
+        r"\((verified|unverified|not_applicable)\)",
+        lambda match: "(" + match.group(1).lower() + ")",
+        normalized,
+        flags=re.IGNORECASE,
+    )
+    if not normalized.strip():
+        return None
+    segments = []
+    for segment in normalized.split(">"):
+        if not segment.strip():
+            return None
+        branches = []
+        seen_ids = set()
+        for branch in segment.split("|"):
+            branch = branch.strip()
+            if not branch:
+                return None
+            match = re.fullmatch(
+                r"([A-Za-z0-9][A-Za-z0-9_.:/-]*)[ \t]*"
+                r"\((verified|unverified|not_applicable)\)",
+                branch,
+                flags=re.IGNORECASE,
+            )
+            if match is None:
+                return None
+            hop_id = match.group(1)
+            if hop_id in seen_ids:
+                return None
+            seen_ids.add(hop_id)
+            branches.append(f"{hop_id}({match.group(2).lower()})")
+        segments.append("|".join(sorted(branches)))
+    return ">".join(segments)
+
+
+def _normalized_unordered_pipe_set(value):
+    normalized = _opaque_value(value).replace("`", "")
+    if normalized.lower() == "none":
+        return "none"
+    parts = [part.strip() for part in normalized.split("|")]
+    if (
+        not parts
+        or any(not part for part in parts)
+        or any(
+            re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:/-]*", part) is None
+            for part in parts
+        )
+        or len(set(parts)) != len(parts)
+    ):
+        return None
+    return "|".join(sorted(parts))
 
 
 def _section_block(text, heading):
-    raw_text = str(text or "")
+    raw_text = _visible_markdown_contract_text(text)
     pattern = re.compile(
         rf"(?im)^[ \t]*(?:#{{1,6}}[ \t]*)?(?:\*\*)?{re.escape(heading)}(?:\*\*)?[ \t]*:?[ \t]*$"
     )
@@ -238,9 +523,41 @@ def _section_block(text, heading):
     if len(headings) != 1:
         return "", len(headings), (0, 0)
     start = headings[0].end()
-    next_section = re.search(r"(?m)^[ \t]*#{1,6}[ \t]+\S.*$", raw_text[start:])
+    structured_heading_pattern = "|".join(
+        re.escape(item) for item in STRUCTURED_SECTION_HEADINGS
+    )
+    next_section = re.search(
+        rf"(?im)^[ \t]*(?:#{{1,6}}[ \t]+\S.*|(?:\*\*)?(?:{structured_heading_pattern})(?:\*\*)?[ \t]*:?[ \t]*)$",
+        raw_text[start:],
+    )
     end = start + next_section.start() if next_section else len(raw_text)
     return raw_text[start:end], 1, (headings[0].start(), end)
+
+
+def _section_blocks(text, heading):
+    raw_text = _visible_markdown_contract_text(text)
+    pattern = re.compile(
+        rf"(?im)^[ \t]*(?:#{{1,6}}[ \t]*)?(?:\*\*)?{re.escape(heading)}(?:\*\*)?[ \t]*:?[ \t]*$"
+    )
+    headings = list(pattern.finditer(raw_text))
+    blocks = []
+    structured_heading_pattern = "|".join(
+        re.escape(item) for item in STRUCTURED_SECTION_HEADINGS
+    )
+    for index, match in enumerate(headings):
+        start = match.end()
+        following_heading = re.search(
+            rf"(?im)^[ \t]*(?:#{{1,6}}[ \t]+\S.*|(?:\*\*)?(?:{structured_heading_pattern})(?:\*\*)?[ \t]*:?[ \t]*)$",
+            raw_text[start:],
+        )
+        if following_heading is None:
+            end = len(raw_text)
+        else:
+            end = start + following_heading.start()
+        if index + 1 < len(headings):
+            end = min(end, headings[index + 1].start())
+        blocks.append((raw_text[start:end], (match.start(), end)))
+    return blocks
 
 
 def _without_field_lines(text, fields):
@@ -256,16 +573,59 @@ def _without_field_lines(text, fields):
 
 def _release_evidence_claim_block(text):
     raw_text = str(text or "")
-    pattern = re.compile(
-        r"(?ms)^[ \t]*```yaml[ \t]*\r?\n"
-        r"(?P<body>[ \t]*release_evidence_claim:[ \t]*\r?\n.*?)"
-        r"^[ \t]*```[ \t]*(?:\r?\n|$)"
+    visible_text = re.sub(
+        r"(?s)<!--.*?-->",
+        lambda match: _blank_non_newline_characters(match.group(0)),
+        raw_text,
     )
-    matches = list(pattern.finditer(raw_text))
+    matches = []
+    lines = visible_text.splitlines(keepends=True)
+    offset = 0
+    active_fence = None
+    target = None
+    for line in lines:
+        line_without_ending = line.rstrip("\r\n")
+        if active_fence is None:
+            opener = re.fullmatch(
+                r" {0,3}(?P<fence>`{3,})(?P<info>[^\r\n]*)",
+                line_without_ending,
+            )
+            if opener is not None:
+                marker = opener.group("fence")
+                info = opener.group("info").strip().lower()
+                active_fence = (marker[0], len(marker))
+                target = (
+                    {
+                        "start": offset,
+                        "body_start": offset + len(line),
+                    }
+                    if info == "yaml"
+                    else None
+                )
+        else:
+            character, minimum_length = active_fence
+            closing = re.fullmatch(
+                rf" {{0,3}}{re.escape(character)}{{{minimum_length},}}[ \t]*",
+                line_without_ending,
+            )
+            if closing is not None:
+                if target is not None:
+                    body = visible_text[target["body_start"] : offset].strip()
+                    if body.startswith("release_evidence_claim:"):
+                        matches.append(
+                            (
+                                body,
+                                target["start"],
+                                offset + len(line),
+                            )
+                        )
+                active_fence = None
+                target = None
+        offset += len(line)
     if len(matches) != 1:
         return "", len(matches), (0, 0)
-    match = matches[0]
-    return match.group("body").strip(), 1, (match.start(), match.end())
+    body, start, end = matches[0]
+    return body, 1, (start, end)
 
 
 def _parse_release_evidence_claim(body):
@@ -287,8 +647,97 @@ def _parse_release_evidence_claim(body):
     return match.groupdict() if match else None
 
 
+def _strict_yaml_scalar(value):
+    raw_value = str(value or "").strip()
+    if not raw_value:
+        return ""
+    edge_quotes = {"'", '"', "`"}
+    starts_quoted = raw_value[0] in edge_quotes
+    ends_quoted = raw_value[-1] in edge_quotes
+    if not starts_quoted and not ends_quoted:
+        return raw_value
+    if (
+        len(raw_value) >= 2
+        and raw_value[0] == raw_value[-1]
+        and raw_value[0] in {"'", '"'}
+    ):
+        quote = raw_value[0]
+        inner = raw_value[1:-1]
+        if quote == "'":
+            without_escaped_quotes = inner.replace("''", "")
+            if "'" in without_escaped_quotes:
+                return None
+            return inner.replace("''", "'")
+        escaped = False
+        for character in inner:
+            if escaped:
+                escaped = False
+                continue
+            if character == "\\":
+                escaped = True
+                continue
+            if character == '"':
+                return None
+        if escaped:
+            return None
+        return inner
+    return None
+
+
+def _canonical_absolute_path(value):
+    raw_value = str(value or "")
+    path = Path(raw_value)
+    return (
+        path.is_absolute()
+        and ".." not in path.parts
+        and "." not in path.parts
+        and str(path) == raw_value
+    )
+
+
+def _paths_have_ancestor_relationship(left, right):
+    for child, parent in ((left, right), (right, left)):
+        try:
+            child.relative_to(parent)
+        except ValueError:
+            continue
+        return True
+    return False
+
+
+def release_evidence_claim_values(text):
+    body, claim_count, _claim_range = _release_evidence_claim_block(text)
+    if claim_count != 1:
+        return None
+    values = _parse_release_evidence_claim(body)
+    if values is None:
+        return None
+    normalized = {}
+    for field, value in values.items():
+        if field in {"commands_or_trials", "limitations"}:
+            parsed_list = _yaml_inline_list(value)
+            if parsed_list is None:
+                return None
+            normalized[field] = parsed_list
+            continue
+        parsed_scalar = _strict_yaml_scalar(value)
+        if parsed_scalar is None:
+            return None
+        normalized[field] = parsed_scalar
+    return normalized
+
+
+def release_evidence_claim_status(text):
+    values = release_evidence_claim_values(text)
+    if values is None:
+        return ""
+    status = str(values["evidence_status"]).lower()
+    return status if status in RELEASE_EVIDENCE_STATUSES else ""
+
+
 def _yaml_scalar_token(value):
-    return str(value or "").strip().strip("`\"'").lower()
+    parsed = _strict_yaml_scalar(value)
+    return parsed.lower() if parsed is not None else ""
 
 
 def _yaml_inline_list(value):
@@ -301,7 +750,10 @@ def _yaml_inline_list(value):
     items = inner.split(",")
     if any(not item.strip() for item in items):
         return None
-    return [_yaml_scalar_token(item) for item in items]
+    parsed_items = [_strict_yaml_scalar(item) for item in items]
+    if any(item is None for item in parsed_items):
+        return None
+    return parsed_items
 
 
 def _without_release_evidence_claim(text):
@@ -985,7 +1437,15 @@ def checkpoint_before_risky_action_failures(text):
 
 def contract_lineage_failures(text, row=None):
     failures = []
-    raw_text = str(text or "")
+    if _has_hidden_markdown_payload(text):
+        failures.append(
+            "Contract Lineage eval output cannot hide additional content in comments or code blocks"
+        )
+    if _annotation_hidden_html_payload(text):
+        failures.append(
+            "Contract Lineage eval output cannot contain hidden or non-rendered HTML"
+        )
+    raw_text = _visible_markdown_contract_text(text)
     lineage, lineage_count, lineage_range = _section_block(
         raw_text, "Contract Lineage"
     )
@@ -1015,39 +1475,45 @@ def contract_lineage_failures(text, row=None):
         "Fix Owner / Boundary": "lineage_expected_fix_owner",
     }
     for output_field, row_field in expected_fields.items():
-        expected = _exact_token(row.get(row_field))
-        actual = _exact_token(values[output_field][0])
+        expected = _opaque_value(row.get(row_field))
+        actual = _opaque_value(values[output_field][0])
         if expected and actual != expected:
             failures.append(f"{output_field} must be {expected}, not {actual}")
 
     expected_hops = _normalized_lineage_graph(row.get("lineage_expected_hops"))
     actual_hops = _normalized_lineage_graph(values["Hops"][0])
-    if expected_hops and actual_hops != expected_hops:
+    if expected_hops is None:
+        failures.append("lineage hop oracle metadata is malformed")
+    elif actual_hops is None:
+        failures.append("Hops must use strict hop(state) grammar without empty branches")
+    elif actual_hops != expected_hops:
         failures.append(f"Hops must be {expected_hops}, not {actual_hops}")
 
-    expected_unverified = _normalized_lineage_graph(
+    expected_unverified = _normalized_unordered_pipe_set(
         row.get("lineage_expected_unverified_hops")
     )
-    actual_unverified = _normalized_lineage_graph(
+    actual_unverified = _normalized_unordered_pipe_set(
         values["Unverified / Branched Hops"][0]
     )
-    if expected_unverified and actual_unverified != expected_unverified:
+    if expected_unverified is None:
+        failures.append("unverified lineage hop oracle metadata is malformed")
+    elif actual_unverified is None:
+        failures.append(
+            "Unverified / Branched Hops must use a strict unique pipe-separated ID set"
+        )
+    elif actual_unverified != expected_unverified:
         failures.append(
             "Unverified / Branched Hops must be "
             f"{expected_unverified}, not {actual_unverified}"
         )
 
-    start, end = lineage_range
-    outside_lineage = raw_text[:start] + raw_text[end:]
     output_contract = set(_pipe_tokens(row.get("output_contract")))
     if "verify_scope" not in output_contract:
-        if outside_lineage.strip():
-            failures.append(
-                "Contract Lineage eval output must not contain extra prose or sections"
-            )
         return failures
 
-    scope, scope_count, scope_range = _section_block(
+    start, end = lineage_range
+    outside_lineage = raw_text[:start] + raw_text[end:]
+    scope, scope_count, _scope_range = _section_block(
         outside_lineage, "Verification Scope"
     )
     if scope_count != 1:
@@ -1063,11 +1529,6 @@ def contract_lineage_failures(text, row=None):
             )
     if _without_field_lines(scope, CONTRACT_LINEAGE_SCOPE_FIELDS).strip():
         failures.append("Verification Scope must contain only structured fields")
-    scope_start, scope_end = scope_range
-    if (outside_lineage[:scope_start] + outside_lineage[scope_end:]).strip():
-        failures.append(
-            "Contract Lineage eval output must contain only Verification Scope and Contract Lineage"
-        )
     if failures:
         return failures
 
@@ -1078,16 +1539,1288 @@ def contract_lineage_failures(text, row=None):
         "Verdict": "lineage_expected_scope_verdict",
     }
     for output_field, row_field in expected_scope_fields.items():
-        expected = _exact_token(row.get(row_field))
-        actual = _exact_token(scope_values[output_field][0])
+        expected = _opaque_value(row.get(row_field))
+        actual = _opaque_value(scope_values[output_field][0])
         if expected and actual != expected:
             failures.append(f"Verification Scope {output_field} must be {expected}, not {actual}")
     return failures
 
 
+def _contains_opaque_token(text, token):
+    token = _opaque_value(token)
+    if not token:
+        return False
+    return bool(
+        re.search(
+            rf"(?<![A-Za-z0-9_.:/-]){re.escape(token)}(?![A-Za-z0-9_.:/-])",
+            str(text or ""),
+        )
+    )
+
+
+def _text_outside_ranges(text, ranges):
+    characters = list(str(text or ""))
+    for start, end in ranges:
+        for index in range(max(0, start), min(len(characters), end)):
+            if characters[index] not in "\r\n":
+                characters[index] = " "
+    return "".join(characters)
+
+
+def _lineage_semantic_clauses(text):
+    return [
+        clause.strip()
+        for clause in re.split(
+            r"[.;!?,。；！？，\r\n]+"
+            r"|\b(?:but|however|yet|although|while|despite|whereas)\b"
+            r"|(?:但是|不过|但|虽然|尽管|然而|而|却)",
+            str(text or ""),
+            flags=re.IGNORECASE,
+        )
+        if clause.strip()
+    ]
+
+
+LINEAGE_HEDGE_PATTERN = re.compile(
+    r"(?i)\b(?:may|might|could|possibly|perhaps|maybe|allegedly|"
+    r"uncertain|suspected|provisional|tentative|appears?|seems?|likely|"
+    r"ostensibly|reportedly|purportedly|apparently|plausibly|presumably|"
+    r"supposedly|arguably|seemingly|probably|potentially|putatively)\b"
+    r"|\b(?:is|are|was|were|remains?|appears?|seems?)\s+"
+    r"(?:(?:an?|the)\s+)?(?:probable|potential|putative)\b"
+    r"|\b(?:(?:an?|the)\s+)(?:probable|potential|putative)\s+"
+    r"(?:cause|divergence|difference|mismatch|conflict)\b"
+    r"|(?:可能|也许|据称|不确定|疑似|暂定|临时判断|看起来|似乎|"
+    r"表面上|据报道|据说|号称|所谓|看似|貌似|推测|大概|或许)"
+)
+
+
+def _lineage_clause_has_hedge(clause):
+    return bool(LINEAGE_HEDGE_PATTERN.search(str(clause or "")))
+
+
+def _lineage_clause_has_negative_direction(clause):
+    if (
+        _annotation_has_mixed_latin_cyrillic_greek_token(clause)
+        or _lineage_clause_has_hedge(clause)
+    ):
+        return True
+    return bool(
+        re.search(
+            r"(?i)\b(?:not|no|never|neither|nor|skip|unchanged|aligned|same|"
+            r"matches?|matching|equivalent|instead|avoid|avoids|avoided|"
+            r"bypass|bypasses|bypassed|fallback|optional|unblocks?|"
+            r"irrelevant|unrelated|resolved|dismissed|ignore|ignored)\b"
+            r"|\b(?:do|does|did)\s+not\b"
+            r"|\b(?:fail(?:s|ed)?|refus(?:e|es|ed)|declin(?:e|es|ed))"
+            r"\s+to\b"
+            r"|\b(?:is|are|was|were|remain(?:s|ed)?|stay(?:s|ed)?)"
+            r"\s+unable\s+to\b"
+            r"|\bunable\s+to\b"
+            r"|\b(?:cannot|can't)\b"
+            r"|\brather\s+than\b"
+            r"|\binstead\s+of\b"
+            r"|\b(?:leave|keep|remain)\b.{0,24}\bunchanged\b"
+            r"|\bno\s+longer\b"
+            r"|\b(?:it|this|that|the[ \t]+claim|the[ \t]+statement)?"
+            r"[ \t]*(?:is|was|remains?)?[ \t]*"
+            r"(?:false|untrue|incorrect|wrong)[ \t]+that\b"
+            r"|\b(?:deny|denies|denied|denying|refute|refutes|refuted|"
+            r"refuting)\b"
+            r"|\bcontrary[ \t]+to\b"
+            r"|(?:不是|并非|没有|无需|跳过|忽略|不变|保持不变|已解决|一致|相同|"
+            r"无差异|"
+            r"错误的是|不正确的是|事实并非|否认|驳斥|反驳|与事实相反|"
+            r"恰恰相反)",
+            str(clause or ""),
+        )
+    )
+
+
+def _lineage_clause_has_positive_relation(text, tokens, pattern):
+    return _has_positive_lineage_clause(text, tokens, pattern)
+
+
+def _has_positive_lineage_clause(text, tokens, positive_pattern):
+    required_tokens = tuple(token for token in tokens if _opaque_value(token))
+    for clause in _lineage_semantic_clauses(text):
+        if not all(_contains_opaque_token(clause, token) for token in required_tokens):
+            continue
+        if _lineage_clause_has_negative_direction(clause):
+            continue
+        if re.search(positive_pattern, clause, flags=re.IGNORECASE):
+            return True
+    return False
+
+
+def _lineage_hop_ids(row):
+    return set(
+        re.findall(
+            r"([A-Za-z0-9][A-Za-z0-9_.:/-]*)[ \t]*"
+            r"\((?:verified|unverified|not_applicable)\)",
+            str((row or {}).get("lineage_expected_hops") or ""),
+            flags=re.IGNORECASE,
+        )
+    )
+
+
+def _has_competing_lineage_cause(value, expected, row):
+    competitors = _lineage_hop_ids(row) - {_opaque_value(expected)}
+    for clause in _lineage_semantic_clauses(value):
+        for competitor in competitors:
+            token = re.escape(competitor)
+            if re.search(
+                rf"(?i)(?<![A-Za-z0-9_.:/-]){token}"
+                r"(?![A-Za-z0-9_.:/-]).{0,24}\b"
+                r"(?:is|was|remains?|becomes?|marks?|represents?)\b"
+                r".{0,16}\b(?:actual|true|real|confirmed|first|earliest)?"
+                r"[ \t]*(?:cause|divergence|difference|mismatch|conflict)\b"
+                rf"|\b(?:cause|divergence|difference|mismatch|conflict)\b"
+                rf".{{0,24}}(?<![A-Za-z0-9_.:/-]){token}"
+                r"(?![A-Za-z0-9_.:/-])",
+                clause,
+            ):
+                return True
+            if re.search(
+                rf"(?<![A-Za-z0-9_.:/-]){token}"
+                r"(?![A-Za-z0-9_.:/-]).{0,16}"
+                r"(?:是|为|属于|构成).{0,12}"
+                r"(?:实际|真正|已确认|首个|第一个|最早)?"
+                r"(?:原因|分歧|差异点|不匹配|冲突)",
+                clause,
+            ):
+                return True
+    return False
+
+
+def _has_lineage_alignment_contradiction(
+    value,
+    canonical_owner,
+    divergence,
+):
+    alignment_pattern = (
+        r"(?i)\b(?:aligned|same|matches?|matching|equivalent|"
+        r"consistent|no[ \t]+difference|no[ \t]+mismatch)\b"
+        r"|(?:一致|相同|等价|无差异|无不匹配)"
+    )
+    generic_subject_pattern = (
+        r"(?i)\b(?:contracts?|schemas?|values?|representations?)\b"
+        r"|(?:合同|契约|模式|值|表示)"
+    )
+    for clause in _lineage_semantic_clauses(value):
+        if re.search(alignment_pattern, clause) is None:
+            continue
+        if (
+            _contains_opaque_token(clause, canonical_owner)
+            and _contains_opaque_token(clause, divergence)
+        ) or re.search(generic_subject_pattern, clause):
+            return True
+    return False
+
+
+def _lineage_field_has_disallowed_polarity(value):
+    return any(
+        _lineage_clause_has_negative_direction(clause)
+        for clause in _lineage_semantic_clauses(value)
+    )
+
+
+def contract_lineage_route_companion_failures(text, route, row=None):
+    failures = []
+    route = str(route or "").strip()
+    section_contract = CONTRACT_LINEAGE_ROUTE_SECTIONS.get(route)
+    if section_contract is None:
+        return failures
+    if _annotation_hidden_html_payload(text):
+        failures.append(
+            "Contract Lineage route companion cannot contain hidden or non-rendered HTML"
+        )
+    section_heading, required_fields = section_contract
+    visible_text = _visible_markdown_contract_text(text)
+    section, section_count, section_range = _section_block(
+        visible_text, section_heading
+    )
+    if section_count != 1:
+        return [
+            f"{route} Contract Lineage output requires exactly one {section_heading} section"
+        ]
+
+    section_values = {}
+    for field in required_fields:
+        values = _field_values(section, field)
+        section_values[field] = values
+        if len(values) != 1 or not values[0].strip():
+            failures.append(
+                f"{section_heading} requires one non-empty {field} field"
+            )
+        if len(_field_values(visible_text, field)) != 1:
+            failures.append(f"{field} must appear only inside {section_heading}")
+    if _without_field_lines(section, required_fields).strip():
+        failures.append(f"{section_heading} must contain only structured fields")
+
+    if not failures:
+        row = row or {}
+        canonical_owner = _opaque_value(
+            row.get("lineage_expected_canonical_owner")
+        )
+        divergence = _opaque_value(row.get("lineage_expected_divergence"))
+        fix_owner = _opaque_value(row.get("lineage_expected_fix_owner"))
+        if route == "implement":
+            confirmed_cause = section_values["Confirmed Cause"][0]
+            if _lineage_field_has_disallowed_polarity(
+                confirmed_cause
+            ) or not _lineage_clause_has_positive_relation(
+                confirmed_cause,
+                (divergence,),
+                r"\b(?:first|earliest)\b.{0,24}\b"
+                r"(?:confirmed[ \t]+)?(?:cause|divergence|difference|"
+                r"mismatch|conflict|diverges?|deviates?)\b"
+                r"|\b(?:cause|divergence|difference|mismatch|conflict)\b"
+                r".{0,24}\b(?:first|earliest)\b"
+                r"|(?:首个|第一个|最早).{0,16}(?:已确认)?"
+                r"(?:原因|分歧|差异点|不匹配|冲突|偏离)",
+            ):
+                failures.append(
+                    "Confirmed Cause must positively identify the first confirmed divergence"
+                )
+            elif _has_competing_lineage_cause(
+                confirmed_cause,
+                divergence,
+                row,
+            ):
+                failures.append(
+                    "Confirmed Cause cannot assert a competing lineage cause"
+                )
+            decisive_evidence = section_values["Decisive Evidence"][0]
+            if _lineage_field_has_disallowed_polarity(
+                decisive_evidence
+            ) or not _lineage_clause_has_positive_relation(
+                decisive_evidence,
+                (canonical_owner, divergence),
+                r"\b(?:differs?|contradicts?|conflicts?|diverges?|deviates?|"
+                r"mismatches?|violates?|inconsistent)\b"
+                r"|\b(?:difference|mismatch|conflict|divergence|"
+                r"contradiction|inconsistency)\b"
+                r"|(?:差异|不匹配|冲突|分歧|矛盾|不一致|偏离|违反)",
+            ):
+                failures.append(
+                    "Decisive Evidence must positively establish a mismatch between the canonical owner and divergence"
+                )
+            elif _has_lineage_alignment_contradiction(
+                decisive_evidence,
+                canonical_owner,
+                divergence,
+            ):
+                failures.append(
+                    "Decisive Evidence cannot also assert lineage alignment"
+                )
+            next_action = section_values["Smallest Safe Next Action"][0]
+            if _lineage_field_has_disallowed_polarity(
+                next_action
+            ) or not _lineage_clause_has_positive_relation(
+                next_action,
+                (fix_owner,),
+                r"\b(?:fix|change|correct|update|repair|align|replace|"
+                r"restore|modify|patch|bring)\b"
+                r"|(?:修复|修改|纠正|更新|替换|恢复|对齐|调整)",
+            ):
+                failures.append(
+                    "Smallest Safe Next Action must positively change the lineage fix owner"
+                )
+        elif route == "verify":
+            next_check = section_values["Next Check"][0]
+            if _lineage_field_has_disallowed_polarity(
+                next_check
+            ) or not _has_positive_lineage_clause(
+                next_check,
+                (fix_owner,),
+                r"\b(?:verify|reverify|check|recheck|inspect|compare|test|retest|"
+                r"confirm|validate)\b"
+                r"|(?:验证|复验|检查|核对|测试|确认)",
+            ):
+                failures.append(
+                    "Next Check must positively reverify the lineage fix owner"
+                )
+        elif route == "write-plan":
+            dependencies = section_values["Dependencies / Gates"][0]
+            ordered_steps = section_values["Ordered Steps"][0]
+            if _lineage_field_has_disallowed_polarity(dependencies):
+                failures.append(
+                    "Implementation Plan Dependencies / Gates cannot hedge, negate, or obscure unresolved lineage state"
+                )
+            if _lineage_field_has_disallowed_polarity(ordered_steps):
+                failures.append(
+                    "Implementation Plan Ordered Steps cannot hedge, negate, or obscure lineage inspection"
+                )
+            expected_unverified = _normalized_unordered_pipe_set(
+                row.get("lineage_expected_unverified_hops")
+            )
+            if expected_unverified not in {None, "none"}:
+                unresolved_tokens = expected_unverified.split("|")
+                missing_gate_tokens = [
+                    token
+                    for token in unresolved_tokens
+                    if not _has_positive_lineage_clause(
+                            dependencies,
+                            (token,),
+                            r"\b(?:unverified|blocked|gate|dependency|pending|"
+                            r"unresolved|unknown)\b"
+                            r"|(?:未验证|阻塞|门禁|依赖|待确认|未解决|未知)",
+                        )
+                ]
+                if missing_gate_tokens:
+                    failures.append(
+                        "Implementation Plan Dependencies / Gates must preserve unresolved lineage hops: "
+                        + ", ".join(missing_gate_tokens)
+                    )
+                missing_inspection_tokens = [
+                    token
+                    for token in unresolved_tokens
+                    if not _has_positive_lineage_clause(
+                            ordered_steps,
+                            (token,),
+                            r"\b(?:inspect|verify|check|trace|resolve|establish|"
+                            r"identify|compare)\b"
+                            r"|(?:检查|验证|追踪|解决|确认|识别|核对)",
+                        )
+                ]
+                if missing_inspection_tokens:
+                    failures.append(
+                        "Implementation Plan Ordered Steps must inspect unresolved lineage hops: "
+                        + ", ".join(missing_inspection_tokens)
+                    )
+
+    allowed_ranges = [section_range]
+    _lineage, lineage_count, lineage_range = _section_block(
+        visible_text, "Contract Lineage"
+    )
+    if lineage_count == 1:
+        allowed_ranges.append(lineage_range)
+    output_contract = set(_pipe_tokens((row or {}).get("output_contract")))
+    if "verify_scope" in output_contract:
+        _scope, scope_count, scope_range = _section_block(
+            visible_text, "Verification Scope"
+        )
+        if scope_count == 1:
+            allowed_ranges.append(scope_range)
+    if _text_outside_ranges(visible_text, allowed_ranges).strip():
+        failures.append(
+            "Contract Lineage eval output must contain only its declared structured sections"
+        )
+    return failures
+
+
+def _expected_annotation_map(value):
+    raw_value = _opaque_value(value)
+    if not raw_value or raw_value.lower() == "none":
+        return {}
+    parsed = {}
+    for item in raw_value.split("|"):
+        if item.count("=") != 1:
+            return None
+        annotation_id, expected_value = (part.strip() for part in item.split("=", 1))
+        if not annotation_id or not expected_value or annotation_id in parsed:
+            return None
+        parsed[annotation_id] = expected_value
+    return parsed
+
+
+class _AnnotationSemanticHTMLParser(HTMLParser):
+    _ALWAYS_IGNORED_CONTEXTS = {
+        "noscript",
+        "script",
+        "style",
+        "template",
+    }
+    _OPEN_ATTRIBUTE_CONTEXTS = {"details", "dialog"}
+    _VOID_TAGS = {
+        "area",
+        "base",
+        "br",
+        "col",
+        "embed",
+        "hr",
+        "img",
+        "input",
+        "link",
+        "meta",
+        "param",
+        "source",
+        "track",
+        "wbr",
+    }
+    _BLOCK_TAGS = {
+        "address",
+        "article",
+        "aside",
+        "blockquote",
+        "br",
+        "dd",
+        "div",
+        "dl",
+        "dt",
+        "fieldset",
+        "figcaption",
+        "figure",
+        "footer",
+        "form",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "header",
+        "hr",
+        "li",
+        "main",
+        "nav",
+        "ol",
+        "p",
+        "pre",
+        "section",
+        "table",
+        "tbody",
+        "td",
+        "tfoot",
+        "th",
+        "thead",
+        "tr",
+        "ul",
+    }
+    _USER_PERCEIVABLE_ATTRIBUTES = {
+        "alt",
+        "aria-label",
+        "placeholder",
+        "title",
+        "value",
+    }
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts = []
+        self._ignored_context_stack = []
+        self.hidden_markup = set()
+
+    def _inspect_hidden_markup(self, tag, attrs):
+        normalized_attrs = {}
+        hidden_context = False
+        for raw_name, value in attrs:
+            name = _normalized_html_attribute_name(raw_name)
+            if name in normalized_attrs:
+                self.hidden_markup.add(
+                    f"{tag}[duplicate-attribute:{name}]"
+                )
+                hidden_context = True
+                continue
+            normalized_attrs[name] = value
+        if tag in self._ALWAYS_IGNORED_CONTEXTS:
+            self.hidden_markup.add(tag)
+            hidden_context = True
+        if (
+            tag in self._OPEN_ATTRIBUTE_CONTEXTS
+            and "open" not in normalized_attrs
+        ):
+            self.hidden_markup.add(tag)
+            hidden_context = True
+        for attribute in ("hidden", "inert", "popover"):
+            if attribute in normalized_attrs:
+                self.hidden_markup.add(f"{tag}[{attribute}]")
+                hidden_context = True
+        if (
+            str(normalized_attrs.get("aria-hidden") or "")
+            .strip()
+            .casefold()
+            == "true"
+        ):
+            self.hidden_markup.add(f"{tag}[aria-hidden=true]")
+            hidden_context = True
+        if _inline_style_hides_content(normalized_attrs.get("style")):
+            self.hidden_markup.add(f"{tag}[style]")
+            hidden_context = True
+        if (
+            tag == "input"
+            and str(normalized_attrs.get("type") or "").casefold()
+            == "hidden"
+        ):
+            self.hidden_markup.add("input[type=hidden]")
+            hidden_context = True
+        return hidden_context
+
+    def _append_attributes(self, attrs):
+        for name, value in attrs:
+            if (
+                _normalized_html_attribute_name(name)
+                in self._USER_PERCEIVABLE_ATTRIBUTES
+                and value
+            ):
+                self.parts.extend(("\n", str(value), "\n"))
+
+    def handle_starttag(self, tag, attrs):
+        tag = str(tag or "").casefold()
+        hidden_context = self._inspect_hidden_markup(tag, attrs)
+        if self._ignored_context_stack:
+            return
+        if hidden_context:
+            if tag not in self._VOID_TAGS:
+                self._ignored_context_stack.append(tag)
+            return
+        if tag in self._BLOCK_TAGS:
+            self.parts.append("\n")
+        self._append_attributes(attrs)
+
+    def handle_startendtag(self, tag, attrs):
+        tag = str(tag or "").casefold()
+        hidden_context = self._inspect_hidden_markup(tag, attrs)
+        if self._ignored_context_stack or hidden_context:
+            return
+        if tag in self._BLOCK_TAGS:
+            self.parts.append("\n")
+        self._append_attributes(attrs)
+
+    def handle_endtag(self, tag):
+        tag = str(tag or "").casefold()
+        if self._ignored_context_stack:
+            if tag == self._ignored_context_stack[-1]:
+                self._ignored_context_stack.pop()
+            return
+        if tag in self._BLOCK_TAGS:
+            self.parts.append("\n")
+
+    def handle_data(self, data):
+        if not self._ignored_context_stack:
+            self.parts.append(data)
+
+
+def _annotation_semantic_text(text):
+    parser = _AnnotationSemanticHTMLParser()
+    parser.feed(str(text or ""))
+    parser.close()
+    normalized = unicodedata.normalize("NFKC", "".join(parser.parts))
+    return "".join(
+        character
+        for character in normalized
+        if not _is_default_ignorable_code_point(character)
+    )
+
+
+def _annotation_hidden_html_payload(text):
+    parser = _AnnotationSemanticHTMLParser()
+    parser.feed(str(text or ""))
+    parser.close()
+    return bool(parser.hidden_markup)
+
+
+def _character_script(character):
+    if not character.isalpha():
+        return ""
+    name = unicodedata.name(character, "")
+    for script in ("LATIN", "CYRILLIC", "GREEK"):
+        if script in name:
+            return script
+    return ""
+
+
+def _annotation_has_mixed_latin_cyrillic_greek_token(text):
+    semantic_text = unicodedata.normalize(
+        "NFKC",
+        _annotation_semantic_text(text),
+    )
+    for token in re.findall(r"[^\W\d_]+", semantic_text, flags=re.UNICODE):
+        scripts = {
+            script
+            for character in token
+            if (script := _character_script(character))
+        }
+        if "LATIN" in scripts and scripts & {"CYRILLIC", "GREEK"}:
+            return True
+    return False
+
+
+def _annotation_claim_clauses(text):
+    return [
+        clause.strip()
+        for clause in re.split(
+            r"[.;!?,。；！？，\r\n]+"
+            r"|\b(?:but|however|yet|and|or|although|while|despite|"
+            r"even[ \t]+though|whereas|notwithstanding|because|since|"
+            r"given[ \t]+that|seeing[ \t]+that|inasmuch[ \t]+as|"
+            r"for[ \t]+the[ \t]+reason[ \t]+that|"
+            r"on[ \t]+the[ \t]+grounds[ \t]+that|as|"
+            r"therefore|thus|hence|unless|if|so)\b"
+            r"|[:：]"
+            r"|[/／()\[\]{}]"
+            r"|[\u2010-\u2015\u2212]+"
+            r"|(?<!\S)-+(?!\S)"
+            r"|(?:但是|不过|但|并且|以及|且|和|与|虽然|尽管|即使|而|不论|即便|"
+            r"因为|由于|所以|因此|从而|除非|如果)",
+            _annotation_semantic_text(text),
+            flags=re.IGNORECASE,
+        )
+        if clause.strip()
+    ]
+
+
+def _annotation_clause_is_negated(clause):
+    lowered = re.sub(
+        r"\bnot[ \t]+only\b",
+        "",
+        _annotation_semantic_text(clause).lower(),
+    )
+    if re.search(
+        r"\bnot[ \t]+(?:not|false|untrue|unverified|unknown|unready|"
+        r"incomplete)\b"
+        r"|\bno[ \t]+longer[ \t]+(?:not|false|unverified|unknown|"
+        r"unready|incomplete)\b"
+        r"|(?:并非不|不是不|不能不|不得不|没有不)",
+        lowered,
+    ):
+        return False
+    return bool(
+        re.search(
+            r"\b(?:not|no|never|unverified|unknown|cannot|can't|isn't|aren't|"
+            r"wasn't|weren't|doesn't|didn't|mustn't|neither|nor)\b"
+            r"|(?:不代表|不能|不得|不会|不应|未验证|未覆盖|未知|没有|并非)",
+            lowered,
+        )
+    )
+
+
+def _annotation_assertion_match_is_negated(clause, match):
+    prefix = clause[: match.start()]
+    suffix = clause[match.end() :]
+    immediate_negation = re.search(
+        r"(?i)(?P<negation>"
+        r"\bnot(?:[ \t]+(?:not|false|untrue|unverified|unknown|unready|"
+        r"incomplete))?|"
+        r"\b(?:no|never|cannot|can't|isn't|aren't|wasn't|weren't|"
+        r"doesn't|didn't|mustn't|neither|nor)|"
+        r"(?:不代表|不能|不得|不会|不应|未验证|未覆盖|未知|没有|并非|未|不)"
+        r")[ \t]*$",
+        prefix,
+    )
+    local_assertion = match.group(0)
+    if immediate_negation is not None:
+        local_assertion = immediate_negation.group("negation") + local_assertion
+    trailing_negation = re.match(
+        r"(?i)(?P<negation>[ \t]+"
+        r"(?:(?:is|are|was|were|remain|remains|remained|stay|stays|stayed)"
+        r"[ \t]+)?"
+        r"(?:not|no|never|unverified|unknown|unready|incomplete|"
+        r"未验证|未覆盖|未知|并非|没有|不代表|不能|不会|不应)\b)",
+        suffix,
+    )
+    if trailing_negation is not None:
+        local_assertion += trailing_negation.group("negation")
+    local_negated = _annotation_clause_is_negated(local_assertion)
+    if local_negated and re.search(
+        r"(?i)\b(?:false|untrue|incorrect)\b"
+        r"(?:[ \t]+(?:claim|statement))?[ \t]+that[ \t]*$",
+        prefix,
+    ):
+        return False
+    return local_negated
+
+
+def _has_unnegated_pattern_match(text, patterns):
+    for clause in _annotation_claim_clauses(text):
+        for pattern in patterns:
+            for match in re.finditer(pattern, clause, flags=re.IGNORECASE):
+                if not _annotation_assertion_match_is_negated(clause, match):
+                    return True
+    return False
+
+
+def _has_annotation_pattern_match(text, patterns):
+    normalized_text = _annotation_semantic_text(text)
+    for pattern in patterns:
+        if re.search(pattern, normalized_text, flags=re.IGNORECASE):
+            return True
+    return False
+
+
+def _annotation_readiness_overclaim(text):
+    domain = (
+        r"(?:browser|runtime|uat|release|implementation|production|acceptance|"
+        r"customer|marketplace|cache|浏览器|运行时|运行|发布|实现|生产|验收|客户|市场)"
+    )
+    claim = r"(?:pass(?:ed)?|ready|readiness|verified|complete(?:d)?|通过|就绪|已验证|完成)"
+    positive_patterns = (
+        rf"\b{domain}\b.{{0,40}}\b{claim}\b",
+        rf"\b{claim}\b.{{0,40}}\b{domain}\b",
+        rf"{domain}.{{0,20}}{claim}",
+        rf"{claim}.{{0,20}}{domain}",
+    )
+    target_surface = (
+        r"(?:production|implementation|target|final|ui|interface|surface|presentation|"
+        r"export|screenshot|demo|生产|实现|目标|最终|界面|接口界面|展示面|导出|截图|演示)"
+    )
+    actualized = (
+        r"(?:(?:has[ \t]+been[ \t]+|have[ \t]+been[ \t]+|has[ \t]+|"
+        r"have[ \t]+|is[ \t]+|are[ \t]+|was[ \t]+|were[ \t]+)?"
+        r"(?:implemented|shipped|deployed|removed|absent|present|visible|hidden|"
+        r"included|excluded|live|launched|active)"
+        r"|(?:已实现|已上线|已部署|已移除|不存在|已存在|可见|不可见|已包含|已排除|已启用|运行中))"
+    )
+    actualized_patterns = (
+        rf"\b{target_surface}\b.{{0,48}}\b{actualized}\b",
+        rf"\b{actualized}\b.{{0,48}}\b{target_surface}\b",
+        rf"{target_surface}.{{0,28}}{actualized}",
+        rf"{actualized}.{{0,28}}{target_surface}",
+    )
+    negative_actualized = (
+        r"(?:(?:has|have|is|are|was|were)[ \t]+not(?:[ \t]+been)?[ \t]+"
+        r"(?:implemented|shipped|deployed|removed|absent|present|visible|hidden|"
+        r"included|excluded|live|launched|active)"
+        r"|(?:尚未|未|没有)(?:实现|上线|部署|移除|存在|显示|隐藏|包含|排除|启用|运行))"
+    )
+    negative_actualized_patterns = (
+        rf"\b{target_surface}\b.{{0,48}}\b{negative_actualized}\b",
+        rf"\b{negative_actualized}\b.{{0,48}}\b{target_surface}\b",
+        rf"{target_surface}.{{0,28}}{negative_actualized}",
+        rf"{negative_actualized}.{{0,28}}{target_surface}",
+    )
+    scope_reversing_negation = (
+        r"(?:anything[ \t]+but|far[ \t]+from)"
+        r"[ \t]+not[ \t]+"
+    )
+    scope_reversing_patterns = (
+        rf"\b{domain}\b.{{0,48}}{scope_reversing_negation}\b{claim}\b",
+        rf"{scope_reversing_negation}\b{claim}\b.{{0,48}}\b{domain}\b",
+    )
+    if _has_annotation_pattern_match(
+        text, scope_reversing_patterns
+    ):
+        return True
+    if _has_annotation_pattern_match(
+        text, negative_actualized_patterns
+    ):
+        return True
+    if _has_annotation_pattern_match(text, actualized_patterns):
+        return True
+    return _has_unnegated_pattern_match(text, positive_patterns)
+
+
+def _annotation_disposition_contradiction(text, annotation_ids):
+    id_pattern = "|".join(re.escape(item) for item in sorted(annotation_ids))
+    subject = (
+        rf"(?:{id_pattern}|annotations?|review[ _-]?aids?|internal[ _-]?aids?|"
+        r"注释|评审辅助|内部辅助)"
+    )
+    retain = (
+        r"(?:keep|kept|retain(?:s|ed|ing)?|show(?:s|n|ed|ing)?|"
+        r"display(?:s|ed|ing)?|include(?:s|d|ing)?|contain(?:s|ed|ing)?|"
+        r"appear(?:s|ed|ing)?|render(?:s|ed|ing)?|occur(?:s|red|ring)?|"
+        r"surviv(?:e|es|ed|ing)|carr(?:y|ies|ied|ying)[ \t]+into|"
+        r"(?:is|are|was|were)[ \t]+part[ \t]+of|ship(?:s|ped|ping)?|"
+        r"leave|remain|stay|"
+        r"保留|展示|包含|出现|呈现|渲染|属于|进入|上线|继续保留|保持)"
+    )
+    target = (
+        r"(?:final|target|production|ui|surface|presentation|export|screenshot|"
+        r"demo|最终|目标|生产|界面|展示面|导出|截图|演示)"
+    )
+    patterns = (
+        rf"{retain}.{{0,40}}{subject}.{{0,40}}{target}",
+        rf"{subject}.{{0,40}}{retain}.{{0,40}}{target}",
+        rf"{target}.{{0,40}}{retain}.{{0,40}}{subject}",
+    )
+    return _has_unnegated_pattern_match(text, patterns)
+
+
+def annotation_presentation_decision_failures(text, row=None):
+    failures = []
+    if _has_hidden_markdown_payload(text):
+        failures.append(
+            "Annotation presentation output cannot hide additional content in comments or code blocks"
+        )
+    if _annotation_hidden_html_payload(text):
+        failures.append(
+            "Annotation presentation output cannot contain hidden or non-rendered HTML"
+        )
+    if _annotation_has_mixed_latin_cyrillic_greek_token(text):
+        failures.append(
+            "Annotation presentation output cannot mix Latin with Cyrillic or Greek letters inside one token"
+        )
+    row = row or {}
+    expected_purposes = _expected_annotation_map(
+        row.get("annotation_expected_purposes")
+    )
+    expected_decisions = _expected_annotation_map(
+        row.get("annotation_expected_decisions")
+    )
+    expected_sources = _expected_annotation_map(
+        row.get("annotation_expected_audience_sources")
+    )
+    expected_companions = _expected_annotation_map(
+        row.get("annotation_expected_companions")
+    )
+    if any(
+        item is None
+        for item in (
+            expected_purposes,
+            expected_decisions,
+            expected_sources,
+            expected_companions,
+        )
+    ):
+        return ["annotation presentation oracle metadata is malformed"]
+
+    if set(expected_purposes) != set(expected_decisions):
+        failures.append(
+            "annotation purpose IDs must exactly match annotation decision IDs"
+        )
+
+    visible_text = _visible_markdown_contract_text(text)
+    blocks = _section_blocks(visible_text, "Annotation Presentation Decision")
+    if len(blocks) != len(expected_decisions):
+        failures.append(
+            "Annotation Presentation Decision block count must match the expected annotation ID set"
+        )
+
+    actual_purposes = {}
+    actual_decisions = {}
+    actual_sources = {}
+    actual_companions = {}
+    block_ranges = []
+    for block, block_range in blocks:
+        block_ranges.append(block_range)
+        block_failures = []
+        values = {
+            field: _field_values(block, field)
+            for field in ANNOTATION_PRESENTATION_FIELDS
+        }
+        for field in ANNOTATION_PRESENTATION_REQUIRED_FIELDS:
+            if len(values[field]) != 1 or not values[field][0].strip():
+                block_failures.append(
+                    f"{field} must appear exactly once and be non-empty in each Annotation Presentation Decision"
+                )
+        for field in ("Audience-facing Source", "Companion Reference"):
+            if len(values[field]) > 1:
+                block_failures.append(
+                    f"{field} may appear at most once in each Annotation Presentation Decision"
+                )
+        if _without_field_lines(block, ANNOTATION_PRESENTATION_FIELDS).strip():
+            block_failures.append(
+                "Annotation Presentation Decision must contain only structured fields"
+            )
+        failures.extend(block_failures)
+        if block_failures:
+            continue
+
+        annotation_id = _opaque_value(values["Annotation ID"][0])
+        purpose = _opaque_value(values["Annotation Purpose"][0])
+        disposition = _exact_token(values["Presentation Disposition"][0])
+        source_values = values["Audience-facing Source"]
+        companion_values = values["Companion Reference"]
+        source = (
+            _opaque_value(values["Audience-facing Source"][0])
+            if source_values
+            else ""
+        )
+        companion = (
+            _opaque_value(values["Companion Reference"][0])
+            if companion_values
+            else ""
+        )
+
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:-]*", annotation_id):
+            block_failures.append(
+                f"Annotation ID is not stable-token shaped: {annotation_id}"
+            )
+        if annotation_id in actual_decisions:
+            block_failures.append(f"Annotation ID must be unique: {annotation_id}")
+        if not purpose or _exact_token(purpose) in PLACEHOLDER_VALUES:
+            block_failures.append(
+                f"Annotation Purpose must be concrete for {annotation_id}"
+            )
+        if disposition not in ANNOTATION_PRESENTATION_DISPOSITIONS:
+            block_failures.append(
+                f"Presentation Disposition has an invalid token for {annotation_id}"
+            )
+        elif disposition == "remove_before_final":
+            if source_values or companion_values:
+                block_failures.append(
+                    f"remove_before_final must omit conditional fields for {annotation_id}"
+                )
+        elif disposition == "separate_review_companion":
+            if source_values or len(companion_values) != 1 or not companion:
+                block_failures.append(
+                    f"separate_review_companion requires only Companion Reference for {annotation_id}"
+                )
+        elif disposition == "retain_as_audience_content_candidate":
+            if len(source_values) != 1 or not source or companion_values:
+                block_failures.append(
+                    f"retain_as_audience_content_candidate requires only Audience-facing Source for {annotation_id}"
+                )
+
+        failures.extend(block_failures)
+        if block_failures:
+            continue
+        actual_purposes[annotation_id] = purpose
+        actual_decisions[annotation_id] = disposition
+        if source:
+            actual_sources[annotation_id] = source
+        if companion:
+            actual_companions[annotation_id] = companion
+
+    if actual_purposes != expected_purposes:
+        failures.append(
+            f"annotation purposes must be {expected_purposes}, not {actual_purposes}"
+        )
+    if actual_decisions != expected_decisions:
+        failures.append(
+            f"annotation decisions must be {expected_decisions}, not {actual_decisions}"
+        )
+    if actual_sources != expected_sources:
+        failures.append(
+            f"annotation audience sources must be {expected_sources}, not {actual_sources}"
+        )
+    if actual_companions != expected_companions:
+        failures.append(
+            f"annotation companion references must be {expected_companions}, not {actual_companions}"
+        )
+
+    boundary, boundary_count, boundary_range = _section_block(
+        visible_text, "Prototype Evidence Boundary"
+    )
+    if boundary_count != 1 or not boundary.strip():
+        failures.append(
+            "Annotation presentation output requires one non-empty Prototype Evidence Boundary section"
+        )
+    else:
+        block_ranges.append(boundary_range)
+    if _text_outside_ranges(visible_text, block_ranges).strip():
+        failures.append(
+            "Annotation presentation output must contain only decision blocks and Prototype Evidence Boundary"
+        )
+    if _annotation_readiness_overclaim(visible_text):
+        failures.append(
+            "annotation presentation output cannot claim implementation, browser, runtime, UAT, release, or customer readiness"
+        )
+    prohibited_target_ids = {
+        annotation_id
+        for annotation_id, disposition in expected_decisions.items()
+        if disposition in {"remove_before_final", "separate_review_companion"}
+    }
+    if prohibited_target_ids and _annotation_disposition_contradiction(
+        boundary if boundary_count == 1 else visible_text,
+        prohibited_target_ids,
+    ):
+        failures.append(
+            "annotation presentation output contradicts the declared removal or companion dispositions"
+        )
+    return failures
+
+
+def annotation_handoff_reference_failures(text, row=None):
+    failures = []
+    if _has_hidden_markdown_payload(text):
+        failures.append(
+            "annotation handoff reference cannot hide additional content in comments or code blocks"
+        )
+    if _annotation_hidden_html_payload(text):
+        failures.append(
+            "annotation handoff reference cannot contain hidden or non-rendered HTML"
+        )
+    if _annotation_has_mixed_latin_cyrillic_greek_token(text):
+        failures.append(
+            "annotation handoff reference cannot mix Latin with Cyrillic or Greek letters inside one token"
+        )
+    row = row or {}
+    expected_decisions = _expected_annotation_map(
+        row.get("annotation_expected_decisions")
+    )
+    if not expected_decisions:
+        return ["annotation handoff reference requires a non-empty source ID set"]
+
+    visible_text = _visible_markdown_contract_text(text)
+    section, section_count, section_range = _section_block(
+        visible_text, "Annotation Decision Carry-through"
+    )
+    if section_count != 1:
+        return [
+            "annotation handoff reference requires exactly one Annotation Decision Carry-through section"
+        ]
+    values = {
+        field: _field_values(section, field)
+        for field in ANNOTATION_HANDOFF_REFERENCE_FIELDS
+    }
+    for field, field_values in values.items():
+        if len(field_values) != 1 or not field_values[0].strip():
+            failures.append(
+                f"Annotation Decision Carry-through requires one non-empty {field}"
+            )
+    if _without_field_lines(section, ANNOTATION_HANDOFF_REFERENCE_FIELDS).strip():
+        failures.append(
+            "Annotation Decision Carry-through must contain only structured fields"
+        )
+    if failures:
+        return failures
+
+    expected_reference = _opaque_value(
+        row.get("annotation_expected_reference")
+    )
+    if (
+        not expected_reference
+        or _exact_token(expected_reference) in PLACEHOLDER_VALUES
+    ):
+        return [
+            "annotation handoff reference oracle metadata is missing or malformed"
+        ]
+    expected_ids = "|".join(sorted(expected_decisions))
+    actual_ids = _normalized_unordered_pipe_set(values["Annotation IDs"][0])
+    actual_values = {
+        "Mode": _exact_token(values["Mode"][0]),
+        "Annotation Decision Reference": _opaque_value(
+            values["Annotation Decision Reference"][0]
+        ),
+        "Evidence Boundary": _exact_token(values["Evidence Boundary"][0]),
+    }
+    if actual_values["Mode"] != "reference":
+        failures.append("annotation handoff Mode must be reference")
+    if actual_values["Annotation Decision Reference"] != expected_reference:
+        failures.append(
+            "annotation handoff reference must resolve to the canonical decision source"
+        )
+    if actual_ids != expected_ids:
+        failures.append(
+            f"annotation handoff ID set must be {expected_ids}, not {actual_ids}"
+        )
+    if actual_values["Evidence Boundary"] != "source_reference_only":
+        failures.append(
+            "annotation handoff Evidence Boundary must be source_reference_only"
+        )
+    if _text_outside_ranges(visible_text, [section_range]).strip():
+        failures.append(
+            "annotation handoff reference output must contain only its structured section"
+        )
+    if _annotation_readiness_overclaim(visible_text):
+        failures.append(
+            "annotation handoff reference cannot claim implementation or readiness"
+        )
+    return failures
+
+
+def annotation_carrythrough_verification_failures(text, row=None):
+    failures = []
+    if _has_hidden_markdown_payload(text):
+        failures.append(
+            "annotation carry-through verification cannot hide additional content in comments or code blocks"
+        )
+    if _annotation_hidden_html_payload(text):
+        failures.append(
+            "annotation carry-through verification cannot contain hidden or non-rendered HTML"
+        )
+    if _annotation_has_mixed_latin_cyrillic_greek_token(text):
+        failures.append(
+            "annotation carry-through verification cannot mix Latin with Cyrillic or Greek letters inside one token"
+        )
+    row = row or {}
+    expected_purposes = _expected_annotation_map(
+        row.get("annotation_expected_purposes")
+    )
+    expected_decisions = _expected_annotation_map(
+        row.get("annotation_expected_decisions")
+    )
+    expected_sources = _expected_annotation_map(
+        row.get("annotation_expected_audience_sources")
+    )
+    expected_companions = _expected_annotation_map(
+        row.get("annotation_expected_companions")
+    )
+    expected_verdicts = _expected_annotation_map(
+        row.get("annotation_expected_carrythrough_verdicts")
+    )
+    expected_targets = _expected_annotation_map(
+        row.get("annotation_expected_observed_targets")
+    )
+    if any(
+        item is None
+        for item in (
+            expected_purposes,
+            expected_decisions,
+            expected_sources,
+            expected_companions,
+            expected_verdicts,
+            expected_targets,
+        )
+    ):
+        return ["annotation carry-through oracle metadata is malformed"]
+    expected_id_set = set(expected_decisions)
+    if set(expected_verdicts) != expected_id_set:
+        failures.append(
+            "annotation carry-through verdict oracle IDs must exactly match source decisions"
+        )
+    if set(expected_targets) != expected_id_set:
+        failures.append(
+            "annotation observed-target oracle IDs must exactly match source decisions"
+        )
+
+    visible_text = _visible_markdown_contract_text(text)
+    blocks = _section_blocks(visible_text, "Annotation Carry-through Check")
+    if len(blocks) != len(expected_decisions):
+        failures.append(
+            "Annotation Carry-through Check block count must match the source annotation ID set"
+        )
+
+    actual_ids = set()
+    actual_verdicts = {}
+    block_ranges = []
+    for block, block_range in blocks:
+        block_ranges.append(block_range)
+        values = {
+            field: _field_values(block, field)
+            for field in ANNOTATION_CARRYTHROUGH_FIELDS
+        }
+        if any(
+            len(field_values) != 1 or not field_values[0].strip()
+            for field_values in values.values()
+        ):
+            failures.append(
+                "each Annotation Carry-through Check requires one non-empty value for every field"
+            )
+            continue
+        if _without_field_lines(block, ANNOTATION_CARRYTHROUGH_FIELDS).strip():
+            failures.append(
+                "Annotation Carry-through Check must contain only structured fields"
+            )
+            continue
+
+        annotation_id = _opaque_value(values["Annotation ID"][0])
+        if annotation_id in actual_ids:
+            failures.append(f"Annotation carry-through ID must be unique: {annotation_id}")
+            continue
+        actual_ids.add(annotation_id)
+        if annotation_id not in expected_decisions:
+            failures.append(f"unexpected Annotation carry-through ID: {annotation_id}")
+            continue
+
+        expected_conditional = "none"
+        if annotation_id in expected_sources:
+            expected_conditional = (
+                f"Audience-facing Source: {expected_sources[annotation_id]}"
+            )
+        elif annotation_id in expected_companions:
+            expected_conditional = (
+                f"Companion Reference: {expected_companions[annotation_id]}"
+            )
+        expected_values = {
+            "Source Purpose": expected_purposes.get(annotation_id, ""),
+            "Source Disposition": expected_decisions[annotation_id],
+            "Required Conditional Field": expected_conditional,
+            "Observed Target or Reference": expected_targets.get(
+                annotation_id, ""
+            ),
+            "Carry-through Verdict": expected_verdicts.get(annotation_id, ""),
+        }
+        for field, expected in expected_values.items():
+            actual = _opaque_value(values[field][0])
+            if actual != expected:
+                failures.append(
+                    f"{field} for {annotation_id} must be {expected}, not {actual}"
+                )
+        actual_verdicts[annotation_id] = _exact_token(
+            values["Carry-through Verdict"][0]
+        )
+
+    if actual_ids != set(expected_decisions):
+        failures.append(
+            "Annotation carry-through ID set must exactly match the source decisions"
+        )
+    scope, scope_count, scope_range = _section_block(
+        visible_text, "Verification Scope"
+    )
+    if scope_count != 1:
+        failures.append(
+            "Annotation carry-through verification requires exactly one Verification Scope"
+        )
+    else:
+        block_ranges.append(scope_range)
+        scope_values = {
+            field: _field_values(scope, field)
+            for field in CONTRACT_LINEAGE_SCOPE_FIELDS
+        }
+        for field, field_values in scope_values.items():
+            if len(field_values) != 1 or not field_values[0].strip():
+                failures.append(
+                    f"Annotation carry-through Verification Scope requires one non-empty {field}"
+                )
+        if _without_field_lines(scope, CONTRACT_LINEAGE_SCOPE_FIELDS).strip():
+            failures.append(
+                "Annotation carry-through Verification Scope must contain only structured fields"
+            )
+        if not failures:
+            expected_scope_fields = {
+                "Claim": "annotation_expected_scope_claim",
+                "Covered": "annotation_expected_scope_covered",
+                "Missing": "annotation_expected_scope_missing",
+                "Verdict": "annotation_expected_scope_verdict",
+            }
+            for output_field, row_field in expected_scope_fields.items():
+                expected = _opaque_value(row.get(row_field))
+                actual = _opaque_value(scope_values[output_field][0])
+                if expected and actual != expected:
+                    failures.append(
+                        f"Annotation carry-through Verification Scope {output_field} must be {expected}, not {actual}"
+                    )
+
+            covered_ids = {
+                annotation_id
+                for annotation_id, verdict in actual_verdicts.items()
+                if verdict == "covered"
+            }
+            missing_ids = set(actual_verdicts) - covered_ids
+            actual_covered = _normalized_unordered_pipe_set(
+                scope_values["Covered"][0]
+            )
+            actual_missing = _normalized_unordered_pipe_set(
+                scope_values["Missing"][0]
+            )
+            expected_covered = (
+                "none" if not covered_ids else "|".join(sorted(covered_ids))
+            )
+            expected_missing = (
+                "none" if not missing_ids else "|".join(sorted(missing_ids))
+            )
+            if actual_covered != expected_covered:
+                failures.append(
+                    "Annotation carry-through Verification Scope Covered must match per-ID covered verdicts"
+                )
+            if actual_missing != expected_missing:
+                failures.append(
+                    "Annotation carry-through Verification Scope Missing must match per-ID gap/unverified verdicts"
+                )
+            aggregate_verdict = (
+                "pass"
+                if not missing_ids
+                else (
+                    "fail"
+                    if any(
+                        verdict == "gap"
+                        for verdict in actual_verdicts.values()
+                    )
+                    else "partial"
+                )
+            )
+            if _exact_token(scope_values["Verdict"][0]) != aggregate_verdict:
+                failures.append(
+                    "Annotation carry-through Verification Scope Verdict must match the per-ID verdict aggregate"
+                )
+    if _text_outside_ranges(visible_text, block_ranges).strip():
+        failures.append(
+            "Annotation carry-through verification must contain only Verification Scope and per-ID check blocks"
+        )
+    if _annotation_readiness_overclaim(visible_text):
+        failures.append(
+            "annotation carry-through source validation cannot claim stronger readiness"
+        )
+    return failures
+
+
 def release_evidence_claim_failures(text, row=None):
     failures = []
-    body, claim_count, _claim_range = _release_evidence_claim_block(text)
+    body, claim_count, claim_range = _release_evidence_claim_block(text)
     if claim_count != 1:
         return ["release_evidence_claim must appear exactly once in a yaml block"]
 
@@ -1096,20 +2829,39 @@ def release_evidence_claim_failures(text, row=None):
         return [
             "release_evidence_claim must use the exact shared structured object with no extra fields"
         ]
+    start, end = claim_range
+    outside_claim = str(text or "")[:start] + str(text or "")[end:]
+    if re.search(
+        r"(?im)^[ \t]*(?:[-*][ \t]*)?(?:\*\*)?evidence_status(?:\*\*)?[ \t]*:",
+        outside_claim,
+    ):
+        failures.append(
+            "evidence_status must appear only inside release_evidence_claim"
+        )
 
-    scalar_values = {
-        field: _yaml_scalar_token(value)
-        for field, value in values.items()
-        if field not in {"commands_or_trials", "limitations"}
+    scalar_values = {}
+    for field, value in values.items():
+        if field in {"commands_or_trials", "limitations"}:
+            continue
+        parsed_scalar = _strict_yaml_scalar(value)
+        if parsed_scalar is None:
+            failures.append(
+                f"release_evidence_claim {field} must use an unquoted scalar or balanced single/double quotes"
+            )
+        else:
+            scalar_values[field] = parsed_scalar
+    enum_values = {
+        field: str(scalar_values.get(field, "")).lower()
+        for field in ("claim_type", "evidence_status", "refresh_method", "run_scope")
     }
     commands_or_trials = _yaml_inline_list(values["commands_or_trials"])
     limitations = _yaml_inline_list(values["limitations"])
     if commands_or_trials is None:
         failures.append("commands_or_trials must be an inline yaml list")
-    elif not commands_or_trials:
-        failures.append("commands_or_trials must name qualifying evidence")
     if limitations is None:
         failures.append("limitations must be an inline yaml list")
+    if failures:
+        return failures
 
     enum_fields = {
         "claim_type": RELEASE_EVIDENCE_CLAIM_TYPES,
@@ -1118,7 +2870,7 @@ def release_evidence_claim_failures(text, row=None):
         "run_scope": RELEASE_RUN_SCOPES,
     }
     for field, allowed in enum_fields.items():
-        if scalar_values[field] not in allowed:
+        if enum_values[field] not in allowed:
             failures.append(f"release_evidence_claim {field} has an invalid token")
 
     for field in (
@@ -1130,25 +2882,149 @@ def release_evidence_claim_failures(text, row=None):
         if not scalar_values[field]:
             failures.append(f"release_evidence_claim {field} must not be empty")
 
-    if scalar_values["evidence_status"] == "verified":
-        if scalar_values["source_root"] in {"unverified", "not_run", "not_applicable"}:
+    claim_type = enum_values["claim_type"]
+    evidence_status = enum_values["evidence_status"]
+    refresh_method = enum_values["refresh_method"]
+    run_scope = enum_values["run_scope"]
+    installed_plugin_root = _exact_token(scalar_values["installed_plugin_root"])
+    source_root = _exact_token(scalar_values["source_root"])
+    refresh_evidence = _exact_token(scalar_values["refresh_evidence"])
+
+    if claim_type == "not_applicable" and evidence_status != "not_applicable":
+        failures.append(
+            "claim_type not_applicable requires evidence_status not_applicable"
+        )
+    if evidence_status == "not_applicable" and claim_type != "not_applicable":
+        failures.append(
+            "evidence_status not_applicable requires claim_type not_applicable"
+        )
+
+    if evidence_status == "verified":
+        if not commands_or_trials:
+            failures.append(
+                "verified release_evidence_claim must name commands_or_trials"
+            )
+        if source_root in {"unverified", "not_run", "not_applicable"}:
             failures.append("verified release_evidence_claim must name a source_root")
-        if scalar_values["run_scope"] in {"not_run", "not_applicable"}:
+        if run_scope in {"not_run", "not_applicable"}:
             failures.append("verified release_evidence_claim must name a run_scope")
+        if claim_type in RELEASE_PLUGIN_BOUND_CLAIM_TYPES:
+            if installed_plugin_root in {
+                "unverified",
+                "not_run",
+                "not_applicable",
+            }:
+                failures.append(
+                    "verified runtime/plugin/cache release_evidence_claim must name an installed_plugin_root"
+                )
+            elif not _canonical_absolute_path(
+                scalar_values["installed_plugin_root"]
+            ):
+                failures.append(
+                    "verified runtime/plugin/cache installed_plugin_root must be a canonical absolute path"
+                )
+            if not _canonical_absolute_path(scalar_values["source_root"]):
+                failures.append(
+                    "verified runtime/plugin/cache source_root must be a canonical absolute path"
+                )
+            if (
+                _canonical_absolute_path(
+                    scalar_values["installed_plugin_root"]
+                )
+                and _canonical_absolute_path(scalar_values["source_root"])
+            ):
+                installed_path = Path(
+                    scalar_values["installed_plugin_root"]
+                )
+                source_path = Path(
+                    scalar_values["source_root"]
+                )
+                try:
+                    installed_resolved = installed_path.resolve(
+                        strict=False
+                    )
+                    source_resolved = source_path.resolve(strict=False)
+                except (OSError, RuntimeError):
+                    failures.append(
+                        "verified runtime/plugin/cache claim roots must be safely resolvable"
+                    )
+                else:
+                    if installed_resolved == source_resolved:
+                        failures.append(
+                            "verified runtime/plugin/cache installed_plugin_root and source_root must be independent paths"
+                        )
+                    elif _paths_have_ancestor_relationship(
+                        installed_path,
+                        source_path,
+                    ) or _paths_have_ancestor_relationship(
+                        installed_resolved,
+                        source_resolved,
+                    ):
+                        failures.append(
+                            "verified runtime/plugin/cache installed_plugin_root and source_root must not have an ancestor/descendant relationship"
+                        )
+            allowed_refresh_methods = (
+                {"refresh_step"}
+                if claim_type == "cache_refresh"
+                else {"refresh_step", "source_equivalence"}
+            )
+            if refresh_method not in allowed_refresh_methods:
+                failures.append(
+                    "verified runtime/plugin/cache release_evidence_claim has an invalid refresh method"
+                )
+            if refresh_evidence in {
+                "unverified",
+                "not_run",
+                "not_applicable",
+            }:
+                failures.append(
+                    "verified runtime/plugin/cache release_evidence_claim must name refresh evidence"
+                )
+    elif evidence_status == "unverified":
+        if limitations is not None and not limitations:
+            failures.append(
+                "unverified release_evidence_claim must name at least one limitation"
+            )
+    elif evidence_status == "not_applicable":
+        expected_not_applicable = {
+            "installed_plugin_root": installed_plugin_root,
+            "source_root": source_root,
+            "refresh_method": refresh_method,
+            "refresh_evidence": refresh_evidence,
+            "run_scope": run_scope,
+        }
+        for field, actual in expected_not_applicable.items():
+            if actual != "not_applicable":
+                failures.append(
+                    f"not_applicable release_evidence_claim requires {field}: not_applicable"
+                )
+        if commands_or_trials:
+            failures.append(
+                "not_applicable release_evidence_claim must not name commands_or_trials"
+            )
 
     row = row or {}
-    expected_scalars = {
+    expected_enum_scalars = {
         "claim_type": "release_expected_claim_type",
-        "claim": "release_expected_claim",
         "evidence_status": "release_expected_evidence_status",
-        "installed_plugin_root": "release_expected_installed_plugin_root",
-        "source_root": "release_expected_source_root",
         "refresh_method": "release_expected_refresh_method",
-        "refresh_evidence": "release_expected_refresh_evidence",
         "run_scope": "release_expected_run_scope",
     }
-    for output_field, row_field in expected_scalars.items():
+    for output_field, row_field in expected_enum_scalars.items():
         expected = _exact_token(row.get(row_field))
+        actual = enum_values[output_field]
+        if expected and actual != expected:
+            failures.append(
+                f"release_evidence_claim {output_field} must be {expected}, not {actual}"
+            )
+    expected_opaque_scalars = {
+        "claim": "release_expected_claim",
+        "installed_plugin_root": "release_expected_installed_plugin_root",
+        "source_root": "release_expected_source_root",
+        "refresh_evidence": "release_expected_refresh_evidence",
+    }
+    for output_field, row_field in expected_opaque_scalars.items():
+        expected = _opaque_value(row.get(row_field))
         actual = scalar_values[output_field]
         if expected and actual != expected:
             failures.append(
@@ -1163,10 +3039,14 @@ def release_evidence_claim_failures(text, row=None):
         "limitations": ("release_expected_limitations", limitations),
     }
     for output_field, (row_field, actual) in expected_lists.items():
-        expected_raw = _exact_token(row.get(row_field))
+        expected_raw = _opaque_value(row.get(row_field))
         if not expected_raw or actual is None:
             continue
-        expected = [] if expected_raw in {"none", "[]"} else _pipe_tokens(expected_raw)
+        expected = (
+            []
+            if expected_raw.lower() in {"none", "[]"}
+            else [part.strip() for part in expected_raw.split("|") if part.strip()]
+        )
         if actual != expected:
             failures.append(
                 f"release_evidence_claim {output_field} must be {expected}, not {actual}"
@@ -1177,6 +3057,10 @@ def release_evidence_claim_failures(text, row=None):
 def uat_evidence_window_failures(text, row=None):
     failures = []
     raw_text = _without_release_evidence_claim(text)
+    if _has_hidden_markdown_payload(raw_text):
+        failures.append(
+            "UAT evidence-window output cannot hide additional content in comments or code blocks"
+        )
     window, window_count, window_range = _section_block(
         raw_text, "UAT Evidence Window"
     )
@@ -1214,8 +3098,8 @@ def uat_evidence_window_failures(text, row=None):
         "Rerun Of / Supersedes": "uat_expected_rerun_supersedes",
     }
     for output_field, row_field in expected_fields.items():
-        expected = _exact_token(row.get(row_field))
-        actual = _exact_token(values[output_field][0])
+        expected = _opaque_value(row.get(row_field))
+        actual = _opaque_value(values[output_field][0])
         if expected and actual != expected:
             failures.append(f"{output_field} must be {expected}, not {actual}")
 
@@ -1255,8 +3139,8 @@ def uat_evidence_window_failures(text, row=None):
         "Verdict": "uat_expected_scope_verdict",
     }
     for output_field, row_field in expected_scope_fields.items():
-        expected = _exact_token(row.get(row_field))
-        actual = _exact_token(scope_values[output_field][0])
+        expected = _opaque_value(row.get(row_field))
+        actual = _opaque_value(scope_values[output_field][0])
         if expected and actual != expected:
             failures.append(
                 f"Verification Scope {output_field} must be {expected}, not {actual}"
@@ -1264,29 +3148,191 @@ def uat_evidence_window_failures(text, row=None):
     return failures
 
 
-def uat_evidence_window_absence_failures(text):
-    _window, window_count, _window_range = _section_block(
-        text, "UAT Evidence Window"
-    )
-    variant_heading = bool(
-        re.search(
-            r"(?im)^[ \t]*(?:#{1,6}[ \t]*)?(?:\*\*)?UAT[ \t-]+Evidence[ \t-]+Window\b[^\r\n]*$",
-            str(text or ""),
+def _balanced_markdown_delimiter_end(value, start, opener, closer):
+    depth = 0
+    escaped = False
+    for index in range(start, len(value)):
+        character = value[index]
+        if escaped:
+            escaped = False
+            continue
+        if character == "\\":
+            escaped = True
+            continue
+        if character == opener:
+            depth += 1
+        elif character == closer:
+            depth -= 1
+            if depth == 0:
+                return index
+    return None
+
+
+def _visible_markdown_link_text(value, depth=0):
+    if depth >= 64:
+        return str(value or "").replace("[", "").replace("]", "")
+    result = []
+    index = 0
+    while index < len(value):
+        image_prefix = value[index] == "!" and index + 1 < len(value)
+        label_start = index + 1 if image_prefix else index
+        if value[label_start : label_start + 1] != "[":
+            result.append(value[index])
+            index += 1
+            continue
+        label_end = _balanced_markdown_delimiter_end(
+            value, label_start, "[", "]"
         )
+        if label_end is None:
+            result.append(value[index])
+            index += 1
+            continue
+        label = _visible_markdown_link_text(
+            value[label_start + 1 : label_end], depth + 1
+        )
+        next_index = label_end + 1
+        if next_index < len(value) and value[next_index] in "([":
+            opener = value[next_index]
+            closer = ")" if opener == "(" else "]"
+            destination_end = _balanced_markdown_delimiter_end(
+                value, next_index, opener, closer
+            )
+            if destination_end is not None:
+                next_index = destination_end + 1
+        result.append(label)
+        index = next_index
+    return "".join(result)
+
+
+def _visible_markdown_line_text(line):
+    value = str(line or "").strip()
+    while True:
+        previous = value
+        value = re.sub(r"^(?:>[ \t]*)+", "", value).lstrip()
+        value = re.sub(r"^(?:[-*+]|\d+[.)])[ \t]+", "", value).lstrip()
+        if value == previous:
+            break
+    value = re.sub(r"^#{1,6}[ \t]*", "", value)
+    value = re.sub(r"[ \t]+#+[ \t]*$", "", value).strip()
+    value = html.unescape(value)
+    value = re.sub(r"(?s)<[^>]*>", "", value)
+    value = _visible_markdown_link_text(value)
+    value = re.sub(r"`+([^`\r\n]+?)`+", r"\1", value)
+    previous = None
+    while value != previous:
+        previous = value
+        value = re.sub(
+            r"(?<!\w)(\*\*|__|\*|_)(?=\S)(.+?)(?<=\S)\1(?!\w)",
+            r"\2",
+            value,
+        ).strip()
+    value = re.sub(r"[ \t]*\{[^{}\r\n]+\}[ \t]*$", "", value).strip()
+    value = unicodedata.normalize("NFKC", value)
+    value = "".join(
+        character
+        for character in value
+        if not _is_default_ignorable_code_point(character)
     )
+    return " ".join(value.split())
+
+
+def _is_default_ignorable_code_point(character):
+    codepoint = ord(character)
+    if unicodedata.category(character) == "Cf":
+        return True
+    return (
+        codepoint == 0x034F
+        or 0x115F <= codepoint <= 0x1160
+        or 0x17B4 <= codepoint <= 0x17B5
+        or 0x180B <= codepoint <= 0x180F
+        or codepoint == 0x2065
+        or 0xFE00 <= codepoint <= 0xFE0F
+        or codepoint == 0x3164
+        or codepoint == 0xFFA0
+        or 0xFFF0 <= codepoint <= 0xFFF8
+        or 0x1BCA0 <= codepoint <= 0x1BCA3
+        or 0x1D173 <= codepoint <= 0x1D17A
+        or 0xE0000 <= codepoint <= 0xE0FFF
+    )
+
+
+def uat_evidence_window_absence_failures(text, row=None):
+    raw_text = _without_release_evidence_claim(text)
+    failures = []
+    if _has_hidden_markdown_payload(raw_text):
+        failures.append(
+            "bounded UAT observation cannot hide additional content in comments or code blocks"
+        )
+    normalized_text = _visible_markdown_contract_text(raw_text)
+    _window, window_count, _window_range = _section_block(
+        normalized_text, "UAT Evidence Window"
+    )
+    variant_heading = False
+    for line in normalized_text.splitlines():
+        visible_line = re.sub(
+            r"[\t \u2010-\u2015-]+",
+            " ",
+            _visible_markdown_line_text(line),
+        ).casefold()
+        if visible_line == "uat evidence window" or visible_line.startswith(
+            "uat evidence window "
+        ):
+            variant_heading = True
+            break
     orphan_fields = any(
-        _field_values(text, field) for field in UAT_EVIDENCE_WINDOW_FIELDS
+        _field_values(normalized_text, field) for field in UAT_EVIDENCE_WINDOW_FIELDS
     )
     if window_count or variant_heading or orphan_fields:
-        return [
+        failures.append(
             "UAT Evidence Window heading or fields are forbidden for this bounded current-behavior observation"
-        ]
-    return []
+        )
+    row = row or {}
+    expected_scope_fields = {
+        "Claim": "uat_expected_scope_claim",
+        "Covered": "uat_expected_scope_covered",
+        "Missing": "uat_expected_scope_missing",
+        "Verdict": "uat_expected_scope_verdict",
+    }
+    if any(_opaque_value(row.get(field)) for field in expected_scope_fields.values()):
+        scope, scope_count, scope_range = _section_block(
+            normalized_text, "Verification Scope"
+        )
+        if scope_count != 1:
+            failures.append(
+                "bounded UAT observation requires exactly one Verification Scope"
+            )
+        else:
+            for output_field, row_field in expected_scope_fields.items():
+                values = _field_values(scope, output_field)
+                expected = _opaque_value(row.get(row_field))
+                if len(values) != 1 or _opaque_value(values[0]) != expected:
+                    failures.append(
+                        f"Verification Scope {output_field} must be {expected}"
+                    )
+            if _without_field_lines(
+                scope, UAT_EVIDENCE_WINDOW_SCOPE_FIELDS
+            ).strip():
+                failures.append(
+                    "bounded UAT Verification Scope must contain only structured fields"
+                )
+            scope_start, scope_end = scope_range
+            if (
+                normalized_text[:scope_start]
+                + normalized_text[scope_end:]
+            ).strip():
+                failures.append(
+                    "bounded UAT observation must contain only Verification Scope and release_evidence_claim"
+                )
+    return failures
 
 
 def uat_handoff_reference_failures(text, row=None):
     failures = []
     raw_text = _without_release_evidence_claim(text)
+    if _has_hidden_markdown_payload(raw_text):
+        failures.append(
+            "UAT handoff reference cannot hide additional content in comments or code blocks"
+        )
     handoff, handoff_count, _handoff_range = _section_block(
         raw_text, "UAT Evidence-Window Continuation"
     )
@@ -1334,8 +3380,8 @@ def uat_handoff_reference_failures(text, row=None):
         "Execution Boundary": "uat_handoff_expected_execution_boundary",
     }
     for output_field, row_field in expected_fields.items():
-        expected = _exact_token(row.get(row_field))
-        actual = _exact_token(values[output_field][0])
+        expected = _opaque_value(row.get(row_field))
+        actual = _opaque_value(values[output_field][0])
         if expected and actual != expected:
             failures.append(f"{output_field} must be {expected}, not {actual}")
     return failures

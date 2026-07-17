@@ -98,9 +98,10 @@ hard_negatives = [
   "evals/prompts/routing-reliability.csv::rr-004",
   "evals/prompts/write-plan.csv::write-plan-006#hard:missing_source",
   "evals/prompts/write-plan.csv::write-plan-008#hard:test_gap",
+  "evals/prompts/contract-lineage.csv::tf-cl-003",
 ]
 default_suite_coverage = ["routing-reliability.csv"]
-targeted_only_coverage = ["write-plan.csv"]
+targeted_only_coverage = ["write-plan.csv", "contract-lineage.csv"]
 gaps = []
 
 [public_skills.prototype]
@@ -118,10 +119,12 @@ route_negatives = [
 hard_negatives = [
   "evals/prompts/prototype.csv::prototype-013#hard:prototype_contract_boundary",
   "evals/prompts/prototype.csv::prototype-014#hard:prototype_contract_boundary",
+  "evals/prompts/prototype-annotation.csv::prototype-annotation-001#hard:annotation_presentation_boundary",
+  "evals/prompts/prototype-annotation.csv::prototype-annotation-002#hard:annotation_presentation_boundary",
   "evals/prompts/routing-reliability.csv::rr-019",
 ]
 default_suite_coverage = ["routing-reliability.csv"]
-targeted_only_coverage = ["prototype.csv"]
+targeted_only_coverage = ["prototype.csv", "prototype-annotation.csv"]
 gaps = []
 
 [public_skills.implement]
@@ -140,9 +143,10 @@ hard_negatives = [
   "evals/prompts/implement.csv::implement-010#hard:git_topology_gate",
   "evals/prompts/implement.csv::implement-011#hard:git_topology_gate",
   "evals/prompts/implement.csv::implement-012#hard:conformance_boundary",
+  "evals/prompts/contract-lineage.csv::tf-cl-001",
 ]
 default_suite_coverage = ["routing-reliability.csv"]
-targeted_only_coverage = ["implement.csv"]
+targeted_only_coverage = ["implement.csv", "contract-lineage.csv"]
 gaps = []
 
 [public_skills.verify]
@@ -152,6 +156,7 @@ positives = [
   "evals/prompts/verify.csv::verify-003",
   "evals/prompts/uat-evidence-window.csv::uat-window-001",
   "evals/prompts/uat-evidence-window.csv::uat-window-004",
+  "evals/prompts/contract-lineage.csv::tf-cl-004",
 ]
 route_negatives = [
   "evals/prompts/verify.csv::verify-004",
@@ -163,12 +168,14 @@ hard_negatives = [
   "evals/prompts/routing-reliability.csv::rr-016",
   "evals/prompts/verify.csv::verify-017#hard:runtime_evidence_boundary",
   "evals/prompts/verify.csv::verify-022#hard:runtime_evidence_boundary",
-  "evals/prompts/uat-evidence-window.csv::uat-window-002#hard:runtime_evidence_boundary",
-  "evals/prompts/uat-evidence-window.csv::uat-window-003#hard:runtime_evidence_boundary",
-  "evals/prompts/uat-evidence-window.csv::uat-window-005#hard:runtime_evidence_boundary",
+  "evals/prompts/uat-evidence-window.csv::uat-window-002#hard:uat_evidence_window_boundary",
+  "evals/prompts/uat-evidence-window.csv::uat-window-003#hard:uat_evidence_window_boundary",
+  "evals/prompts/uat-evidence-window.csv::uat-window-005#hard:uat_evidence_window_boundary",
+  "evals/prompts/prototype-annotation.csv::prototype-annotation-004#hard:annotation_carrythrough",
+  "evals/prompts/contract-lineage.csv::tf-cl-002",
 ]
-default_suite_coverage = ["routing-reliability.csv", "uat-evidence-window.csv"]
-targeted_only_coverage = ["verify.csv"]
+default_suite_coverage = ["routing-reliability.csv"]
+targeted_only_coverage = ["verify.csv", "prototype-annotation.csv", "uat-evidence-window.csv", "contract-lineage.csv"]
 gaps = []
 
 [public_skills.handoff]
@@ -188,9 +195,11 @@ hard_negatives = [
   "evals/prompts/handoff.csv::handoff-013#hard:redaction_boundary",
   "evals/prompts/handoff.csv::handoff-014#hard:executable_next_action",
   "evals/prompts/handoff.csv::handoff-018#hard:runtime_evidence_boundary",
+  "evals/prompts/prototype-annotation.csv::prototype-annotation-003#hard:annotation_carrythrough",
+  "evals/prompts/prototype-annotation.csv::prototype-annotation-005#hard:annotation_reference_carrythrough",
 ]
-default_suite_coverage = ["routing-reliability.csv", "trace-first-verify-review.csv", "uat-evidence-window.csv"]
-targeted_only_coverage = ["handoff.csv"]
+default_suite_coverage = ["routing-reliability.csv", "trace-first-verify-review.csv"]
+targeted_only_coverage = ["handoff.csv", "prototype-annotation.csv", "uat-evidence-window.csv"]
 gaps = []
 
 [public_skills.wiki]

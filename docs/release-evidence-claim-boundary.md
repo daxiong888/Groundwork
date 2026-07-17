@@ -12,9 +12,20 @@ Safe to Share / Redaction Notes: Safe to share as maintainer documentation. It c
 
 ## Core Boundary
 
+> [!IMPORTANT]
+> This document defines the Maintainer Lab's full release-evidence dossier. Runtime-packaged skill output and deterministic evals use the compact three-state object in `skills/_shared/RELEASE-EVIDENCE-CLAIM.md` (`verified`, `unverified`, `not_applicable`). The full dossier may record `partial` and additional readiness dimensions, but it must not be passed to the compact runtime checker or treated as the runtime package schema.
+
 Docs, schema files, unit tests, prompt CSV parsing, source-only CI, report generation, and patch suggestion generation are `source_validation` evidence. They can support implementation conformance and review confidence, but they are not runtime verification and cannot by themselves prove release, UAT, customer, marketplace, or cache readiness.
 
 Runtime verification requires a named runtime environment and evidence that the runtime used the intended source or installed plugin cache. Release readiness requires a broader maintainer decision over source, runtime, cache/source equivalence, open risks, limitations, and missing evidence. UAT and customer readiness require separate UAT/customer evidence.
+
+For the compact runtime object, merely naming roots, an equivalence label, and a trial is not enough. A verified Groundwork plugin-bound claim requires adjacent terminal-success activities: a supported `codex plugin list/show` inventory step (or `codex plugin add` refresh step) under the `CODEX_HOME` derived from an exact `.../plugins/cache/groundwork/groundwork/<version>` installed root; positive output naming that root; and the immediately next completed activity performing a complete recursive comparison with an independent declared source root. The two roots may not be identical, ancestor/descendant paths, or existing realpath aliases. Excludes, content normalization, partial-file comparison, dry-run, and no-op refreshes do not qualify. A verified runtime claim then requires the immediately next completed activity to run the repository's canonical `evals/run_runtime.py` under the same `CODEX_HOME`, without `--validate-schema`, match each declared typed trial, and emit a non-empty summary whose run scope, selectors, complete prompt-file sources, actual requested/executed case IDs, counts, types, and all-pass result agree exactly. Exact identities are `suite:<registered-suite.csv>`, `group:<exact-group>`, `case_id:<exact-id>`, and `prompt_file:<canonical-absolute-path>`; registered suites may additionally use a legacy suite alias only when it is globally unique. Per-case result artifacts use reversible ID encoding and must not collapse two exact IDs onto one path. A `--rerun-failures` path or filename is transport metadata, not trial identity. Empty group/ID selections and zero-row summaries fail closed.
+
+Proof executables, whether written as bare names or explicit paths, must resolve both to the evaluator's executable baseline captured at module load and to the live `shutil.which` result; Python must additionally resolve to `sys.executable`. `GROUNDWORK_REPO`, when present, must be an absolute canonical path whose realpath is the current repository. Unknown or semantics-changing `GROUNDWORK_*`, PATH, PYTHONPATH, Python-home, loader, and related resolution overrides are rejected; output-root and timeout overrides do not change source truth. This binds evidence to the evaluator's same execution environment; it is not binary-signature or supply-chain attestation, and it cannot establish trustworthy provenance if the environment was already compromised before module load. An unrelated runtime-shaped command, arbitrary same-named script, source/schema-only runner, or root token printed only in unrelated output does not satisfy the claim.
+
+Observed tool activity is successful only with an explicit terminal status (`completed`, `ok`, `success`, or `succeeded`); command activity also requires an integer, non-boolean zero exit code and an executable that matches both the evaluator's startup baseline and live resolution. Arbitrary same-named paths, `npx --package` substitution, and non-canonical Groundwork runtime scripts fail closed. Output-dependent source/browser evidence requires one unwrapped invocation so a sibling command cannot lend aggregate output. Structured fixture source must come from a trusted server/tool pair, expose one actual result-content field, and equal the canonical content rather than merely contain it. A standard MCP resource read must return exactly one requested-URI-matched text resource; multiple resources, URI drift, and blobs do not qualify. UAT source selection reuses the schema's canonical visible-section selector. Browser command evidence must be observation-producing (`test`, screenshot, or headless screenshot), bind URLs, paths, and opaque IDs by exact string identity after option-arity parsing, and return substantive, non-error, non-acknowledgement output; `playwright open`, help/version, test listing/discovery/no-test modes, all-skipped or zero-execution results, and empty output do not qualify. A mixed result with at least one executed passing test may still qualify. Structured console/network empty collections and scalar evaluate values such as `false` or `0` remain valid observations when returned by the trusted observation adapter.
+
+The deterministic runner does not self-approve generic `release` claims. Those require a separate maintainer decision adapter. Generic `uat` claims require a claim-specific canonical UAT evidence adapter; source validation, runtime output, or a claim object alone is insufficient.
 
 ## Claim Types
 
@@ -179,14 +190,16 @@ release_evidence_claim:
   source_ref: "$COMMIT_SHA"
   refresh_or_equivalence:
     method: source_cache_equivalence
-    evidence: "Record the exact refresh command or equivalence check here."
+    evidence: "Record the supported plugin inventory/refresh output and the immediately following complete root comparison here."
   run_scope:
     kind: targeted
     suites:
       - trace-first-verify-review.csv
     cases: []
     commands_or_trials:
-      - "GROUNDWORK_REPO=\"$PWD\" GROUNDWORK_RUNTIME_ROOT=\".groundwork/harness\" python evals/run_runtime.py --suite trace-first-verify-review.csv --case-timeout 360"
+      - "CODEX_HOME=\"$CODEX_HOME\" codex plugin list"
+      - "diff -qr \"$INSTALLED_PLUGIN_ROOT\" \"$SOURCE_ROOT\""
+      - "CODEX_HOME=\"$CODEX_HOME\" GROUNDWORK_RUNTIME_ROOT=\".groundwork/harness\" python evals/run_runtime.py --suite trace-first-verify-review.csv --case-timeout 360"
   redaction:
     status: not_reviewed
     reviewer: unknown
@@ -255,6 +268,8 @@ release_evidence_claim:
 - Installed plugin root is named for runtime/cache/plugin claims.
 - Source root and source ref are named.
 - Refresh or source/cache equivalence is named, or explicitly not applicable.
+- Plugin-bound verified evidence records adjacent terminal-success plugin inventory/refresh, complete post-state root comparison, and any runtime trial under the same `CODEX_HOME`.
+- Installed/source roots are independent, executable resolution is baseline/live-bound, and no exclude, normalization, partial-file, dry-run, no-op, schema-only, arbitrary provider, wrapped fixture substring, or arbitrary same-named runner is promoted into evidence.
 - Run scope and exact commands/trials are listed.
 - Limitations and missing evidence are non-empty for partial or unverified claims.
 - Raw traces/logs are scratch-only or redacted before promotion.

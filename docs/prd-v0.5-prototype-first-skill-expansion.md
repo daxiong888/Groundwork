@@ -4,31 +4,31 @@ Target Reader: Groundwork maintainers, implementation agents, reviewers, verifie
 Reader Action Needed: Review this consolidated PRD as the single v0.5 source of truth; do not use the former addenda as parallel acceptance sources.
 Decision Supported: Whether Groundwork should accept a prototype-first, role-separated, capability-aware, quality-gated skill expansion direction for v0.5, and which parts belong in MVP versus later releases.
 Artifact Type: PRD.
-Source of Truth: Maintainer request to fold review feedback into the v0.5 PRD; review feedback attachment supplied on 2026-06-23; follow-up review feedback supplied on 2026-06-24; the branch-local v0.5 PRD/addenda being consolidated; repo-local Groundwork guidance and shared artifact rules.
-Scope: v0.5 planning for public skill expansion policy, skill quality gates, role separation, runtime capability discovery, model/runtime selector evidence boundaries, Prototype Lab shared references, visual handoff packet rules, skill-audit workflow requirements, and focused implementation slices.
-Out of Scope: Implementing the skills in this PRD pass; claiming runtime, installed-plugin, marketplace, UAT, release, customer, browser, selector-enforcement, or cache/source-refresh readiness; changing plugin metadata; creating issues, PRs, worktrees, subagents, or remote tracker state.
-Evidence Level: Planning evidence only. This PRD consolidates existing branch documents and maintainer review feedback. It does not add runtime evidence, installed-plugin evidence, browser evidence, release evidence, UAT evidence, marketplace evidence, or current official-doc verification.
+Source of Truth: Maintainer request to fold review feedback into the v0.5 PRD; review feedback attachment supplied on 2026-06-23; follow-up review feedback supplied on 2026-06-24; maintainer directive GW-PROT-ANNOT-001 supplied on 2026-07-16; the historical branch-local v0.5 PRD/addenda now consolidated here; current repo-local Groundwork source, tests, guidance, and shared artifact rules.
+Scope: v0.5 planning for public skill expansion policy, skill quality gates, role separation, runtime capability discovery, model/runtime selector evidence boundaries, Prototype Lab shared references, annotation presentation carry-through, visual handoff packet rules, skill-audit workflow requirements, and focused implementation slices.
+Out of Scope: Treating this PRD document itself as implementation or execution evidence; claiming runtime, installed-plugin, marketplace, UAT, release, customer, browser, selector-enforcement, or cache/source-refresh readiness; changing plugin metadata; creating issues, PRs, worktrees, subagents, or remote tracker state.
+Evidence Level: Planning and source-state index only. The implemented slice states refer to current local source and named checks outside this document; the PRD itself does not add runtime, installed-plugin, browser, release, UAT, marketplace, or current official-doc evidence.
 Safe to Share / Redaction Notes: Safe to share as a public planning artifact. It contains no secrets, credentials, private URLs, browser cookies, PII, production data, raw traces, or sensitive logs.
-Status: Accepted draft PRD baseline after review consolidation; implementation should not start until the issue-slice clarifications in this document are reflected in the issue map.
-Version Track: v0.5.0 candidate.
-Last Updated: 2026-06-24.
-Branch: `prd/v0.5-prototype-first-skill-expansion`.
+Status: Accepted canonical v0.5.x PRD. All default implementation slices V050-001, V050-001A, V050-001B, V050-002, V050-005A, V050-005C, V050-005B, V050-006A, V050-003A, V050-004A, and V050-007 are implemented and locally source-validated. GW-PROT-ANNOT-001 and its shared contract-lineage, UAT-evidence, and evaluator hardening are implemented and locally source-validated. The nine previously untracked source files are now included in the intended feature-branch Git boundary; post-integration fresh read-only review and committed-snapshot clean-checkout verification remain pending. V050-003B, V050-004B, and V050-006B remain optional HITL-gated publicization decisions. This status does not claim runtime, installed-plugin, marketplace, UAT, release, customer, browser, selector-enforcement, or cache/source-refresh readiness.
+Version Track: Canonical v0.5.x state; historical origin was the v0.5.0 candidate.
+Last Updated: 2026-07-17.
+Branch: Current canonical source is tracked on `main`; historical origin branch was `prd/v0.5-prototype-first-skill-expansion`.
 
 ---
 
 ## 1. Lifecycle Preflight
 
-Intent: product capability expansion and PRD consolidation.
-Suggested Workflow Mode: to-prd.
+Intent: canonical product-state maintenance after v0.5 implementation and review consolidation.
+Suggested Workflow Mode: direct maintainer documentation update against current source truth.
 Locale: durable artifact in English; user-facing reports in Chinese.
-Source of Truth: mixed local artifact plus maintainer review feedback.
-Requirement State: PRD draft for maintainer acceptance.
-Artifact Promotion: required; this document is intended to be the canonical v0.5 planning source.
-Execution Topology: branch-local documentation artifact only.
-Risk Gate: git write to PRD/docs files only.
+Source of Truth: current local repository source and tests, with historical maintainer review feedback retained as product-decision input.
+Requirement State: Accepted canonical baseline; all default slices are source-implemented, and remaining Git-delivery/HITL state is tracked per issue slice.
+Artifact Promotion: satisfied; this document is the canonical v0.5.x product source.
+Execution Topology: canonical source-checkout artifact on the current repository branch; historical origin was a branch-local documentation artifact.
+Risk Gate: documentation-state maintenance only; no runtime, remote, release, or public-surface mutation.
 Verification Strategy: documentation consistency checks, stale-state search, `git diff --check`, and broad repository metadata/CSV validation if applicable.
-Lifecycle State: not needed for this bounded planning pass.
-Stop Condition: v0.5 MVP, later scope, role/runtime gates, acceptance criteria, and issue slices are coherent enough for maintainer review.
+Lifecycle State: canonical maintenance; the intended Git boundary is assembled, while post-integration fresh read-only review and committed-snapshot clean-checkout verification remain open.
+Stop Condition: PRD and issue map express one coherent current state, with only post-integration review/clean-checkout evidence and the optional HITL publicization decisions left open.
 
 ---
 
@@ -407,6 +407,7 @@ A skill author must not be the final authority that approves its own material sk
 - FR-530: `prototype` must support decision capture and contract-boundary review without promoting mock fields to contract truth.
 - FR-531: UI variants and logic/state labs must be added as focused references or branches before a public `visual-handoff` skill is considered.
 - FR-532: Visual packets must include evidence boundaries and must not replace source/API contract docs.
+- FR-533: Prototype-originated annotation and review-aid presentation must follow GW-PROT-ANNOT-001.
 
 ### Skill Candidates
 
@@ -437,6 +438,7 @@ A skill author must not be the final authority that approves its own material sk
 - AC-B3: A shared runtime capability / selector boundary reference exists and is referenced by affected skills when implemented.
 - AC-B4: Prototype Lab references are split into focused branches, including decision capture and contract-boundary review.
 - AC-B5: Visual handoff packet rules exist as shared communication artifact guidance, not readiness evidence.
+- AC-B6: GW-PROT-ANNOT-001 is represented in the prototype output template, visual packet required sections, handoff continuation rules, and per-ID UI verification checks.
 
 ### AC-C: Evals / Hard Negatives Added
 
@@ -456,9 +458,11 @@ A skill author must not be the final authority that approves its own material sk
 
 ---
 
-## 15. Proposed Issue Slices
+## 15. Canonical Issue Slices
 
-Issue slices must preserve the MVP rule that conditional public skills start as shared references or workflow lenses. Creating `skills/<candidate>/SKILL.md` is a public skill surface change because `skills/` holds public skill contracts. Public candidate files may be created only in the explicit publicization slice after the reference-first slice and route negatives pass.
+All default slices in this section are `implemented_source_validated`; GW-PROT-ANNOT-001 and its shared hardening are also source-implemented and locally source-validated. All required source files are now included in the intended feature-branch Git boundary. Because the branch also integrates the already-merged dispatch-test simplification and removes review-identified dead helpers, the earlier clean-review result no longer covers the current snapshot; fresh read-only review and committed-snapshot clean-checkout verification remain required. The optional publicization slices V050-003B, V050-004B, and V050-006B remain HITL-gated and are not part of the default implementation.
+
+Issue slices preserve the MVP rule that conditional public skills start as shared references or workflow lenses. Creating `skills/<candidate>/SKILL.md` is a public skill surface change because `skills/` holds public skill contracts. Public candidate files may be created only in the explicit publicization slice after the reference-first slice and route negatives pass.
 
 ### V050-001: Public Skill Expansion Policy and Skill-quality Gate
 
@@ -629,6 +633,32 @@ skills/prototype/SKILL.md
 
 Dependencies: V050-005A.
 
+### GW-PROT-ANNOT-001: Annotation Presentation Decision Carry-through
+
+Goal: Add the conditional, repeatable annotation decision block and preserve its stable IDs and disposition-specific fields through visual handoff, handoff continuation, and per-ID UI verification.
+
+Contract:
+- Trigger: Apply a conditional, repeatable `Annotation Presentation Decision` only when a prototype contains author-, designer-, or reviewer-originated annotations or review aids that could be mistaken for target-audience content.
+- Required fields: Each annotation item or homogeneous group has one stable `Annotation ID`, `Annotation Purpose`, and `Presentation Disposition`; downstream visual packets, handoffs, and verification retain that ID.
+- Conditional fields: `retain_as_audience_content_candidate` requires a same-block `Audience-facing Source`; `separate_review_companion` requires a same-block `Companion Reference`; `remove_before_final` carries neither.
+- Continuation and verification: Handoff preserves every block inline or cites one resolvable canonical decision reference plus the complete ID set. Verify compares carry-through per ID and reports missing, renamed, duplicated, or mismatched fields as gaps or unverified outcomes without upgrading prototype evidence to readiness.
+
+Primary files:
+
+```text
+skills/prototype/DECISION-CAPTURE.md
+skills/_shared/VISUAL-HANDOFF-PACKET.md
+skills/handoff/COMPLEX-HANDOFF-BRANCHES.md
+skills/verify/UI-READINESS-BRANCH.md
+evals/prompts/prototype-annotation.csv
+evals/fixtures/prototype-annotation/
+evals/test_prototype_annotation.py
+```
+
+Eval contract: annotation presentation behavior must use finite output-contract tokens; row-level purpose/decision/source/companion metadata; row-level verification-scope, per-ID carry-through-verdict, and per-ID observed-target oracles; an annotated HTML fixture with stable IDs; fixture-backed inline/reference handoff and visual-packet carry-through sources; and deterministic prototype, handoff, verify, and hard-negative checks. Verification scope must be derived consistently from the per-ID verdicts. The evaluator must reject actualized target/production UI claims that are supported only by source carry-through and must not infer implementation, browser, runtime, UAT, release, customer, or readiness evidence from that output.
+
+Dependencies: V050-005A and V050-005C.
+
 ### V050-006A: Shared Skill-audit Workflow / Reference
 
 Goal: Add skill-audit as a required workflow/reference without creating a public `skill-audit` skill.
@@ -673,7 +703,7 @@ evals/prompts/v0.5-prototype-lab.csv
 Dependencies:
 
 - V050-001, V050-001A, V050-001B, V050-002.
-- V050-003A, V050-004A, V050-005A, V050-005B, V050-005C, V050-006A.
+- V050-003A, V050-004A, V050-005A, V050-005B, V050-005C, GW-PROT-ANNOT-001, V050-006A.
 - Any publicization slices that are accepted into v0.5.
 
 ---
@@ -695,11 +725,11 @@ Dependencies:
 
 ## 17. Open Questions
 
-These are genuinely unresolved and should be answered during issue slicing or implementation:
+These are genuinely unresolved conditional decisions. They do not block the completed default source implementation:
 
-1. Should `grill` ship as public in v0.5, or should it first land as shared behavior behind `to-prd` and `prototype`?
-2. Does `decision-map` pass enough route-conflict negatives to justify a public skill in v0.5?
-3. Should `skill-audit` be public in v0.5, or required only as a shared workflow/reference?
+1. Does the source-validated shared grilling behavior justify a separate public `grill` invocation after maintainer acceptance and independent skill-quality review?
+2. Does `decision-map` provide enough direct-invocation value beyond its source-validated shared reference to justify public exposure?
+3. Does `skill-audit` provide enough direct-invocation value beyond its source-validated shared workflow to justify public exposure?
 4. Which local Spark characterization evals are required before any Spark-specific implementation routing is more than provisional?
 
 ---
@@ -725,4 +755,4 @@ Any future runtime/release claim must name installed plugin root, source root, c
 
 ## 19. Next Action
 
-If this PRD direction is accepted, slice V050-001 through V050-007 into focused tasks. The first implementation slice should be V050-001 because every later skill addition depends on the shared skill-quality gate and updated public skill expansion policy. Do not create `skills/grill/SKILL.md`, `skills/decision-map/SKILL.md`, or `skills/skill-audit/SKILL.md` until their shared-reference slice has passed route negatives and the maintainer accepts public exposure.
+Commit the assembled feature-branch snapshot, verify it from a clean checkout, and obtain a fresh read-only review of the post-integration diff before claiming Git-delivery closeout. Keep those results separate from installed-runtime, release, UAT, and customer-readiness evidence. Do not create `skills/grill/SKILL.md`, `skills/decision-map/SKILL.md`, or `skills/skill-audit/SKILL.md` unless the corresponding optional publicization slice receives explicit maintainer acceptance and an independent skill-quality review.

@@ -1,5 +1,13 @@
 # Consumer-side Display Divergence
 
+## Canonical Lineage Facts
+
+- Canonical Owner / Source: canonical_contract
+- Hops: canonical_contract(verified)>storage(verified)>service_transform(verified)>api(verified)>frontend_renderer(verified)
+- First Confirmed Divergence: frontend_renderer
+- Fix Owner / Boundary: frontend
+- Unverified / Branched Hops: none
+
 Canonical owner token: `canonical_contract`.
 
 - The `storage` hop intentionally stores `CORRECT` or `ERROR`.

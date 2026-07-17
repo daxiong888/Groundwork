@@ -1,21 +1,21 @@
-Target Reader: Groundwork maintainers, implementation agents, clean reviewers, verifiers, and follow-up Goal Mode execution threads.
-Reader Action Needed: Use this issue map to triage, write Goal Contracts, and implement v0.5 slices in the recommended order; do not treat it as runtime, release, UAT, marketplace, or installed-plugin evidence.
-Decision Supported: Which v0.5 slices should run first, which slices are optional publicization gates, which files each slice owns, and what evidence is required for independent Goal Mode implementation and verification.
+Target Reader: Groundwork maintainers, clean reviewers, verifiers, and any future HITL publicization decision owners.
+Reader Action Needed: Use this issue map as the canonical source-state and conditional-gate index. All default slices are source-implemented, the intended feature-branch Git boundary is assembled, and post-integration fresh read-only review plus committed-snapshot clean-checkout verification remain open alongside the optional publicization decisions. Do not treat this file as runtime, release, UAT, marketplace, or installed-plugin evidence.
+Decision Supported: Which default slices have completed source implementation, which post-integration Git-delivery evidence remains open, which optional publicization gates remain blocked, and what evidence is still required before any stronger readiness or public-surface claim.
 Artifact Type: issue map.
-Source of Truth: `docs/prd-v0.5-prototype-first-skill-expansion.md` plus maintainer-supplied recommended implementation order captured in the review conversation on 2026-06-24.
-Scope: Issue decomposition for Groundwork v0.5 public skill expansion policy, skill-quality gate, role separation, lazy runtime capability boundary, setup/capability seed guidance, Prototype Lab references, visual handoff packet, shared skill-audit, shared grilling, shared decision mapping, and v0.5 regression coverage.
-Out of Scope: Implementing any slice, creating remote tracker issues, creating branches, committing, pushing, opening PRs, mutating plugin metadata, refreshing installed plugin cache, claiming runtime execution, claiming selector enforcement, claiming UAT/release/customer readiness, or creating public `grill`, `decision-map`, or `skill-audit` skills by default.
+Source of Truth: `docs/prd-v0.5-prototype-first-skill-expansion.md` plus maintainer-supplied recommended implementation order captured in the review conversation on 2026-06-24 and maintainer directive GW-PROT-ANNOT-001 supplied on 2026-07-16.
+Scope: Issue decomposition for Groundwork v0.5 public skill expansion policy, skill-quality gate, role separation, lazy runtime capability boundary, setup/capability seed guidance, Prototype Lab references, annotation presentation carry-through, visual handoff packet, shared skill-audit, shared grilling, shared decision mapping, and v0.5 regression coverage.
+Out of Scope: Treating this issue map itself as implementation evidence, reopening completed default slices without new source evidence, creating remote tracker issues, creating branches, committing, pushing, opening PRs, mutating plugin metadata, refreshing installed plugin cache, claiming runtime execution, claiming selector enforcement, claiming UAT/release/customer readiness, or creating public `grill`, `decision-map`, or `skill-audit` skills by default.
 Evidence Level: Planning and source-validation issue map derived from local PRD/source inspection and the supplied recommended order. This file is not runtime evidence and does not prove installed plugin, marketplace, browser, worktree, subagent, selector, UAT, release, or customer readiness.
 Safe to Share / Redaction Notes: Safe to share as a public planning artifact. It contains no secrets, credentials, private URLs, cookies, PII, production data, raw traces, or sensitive logs.
-Last Updated: 2026-06-24.
+Last Updated: 2026-07-17.
 
 # v0.5 Prototype-first Skill Expansion Issue Map
 
 ## Issue 集合摘要
 
-本 issue map 将 `docs/prd-v0.5-prototype-first-skill-expansion.md` 拆成可由 Goal Mode 独立推进的垂直 slice。每个 slice 都保留自己的范围、主文件、明确范围外、硬负例、检查命令、角色分离和证据边界；进入执行前仍应由 `triage` / `write-plan` 生成具体 Goal Contract。
+本 issue map 记录 `docs/prd-v0.5-prototype-first-skill-expansion.md` 各垂直 slice 的当前 canonical 状态。默认实施 slice 已全部达到 `implemented_source_validated`；九个此前未跟踪的必需源码文件现已纳入 intended feature-branch Git boundary；由于当前快照又融合了已合并的 dispatch 测试简化并删除了评审发现的死代码，旧 clean-review 结论已被取代，仍需 fresh read-only source review 与 committed-snapshot clean-checkout 验证；只有 V050-003B、V050-004B、V050-006B 保持 HITL-gated `missing_fields`。
 
-推荐默认实施顺序：
+历史默认实施顺序（当前均已完成 source implementation / local source validation）：
 
 1. V050-001: Public Skill Expansion Policy and Skill-quality Gate
 2. V050-001A: Role Separation Hard Gate
@@ -23,21 +23,23 @@ Last Updated: 2026-06-24.
 4. V050-002: Setup Guidance and Capability Seed Handling
 5. V050-005A: Prototype Decision Capture and Contract Boundary
 6. V050-005C: Visual Handoff Packet and Verify Lens
-7. V050-005B: UI Variants and Logic Lab
-8. V050-006A: Shared Skill-audit Workflow / Reference
-9. V050-003A: Shared Grilling Loop and Route Negatives
-10. V050-004A: Shared Decision Mapping Reference
-11. V050-007: v0.5 Regression Suite
+7. GW-PROT-ANNOT-001: Annotation Presentation Decision Carry-through
+8. V050-005B: UI Variants and Logic Lab
+9. V050-006A: Shared Skill-audit Workflow / Reference
+10. V050-003A: Shared Grilling Loop and Route Negatives
+11. V050-004A: Shared Decision Mapping Reference
+12. V050-007: v0.5 Regression Suite
 
-`V050-003B`、`V050-004B`、`V050-006B` 是条件 publicization slices，不是默认必做项。它们只能在对应 shared-reference slice 通过 route negatives、hard-negative evals 和 maintainer public exposure acceptance 后进入 Goal Mode。
+`V050-003B`、`V050-004B`、`V050-006B` 是条件 publicization slices，不是默认必做项。其 shared-reference 前置 slice 已 source-implemented；它们仍须获得明确 maintainer public exposure acceptance 和独立 skill-quality review，才能进入实现。
 
 ## 来源
 
 - Canonical PRD: `docs/prd-v0.5-prototype-first-skill-expansion.md`
-- PRD status: accepted draft PRD baseline; implementation must wait until issue-slice clarifications are reflected in issue map.
+- PRD status: accepted canonical v0.5.x baseline; all default slices are implemented and locally source-validated. The intended feature-branch Git boundary is assembled; post-integration fresh read-only review and committed-snapshot clean-checkout verification remain open, and the three optional publicization slices remain HITL-gated.
 - AC source: PRD section `14. Acceptance Criteria`, AC-A through AC-D.
 - Recommended order source: maintainer-supplied pasted text file, read on 2026-06-24.
-- Artifact promotion: required because this issue map will drive future Goal Mode implementation, verification, handoff, and possible remote issue creation.
+- Annotation follow-up source: PRD requirement FR-533 and section `GW-PROT-ANNOT-001`, accepted by maintainer directive on 2026-07-16.
+- Artifact promotion: satisfied; this issue map is the canonical source-state and future conditional-gate index.
 
 ## Field Semantics
 
@@ -46,12 +48,13 @@ Last Updated: 2026-06-24.
 - `Explicit non-goals`: work that must not be bundled into the slice.
 - `Hard-negative evals`: dangerous overclaims or routing failures the slice must cover or preserve.
 - `Checks`: fastest relevant local checks expected for closeout. Runtime/cache claims require separate installed-plugin evidence and are not implied.
+- `Verification Evidence Needed`: retained acceptance-evidence contract. For completed slices, actual unresolved items are listed only under `Goal Contract Missing Fields`, `Runtime Missing Fields`, `Ready-for-Agent Missing Fields`, `Git Delivery Missing Fields`, or an explicit clean-review status.
 - `Role separation / evidence boundary`: how self-check, clean review, independent verification, runtime evidence, and readiness claims must be separated.
-- `Goal Mode independence`: why the slice can be implemented and verified independently once dependencies are satisfied.
-- `Implementation Runtime Candidate`: a routing preference for future Goal Contract generation, not evidence that the runtime is available or executed.
+- `Goal Mode independence`: historical decomposition rationale for completed slices, or the remaining bounded gate for conditional slices.
+- `Implementation Runtime Candidate`: used only by unresolved conditional slices; completed slices instead record source implementation history without inferring runtime evidence.
 - `Product Runtime Policy Surface`: product runtime policy or routing surfaces touched by the slice.
 - `Product Runtime Execution Covered`: concrete product/runtime execution evidence covered by the slice. For this issue map, this is normally `none`.
-- `Goal Contract Status`: this issue map does not generate final Goal Contracts; it only marks whether a future contract can be generated by `triage` / `write-plan`.
+- `Goal Contract Status`: `source_implementation_complete` for completed default slices and `missing_fields` for HITL-gated conditional publicization slices.
 
 ## Issue 草案
 
@@ -59,12 +62,16 @@ Last Updated: 2026-06-24.
 
 Goal: Replace fixed public-skill-count thinking with a quality-gated public skill expansion policy and a shared skill-quality checklist before any new public skill is added.
 
-Execution: AFK candidate after Goal Contract generation.
+Current State: `implemented_source_validated`.
+
+Execution: Source implementation and deterministic local validation are complete.
+
+Source Implementation History: commit `2549e08` (`docs(v050): 增加公共技能质量门禁`).
 
 Contract Impact: docs / shared guardrail / verification contract.
 
-Blockers:
-- None beyond accepted PRD source and Goal Contract generation for the implementation run.
+Dependencies:
+- Satisfied: accepted PRD source.
 
 Scope:
 - Update repo guidance so public skill expansion is allowed only under accepted scope, quality gates, routing gates, and eval gates.
@@ -112,43 +119,44 @@ Role separation / evidence boundary:
 - Runtime / Plugin Evidence should be reported as `Not claimed. Source-validation only.` unless cache/source equivalence is separately refreshed and named.
 
 Goal Mode independence:
-- This is the foundation slice and has no implementation dependency beyond PRD acceptance and this issue map.
-- It can be implemented in one Goal Mode thread because it does not require public skill creation or runtime execution.
+- This foundation slice had no implementation dependency beyond PRD acceptance and this issue map.
+- Its source implementation is complete without creating a public skill or claiming runtime execution.
 
-Implementation Task Type Candidate: `write_implementation`
-Implementation Runtime Candidate: `codex_app_managed_worktree_thread`
+Implementation Task Type: `completed_source_implementation`
+Implementation Runtime Evidence: `not_claimed`; commit/source history is not runtime evidence.
 Product Runtime Covered: `none`
-Isolation Needed:
-- context: `thread`
-- filesystem: `codex_managed_worktree`
-- diff surface: `required`
-Parallelization Candidate:
-- eligible: no
+Isolation Record: Historical implementation topology is not used as current evidence.
+Parallelization Status:
+- eligible: not applicable; source implementation is complete.
 - conflict group: `v050-foundation-policy`
 - dependency group: none
-- merge order hint: must land before all later v0.5 slices.
-Goal Contract Status: `ready_for_triage_contract_generation`
+- merge order status: satisfied before dependent slices.
+Goal Contract Status: `source_implementation_complete`
 Goal Contract Missing Fields:
-- Branch/worktree choice for the actual implementation run.
+- None for source closeout.
 Runtime Missing Fields:
 - Installed plugin cache/source refresh is not required for source-validation closeout; required only if runtime claims are made.
 Ready-for-Agent Missing Fields:
-- Stable remote issue ID is optional and not required for local implementation.
-Triage Recommendation Candidate: `ready-for-agent candidate`
+- None for source closeout; a stable remote issue ID remains optional.
+Triage Recommendation Candidate: `source-closeout complete`
 
 Next action:
-- Run `triage` / `write-plan` for V050-001 and generate the concrete Goal Contract before implementation.
+- Preserve the public-surface gate and its regression coverage; collect separate qualifying evidence only for stronger runtime or release claims.
 
 ### V050-001A: Role Separation Hard Gate
 
 Goal: Define material role separation so self-check, clean review, independent verification, and closeout authority cannot be collapsed into one role/session for material changes.
 
-Execution: AFK candidate after Goal Contract generation.
+Current State: `implemented_source_validated`.
+
+Execution: Source implementation and deterministic local validation are complete.
+
+Source Implementation History: commit `980ed2c` (`docs(v050): 增加角色分离硬门禁`).
 
 Contract Impact: shared guardrail / skill closeout contract / eval contract.
 
-Blockers:
-- V050-001 should land first so role separation can reference the accepted skill-quality/public-surface policy.
+Dependencies:
+- Satisfied: V050-001 source implementation.
 
 Scope:
 - Add role identity and authority for designer/planner, implementer, clean reviewer, verifier, and coordinator.
@@ -200,43 +208,44 @@ Role separation / evidence boundary:
 - `verify` must block or mark unverified when material readiness depends only on same-session evidence.
 
 Goal Mode independence:
-- It depends only on V050-001 policy language and can be implemented independently from runtime capability and prototype work.
-- Its verification is source/eval focused and does not need runtime adapter execution.
+- Its V050-001 dependency is satisfied.
+- Its completed source/eval verification did not require runtime adapter execution.
 
-Implementation Task Type Candidate: `write_implementation`
-Implementation Runtime Candidate: `codex_app_managed_worktree_thread`
+Implementation Task Type: `completed_source_implementation`
+Implementation Runtime Evidence: `not_claimed`; commit/source history is not runtime evidence.
 Product Runtime Covered: `none`
-Isolation Needed:
-- context: `thread`
-- filesystem: `codex_managed_worktree`
-- diff surface: `required`
-Parallelization Candidate:
-- eligible: no
+Isolation Record: Historical implementation topology is not used as current evidence.
+Parallelization Status:
+- eligible: not applicable; source implementation is complete.
 - conflict group: `v050-role-separation`
 - dependency group: `v050-foundation-policy`
-- merge order hint: land after V050-001 and before V050-001B, V050-005A, V050-006A, and V050-003A.
-Goal Contract Status: `ready_for_triage_contract_generation`
+- merge order status: satisfied after V050-001 and before dependent slices.
+Goal Contract Status: `source_implementation_complete`
 Goal Contract Missing Fields:
-- Branch/worktree choice for the actual implementation run.
+- None for source closeout.
 Runtime Missing Fields:
 - None for source-validation checks.
 Ready-for-Agent Missing Fields:
-- Stable remote issue ID is optional and not required for local implementation.
-Triage Recommendation Candidate: `ready-for-agent candidate`
+- None for source closeout; a stable remote issue ID remains optional.
+Triage Recommendation Candidate: `source-closeout complete`
 
 Next action:
-- After V050-001 lands, run `triage` / `write-plan` for V050-001A and generate a Goal Contract scoped to role-separation files and evals.
+- Preserve role-separation regressions and require a fresh reviewer for future material clean-review claims.
 
 ### V050-001B: Lazy Runtime Capability and Selector Boundary
 
 Goal: Define lazy runtime capability discovery, selector-enforcement evidence, model profiles, and runtime mismatch handling without assuming requested runtime/model support.
 
-Execution: AFK candidate after Goal Contract generation.
+Current State: `implemented_source_validated`.
+
+Execution: Source implementation and deterministic local validation are complete.
+
+Source Implementation History: commit `fe588c6` (`docs(v050): 增加运行时能力边界`).
 
 Contract Impact: runtime routing contract / shared guardrail / eval contract.
 
-Blockers:
-- V050-001 and V050-001A should land first so runtime capability claims inherit quality-gate and role-separation boundaries.
+Dependencies:
+- Satisfied: V050-001 and V050-001A source implementations.
 
 Scope:
 - Add `capability_status` and `selector_enforcement` statuses.
@@ -289,45 +298,46 @@ Role separation / evidence boundary:
 - This slice may add routing recommendations, but not execution evidence.
 
 Goal Mode independence:
-- It depends on V050-001 and V050-001A, then can be implemented without prototype, grill, decision-map, or skill-audit work.
-- Its hard negatives are self-contained in runtime capability fixtures.
+- Its V050-001 and V050-001A dependencies are satisfied.
+- Its source implementation and self-contained runtime-capability fixtures are complete without claiming a concrete runtime execution.
 
-Implementation Task Type Candidate: `write_implementation`
-Implementation Runtime Candidate: `codex_app_managed_worktree_thread`
+Implementation Task Type: `completed_source_implementation`
+Implementation Runtime Evidence: `not_claimed`; commit/source history is not runtime evidence.
 Product Runtime Covered: `none`
 Product Runtime Policy Surface: `dispatch / implement / verify routing policy only`
 Product Runtime Execution Covered: `none`
-Isolation Needed:
-- context: `thread`
-- filesystem: `codex_managed_worktree`
-- diff surface: `required`
-Parallelization Candidate:
-- eligible: no
+Isolation Record: Historical implementation topology is not used as current evidence.
+Parallelization Status:
+- eligible: not applicable; source implementation is complete.
 - conflict group: `v050-runtime-capability`
 - dependency group: `v050-foundation-policy`, `v050-role-separation`
-- merge order hint: land before V050-002 and before decision-map routing references.
-Goal Contract Status: `ready_for_triage_contract_generation`
+- merge order status: satisfied before V050-002 and V050-004A.
+Goal Contract Status: `source_implementation_complete`
 Goal Contract Missing Fields:
-- Branch/worktree choice for the actual implementation run.
+- None for source closeout.
 Runtime Missing Fields:
-- Runtime selector availability is intentionally unknown unless the implementation run inspects a concrete tool/runtime.
+- Runtime selector availability remains intentionally unknown unless a separate qualifying runtime run inspects a concrete tool/runtime.
 Ready-for-Agent Missing Fields:
-- Stable remote issue ID is optional and not required for local implementation.
-Triage Recommendation Candidate: `ready-for-agent candidate`
+- None for source closeout; a stable remote issue ID remains optional.
+Triage Recommendation Candidate: `source-closeout complete`
 
 Next action:
-- After V050-001 and V050-001A land, run `triage` / `write-plan` for V050-001B and generate a Goal Contract scoped to runtime capability files and evals.
+- Preserve selector-evidence and runtime-mismatch regressions; do not upgrade source validation into runtime enforcement evidence.
 
 ### V050-002: Setup Guidance and Capability Seed Handling
 
 Goal: Add lightweight setup guidance and dated capability seed handling without creating public `setup-groundwork` skill surface.
 
-Execution: AFK candidate after Goal Contract generation.
+Current State: `implemented_source_validated`.
+
+Execution: Source implementation and deterministic local validation are complete.
+
+Source Implementation History: commit `41c70fa` (`docs(v050): 增加能力种子处理指南`).
 
 Contract Impact: docs / capability seed evidence boundary.
 
-Blockers:
-- V050-001B should land first so capability seed guidance can reuse the shared runtime/evidence status language.
+Dependencies:
+- Satisfied: V050-001B source implementation.
 
 Scope:
 - Document how capability seeds are recorded as dated user-supplied observations.
@@ -375,43 +385,44 @@ Role separation / evidence boundary:
 - Runtime / Plugin Evidence should be `Not claimed. Source-validation only.` by default.
 
 Goal Mode independence:
-- It depends on V050-001B and can be implemented independently from prototype and publicization slices.
-- Verification is limited to docs consistency and absence of public setup skill surface.
+- Its V050-001B dependency is satisfied.
+- Source validation remains limited to documentation consistency and absence of a public setup skill surface.
 
-Implementation Task Type Candidate: `write_implementation`
-Implementation Runtime Candidate: `codex_app_managed_worktree_thread`
+Implementation Task Type: `completed_source_implementation`
+Implementation Runtime Evidence: `not_claimed`; commit/source history is not runtime evidence.
 Product Runtime Covered: `none`
-Isolation Needed:
-- context: `thread`
-- filesystem: `codex_managed_worktree`
-- diff surface: `required`
-Parallelization Candidate:
-- eligible: yes after V050-001B lands.
+Isolation Record: Historical implementation topology is not used as current evidence.
+Parallelization Status:
+- eligible: not applicable; source implementation is complete.
 - conflict group: `v050-capability-seeds`
 - dependency group: `v050-runtime-capability`
-- merge order hint: may land before prototype work once runtime boundary is stable.
-Goal Contract Status: `ready_for_triage_contract_generation`
+- merge order status: satisfied after V050-001B.
+Goal Contract Status: `source_implementation_complete`
 Goal Contract Missing Fields:
-- Branch/worktree choice for the actual implementation run.
+- None for source closeout.
 Runtime Missing Fields:
-- Current official-doc verification is required only if the implementation claims current OpenAI/Codex behavior.
+- Current official-doc verification remains required only for a future current-behavior claim.
 Ready-for-Agent Missing Fields:
-- Stable remote issue ID is optional and not required for local implementation.
-Triage Recommendation Candidate: `ready-for-agent candidate`
+- None for source closeout; a stable remote issue ID remains optional.
+Triage Recommendation Candidate: `source-closeout complete`
 
 Next action:
-- After V050-001B lands, run `triage` / `write-plan` for V050-002 and generate a Goal Contract scoped to capability seed docs and runtime-boundary references.
+- Preserve dated-source labeling and continue to treat capability seeds as inputs rather than current runtime truth.
 
 ### V050-005A: Prototype Decision Capture and Contract Boundary
 
 Goal: Make `prototype` capture decisions and contract boundaries so prototype-only mock fields or client-derived logic are not promoted to backend/API truth.
 
-Execution: AFK candidate after Goal Contract generation.
+Current State: `implemented_source_validated`.
+
+Execution: Source implementation and deterministic local validation are complete. Any future runtime/browser/UAT/release claim requires a separate evidence run.
+
+Source Implementation History: commit `f744259` (`docs(v050): 增加原型决策与合同边界`).
 
 Contract Impact: prototype output contract / frontend-backend evidence boundary / eval contract.
 
-Blockers:
-- V050-001A should land first so prototype contract-boundary output inherits role-separation and verification authority rules.
+Dependencies:
+- The V050-001A role-separation contract is present in current source and remains the governing authority boundary.
 
 Scope:
 - Add focused prototype references for decision capture and contract-boundary handling.
@@ -457,43 +468,44 @@ Role separation / evidence boundary:
 - Browser/run/UAT/release claims remain out of scope.
 
 Goal Mode independence:
-- It depends on V050-001A role separation and can be implemented before visual packet or UI variants.
-- It has focused file ownership under `skills/prototype/` and existing prototype evals.
+- Its V050-001A dependency is satisfied.
+- Its focused source and eval implementation is complete under `skills/prototype/`.
 
-Implementation Task Type Candidate: `write_implementation`
-Implementation Runtime Candidate: `codex_app_managed_worktree_thread`
+Implementation Task Type: `completed_source_implementation`
+Implementation Runtime Evidence: `not_claimed`; commit/source history is not runtime evidence.
 Product Runtime Covered: `none`
-Isolation Needed:
-- context: `thread`
-- filesystem: `codex_managed_worktree`
-- diff surface: `required`
-Parallelization Candidate:
-- eligible: no
+Isolation Record: Historical implementation topology is not used as current evidence.
+Parallelization Status:
+- eligible: not applicable; source implementation is complete.
 - conflict group: `v050-prototype-boundary`
 - dependency group: `v050-role-separation`
-- merge order hint: land before V050-005B and V050-005C.
-Goal Contract Status: `ready_for_triage_contract_generation`
+- merge order status: satisfied for V050-005B and V050-005C.
+Goal Contract Status: `source_implementation_complete`
 Goal Contract Missing Fields:
-- Branch/worktree choice for the actual implementation run.
+- None for the current source implementation.
 Runtime Missing Fields:
 - None for source-validation checks.
 Ready-for-Agent Missing Fields:
-- Stable remote issue ID is optional and not required for local implementation.
-Triage Recommendation Candidate: `ready-for-agent candidate`
+- None for source closeout; a stable remote issue ID remains optional.
+Triage Recommendation Candidate: `source-closeout complete`
 
 Next action:
-- After V050-001A lands, run `triage` / `write-plan` for V050-005A and generate a Goal Contract scoped to prototype decision and contract-boundary files.
+- Preserve focused regression coverage and collect separate qualifying evidence only when a stronger runtime/browser/UAT/release claim is requested.
 
 ### V050-005C: Visual Handoff Packet and Verify Lens
 
 Goal: Add visual handoff packet rules and verification lens while preserving the boundary that visual packets are communication/review artifacts, not readiness evidence.
 
-Execution: AFK candidate after Goal Contract generation.
+Current State: `implemented_source_validated`.
+
+Execution: Shared packet, public-entry routing, handoff, and verify source contracts plus deterministic local coverage are complete. Browser/runtime evidence remains separate.
+
+Source Implementation History: commit `39a7fd9` (`docs(v050): 增加视觉交接包边界`).
 
 Contract Impact: visual handoff contract / verification evidence boundary.
 
-Blockers:
-- V050-005A should land first so visual handoff packet rules can reuse prototype mock/contract-boundary terminology.
+Dependencies:
+- V050-005A is present and locally source-validated, so visual handoff rules reuse its prototype contract-boundary terminology.
 
 Scope:
 - Add shared visual handoff packet guidance.
@@ -539,44 +551,136 @@ Role separation / evidence boundary:
 - UAT/customer readiness is a separate verification claim.
 
 Goal Mode independence:
-- It depends on V050-005A, then can be implemented independently from UI variants and logic lab.
-- It touches shared guidance plus three skill references but does not require public skill surface changes.
+- Its V050-005A dependency is satisfied.
+- Its completed shared guidance and skill references did not require a public skill surface change.
 
-Implementation Task Type Candidate: `write_implementation`
-Implementation Runtime Candidate: `codex_app_managed_worktree_thread`
+Implementation Task Type: `completed_source_implementation`
+Implementation Runtime Evidence: `not_claimed`; commit/source history is not runtime evidence.
 Product Runtime Covered: `none`
-Isolation Needed:
-- context: `thread`
-- filesystem: `codex_managed_worktree`
-- diff surface: `required`
-Parallelization Candidate:
-- eligible: no
+Isolation Record: Historical implementation topology is not used as current evidence.
+Parallelization Status:
+- eligible: not applicable; source implementation is complete.
 - conflict group: `v050-visual-handoff`
 - dependency group: `v050-prototype-boundary`
-- merge order hint: land after V050-005A and before broad visual/prototype regression aggregation.
-Goal Contract Status: `ready_for_triage_contract_generation`
+- merge order status: satisfied after V050-005A.
+Goal Contract Status: `source_implementation_complete`
 Goal Contract Missing Fields:
-- Branch/worktree choice for the actual implementation run.
+- None for the current source implementation.
 Runtime Missing Fields:
 - Browser/runtime evidence is intentionally not produced by this source-validation slice.
 Ready-for-Agent Missing Fields:
-- Stable remote issue ID is optional and not required for local implementation.
-Triage Recommendation Candidate: `ready-for-agent candidate`
+- None for source closeout; a stable remote issue ID remains optional.
+Triage Recommendation Candidate: `source-closeout complete`
 
 Next action:
-- After V050-005A lands, run `triage` / `write-plan` for V050-005C and generate a Goal Contract scoped to visual handoff packet and verify lens files.
+- Preserve prototype/handoff/verify carry-through regressions and collect separate browser/runtime evidence only for a matching readiness claim.
+
+### GW-PROT-ANNOT-001: Annotation Presentation Decision Carry-through
+
+Goal: Close the prototype annotation contract gap by making presentation decisions conditional, repeatable, stable by ID, and traceable through visual packet, handoff, and UI verification.
+
+Current State: `implemented_source_validated`.
+
+Execution: Source implementation and deterministic local validation are complete for the current hardening worktree.
+
+Source Implementation Baseline: commit `b6aef26` (`feat(prototype): 增加批注展示边界`); current canonical source includes the subsequent hardening and post-review integration changes in this feature-branch snapshot.
+
+Clean Review Status: `superseded_by_post_review_integration`; the earlier reviewer result does not cover the current snapshot after integrating the already-merged dispatch-test simplification and removing review-identified dead helpers. A new fresh read-only source review is required.
+
+Git Delivery Status: `boundary_assembled_pending_clean_checkout`; the nine previously untracked source files referenced by tracked tests, coverage, or CI are included in the intended feature-branch Git boundary. Delivery closeout still requires a committed snapshot, clean-checkout verification, and PR publication evidence.
+
+Evidence Boundary: Local source, schema, unit, coverage-manifest, CSV/JSON, whitespace, and runtime-package-boundary checks only. No installed-plugin, runtime execution, browser, UAT, marketplace, release, customer, selector-enforcement, or cache/source-refresh readiness is claimed.
+
+Dependencies:
+- V050-005A and V050-005C source contracts, both present and locally source-validated.
+
+Scope:
+- Add the conditional, repeatable `Annotation Presentation Decision` to the formal prototype output template and visual handoff required sections.
+- Require one stable `Annotation ID`, `Annotation Purpose`, and `Presentation Disposition` per annotation item or homogeneous group.
+- Require a same-block `Audience-facing Source` for `retain_as_audience_content_candidate` and a same-block `Companion Reference` for `separate_review_companion`.
+- Require handoff to preserve every decision block inline or cite one resolvable canonical decision reference plus the complete ID set.
+- Require UI verification to compare carry-through and conditional fields per ID.
+
+Primary files:
+- `skills/prototype/DECISION-CAPTURE.md`
+- `skills/_shared/VISUAL-HANDOFF-PACKET.md`
+- `skills/handoff/COMPLEX-HANDOFF-BRANCHES.md`
+- `skills/verify/UI-READINESS-BRANCH.md`
+- `evals/prompts/prototype-annotation.csv`
+- `evals/fixtures/prototype-annotation/`
+- `evals/test_prototype_annotation.py`
+- the smallest shared evaluator/schema files required to wire the finite annotation contract
+
+Explicit non-goals:
+- Do not create a public `visual-handoff` or annotation skill.
+- Do not treat prototype, packet, handoff, or source-validation output as browser/runtime/UAT/release evidence.
+- Do not broaden unrelated prototype, routing, runtime, or release behavior.
+
+Acceptance Criteria:
+- The prototype `Output Template` and visual packet `Required Sections` expose the conditional, repeatable block.
+- Every applicable block has a stable ID, purpose, and disposition, with the required same-block conditional field for retain or separate.
+- Handoff preserves blocks inline or provides a resolvable canonical reference and complete ID set.
+- Verify emits one carry-through check per source ID and identifies missing, renamed, duplicated, or mismatched fields.
+- The trace-ready annotation suite rejects missing same-block authority, sibling-source promotion, purpose/disposition drift, invalid or empty conditional fields, incomplete ID sets, internal-aid retention, hidden structured content, and readiness overclaim across prototype, handoff, and per-ID verify carry-through rows.
+- The PRD and this issue map contain an exact, searchable `GW-PROT-ANNOT-001` definition.
+
+Checks:
+- `git diff --check`
+- Focused source-text check for the ID, three required fields, both disposition-specific fields, handoff inline/reference modes, and per-ID verification table.
+- `python3 -B -m unittest evals.test_prototype_annotation`
+- `python3 -B evals/run_runtime.py --validate-schema --suite prototype-annotation.csv`
+- Existing focused documentation/unit tests that read the touched branch references; no runtime or installed-cache claim.
+
+Role separation / evidence boundary:
+- Implementer checks source consistency only.
+- The earlier fresh read-only review is recorded as superseded because it predates the post-review integration changes; a new read-only reviewer must inspect the committed snapshot without becoming an implementer.
+- A later verifier must not upgrade this source diff into browser/runtime/UAT/release or customer-readiness evidence.
+
+Goal Mode independence:
+- Its V050-005A and V050-005C dependencies are satisfied.
+- The source implementation and intended Git boundary are complete; post-integration fresh review and committed-snapshot clean-checkout verification remain separate and open.
+
+Implementation Task Type: `completed_source_implementation`
+Implementation Runtime Evidence: `not_claimed`; commit/source history is not runtime evidence.
+Product Runtime Covered: `none`
+Isolation Record: Historical implementation topology is not used as current evidence.
+Parallelization Status:
+- eligible: post-integration source review can run after the committed snapshot is available; source implementation itself is complete.
+- conflict group: `gw-prototype-annotation`
+- dependency group: `v050-prototype-boundary`, `v050-visual-handoff`
+- merge order status: source implementation complete after V050-005A and V050-005C.
+Goal Contract Status: `source_implementation_complete`
+Goal Contract Missing Fields:
+- None for source implementation.
+Runtime Missing Fields:
+- Installed-plugin, runtime, browser, UAT, marketplace, release, and cache/source equivalence evidence remain intentionally unclaimed.
+Ready-for-Agent Missing Fields:
+- None for source implementation; post-integration review is an evidence-closeout step, not an implementation-input gap.
+Git Delivery Missing Fields:
+- None for source-file inclusion; the four prototype-annotation fixtures, canonical UAT record, two prompt suites, and two test modules are in the intended feature-branch boundary.
+- Pending evidence: committed-snapshot identity, clean-checkout verification, fresh post-integration read-only review, and PR publication.
+Triage Recommendation Candidate: `source implemented; post-integration review and clean-checkout evidence pending`
+
+Next action:
+- Commit only the assembled intended paths, verify the committed snapshot from a clean checkout, obtain a fresh post-integration read-only review, and publish the reviewable PR without upgrading the evidence layer.
 
 ### V050-005B: UI Variants and Logic Lab
 
 Goal: Add focused prototype references for UI variants and logic/state lab without turning exploratory prototype output into backend contract truth or runtime tooling.
 
-Execution: AFK candidate after Goal Contract generation.
+Current State: `implemented_source_validated`.
+
+Execution: Source implementation and deterministic local validation are complete.
+
+Source Implementation History: commit `20479e1` (`docs(v050): 增加原型变体与逻辑实验`).
 
 Contract Impact: prototype branch contract / exploratory artifact boundary.
 
-Blockers:
-- V050-005A should land first so UI variant and logic lab references inherit the prototype contract-boundary model.
-- Coordinate with V050-005C if both implementation runs edit the same `skills/prototype/SKILL.md` sections.
+Dependencies:
+- Satisfied: the V050-005A prototype contract-boundary source is present and locally source-validated.
+
+Historical File Conflict Check:
+- Satisfied during implementation; no current prerequisite remains.
 
 Scope:
 - Define when UI variants are appropriate: material visual design uncertainty.
@@ -620,43 +724,44 @@ Role separation / evidence boundary:
 - Runtime and browser readiness are not claimed.
 
 Goal Mode independence:
-- It depends on V050-005A but does not depend on V050-005C once contract-boundary language is stable.
-- It is intentionally smaller than the full visual packet slice and can be verified by source/eval checks.
+- Its V050-005A dependency is satisfied.
+- Its bounded source/eval implementation is complete without creating backend contract truth.
 
-Implementation Task Type Candidate: `write_implementation`
-Implementation Runtime Candidate: `codex_app_managed_worktree_thread`
+Implementation Task Type: `completed_source_implementation`
+Implementation Runtime Evidence: `not_claimed`; commit/source history is not runtime evidence.
 Product Runtime Covered: `none`
-Isolation Needed:
-- context: `thread`
-- filesystem: `codex_managed_worktree`
-- diff surface: `required`
-Parallelization Candidate:
-- eligible: yes after V050-005A lands if V050-005C does not edit the same `prototype/SKILL.md` sections.
+Isolation Record: Historical implementation topology is not used as current evidence.
+Parallelization Status:
+- eligible: not applicable; source implementation is complete.
 - conflict group: `v050-prototype-lab`
 - dependency group: `v050-prototype-boundary`
-- merge order hint: resolve with V050-005C order if both touch the same prototype section.
-Goal Contract Status: `ready_for_triage_contract_generation`
+- merge order status: satisfied after V050-005A.
+Goal Contract Status: `source_implementation_complete`
 Goal Contract Missing Fields:
-- Branch/worktree choice for the actual implementation run.
+- None for source closeout.
 Runtime Missing Fields:
 - None for source-validation checks.
 Ready-for-Agent Missing Fields:
-- Stable remote issue ID is optional and not required for local implementation.
-Triage Recommendation Candidate: `ready-for-agent candidate`
+- None for source closeout; a stable remote issue ID remains optional.
+Triage Recommendation Candidate: `source-closeout complete`
 
 Next action:
-- After V050-005A lands and file-conflict risk with V050-005C is checked, run `triage` / `write-plan` for V050-005B.
+- Preserve the UI-variant and logic-lab boundaries and their hard-negative coverage.
 
 ### V050-006A: Shared Skill-audit Workflow / Reference
 
 Goal: Add skill-audit as a required shared workflow/reference for public skill additions and material skill changes without creating a public `skill-audit` skill.
 
-Execution: AFK candidate after Goal Contract generation.
+Current State: `implemented_source_validated`.
+
+Execution: Source implementation and deterministic local validation are complete.
+
+Source Implementation History: commit `9602611` (`docs(v050): 增加技能审计共享流程`).
 
 Contract Impact: shared audit contract / skill-quality verification contract / eval contract.
 
-Blockers:
-- V050-001 and V050-001A should land first so audit workflow can reference both skill-quality gate and role-separation/self-approval boundary.
+Dependencies:
+- Satisfied: V050-001 and V050-001A source implementations.
 
 Scope:
 - Extend skill-quality reference with audit workflow expectations.
@@ -702,44 +807,45 @@ Role separation / evidence boundary:
 - Public skill approval remains blocked without independent quality review and maintainer acceptance where required.
 
 Goal Mode independence:
-- It depends on V050-001 and V050-001A, not on grill or decision-map work.
-- It can be implemented after role separation because its central risk is self-approval.
+- Its V050-001 and V050-001A dependencies are satisfied.
+- Its shared audit source and eval implementation is complete without creating a public `skill-audit` skill.
 
-Implementation Task Type Candidate: `write_implementation`
-Implementation Runtime Candidate: `codex_app_managed_worktree_thread`
+Implementation Task Type: `completed_source_implementation`
+Implementation Runtime Evidence: `not_claimed`; commit/source history is not runtime evidence.
 Product Runtime Covered: `none`
-Isolation Needed:
-- context: `thread`
-- filesystem: `codex_managed_worktree`
-- diff surface: `required`
-Parallelization Candidate:
-- eligible: yes after V050-001A lands if not touching the same `SKILL-QUALITY.md` sections as V050-001 follow-up.
+Isolation Record: Historical implementation topology is not used as current evidence.
+Parallelization Status:
+- eligible: not applicable; source implementation is complete.
 - conflict group: `v050-skill-audit-shared`
 - dependency group: `v050-foundation-policy`, `v050-role-separation`
-- merge order hint: land before any publicization slice.
-Goal Contract Status: `ready_for_triage_contract_generation`
+- merge order status: satisfied before any optional publicization decision.
+Goal Contract Status: `source_implementation_complete`
 Goal Contract Missing Fields:
-- Branch/worktree choice for the actual implementation run.
+- None for source closeout.
 Runtime Missing Fields:
 - None for source-validation checks.
 Ready-for-Agent Missing Fields:
-- Stable remote issue ID is optional and not required for local implementation.
-Triage Recommendation Candidate: `ready-for-agent candidate`
+- None for source closeout; a stable remote issue ID remains optional.
+Triage Recommendation Candidate: `source-closeout complete`
 
 Next action:
-- After V050-001 and V050-001A land, run `triage` / `write-plan` for V050-006A and generate a Goal Contract scoped to shared audit files and evals.
+- Preserve the shared audit and self-approval hard negatives; optional public exposure remains a separate HITL decision.
 
 ### V050-003A: Shared Grilling Loop and Route Negatives
 
 Goal: Add shared grilling behavior and route negatives without creating a public `grill` skill.
 
-Execution: AFK candidate after Goal Contract generation.
+Current State: `implemented_source_validated`.
+
+Execution: Source implementation and deterministic local validation are complete, including later feedback-loop hardening.
+
+Source Implementation History: commits `be93506` (`docs(v050): 增加共享 grilling 边界`) and `e609100` (`feat(workflow): 增强证据循环与反馈闭环`).
 
 Contract Impact: routing contract / shared workflow reference / eval contract.
 
-Blockers:
-- V050-001 and V050-001A should land first.
-- Coordinate with prototype slices if `skills/prototype/SKILL.md` edits overlap.
+Dependencies:
+- Satisfied: V050-001 and V050-001A source implementations.
+- Historical prototype-file overlap was resolved during implementation.
 
 Scope:
 - Define grilling as the route for material ambiguity where unknowns are not yet enumerable.
@@ -787,44 +893,45 @@ Role separation / evidence boundary:
 - Clean review is needed before public `grill` exposure is accepted later.
 
 Goal Mode independence:
-- It depends on V050-001 and V050-001A; it does not depend on publicization or decision mapping implementation.
-- It can be implemented as shared reference plus route evals.
+- Its V050-001 and V050-001A dependencies are satisfied.
+- Its shared reference and route eval implementation is complete without creating a public `grill` skill.
 
-Implementation Task Type Candidate: `write_implementation`
-Implementation Runtime Candidate: `codex_app_managed_worktree_thread`
+Implementation Task Type: `completed_source_implementation`
+Implementation Runtime Evidence: `not_claimed`; commit/source history is not runtime evidence.
 Product Runtime Covered: `none`
-Isolation Needed:
-- context: `thread`
-- filesystem: `codex_managed_worktree`
-- diff surface: `required`
-Parallelization Candidate:
-- eligible: yes after V050-001A lands if `prototype/SKILL.md` edits do not conflict with V050-005A/B/C.
+Isolation Record: Historical implementation topology is not used as current evidence.
+Parallelization Status:
+- eligible: not applicable; source implementation is complete.
 - conflict group: `v050-shared-grilling`
 - dependency group: `v050-foundation-policy`, `v050-role-separation`
-- merge order hint: land after prototype core boundary if both edit adjacent prototype routing sections.
-Goal Contract Status: `ready_for_triage_contract_generation`
+- merge order status: satisfied with prototype routing integration.
+Goal Contract Status: `source_implementation_complete`
 Goal Contract Missing Fields:
-- Branch/worktree choice for the actual implementation run.
+- None for source closeout.
 Runtime Missing Fields:
 - None for source-validation checks.
 Ready-for-Agent Missing Fields:
-- Stable remote issue ID is optional and not required for local implementation.
-Triage Recommendation Candidate: `ready-for-agent candidate`
+- None for source closeout; a stable remote issue ID remains optional.
+Triage Recommendation Candidate: `source-closeout complete`
 
 Next action:
-- After V050-001 and V050-001A land, and after prototype edit conflicts are checked, run `triage` / `write-plan` for V050-003A.
+- Preserve shared grilling route negatives; public `grill` exposure remains a separate HITL decision.
 
 ### V050-004A: Shared Decision Mapping Reference
 
 Goal: Add decision mapping as shared reference and route-conflict evals without creating a public `decision-map` skill.
 
-Execution: AFK candidate after Goal Contract generation.
+Current State: `implemented_source_validated`.
+
+Execution: Source implementation and deterministic local validation are complete.
+
+Source Implementation History: commit `d822907` (`docs(v050): 增加共享决策映射边界`).
 
 Contract Impact: routing contract / shared workflow reference / cognitive-budget guidance / eval contract.
 
-Blockers:
-- V050-001B should land first so decision mapping can reuse runtime/model profile and selector-evidence boundaries.
-- Coordinate with other slices if `skills/_shared/COGNITIVE-BUDGET.md` ownership overlaps.
+Dependencies:
+- Satisfied: V050-001B source implementation.
+- Historical `COGNITIVE-BUDGET.md` ownership overlap was resolved during implementation.
 
 Scope:
 - Define decision mapping for enumerable options, tradeoffs, dependencies, and decision criteria.
@@ -874,44 +981,45 @@ Role separation / evidence boundary:
 - Public decision-map exposure requires later independent route review.
 
 Goal Mode independence:
-- It depends on V050-001B because it shares cognitive/runtime profile language.
-- It can be implemented independently from public `decision-map` creation.
+- Its V050-001B dependency is satisfied.
+- Its shared reference and route-conflict eval implementation is complete without creating a public `decision-map` skill.
 
-Implementation Task Type Candidate: `write_implementation`
-Implementation Runtime Candidate: `codex_app_managed_worktree_thread`
+Implementation Task Type: `completed_source_implementation`
+Implementation Runtime Evidence: `not_claimed`; commit/source history is not runtime evidence.
 Product Runtime Covered: `none`
-Isolation Needed:
-- context: `thread`
-- filesystem: `codex_managed_worktree`
-- diff surface: `required`
-Parallelization Candidate:
-- eligible: yes after V050-001B lands if `COGNITIVE-BUDGET.md` ownership is coordinated.
+Isolation Record: Historical implementation topology is not used as current evidence.
+Parallelization Status:
+- eligible: not applicable; source implementation is complete.
 - conflict group: `v050-shared-decision-mapping`
 - dependency group: `v050-runtime-capability`
-- merge order hint: land before any public `decision-map` slice.
-Goal Contract Status: `ready_for_triage_contract_generation`
+- merge order status: satisfied before any optional public `decision-map` decision.
+Goal Contract Status: `source_implementation_complete`
 Goal Contract Missing Fields:
-- Branch/worktree choice for the actual implementation run.
+- None for source closeout.
 Runtime Missing Fields:
 - Selector enforcement evidence is not required unless final report claims it.
 Ready-for-Agent Missing Fields:
-- Stable remote issue ID is optional and not required for local implementation.
-Triage Recommendation Candidate: `ready-for-agent candidate`
+- None for source closeout; a stable remote issue ID remains optional.
+Triage Recommendation Candidate: `source-closeout complete`
 
 Next action:
-- After V050-001B lands, run `triage` / `write-plan` for V050-004A and generate a Goal Contract scoped to shared decision mapping files and evals.
+- Preserve decision-map route-conflict negatives; public exposure remains a separate HITL decision.
 
 ### V050-007: v0.5 Regression Suite
 
 Goal: Aggregate and broaden cross-suite positive, negative, and hard-negative fixtures for v0.5 routes and evidence boundaries after foundation and shared-reference slices land.
 
-Execution: AFK candidate after dependency confirmation and Goal Contract generation.
+Current State: `implemented_source_validated`.
+
+Execution: Source implementation and deterministic local validation are complete.
+
+Source Implementation History: commit `f01e166` (`test(v050): 增加回归覆盖聚合套件`) plus source regression additions for prototype annotation carry-through, UAT evidence windows, and cross-boundary contract lineage.
 
 Contract Impact: eval contract / regression coverage map.
 
-Blockers:
-- Default foundation and shared-reference slices should land first: V050-001, V050-001A, V050-001B, V050-002, V050-005A, V050-005C, V050-005B, V050-006A, V050-003A, and V050-004A.
-- Any optional publicization slice should be included only if accepted into v0.5 before this aggregation run.
+Dependencies:
+- Satisfied: all default foundation, prototype, shared-reference, and annotation source slices.
+- Optional publicization slices remain excluded because none has received the required HITL acceptance.
 
 Scope:
 - Gather hard negatives added by V050-001A, V050-001B, V050-005A/C, V050-003A, V050-004A, and V050-006A.
@@ -950,7 +1058,7 @@ Checks:
 - `git diff --check`
 - `python3 -c "import csv, pathlib; [list(csv.DictReader(open(p, newline=''))) for p in pathlib.Path('evals/prompts').glob('*.csv')]; print('csv ok')"`
 - Targeted source/eval inspection for every AC-C hard negative.
-- Runtime eval only if the implementation run explicitly refreshes or proves installed plugin cache/source equivalence; otherwise report runtime evidence as not claimed.
+- Runtime eval only if a separate qualifying evidence run explicitly refreshes or proves installed plugin cache/source equivalence; otherwise report runtime evidence as not claimed.
 
 Verification Evidence Needed:
 - Command output for the checks above.
@@ -964,32 +1072,29 @@ Role separation / evidence boundary:
 - Independent verification should map AC-C/AC-D coverage to concrete fixtures and command output.
 
 Goal Mode independence:
-- This is an aggregation slice and should run after the default foundation and shared-reference slices.
-- It can be implemented independently once dependencies have landed because it primarily owns eval prompts and coverage mapping.
+- Its default-slice dependencies are satisfied.
+- Its eval prompts and coverage mapping are source-implemented without requiring optional publicization.
 
-Implementation Task Type Candidate: `write_implementation`
-Implementation Runtime Candidate: `codex_app_managed_worktree_thread`
+Implementation Task Type: `completed_source_implementation`
+Implementation Runtime Evidence: `not_claimed`; schema/source checks are not installed-plugin runtime evidence.
 Product Runtime Covered: `none`
-Isolation Needed:
-- context: `thread`
-- filesystem: `codex_managed_worktree`
-- diff surface: `required`
-Parallelization Candidate:
-- eligible: no
+Isolation Record: Historical implementation topology is not used as current evidence.
+Parallelization Status:
+- eligible: not applicable; source implementation is complete.
 - conflict group: `v050-regression-suite`
 - dependency group: `v050-default-shared-references`
-- merge order hint: land after V050-001, V050-001A, V050-001B, V050-002, V050-005A, V050-005C, V050-005B, V050-006A, V050-003A, and V050-004A.
-Goal Contract Status: `ready_for_triage_contract_generation`
+- merge order status: satisfied after all default slices.
+Goal Contract Status: `source_implementation_complete`
 Goal Contract Missing Fields:
-- Exact list of already-merged publicization slices, if any.
+- None for source closeout; no optional publicization slice is included.
 Runtime Missing Fields:
 - Installed plugin root and cache/source equivalence are required only if runtime eval evidence is claimed.
 Ready-for-Agent Missing Fields:
-- Stable remote issue ID is optional and not required for local implementation.
-Triage Recommendation Candidate: `ready-for-agent candidate after dependency confirmation`
+- None for source closeout; a stable remote issue ID remains optional.
+Triage Recommendation Candidate: `source-closeout complete`
 
 Next action:
-- After default foundation and shared-reference slices land, run `triage` / `write-plan` for V050-007 with a dependency-confirmation preflight.
+- Preserve cross-suite regression coverage and keep installed-plugin runtime claims separate from source/schema validation.
 
 ## 条件 Publicization Slices
 
@@ -997,18 +1102,19 @@ Next action:
 
 Default Status: conditional, not default v0.5 work.
 
+Current State: `hitl_gated_missing_fields`.
+
 Execution: HITL-gated candidate. Maintainer public exposure acceptance is required before Goal Contract generation.
 
 Contract Impact: public skill surface / routing contract / eval contract.
 
 Blockers:
-- V050-003A must land first.
+- V050-003A is source-implemented and locally validated; its dependency is satisfied.
 - Maintainer must explicitly accept public `grill` exposure.
 - Independent skill-quality audit evidence must exist.
 
 Entry Gate:
-- V050-003A has landed.
-- `v0.5-grill.csv` route negatives pass under the relevant source/eval checks.
+- Satisfied locally: V050-003A has landed and its route-negative suite is source-validated.
 - Maintainer explicitly accepts public `grill` exposure.
 - Skill-quality and independent audit evidence are available.
 
@@ -1060,35 +1166,34 @@ Parallelization Candidate:
 Goal Contract Status: `missing_fields`
 Goal Contract Missing Fields:
 - Maintainer acceptance of public exposure.
-- Evidence that V050-003A route negatives passed.
 - Independent skill-quality audit result.
 Runtime Missing Fields:
 - Runtime/cache evidence only if claimed.
 Ready-for-Agent Missing Fields:
 - Maintainer acceptance of public exposure.
 - Independent skill-quality audit result.
-- Confirmed route-negative evidence from V050-003A.
 Triage Recommendation Candidate: `needs-info recommendation until entry gate is met`
 
 Next action:
-- Do not generate an implementation Goal Contract until the entry gate is satisfied; keep as conditional needs-info slice.
+- Do not generate an implementation Goal Contract until maintainer acceptance and an independent skill-quality audit are present; keep as conditional HITL needs-info slice.
 
 ### V050-004B: Public `decision-map` Skill
 
 Default Status: conditional, not default v0.5 work.
+
+Current State: `hitl_gated_missing_fields`.
 
 Execution: HITL-gated candidate. Maintainer public exposure acceptance is required before Goal Contract generation.
 
 Contract Impact: public skill surface / routing contract / eval contract.
 
 Blockers:
-- V050-004A must land first.
+- V050-004A is source-implemented and locally validated; its dependency is satisfied.
 - Maintainer must explicitly accept public `decision-map` exposure.
 - Independent skill-quality audit evidence must exist.
 
 Entry Gate:
-- V050-004A has landed.
-- Route-conflict negatives against direct answer, `to-prd`, `write-plan`, and `dispatch` pass.
+- Satisfied locally: V050-004A has landed and its route-conflict suite is source-validated.
 - Maintainer explicitly accepts public `decision-map` exposure.
 - Skill-quality and independent audit evidence are available.
 
@@ -1141,35 +1246,34 @@ Parallelization Candidate:
 Goal Contract Status: `missing_fields`
 Goal Contract Missing Fields:
 - Maintainer acceptance of public exposure.
-- Evidence that V050-004A route-conflict negatives passed.
 - Independent skill-quality audit result.
 Runtime Missing Fields:
 - Runtime/cache evidence only if claimed.
 Ready-for-Agent Missing Fields:
 - Maintainer acceptance of public exposure.
 - Independent skill-quality audit result.
-- Confirmed route-conflict evidence from V050-004A.
 Triage Recommendation Candidate: `needs-info recommendation until entry gate is met`
 
 Next action:
-- Do not generate an implementation Goal Contract until the entry gate is satisfied; keep as conditional needs-info slice.
+- Do not generate an implementation Goal Contract until maintainer acceptance and an independent skill-quality audit are present; keep as conditional HITL needs-info slice.
 
 ### V050-006B: Public `skill-audit` Skill
 
 Default Status: conditional, not default v0.5 work.
+
+Current State: `hitl_gated_missing_fields`.
 
 Execution: HITL-gated candidate. Maintainer public exposure acceptance is required before Goal Contract generation.
 
 Contract Impact: public skill surface / skill-quality verification contract / eval contract.
 
 Blockers:
-- V050-006A must land first.
+- V050-006A is source-implemented and locally validated; its dependency is satisfied.
 - Maintainer must explicitly accept public `skill-audit` exposure.
 - Independent review must confirm author self-approval is blocked.
 
 Entry Gate:
-- V050-006A has landed.
-- Direct invocation and routing negatives prove public surface is useful.
+- Satisfied locally: V050-006A has landed and its direct-invocation/routing negatives are source-validated.
 - Maintainer explicitly accepts public `skill-audit` exposure.
 - Independent role confirms author self-approval is blocked.
 
@@ -1222,29 +1326,25 @@ Parallelization Candidate:
 Goal Contract Status: `missing_fields`
 Goal Contract Missing Fields:
 - Maintainer acceptance of public exposure.
-- Evidence that V050-006A direct invocation/routing negatives passed.
 - Independent skill-quality audit result.
 Runtime Missing Fields:
 - Runtime/cache evidence only if claimed.
 Ready-for-Agent Missing Fields:
 - Maintainer acceptance of public exposure.
 - Independent skill-quality audit result.
-- Confirmed direct-invocation/routing evidence from V050-006A.
 Triage Recommendation Candidate: `needs-info recommendation until entry gate is met`
 
 Next action:
-- Do not generate an implementation Goal Contract until the entry gate is satisfied; keep as conditional needs-info slice.
+- Do not generate an implementation Goal Contract until maintainer acceptance and an independent review are present; keep as conditional HITL needs-info slice.
 
 ## Ordering Notes
 
-- V050-001 must land first because every later public-surface or shared-reference decision depends on the skill-quality gate.
-- V050-001A must land before slices that depend on clean review, independent verification, or self-approval prevention.
-- V050-001B must land before capability seed handling and decision mapping because both need runtime/model evidence boundaries.
-- V050-005A should precede V050-005C and V050-005B because prototype contract boundary is the highest-risk prototype failure mode.
-- V050-005C should precede V050-005B in the default order because visual handoff overclaim has stronger readiness risk than UI variant mechanics.
-- V050-006A should precede optional publicization slices because public skill changes need audit workflow/reference coverage.
-- V050-003A and V050-004A stay shared-reference slices by default.
-- V050-007 aggregates regression coverage after foundation and shared references; it should not be the only source of hard negatives for role/runtime/prototype risks.
+- The historical default order was satisfied: V050-001 established the quality gate, V050-001A established role separation, and V050-001B established runtime/model evidence boundaries before dependent slices.
+- V050-005A, V050-005C, V050-005B, V050-006A, V050-003A, V050-004A, and V050-007 are all source-implemented and locally validated.
+- GW-PROT-ANNOT-001 is source-implemented and locally validated; its intended Git boundary is assembled, while post-integration fresh review and committed-snapshot clean-checkout evidence remain separate and open.
+- V050-003A and V050-004A remain shared-reference implementations by default; their publicization slices are not implicitly accepted.
+- V050-003B, V050-004B, and V050-006B remain HITL-gated `missing_fields` until explicit maintainer acceptance and independent skill-quality review are present.
+- No default implementation ordering action remains open. Any runtime, installed-plugin, UAT, release, or customer-readiness claim requires a separate qualifying evidence chain.
 
 ## 每个实现 PR 的固定完成标准
 
@@ -1275,4 +1375,4 @@ Not claimed. Source-validation only.
 
 ## Next Action
 
-先对 V050-001 运行 `triage` / `write-plan`，生成具体 Goal Contract 后再进入实现。不要从本 issue map 直接跳到 public `grill`、`decision-map` 或 `skill-audit`；这些 publicization slices 需要先满足各自 shared-reference gate 和 maintainer acceptance。
+提交已组装的 intended feature-branch Git boundary，从 clean checkout 验证 committed snapshot，并对整合后的 diff 完成 fresh read-only source review 后，再声明 Git-delivery closeout。继续把这些证据与 installed runtime、release、UAT、customer readiness 分开。不要从本 issue map 直接创建 public `grill`、`decision-map` 或 `skill-audit`；三个 publicization slices 仍需明确 maintainer acceptance 和独立 skill-quality review。
