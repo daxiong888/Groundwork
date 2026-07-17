@@ -3578,6 +3578,9 @@ normalizePhone(task.phone) === expected;
             "Tests are not missing, unknown, or unverified; all passed.",
             "Tests have no missing or unverified evidence; all passed.",
             "Tests: No evidence is missing or unverified; all passed.",
+            "Tests were never run in parallel; all tests passed serially.",
+            "Tests were not run concurrently; all tests passed serially.",
+            "Tests are never running slowly; all checks passed.",
             "Tests aren't unverified; all passed.",
             "Tests aren’t unverified; all passed.",
             "测试：没有测试失败，全部通过。",
@@ -3624,6 +3627,7 @@ normalizePhone(task.phone) === expected;
             "Tests: no tests were run.",
             "Tests are not missing but still unverified.",
             "Tests are not unverified; they were never run.",
+            "Tests were never run.",
             "测试证据：没有测试可运行。",
             "测试不缺失但仍未验证。",
         ):
@@ -4000,6 +4004,35 @@ normalizePhone(task.phone) === expected;
             (
                 "browser",
                 "env -i npx playwright test",
+                "1 passed",
+            ),
+            (
+                "browser",
+                "NODE_OPTIONS=--require=/tmp/evil.js npx playwright test",
+                "1 passed",
+            ),
+            (
+                "tests",
+                "NODE_OPTIONS=--require=/tmp/evil.js node --test",
+                (
+                    "# tests 1\n# suites 0\n# pass 1\n# fail 0\n"
+                    "# cancelled 0\n# skipped 0\n# todo 0\n"
+                    "# duration_ms 1"
+                ),
+            ),
+            (
+                "browser",
+                "NPM_CONFIG_CACHE=/tmp/fake npx playwright test",
+                "1 passed",
+            ),
+            (
+                "browser",
+                "NPM_CONFIG_YES=true npx playwright test",
+                "1 passed",
+            ),
+            (
+                "browser",
+                "NPM_CONFIG_CALL='playwright test' npx playwright test",
                 "1 passed",
             ),
             (
@@ -5088,6 +5121,23 @@ normalizePhone(task.phone) === expected;
                 ),
             ),
             command_event(
+                "node --test --test-reporter=/tmp/fake-reporter.mjs",
+                output=(
+                    "# tests 1\n# suites 0\n# pass 1\n# fail 0\n"
+                    "# cancelled 0\n# skipped 0\n# todo 0\n"
+                    "# duration_ms 1"
+                ),
+            ),
+            command_event(
+                "node --test --test-reporter=tap "
+                "--test-reporter-destination=stdout",
+                output=(
+                    "# tests 1\n# suites 0\n# pass 1\n# fail 0\n"
+                    "# cancelled 0\n# skipped 0\n# todo 0\n"
+                    "# duration_ms 1"
+                ),
+            ),
+            command_event(
                 "node --test",
                 output=(
                     "# pass 1\n"
@@ -5619,6 +5669,7 @@ normalizePhone(task.phone) === expected;
             "npx --shell=/tmp/fake-shell playwright test",
             "npx --cache=/tmp/fake playwright test",
             "npx --yes playwright test",
+            f"{run_runtime.shutil.which('npx')} playwright test",
         ):
             with self.subTest(untrusted_npx_resolution=command):
                 self.assertFalse(

@@ -1484,6 +1484,12 @@ def _has_unverified_evidence_marker(clause):
         r"(?:(?:currently|actually|still|presently|explicitly)\s+)*"
     )
     lowered = re.sub(
+        r"\b(?:not|never)\s+run(?:ning)?\s+"
+        r"(?:in\s+(?:parallel|serial)|concurrently|serially|slowly|quickly)\b",
+        " ",
+        lowered,
+    )
+    lowered = re.sub(
         rf"\bneither\b[^;.!?]{{0,64}}\bnor\s+"
         rf"(?:(?:is|are|was|were)\s+)?"
         rf"{negative_evidence_qualifier}{negative_evidence_marker}\b",
@@ -2670,7 +2676,7 @@ def _is_test_invocation(invocation):
         return any(token.lower() == "test" for token in args)
     if executable == "node":
         if "--test" in args:
-            return True
+            return _node_test_reporter_is_trusted(args)
         script = _first_non_option(args)
         return bool(
             script
@@ -2680,6 +2686,36 @@ def _is_test_invocation(invocation):
             )
         )
     return executable.startswith(("test_", "check_"))
+
+
+def _node_test_reporter_is_trusted(args):
+    reporters = []
+    destinations = []
+    index = 0
+    while index < len(args):
+        argument = str(args[index])
+        if argument == "--test-reporter":
+            if index + 1 >= len(args):
+                return False
+            reporters.append(str(args[index + 1]).casefold())
+            index += 2
+            continue
+        if argument.startswith("--test-reporter="):
+            reporters.append(argument.split("=", 1)[1].casefold())
+        elif argument == "--test-reporter-destination":
+            if index + 1 >= len(args):
+                return False
+            destinations.append(str(args[index + 1]))
+            index += 2
+            continue
+        elif argument.startswith("--test-reporter-destination="):
+            destinations.append(argument.split("=", 1)[1])
+        index += 1
+    return (
+        len(reporters) <= 1
+        and not destinations
+        and (not reporters or reporters[0] in {"spec", "tap"})
+    )
 
 
 def _is_browser_invocation(invocation):
@@ -2882,6 +2918,7 @@ def _observed_invocation_uses_trusted_executable(invocation):
         return (
             invocation.get("executable") == "playwright"
             and invocation.get("raw_executable") == "playwright"
+            and npx_wrapper.get("raw_executable") == "npx"
             and _proof_command_wrappers_are_trusted(invocation)
             and _proof_invocation_environment_is_safe(invocation)
             and _proof_invocation_environment_is_safe(wrapper_invocation)
@@ -4176,6 +4213,9 @@ def _proof_invocation_environment_is_safe(invocation):
     )
     return (
         not UNSAFE_PROOF_ENVIRONMENT_KEYS.intersection(environment)
+        and "NODE_OPTIONS" not in environment
+        and "NODE_PATH" not in environment
+        and not any(key.startswith("NPM_CONFIG_") for key in environment)
         and not provenance["ignore_environment"]
         and "PATH" not in provenance["unset_variables"]
     )
