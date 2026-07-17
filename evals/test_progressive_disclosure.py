@@ -453,29 +453,30 @@ class ProgressiveDisclosureTests(unittest.TestCase):
             self.assertEqual(missing, [], path)
 
     def test_dispatch_reference_headers_use_compact_single_line_fields(self):
+        decision_fields = (
+            "Target Reader",
+            "Reader Action Needed",
+            "Decision Supported",
+        )
+        scoped_fields = (
+            *decision_fields,
+            "Scope",
+            "Out of Scope",
+            "Evidence Level",
+        )
         compact_fields = {
             "skills/dispatch/CONFLICT-PREFLIGHT.md": (
-                "Target Reader",
-                "Reader Action Needed",
-                "Decision Supported",
+                *decision_fields,
                 "Artifact Type",
                 "Source of Truth",
                 "Scope",
                 "Evidence Level",
                 "Safe to Share / Redaction Notes",
             ),
-            "skills/dispatch/DISPATCH-PACKAGE-DETAILS.md": (
-                "Target Reader", "Reader Action Needed", "Decision Supported",
-                "Scope", "Out of Scope", "Evidence Level",
-            ),
-            "skills/dispatch/RESULT-PACKAGE.md": (
-                "Target Reader", "Reader Action Needed", "Decision Supported",
-                "Scope", "Out of Scope", "Evidence Level",
-            ),
+            "skills/dispatch/DISPATCH-PACKAGE-DETAILS.md": scoped_fields,
+            "skills/dispatch/RESULT-PACKAGE.md": scoped_fields,
             "skills/dispatch/ROUTING-PROFILES.md": (
-                "Target Reader",
-                "Reader Action Needed",
-                "Decision Supported",
+                *decision_fields,
                 "Scope",
                 "Out of Scope",
                 "Artifact Type",
@@ -483,47 +484,26 @@ class ProgressiveDisclosureTests(unittest.TestCase):
                 "Evidence Level",
                 "Safe to Share / Redaction Notes",
             ),
-            "skills/dispatch/RUNTIME-ADAPTERS.md": (
-                "Target Reader", "Reader Action Needed", "Decision Supported",
-                "Scope", "Out of Scope", "Evidence Level",
-            ),
+            "skills/dispatch/RUNTIME-ADAPTERS.md": scoped_fields,
             "skills/dispatch/adapters/codex_app_managed_worktree_thread/ADAPTER.md": (
-                "Target Reader", "Reader Action Needed", "Decision Supported",
-                "Scope", "Evidence Level",
+                *decision_fields,
+                "Scope",
+                "Evidence Level",
             ),
-            "skills/dispatch/adapters/codex_app_managed_worktree_thread/DISPATCH-PACKAGE-CONTRACT.md": (
-                "Target Reader", "Reader Action Needed", "Decision Supported",
-                "Scope", "Out of Scope", "Evidence Level",
-            ),
-            "skills/dispatch/adapters/codex_app_managed_worktree_thread/RATIONALE.md": (
-                "Target Reader", "Reader Action Needed", "Decision Supported",
-                "Scope", "Out of Scope", "Evidence Level",
-            ),
-            "skills/dispatch/adapters/codex_app_managed_worktree_thread/REJECT-NOOP-CHECKLIST.md": (
-                "Target Reader", "Reader Action Needed", "Decision Supported",
-                "Scope", "Out of Scope", "Evidence Level",
-            ),
-            "skills/dispatch/adapters/codex_app_managed_worktree_thread/RESULT-PACKAGE-TEMPLATE.md": (
-                "Target Reader", "Reader Action Needed", "Decision Supported",
-                "Scope", "Out of Scope", "Evidence Level",
-            ),
-            "skills/dispatch/adapters/codex_app_managed_worktree_thread/THREAD-LIFECYCLE.md": (
-                "Target Reader", "Reader Action Needed", "Decision Supported",
-                "Scope", "Out of Scope", "Evidence Level",
-            ),
-            "skills/dispatch/adapters/codex_app_managed_worktree_thread/THREAD-PROMPT-TEMPLATE.md": (
-                "Target Reader", "Reader Action Needed", "Decision Supported",
-                "Scope", "Out of Scope", "Evidence Level",
-            ),
+            "skills/dispatch/adapters/codex_app_managed_worktree_thread/DISPATCH-PACKAGE-CONTRACT.md": scoped_fields,
+            "skills/dispatch/adapters/codex_app_managed_worktree_thread/RATIONALE.md": scoped_fields,
+            "skills/dispatch/adapters/codex_app_managed_worktree_thread/REJECT-NOOP-CHECKLIST.md": scoped_fields,
+            "skills/dispatch/adapters/codex_app_managed_worktree_thread/RESULT-PACKAGE-TEMPLATE.md": scoped_fields,
+            "skills/dispatch/adapters/codex_app_managed_worktree_thread/THREAD-LIFECYCLE.md": scoped_fields,
+            "skills/dispatch/adapters/codex_app_managed_worktree_thread/THREAD-PROMPT-TEMPLATE.md": scoped_fields,
         }
         self.assertEqual(sum(len(fields) for fields in compact_fields.values()), 76)
-        multiline_sections = {
-            "skills/dispatch/CONFLICT-PREFLIGHT.md": {
-                "Scope": ("## Out of Scope",),
-            },
-            "skills/dispatch/adapters/codex_app_managed_worktree_thread/ADAPTER.md": {
-                "Scope": ("In scope:", "## Out of Scope"),
-            },
+        sections_after_scope = {
+            "skills/dispatch/CONFLICT-PREFLIGHT.md": ("## Out of Scope",),
+            "skills/dispatch/adapters/codex_app_managed_worktree_thread/ADAPTER.md": (
+                "In scope:",
+                "## Out of Scope",
+            ),
         }
 
         for path, fields in compact_fields.items():
@@ -540,7 +520,8 @@ class ProgressiveDisclosureTests(unittest.TestCase):
                 self.assertEqual(lines[cursor], "", (path, field))
                 cursor += 1
 
-                for marker in multiline_sections.get(path, {}).get(field, ()):
+                markers = sections_after_scope.get(path, ()) if field == "Scope" else ()
+                for marker in markers:
                     self.assertEqual(lines[cursor], marker, (path, marker))
                     cursor += 1
                     self.assertEqual(lines[cursor], "", (path, marker))
@@ -558,14 +539,8 @@ class ProgressiveDisclosureTests(unittest.TestCase):
             for field in fields:
                 indexes = [index for index, line in enumerate(lines) if line.startswith(f"{field}: ")]
                 self.assertEqual(len(indexes), 1, (path, field))
-                self.assertEqual(lines[indexes[0] + 1], "", (path, field))
                 self.assertNotIn(field, h2_headings, (path, field))
 
-        self.assertIn("## Out of Scope", self.read("skills/dispatch/CONFLICT-PREFLIGHT.md"))
-        self.assertIn(
-            "## Out of Scope",
-            self.read("skills/dispatch/adapters/codex_app_managed_worktree_thread/ADAPTER.md"),
-        )
         self.assertIn("## Target Reader", self.read("skills/to-prd/PRD-TEMPLATE.md"))
 
     def test_combined_loop_has_one_canonical_owner(self):
