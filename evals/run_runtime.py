@@ -2091,11 +2091,108 @@ def command_invocations(command):
     ]
 
 
+PYTHON_INTERPRETER_FLAG_OPTIONS = {
+    "-B",
+    "-d",
+    "-E",
+    "-i",
+    "-I",
+    "-P",
+    "-q",
+    "-R",
+    "-s",
+    "-S",
+    "-u",
+    "-x",
+}
+PYTHON_INTERPRETER_VALUE_OPTIONS = {
+    "-W",
+    "-X",
+    "--check-hash-based-pycs",
+}
+
+
+def _python_execution_target(args):
+    """Parse the Python interpreter prefix without mistaking option values for code."""
+    tokens = [str(token) for token in args]
+    index = 0
+    positional_only = False
+    while index < len(tokens):
+        token = tokens[index]
+        if not positional_only and token == "--":
+            positional_only = True
+            index += 1
+            continue
+        if not positional_only and token in {
+            "--help",
+            "--help-all",
+            "--help-env",
+            "--help-xoptions",
+            "--version",
+            "-?",
+            "-h",
+            "-V",
+            "-VV",
+        }:
+            return None
+        if not positional_only and token in {"-c", "-m"}:
+            if index + 1 >= len(tokens):
+                return None
+            kind = "command" if token == "-c" else "module"
+            return {
+                "kind": kind,
+                "target": tokens[index + 1],
+                "args": tokens[index + 2 :],
+            }
+        if not positional_only and token.startswith(("-c", "-m")) and len(token) > 2:
+            return {
+                "kind": "command" if token.startswith("-c") else "module",
+                "target": token[2:],
+                "args": tokens[index + 1 :],
+            }
+        if not positional_only and token in PYTHON_INTERPRETER_VALUE_OPTIONS:
+            if index + 1 >= len(tokens):
+                return None
+            index += 2
+            continue
+        if not positional_only and (
+            (token.startswith("-W") and len(token) > 2)
+            or (token.startswith("-X") and len(token) > 2)
+            or (
+                token.startswith("--check-hash-based-pycs=")
+                and bool(token.split("=", 1)[1])
+            )
+        ):
+            index += 1
+            continue
+        if not positional_only and (
+            token in PYTHON_INTERPRETER_FLAG_OPTIONS
+            or re.fullmatch(r"-(?:b+|O{1,2}|v+)", token)
+        ):
+            index += 1
+            continue
+        if not positional_only and token.startswith("-") and token != "-":
+            return None
+        return {
+            "kind": "stdin" if token == "-" else "script",
+            "target": token,
+            "args": tokens[index + 1 :],
+        }
+    return None
+
+
 def _python_module(args):
-    for index, token in enumerate(args):
-        if token == "-m" and index + 1 < len(args):
-            return args[index + 1].lower()
-    return ""
+    target = _python_execution_target(args)
+    if not target or target["kind"] != "module":
+        return ""
+    return str(target["target"]).lower()
+
+
+def _python_script_and_args(args):
+    target = _python_execution_target(args)
+    if not target or target["kind"] != "script":
+        return None
+    return str(target["target"]), list(target["args"])
 
 
 def _has_help_or_version(args):
@@ -2422,7 +2519,8 @@ def _is_runtime_invocation(invocation):
         module = _python_module(args)
         if module == "http.server":
             return True
-        script = _first_non_option(args)
+        script_and_args = _python_script_and_args(args)
+        script = script_and_args[0] if script_and_args else ""
         return Path(script).name.lower() == "run_runtime.py"
     if executable == "run_runtime.py":
         return True
@@ -2467,13 +2565,13 @@ def _observed_runtime_activity_is_substantive(activity, invocation):
         return False
     executable = invocation["executable"]
     args = invocation["args"]
-    script = (
-        _first_non_option(args)
-        if executable.startswith("python")
-        else str(invocation.get("raw_executable") or "")
-        if executable == "run_runtime.py"
-        else ""
-    )
+    if executable.startswith("python"):
+        script_and_args = _python_script_and_args(args)
+        script = script_and_args[0] if script_and_args else ""
+    elif executable == "run_runtime.py":
+        script = str(invocation.get("raw_executable") or "")
+    else:
+        script = ""
     if script and Path(script).name.lower() == "run_runtime.py":
         return (
             _proof_runtime_environment_is_safe(invocation)
@@ -2494,7 +2592,8 @@ def _is_groundwork_runtime_invocation(invocation):
     if executable.startswith("python"):
         if _python_module(args):
             return False
-        script = _first_non_option(args)
+        script_and_args = _python_script_and_args(args)
+        script = script_and_args[0] if script_and_args else ""
         return Path(script).name.lower() == "run_runtime.py"
     return executable == "run_runtime.py"
 
@@ -3887,7 +3986,8 @@ def _is_canonical_groundwork_runtime_runner(invocation):
     executable = invocation["executable"]
     args = invocation["args"]
     if executable.startswith("python"):
-        script = _first_non_option(args)
+        script_and_args = _python_script_and_args(args)
+        script = script_and_args[0] if script_and_args else ""
     elif executable == "run_runtime.py":
         script = str(invocation.get("raw_executable") or "")
     else:
@@ -4112,14 +4212,8 @@ def _runtime_activity_has_nonempty_success_summary(activity):
 def _groundwork_runtime_cli_args(invocation):
     args = list(invocation.get("args") or [])
     if invocation["executable"].startswith("python"):
-        script = _first_non_option(args)
-        if not script:
-            return []
-        try:
-            script_index = args.index(script)
-        except ValueError:
-            return []
-        return args[script_index + 1 :]
+        script_and_args = _python_script_and_args(args)
+        return script_and_args[1] if script_and_args else []
     return args
 
 

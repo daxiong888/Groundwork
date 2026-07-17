@@ -6265,6 +6265,66 @@ release_evidence_claim:
                     ),
                 ]
             ),
+            "python_warning_option_value_spoofs_runner": "\n".join(
+                [
+                    inventory,
+                    equivalence,
+                    command_event(
+                        "CODEX_HOME=/home/test/.codex "
+                        f"python3 -W {runtime_runner} /tmp/fake.py "
+                        "--suite smoke.csv",
+                        output=runtime_summary_output(),
+                    ),
+                ]
+            ),
+            "python_xoption_value_spoofs_runner": "\n".join(
+                [
+                    inventory,
+                    equivalence,
+                    command_event(
+                        "CODEX_HOME=/home/test/.codex "
+                        f"python3 -X{runtime_runner} /tmp/fake.py "
+                        "--suite smoke.csv",
+                        output=runtime_summary_output(),
+                    ),
+                ]
+            ),
+            "python_command_mode_spoofs_runner": "\n".join(
+                [
+                    inventory,
+                    equivalence,
+                    command_event(
+                        "CODEX_HOME=/home/test/.codex "
+                        f"python3 -c {runtime_runner} /tmp/fake.py "
+                        "--suite smoke.csv",
+                        output=runtime_summary_output(),
+                    ),
+                ]
+            ),
+            "python_module_mode_spoofs_runner": "\n".join(
+                [
+                    inventory,
+                    equivalence,
+                    command_event(
+                        "CODEX_HOME=/home/test/.codex "
+                        f"python3 -m {runtime_runner} /tmp/fake.py "
+                        "--suite smoke.csv",
+                        output=runtime_summary_output(),
+                    ),
+                ]
+            ),
+            "unknown_python_option_precedes_runner": "\n".join(
+                [
+                    inventory,
+                    equivalence,
+                    command_event(
+                        "CODEX_HOME=/home/test/.codex "
+                        f"python3 --unknown-proof-option {runtime_runner} "
+                        "--suite smoke.csv",
+                        output=runtime_summary_output(),
+                    ),
+                ]
+            ),
             "inventory_help": "\n".join(
                 [
                     command_event(
@@ -6456,6 +6516,37 @@ release_evidence_claim:
         )
         self.assertEqual(group_bound["evidence_verdict"], "pass")
         self.assertEqual(group_bound["overall_verdict"], "pass")
+
+        for interpreter_options in (
+            "-B -W ignore -X dev",
+            "-Wignore -Xdev",
+            "--check-hash-based-pycs default",
+        ):
+            with self.subTest(interpreter_options=interpreter_options):
+                optioned_runtime = run_runtime.routing_verdict_model(
+                    routing_row(evidence_required="runtime_or_unverified"),
+                    actual="direct",
+                    last=verified_claim,
+                    rc=0,
+                    changes=[],
+                    lifecycle_errors=[],
+                    stdout="\n".join(
+                        [
+                            inventory,
+                            equivalence,
+                            command_event(
+                                "CODEX_HOME=/home/test/.codex "
+                                f"python3 {interpreter_options} {runtime_runner} "
+                                "--suite smoke.csv",
+                                output=runtime_summary_output(),
+                            ),
+                        ]
+                    ),
+                )
+                self.assertEqual(
+                    optioned_runtime["evidence_verdict"], "pass"
+                )
+                self.assertEqual(optioned_runtime["overall_verdict"], "pass")
 
         traversal_claim = verified_claim.replace(
             "source_root: /workspace/runtime-package",
