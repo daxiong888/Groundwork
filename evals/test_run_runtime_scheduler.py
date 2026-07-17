@@ -424,17 +424,28 @@ class RuntimeSchedulerTests(unittest.TestCase):
         self.assertTrue(run_runtime.row_matches_group(isolated, "isolated"))
 
     def test_runtime_main_rejects_empty_group_selection(self):
-        self.assertEqual(
-            run_runtime.main(
-                [
-                    "--suite",
-                    "smoke.csv",
-                    "--group",
-                    "definitely-no-matching-runtime-group",
-                ]
-            ),
-            2,
-        )
+        with tempfile.TemporaryDirectory() as tmp:
+            run_root = Path(tmp) / "runtime-root"
+            with mock.patch.multiple(
+                run_runtime,
+                LOGS=run_root / "logs",
+                LAST=run_root / "last",
+                WORKSPACES=run_root / "workspaces",
+                CASES=run_root / "cases",
+            ):
+                self.assertEqual(
+                    run_runtime.main(
+                        [
+                            "--suite",
+                            "smoke.csv",
+                            "--group",
+                            "definitely-no-matching-runtime-group",
+                        ]
+                    ),
+                    2,
+                )
+
+            self.assertFalse(run_root.exists())
 
     def test_load_failure_ids_from_summary_directory(self):
         with tempfile.TemporaryDirectory() as tmp:

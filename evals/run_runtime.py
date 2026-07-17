@@ -7476,11 +7476,6 @@ def main(argv=None):
             skipped_ids = ",".join(row["id"] for row in skipped_rows)
             print(f"skipped_auto_discovery_rows={len(skipped_rows)}:{skipped_ids}", flush=True)
 
-    LOGS.mkdir(parents=True, exist_ok=True)
-    LAST.mkdir(parents=True, exist_ok=True)
-    WORKSPACES.mkdir(parents=True, exist_ok=True)
-    CASES.mkdir(parents=True, exist_ok=True)
-
     jobs = 1 if args.serial else max(1, args.jobs)
     RUNTIME_SELECTOR["model"] = str(args.model or "")
     RUNTIME_SELECTOR["profile"] = str(args.profile or "")
@@ -7497,6 +7492,11 @@ def main(argv=None):
     if not rows:
         print("no_matching_rows=1", flush=True)
         return 2
+
+    LOGS.mkdir(parents=True, exist_ok=True)
+    LAST.mkdir(parents=True, exist_ok=True)
+    WORKSPACES.mkdir(parents=True, exist_ok=True)
+    CASES.mkdir(parents=True, exist_ok=True)
 
     for index, row in enumerate(rows):
         row["_input_index"] = index
