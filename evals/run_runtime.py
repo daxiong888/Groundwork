@@ -1475,6 +1475,44 @@ def _has_unverified_evidence_marker(clause):
     lowered = str(clause or "").lower()
     # Positive statements such as "no tests failed" and explicit negations
     # must not be promoted into an unverified-evidence boundary.
+    negative_evidence_marker = (
+        r"(?:missing|unverified|unknown|blocked|insufficient)"
+    )
+    lowered = re.sub(
+        rf"\bneither\b[^;.!?]{{0,64}}\bnor\s+"
+        rf"(?:(?:is|are|was|were)\s+)?{negative_evidence_marker}\b",
+        " ",
+        lowered,
+    )
+    lowered = re.sub(
+        rf"\b(?:not|never)\s+"
+        rf"(?:(?:considered|deemed|classified|regarded|treated)"
+        rf"(?:\s+as)?\s+){negative_evidence_marker}\b",
+        " ",
+        lowered,
+    )
+    lowered = re.sub(
+        rf"\b(?:not|never)\s+{negative_evidence_marker}"
+        rf"(?:\s*,\s*{negative_evidence_marker})*"
+        rf"\s*,?\s*(?:or|nor)\s+{negative_evidence_marker}\b",
+        " ",
+        lowered,
+    )
+    lowered = re.sub(
+        rf"\bno\s+{negative_evidence_marker}"
+        rf"(?:\s+[a-z0-9_-]+)?"
+        rf"(?:\s+(?:or|nor)\s+{negative_evidence_marker}"
+        rf"(?:\s+[a-z0-9_-]+)?)+\b",
+        " ",
+        lowered,
+    )
+    lowered = re.sub(
+        rf"\b(?:isn['’]t|aren['’]t|wasn['’]t|weren['’]t)\s+"
+        rf"(?:(?:currently|actually|still)\s+)?"
+        rf"{negative_evidence_marker}\b",
+        " ",
+        lowered,
+    )
     lowered = re.sub(
         r"\bno\s+tests?\s+(?:(?:are|had|has|have|were)\s+)?"
         r"(?:failed|failing|failures?|errored|errors?)\b",
@@ -1512,6 +1550,16 @@ def _has_unverified_evidence_marker(clause):
         r"没有测试(?:失败|报错|错误)",
         r"(?:并不|并非|并未|不是|不再)(?:存在)?"
         r"(?:缺少|缺失|未验证|未知|阻塞|不足)",
+        r"(?:绝非|绝不是)(?:存在|处于|属于|被视为)?"
+        r"(?:缺少|缺失|未验证|未知|阻塞|不足)(?:状态|项|内容|证据)?",
+        r"没有(?:处于|属于|被视为)"
+        r"(?:缺少|缺失|未验证|未知|阻塞|不足)(?:状态|项|内容|证据)?",
+        r"没有被(?:标记|视为|认为|判定)为"
+        r"(?:缺少|缺失|未验证|未知|阻塞|不足)(?:状态|项|内容|证据)?",
+        r"(?:不存在|并无)(?:任何)?"
+        r"(?:缺少|缺失|未验证|未知|阻塞|不足)"
+        r"(?:或(?:缺少|缺失|未验证|未知|阻塞|不足))*"
+        r"(?:项|内容|证据|状态)?",
         r"没有(?:任何)?(?:缺少|缺失|未验证|未知|阻塞|不足)"
         r"(?:项|内容|证据)?",
     )
@@ -1905,8 +1953,20 @@ def _env_wrapper_is_supported(tokens):
     return False
 
 
-def _env_bindings(tokens, inherited=None):
+def _environment_provenance(value=None):
+    value = value or {}
+    return {
+        "ignore_environment": bool(value.get("ignore_environment")),
+        "unset_variables": {
+            str(name).upper()
+            for name in value.get("unset_variables") or set()
+        },
+    }
+
+
+def _env_bindings(tokens, inherited=None, inherited_provenance=None):
     bindings = dict(inherited or {})
+    provenance = _environment_provenance(inherited_provenance)
     remaining = list(tokens[1:])
     value_options = {
         "-C",
@@ -1923,20 +1983,27 @@ def _env_bindings(tokens, inherited=None):
             continue
         if token in {"-i", "--ignore-environment"}:
             bindings.clear()
+            provenance["ignore_environment"] = True
             remaining.pop(0)
             continue
         if token in {"-u", "--unset"}:
             if len(remaining) < 2:
                 break
-            bindings.pop(remaining[1], None)
+            variable = remaining[1]
+            bindings.pop(variable, None)
+            provenance["unset_variables"].add(variable.upper())
             remaining = remaining[2:]
             continue
         if token.startswith("--unset="):
-            bindings.pop(token.split("=", 1)[1], None)
+            variable = token.split("=", 1)[1]
+            bindings.pop(variable, None)
+            provenance["unset_variables"].add(variable.upper())
             remaining.pop(0)
             continue
         if token.startswith("-u") and token != "-u":
-            bindings.pop(token[2:], None)
+            variable = token[2:]
+            bindings.pop(variable, None)
+            provenance["unset_variables"].add(variable.upper())
             remaining.pop(0)
             continue
         if token == "--":
@@ -1961,10 +2028,15 @@ def _env_bindings(tokens, inherited=None):
             remaining.pop(0)
             continue
         break
-    return bindings
+    return bindings, provenance
 
 
-def _unwrap_npx_tokens(tokens, environment=None):
+def _unwrap_npx_tokens(
+    tokens,
+    environment=None,
+    command_wrappers=None,
+    environment_provenance=None,
+):
     remaining = list(tokens[1:])
     package_override = any(
         token in {"--package", "-p"}
@@ -1995,7 +2067,10 @@ def _unwrap_npx_tokens(tokens, environment=None):
                     invocation
                     for nested in _command_segments(_shell_tokens(remaining[1]))
                     for invocation in _unwrap_command_segment(
-                        nested, environment=environment
+                        nested,
+                        environment=environment,
+                        command_wrappers=command_wrappers,
+                        environment_provenance=environment_provenance,
                     )
                 ],
                 call_mode=True,
@@ -2007,7 +2082,10 @@ def _unwrap_npx_tokens(tokens, environment=None):
                     invocation
                     for nested in _command_segments(_shell_tokens(nested_command))
                     for invocation in _unwrap_command_segment(
-                        nested, environment=environment
+                        nested,
+                        environment=environment,
+                        command_wrappers=command_wrappers,
+                        environment_provenance=environment_provenance,
                     )
                 ],
                 call_mode=True,
@@ -2022,7 +2100,12 @@ def _unwrap_npx_tokens(tokens, environment=None):
             break
         remaining = updated
     return with_npx_provenance(
-        _unwrap_command_segment(remaining, environment=environment)
+        _unwrap_command_segment(
+            remaining,
+            environment=environment,
+            command_wrappers=command_wrappers,
+            environment_provenance=environment_provenance,
+        )
     )
 
 
@@ -2096,9 +2179,27 @@ def command_success_is_attributable(command):
     return True
 
 
-def _unwrap_command_segment(segment, environment=None):
+def _command_wrapper_invocation(tokens, environment):
+    return {
+        "executable": Path(tokens[0]).name.lower(),
+        "raw_executable": tokens[0],
+        "args": list(tokens[1:]),
+        "environment": dict(environment or {}),
+    }
+
+
+def _unwrap_command_segment(
+    segment,
+    environment=None,
+    command_wrappers=None,
+    environment_provenance=None,
+):
     tokens = list(segment)
     environment = dict(environment or {})
+    command_wrappers = list(command_wrappers or [])
+    environment_provenance = _environment_provenance(
+        environment_provenance
+    )
     while tokens and re.fullmatch(
         r"[A-Za-z_][A-Za-z0-9_]*=.*", tokens[0]
     ):
@@ -2111,35 +2212,64 @@ def _unwrap_command_segment(segment, environment=None):
     if executable == "env":
         if not _env_wrapper_is_supported(tokens):
             return []
-        environment = _env_bindings(tokens, inherited=environment)
+        command_wrappers.append(
+            _command_wrapper_invocation(tokens, environment)
+        )
+        environment, environment_provenance = _env_bindings(
+            tokens,
+            inherited=environment,
+            inherited_provenance=environment_provenance,
+        )
         return _unwrap_command_segment(
-            _unwrap_env_tokens(tokens), environment=environment
+            _unwrap_env_tokens(tokens),
+            environment=environment,
+            command_wrappers=command_wrappers,
+            environment_provenance=environment_provenance,
         )
     if executable in {"command", "builtin", "exec", "nohup"}:
+        command_wrappers.append(
+            _command_wrapper_invocation(tokens, environment)
+        )
         remaining = tokens[1:]
         if remaining and remaining[0] == "--":
             remaining = remaining[1:]
         return _unwrap_command_segment(
-            remaining, environment=environment
+            remaining,
+            environment=environment,
+            command_wrappers=command_wrappers,
+            environment_provenance=environment_provenance,
         )
     if executable in {"sh", "bash", "zsh", "dash"}:
         nested_command = _shell_command_argument(tokens)
         if nested_command is not None:
+            command_wrappers.append(
+                _command_wrapper_invocation(tokens, environment)
+            )
             return [
                 invocation
                 for nested in _command_segments(_shell_tokens(nested_command))
                 for invocation in _unwrap_command_segment(
-                    nested, environment=environment
+                    nested,
+                    environment=environment,
+                    command_wrappers=command_wrappers,
+                    environment_provenance=environment_provenance,
                 )
             ]
     if executable == "npx":
-        return _unwrap_npx_tokens(tokens, environment=environment)
+        return _unwrap_npx_tokens(
+            tokens,
+            environment=environment,
+            command_wrappers=command_wrappers,
+            environment_provenance=environment_provenance,
+        )
     return [
         {
             "executable": executable,
             "raw_executable": tokens[0],
             "args": tokens[1:],
             "environment": environment,
+            "command_wrappers": command_wrappers,
+            "environment_provenance": environment_provenance,
         }
     ]
 
@@ -2670,9 +2800,15 @@ def _observed_invocation_uses_trusted_executable(invocation):
             "raw_executable": npx_wrapper.get("raw_executable") or "npx",
             "args": [],
             "environment": invocation.get("environment") or {},
+            "environment_provenance": invocation.get(
+                "environment_provenance"
+            )
+            or {},
         }
         return (
             invocation.get("executable") == "playwright"
+            and _proof_command_wrappers_are_trusted(invocation)
+            and _proof_invocation_environment_is_safe(invocation)
             and _proof_invocation_environment_is_safe(wrapper_invocation)
             and _proof_invocation_uses_trusted_executable(wrapper_invocation)
         )
@@ -3362,10 +3498,125 @@ def _structured_browser_activity(activity):
     return _browser_observation_result_is_substantive(matched_tool, result)
 
 
-def _test_command_output_is_substantive(output):
+NODE_TEST_REQUIRED_SUMMARY_KEYS = (
+    "tests",
+    "pass",
+    "fail",
+    "cancelled",
+    "skipped",
+    "todo",
+)
+NODE_TEST_SUMMARY_KEYS = {
+    *NODE_TEST_REQUIRED_SUMMARY_KEYS,
+    "suites",
+}
+
+
+def _node_test_output_is_substantive(output):
+    lines = str(output or "").splitlines()
+    patterns = []
+    for prefix in (r"#", "ℹ"):
+        patterns.append(
+            (
+                re.compile(
+                    r"^\s*"
+                    + prefix
+                    + r"\s*("
+                    + "|".join(sorted(NODE_TEST_SUMMARY_KEYS))
+                    + r")\s+(\d+)\s*$",
+                    re.IGNORECASE,
+                ),
+                re.compile(
+                    r"^\s*"
+                    + prefix
+                    + r"\s*duration_ms\s+"
+                    r"(?:\d+(?:\.\d*)?|\.\d+)\s*$",
+                    re.IGNORECASE,
+                ),
+            )
+        )
+
+    matched_formats = []
+    for counter_pattern, duration_pattern in patterns:
+        if any(
+            counter_pattern.fullmatch(line)
+            or duration_pattern.fullmatch(line)
+            for line in lines
+        ):
+            matched_formats.append((counter_pattern, duration_pattern))
+    if len(matched_formats) != 1:
+        return False
+    counter_pattern, duration_pattern = matched_formats[0]
+
+    counters = {}
+    counter_indexes = {}
+    duration_indexes = []
+    for index, line in enumerate(lines):
+        match = counter_pattern.fullmatch(line)
+        if match is not None:
+            key = match.group(1).casefold()
+            counters.setdefault(key, []).append(int(match.group(2)))
+            counter_indexes.setdefault(key, []).append(index)
+        elif duration_pattern.fullmatch(line):
+            duration_indexes.append(index)
+
+    if (
+        any(len(values) != 1 for values in counters.values())
+        or any(
+            len(counters.get(key, [])) != 1
+            for key in NODE_TEST_REQUIRED_SUMMARY_KEYS
+        )
+        or len(duration_indexes) != 1
+    ):
+        return False
+
+    tests_index = counter_indexes["tests"][0]
+    final_nonempty_index = next(
+        (
+            index
+            for index in range(len(lines) - 1, -1, -1)
+            if lines[index].strip()
+        ),
+        -1,
+    )
+    if duration_indexes[0] != final_nonempty_index:
+        return False
+    for line in lines[tests_index:]:
+        if (
+            line.strip()
+            and counter_pattern.fullmatch(line) is None
+            and duration_pattern.fullmatch(line) is None
+        ):
+            return False
+
+    values = {
+        key: counters[key][0]
+        for key in NODE_TEST_REQUIRED_SUMMARY_KEYS
+    }
+    accounted = sum(
+        values[key]
+        for key in ("pass", "fail", "cancelled", "skipped", "todo")
+    )
+    return (
+        values["tests"] == accounted
+        and values["pass"] + values["fail"] > 0
+    )
+
+
+def _is_node_test_invocation(invocation):
+    return bool(
+        invocation
+        and invocation.get("executable") == "node"
+        and "--test" in (invocation.get("args") or [])
+    )
+
+
+def _test_command_output_is_substantive(output, invocation=None):
     text = str(output or "").strip()
     if not text:
         return False
+    if _is_node_test_invocation(invocation):
+        return _node_test_output_is_substantive(text)
     lowered = text.casefold()
     zero_execution_patterns = (
         r"\bran\s+0\s+tests?\b",
@@ -3531,7 +3782,8 @@ def has_observed_evidence(stdout, evidence_kind, *, require_success=False):
                 evidence_kind == "tests"
                 and matching_invocations
                 and not _test_command_output_is_substantive(
-                    activity.get("output")
+                    activity.get("output"),
+                    matching_invocations[0],
                 )
             ):
                 continue
@@ -3776,6 +4028,7 @@ def _resolved_executable_path(value):
 PROOF_EXECUTABLE_BASELINES = {
     executable: _resolved_executable_path(shutil.which(executable))
     for executable in (
+        "bash",
         "cargo",
         "cat",
         "chrome-headless-shell",
@@ -3783,7 +4036,9 @@ PROOF_EXECUTABLE_BASELINES = {
         "chromium-browser",
         "codegraph",
         "codex",
+        "dash",
         "diff",
+        "env",
         "go",
         "git",
         "google-chrome",
@@ -3794,6 +4049,7 @@ PROOF_EXECUTABLE_BASELINES = {
         "mvn",
         "mvnw",
         "node",
+        "nohup",
         "npm",
         "npx",
         "playwright",
@@ -3802,8 +4058,10 @@ PROOF_EXECUTABLE_BASELINES = {
         "pytest",
         "rg",
         "sed",
+        "sh",
         "tail",
         "yarn",
+        "zsh",
     )
 }
 PYTHON_EXECUTABLE_BASELINE = _resolved_executable_path(sys.executable)
@@ -3814,7 +4072,14 @@ def _proof_invocation_environment_is_safe(invocation):
         str(key).upper(): str(value)
         for key, value in (invocation.get("environment") or {}).items()
     }
-    return not UNSAFE_PROOF_ENVIRONMENT_KEYS.intersection(environment)
+    provenance = _environment_provenance(
+        invocation.get("environment_provenance")
+    )
+    return (
+        not UNSAFE_PROOF_ENVIRONMENT_KEYS.intersection(environment)
+        and not provenance["ignore_environment"]
+        and "PATH" not in provenance["unset_variables"]
+    )
 
 
 def _proof_runtime_environment_is_safe(invocation):
@@ -3848,7 +4113,10 @@ def _proof_runtime_environment_is_safe(invocation):
         return False
 
 
-def _proof_invocation_uses_trusted_executable(invocation):
+PROOF_SHELL_BUILTIN_WRAPPERS = {"builtin", "command", "exec"}
+
+
+def _proof_executable_is_trusted(invocation):
     raw_executable = str(invocation.get("raw_executable") or "").strip()
     executable = str(invocation.get("executable") or "").lower()
     if not raw_executable or not executable:
@@ -3875,6 +4143,36 @@ def _proof_invocation_uses_trusted_executable(invocation):
         else _resolved_executable_path(raw_executable)
     )
     return candidate == baseline
+
+
+def _proof_command_wrappers_are_trusted(invocation):
+    wrappers = invocation.get("command_wrappers") or []
+    if not isinstance(wrappers, list):
+        return False
+    for wrapper in wrappers:
+        if not isinstance(wrapper, dict):
+            return False
+        raw_executable = str(
+            wrapper.get("raw_executable") or ""
+        ).strip()
+        executable = str(wrapper.get("executable") or "").lower()
+        if executable in PROOF_SHELL_BUILTIN_WRAPPERS:
+            if (
+                raw_executable != executable
+                or "/" in raw_executable
+                or "\\" in raw_executable
+            ):
+                return False
+        elif not _proof_executable_is_trusted(wrapper):
+            return False
+    return True
+
+
+def _proof_invocation_uses_trusted_executable(invocation):
+    return (
+        _proof_command_wrappers_are_trusted(invocation)
+        and _proof_executable_is_trusted(invocation)
+    )
 
 
 def _normalized_claim_root(value):

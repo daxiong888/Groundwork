@@ -3571,10 +3571,21 @@ normalizePhone(task.phone) === expected;
             "Tests have nothing missing; all passed.",
             "Tests: nothing missing; all passed.",
             "The tests are not unverified; all passed.",
+            "Tests are neither missing evidence nor unverified; all passed.",
+            "Tests are not considered unverified; all passed.",
+            "Tests are not missing, unknown, or unverified; all passed.",
+            "Tests have no missing or unverified evidence; all passed.",
+            "Tests aren't unverified; all passed.",
+            "Tests aren’t unverified; all passed.",
             "测试：没有测试失败，全部通过。",
             "测试并非未验证，全部通过。",
             "测试证据并不缺少，全部通过。",
             "测试没有未验证项，全部通过。",
+            "测试证据绝非未验证，全部通过。",
+            "测试证据没有处于未验证状态，全部通过。",
+            "测试不存在未验证项，全部通过。",
+            "测试并无缺失或未验证项，全部通过。",
+            "测试没有被标记为未验证，全部通过。",
         ):
             with self.subTest(response=response):
                 verdict = run_runtime.routing_verdict_model(
@@ -3607,7 +3618,9 @@ normalizePhone(task.phone) === expected;
             "Test Evidence: not run.",
             "Test evidence: unverified.",
             "Tests: no tests were run.",
+            "Tests are not missing but still unverified.",
             "测试证据：没有测试可运行。",
+            "测试不缺失但仍未验证。",
         ):
             with self.subTest(response=response):
                 verdict = run_runtime.routing_verdict_model(
@@ -3943,6 +3956,58 @@ normalizePhone(task.phone) === expected;
             ("source", "PATH=/tmp/fake cat README.md", "project source"),
             ("tests", "/tmp/test_fake", "1 passed"),
             ("tests", "PATH=/tmp/fake pytest tests", "1 passed"),
+            (
+                "tests",
+                "/tmp/fake/env python3 -m unittest tests.test_app",
+                "Ran 1 test in 0.001s\n\nOK",
+            ),
+            (
+                "tests",
+                "/tmp/fake/command python3 -m unittest tests.test_app",
+                "Ran 1 test in 0.001s\n\nOK",
+            ),
+            (
+                "tests",
+                "/tmp/fake/bash -lc "
+                "'python3 -m unittest tests.test_app'",
+                "Ran 1 test in 0.001s\n\nOK",
+            ),
+            (
+                "browser",
+                "/tmp/fake/env npx playwright test",
+                "1 passed",
+            ),
+            (
+                "tests",
+                "env -i python3 -m unittest tests.test_app",
+                "Ran 1 test in 0.001s\n\nOK",
+            ),
+            (
+                "browser",
+                "env -i npx playwright test",
+                "1 passed",
+            ),
+            (
+                "tests",
+                "env --ignore-environment "
+                "python3 -m unittest tests.test_app",
+                "Ran 1 test in 0.001s\n\nOK",
+            ),
+            (
+                "tests",
+                "env -u PATH python3 -m unittest tests.test_app",
+                "Ran 1 test in 0.001s\n\nOK",
+            ),
+            (
+                "tests",
+                "env --unset=PATH python3 -m unittest tests.test_app",
+                "Ran 1 test in 0.001s\n\nOK",
+            ),
+            (
+                "tests",
+                "env -uPATH python3 -m unittest tests.test_app",
+                "Ran 1 test in 0.001s\n\nOK",
+            ),
         ):
             with self.subTest(
                 evidence_kind=evidence_kind,
@@ -3952,6 +4017,25 @@ normalizePhone(task.phone) === expected;
                     run_runtime.has_observed_evidence(
                         command_event(command, output=output),
                         evidence_kind,
+                        require_success=True,
+                    )
+                )
+
+        for command in (
+            "env FOO=bar python3 -m unittest tests.test_app",
+            "env -u FOO python3 -m unittest tests.test_app",
+            "command python3 -m unittest tests.test_app",
+            "nohup python3 -m unittest tests.test_app",
+            "bash -lc 'python3 -m unittest tests.test_app'",
+        ):
+            with self.subTest(trusted_wrapper=command):
+                self.assertTrue(
+                    run_runtime.has_observed_evidence(
+                        command_event(
+                            command,
+                            output="Ran 1 test in 0.001s\n\nOK",
+                        ),
+                        "tests",
                         require_success=True,
                     )
                 )
@@ -4956,6 +5040,55 @@ normalizePhone(task.phone) === expected;
                 ),
             ),
             command_event(
+                "node --test",
+                output=(
+                    "# pass 1\n"
+                    "# tests 1\n"
+                    "# suites 0\n"
+                    "# pass 0\n"
+                    "# fail 0\n"
+                    "# cancelled 0\n"
+                    "# skipped 1\n"
+                    "# todo 0\n"
+                    "# duration_ms 1"
+                ),
+            ),
+            command_event(
+                "node --test",
+                output=(
+                    "ℹ pass 1\n"
+                    "ℹ tests 1\n"
+                    "ℹ suites 0\n"
+                    "ℹ pass 0\n"
+                    "ℹ fail 0\n"
+                    "ℹ cancelled 0\n"
+                    "ℹ skipped 1\n"
+                    "ℹ todo 0\n"
+                    "ℹ duration_ms 1"
+                ),
+            ),
+            command_event(
+                "node --test",
+                output=(
+                    "# tests 1\n"
+                    "# suites 0\n"
+                    "# pass 1\n"
+                    "# fail 0\n"
+                    "# cancelled 0\n"
+                    "# skipped 0\n"
+                    "# todo 0\n"
+                    "# duration_ms 1\n"
+                    "# tests 1\n"
+                    "# suites 0\n"
+                    "# pass 0\n"
+                    "# fail 0\n"
+                    "# cancelled 0\n"
+                    "# skipped 1\n"
+                    "# todo 0\n"
+                    "# duration_ms 1"
+                ),
+            ),
+            command_event(
                 "npm test -- --passWithNoTests",
                 output="No test files found, exiting with code 0",
             ),
@@ -5040,7 +5173,30 @@ normalizePhone(task.phone) === expected;
             ),
             command_event(
                 "node --test",
-                output="# tests 1\n# pass 1\n# fail 0",
+                output=(
+                    "# tests 1\n"
+                    "# suites 0\n"
+                    "# pass 1\n"
+                    "# fail 0\n"
+                    "# cancelled 0\n"
+                    "# skipped 0\n"
+                    "# todo 0\n"
+                    "# duration_ms 1"
+                ),
+            ),
+            command_event(
+                "node --test",
+                output=(
+                    "✔ passes (0.3ms)\n"
+                    "ℹ tests 1\n"
+                    "ℹ suites 0\n"
+                    "ℹ pass 1\n"
+                    "ℹ fail 0\n"
+                    "ℹ cancelled 0\n"
+                    "ℹ skipped 0\n"
+                    "ℹ todo 0\n"
+                    "ℹ duration_ms 1"
+                ),
             ),
             command_event(
                 "mvn test",
@@ -5572,6 +5728,29 @@ normalizePhone(task.phone) === expected;
                 claim,
             )
         )
+        for codex, diff, runtime_prefix in (
+            ("/tmp/fake/env codex", "diff", ""),
+            ("codex", "/tmp/fake/env diff", ""),
+            ("codex", "diff", "/tmp/fake/env "),
+            ("codex", "diff", "env -i "),
+            ("codex", "diff", "env -u PATH "),
+        ):
+            with self.subTest(
+                codex=codex,
+                diff=diff,
+                runtime_prefix=runtime_prefix,
+            ):
+                self.assertFalse(
+                    run_runtime.has_verified_groundwork_claim_evidence(
+                        chain(
+                            codex,
+                            diff,
+                            "python3",
+                            runtime_prefix=runtime_prefix,
+                        ),
+                        claim,
+                    )
+                )
         for runtime_prefix in (
             "PATH=/tmp/fake ",
             "PYTHONPATH=/tmp/fake ",
