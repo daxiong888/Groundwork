@@ -9,10 +9,10 @@ Scope: v0.5 planning for public skill expansion policy, skill quality gates, rol
 Out of Scope: Treating this PRD document itself as implementation or execution evidence; claiming runtime, installed-plugin, marketplace, UAT, release, customer, browser, selector-enforcement, or cache/source-refresh readiness; changing plugin metadata; creating issues, PRs, worktrees, subagents, or remote tracker state.
 Evidence Level: Planning and source-state index only. The implemented slice states refer to current local source and named checks outside this document; the PRD itself does not add runtime, installed-plugin, browser, release, UAT, marketplace, or current official-doc evidence.
 Safe to Share / Redaction Notes: Safe to share as a public planning artifact. It contains no secrets, credentials, private URLs, browser cookies, PII, production data, raw traces, or sensitive logs.
-Status: Accepted canonical v0.5.x PRD. All default implementation slices V050-001, V050-001A, V050-001B, V050-002, V050-005A, V050-005C, V050-005B, V050-006A, V050-003A, V050-004A, and V050-007 are implemented and locally source-validated. GW-PROT-ANNOT-001 and its shared contract-lineage, UAT-evidence, and evaluator hardening are implemented and locally source-validated. The nine previously untracked source files are now included in the intended feature-branch Git boundary; post-integration fresh read-only review and committed-snapshot clean-checkout verification remain pending. V050-003B, V050-004B, and V050-006B remain optional HITL-gated publicization decisions. This status does not claim runtime, installed-plugin, marketplace, UAT, release, customer, browser, selector-enforcement, or cache/source-refresh readiness.
+Status: Accepted canonical v0.5.x PRD. All default implementation slices V050-001, V050-001A, V050-001B, V050-002, V050-005A, V050-005C, V050-005B, V050-006A, V050-003A, V050-004A, and V050-007 are implemented and locally source-validated. GW-PROT-ANNOT-001 and its shared contract-lineage, UAT-evidence, and evaluator hardening are implemented and locally source-validated. The nine previously untracked source files are included in the feature-branch Git boundary, and the committed implementation snapshot passed clean-checkout source/package validation; post-integration fresh read-only review remains pending. V050-003B, V050-004B, and V050-006B remain optional HITL-gated publicization decisions. This status does not claim runtime, installed-plugin, marketplace, UAT, release, customer, browser, selector-enforcement, or cache/source-refresh readiness.
 Version Track: Canonical v0.5.x state; historical origin was the v0.5.0 candidate.
 Last Updated: 2026-07-17.
-Branch: Current canonical source is tracked on `main`; historical origin branch was `prd/v0.5-prototype-first-skill-expansion`.
+Branch: This document describes the repository snapshot that contains it; the delivery target is `main`, and the historical origin branch was `prd/v0.5-prototype-first-skill-expansion`.
 
 ---
 
@@ -27,8 +27,8 @@ Artifact Promotion: satisfied; this document is the canonical v0.5.x product sou
 Execution Topology: canonical source-checkout artifact on the current repository branch; historical origin was a branch-local documentation artifact.
 Risk Gate: documentation-state maintenance only; no runtime, remote, release, or public-surface mutation.
 Verification Strategy: documentation consistency checks, stale-state search, `git diff --check`, and broad repository metadata/CSV validation if applicable.
-Lifecycle State: canonical maintenance; the intended Git boundary is assembled, while post-integration fresh read-only review and committed-snapshot clean-checkout verification remain open.
-Stop Condition: PRD and issue map express one coherent current state, with only post-integration review/clean-checkout evidence and the optional HITL publicization decisions left open.
+Lifecycle State: canonical maintenance; the intended Git boundary is committed and clean-checkout source/package validation is complete, while post-integration fresh read-only review remains open.
+Stop Condition: PRD and issue map express one coherent current state, with only post-integration clean-review evidence and the optional HITL publicization decisions left open.
 
 ---
 
@@ -460,7 +460,7 @@ A skill author must not be the final authority that approves its own material sk
 
 ## 15. Canonical Issue Slices
 
-All default slices in this section are `implemented_source_validated`; GW-PROT-ANNOT-001 and its shared hardening are also source-implemented and locally source-validated. All required source files are now included in the intended feature-branch Git boundary. Because the branch also integrates the already-merged dispatch-test simplification and removes review-identified dead helpers, the earlier clean-review result no longer covers the current snapshot; fresh read-only review and committed-snapshot clean-checkout verification remain required. The optional publicization slices V050-003B, V050-004B, and V050-006B remain HITL-gated and are not part of the default implementation.
+All default slices in this section are `implemented_source_validated`; GW-PROT-ANNOT-001 and its shared hardening are also source-implemented and locally source-validated. All required source files are included in the feature-branch Git boundary, and the committed implementation snapshot passed clean-checkout source/package validation. Because the branch also integrates the already-merged dispatch-test simplification and removes review-identified dead helpers, the earlier clean-review result no longer covers the current snapshot; fresh read-only review remains required. The optional publicization slices V050-003B, V050-004B, and V050-006B remain HITL-gated and are not part of the default implementation.
 
 Issue slices preserve the MVP rule that conditional public skills start as shared references or workflow lenses. Creating `skills/<candidate>/SKILL.md` is a public skill surface change because `skills/` holds public skill contracts. Public candidate files may be created only in the explicit publicization slice after the reference-first slice and route negatives pass.
 
@@ -755,4 +755,4 @@ Any future runtime/release claim must name installed plugin root, source root, c
 
 ## 19. Next Action
 
-Commit the assembled feature-branch snapshot, verify it from a clean checkout, and obtain a fresh read-only review of the post-integration diff before claiming Git-delivery closeout. Keep those results separate from installed-runtime, release, UAT, and customer-readiness evidence. Do not create `skills/grill/SKILL.md`, `skills/decision-map/SKILL.md`, or `skills/skill-audit/SKILL.md` unless the corresponding optional publicization slice receives explicit maintainer acceptance and an independent skill-quality review.
+Obtain a fresh read-only review of the post-integration diff, then publish the reviewable PR and record its CI result before claiming Git-delivery closeout. Keep those results separate from installed-runtime, release, UAT, and customer-readiness evidence. Do not create `skills/grill/SKILL.md`, `skills/decision-map/SKILL.md`, or `skills/skill-audit/SKILL.md` unless the corresponding optional publicization slice receives explicit maintainer acceptance and an independent skill-quality review.

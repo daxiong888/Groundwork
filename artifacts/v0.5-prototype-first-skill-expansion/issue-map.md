@@ -1,6 +1,6 @@
 Target Reader: Groundwork maintainers, clean reviewers, verifiers, and any future HITL publicization decision owners.
-Reader Action Needed: Use this issue map as the canonical source-state and conditional-gate index. All default slices are source-implemented, the intended feature-branch Git boundary is assembled, and post-integration fresh read-only review plus committed-snapshot clean-checkout verification remain open alongside the optional publicization decisions. Do not treat this file as runtime, release, UAT, marketplace, or installed-plugin evidence.
-Decision Supported: Which default slices have completed source implementation, which post-integration Git-delivery evidence remains open, which optional publicization gates remain blocked, and what evidence is still required before any stronger readiness or public-surface claim.
+Reader Action Needed: Use this issue map as the canonical source-state and conditional-gate index. All default slices are source-implemented, the feature-branch Git boundary is committed, and clean-checkout source/package validation has passed; post-integration fresh read-only review and PR/CI evidence remain open alongside the optional publicization decisions. Do not treat this file as runtime, release, UAT, marketplace, or installed-plugin evidence.
+Decision Supported: Which default slices have completed source implementation and clean-checkout validation, which post-integration Git-delivery evidence remains open, which optional publicization gates remain blocked, and what evidence is still required before any stronger readiness or public-surface claim.
 Artifact Type: issue map.
 Source of Truth: `docs/prd-v0.5-prototype-first-skill-expansion.md` plus maintainer-supplied recommended implementation order captured in the review conversation on 2026-06-24 and maintainer directive GW-PROT-ANNOT-001 supplied on 2026-07-16.
 Scope: Issue decomposition for Groundwork v0.5 public skill expansion policy, skill-quality gate, role separation, lazy runtime capability boundary, setup/capability seed guidance, Prototype Lab references, annotation presentation carry-through, visual handoff packet, shared skill-audit, shared grilling, shared decision mapping, and v0.5 regression coverage.
@@ -13,7 +13,7 @@ Last Updated: 2026-07-17.
 
 ## Issue 集合摘要
 
-本 issue map 记录 `docs/prd-v0.5-prototype-first-skill-expansion.md` 各垂直 slice 的当前 canonical 状态。默认实施 slice 已全部达到 `implemented_source_validated`；九个此前未跟踪的必需源码文件现已纳入 intended feature-branch Git boundary；由于当前快照又融合了已合并的 dispatch 测试简化并删除了评审发现的死代码，旧 clean-review 结论已被取代，仍需 fresh read-only source review 与 committed-snapshot clean-checkout 验证；只有 V050-003B、V050-004B、V050-006B 保持 HITL-gated `missing_fields`。
+本 issue map 记录 `docs/prd-v0.5-prototype-first-skill-expansion.md` 各垂直 slice 的当前 canonical 状态。默认实施 slice 已全部达到 `implemented_source_validated`；九个此前未跟踪的必需源码文件已纳入 feature-branch Git boundary，committed implementation snapshot 的 clean-checkout source/package validation 已通过；由于当前快照又融合了已合并的 dispatch 测试简化并删除了评审发现的死代码，旧 clean-review 结论已被取代，仍需 fresh read-only source review 与 PR/CI 证据；只有 V050-003B、V050-004B、V050-006B 保持 HITL-gated `missing_fields`。
 
 历史默认实施顺序（当前均已完成 source implementation / local source validation）：
 
@@ -35,7 +35,7 @@ Last Updated: 2026-07-17.
 ## 来源
 
 - Canonical PRD: `docs/prd-v0.5-prototype-first-skill-expansion.md`
-- PRD status: accepted canonical v0.5.x baseline; all default slices are implemented and locally source-validated. The intended feature-branch Git boundary is assembled; post-integration fresh read-only review and committed-snapshot clean-checkout verification remain open, and the three optional publicization slices remain HITL-gated.
+- PRD status: accepted canonical v0.5.x baseline; all default slices are implemented and locally source-validated. The feature-branch Git boundary is committed and clean-checkout source/package validation passed; post-integration fresh read-only review plus PR/CI evidence remain open, and the three optional publicization slices remain HITL-gated.
 - AC source: PRD section `14. Acceptance Criteria`, AC-A through AC-D.
 - Recommended order source: maintainer-supplied pasted text file, read on 2026-06-24.
 - Annotation follow-up source: PRD requirement FR-533 and section `GW-PROT-ANNOT-001`, accepted by maintainer directive on 2026-07-16.
@@ -587,7 +587,7 @@ Source Implementation Baseline: commit `b6aef26` (`feat(prototype): 增加批注
 
 Clean Review Status: `superseded_by_post_review_integration`; the earlier reviewer result does not cover the current snapshot after integrating the already-merged dispatch-test simplification and removing review-identified dead helpers. A new fresh read-only source review is required.
 
-Git Delivery Status: `boundary_assembled_pending_clean_checkout`; the nine previously untracked source files referenced by tracked tests, coverage, or CI are included in the intended feature-branch Git boundary. Delivery closeout still requires a committed snapshot, clean-checkout verification, and PR publication evidence.
+Git Delivery Status: `committed_snapshot_clean_checkout_validated`; the nine previously untracked source files referenced by tracked tests, coverage, or CI are included in the feature-branch Git boundary, and the committed implementation snapshot passed clean-checkout source/package validation. Delivery closeout still requires fresh post-integration read-only review, PR publication, and CI evidence.
 
 Evidence Boundary: Local source, schema, unit, coverage-manifest, CSV/JSON, whitespace, and runtime-package-boundary checks only. No installed-plugin, runtime execution, browser, UAT, marketplace, release, customer, selector-enforcement, or cache/source-refresh readiness is claimed.
 
@@ -638,7 +638,7 @@ Role separation / evidence boundary:
 
 Goal Mode independence:
 - Its V050-005A and V050-005C dependencies are satisfied.
-- The source implementation and intended Git boundary are complete; post-integration fresh review and committed-snapshot clean-checkout verification remain separate and open.
+- The source implementation, Git boundary, and committed-snapshot clean-checkout source/package validation are complete; post-integration fresh review and PR/CI evidence remain separate and open.
 
 Implementation Task Type: `completed_source_implementation`
 Implementation Runtime Evidence: `not_claimed`; commit/source history is not runtime evidence.
@@ -658,11 +658,12 @@ Ready-for-Agent Missing Fields:
 - None for source implementation; post-integration review is an evidence-closeout step, not an implementation-input gap.
 Git Delivery Missing Fields:
 - None for source-file inclusion; the four prototype-annotation fixtures, canonical UAT record, two prompt suites, and two test modules are in the intended feature-branch boundary.
-- Pending evidence: committed-snapshot identity, clean-checkout verification, fresh post-integration read-only review, and PR publication.
-Triage Recommendation Candidate: `source implemented; post-integration review and clean-checkout evidence pending`
+- None for committed-snapshot clean-checkout source/package validation.
+- Pending evidence: fresh post-integration read-only review, PR publication, and CI result.
+Triage Recommendation Candidate: `source and clean-checkout validation complete; post-integration review and PR/CI evidence pending`
 
 Next action:
-- Commit only the assembled intended paths, verify the committed snapshot from a clean checkout, obtain a fresh post-integration read-only review, and publish the reviewable PR without upgrading the evidence layer.
+- Obtain a fresh post-integration read-only review, publish the reviewable PR, and record its CI result without upgrading the evidence layer.
 
 ### V050-005B: UI Variants and Logic Lab
 
@@ -1341,7 +1342,7 @@ Next action:
 
 - The historical default order was satisfied: V050-001 established the quality gate, V050-001A established role separation, and V050-001B established runtime/model evidence boundaries before dependent slices.
 - V050-005A, V050-005C, V050-005B, V050-006A, V050-003A, V050-004A, and V050-007 are all source-implemented and locally validated.
-- GW-PROT-ANNOT-001 is source-implemented and locally validated; its intended Git boundary is assembled, while post-integration fresh review and committed-snapshot clean-checkout evidence remain separate and open.
+- GW-PROT-ANNOT-001 is source-implemented and locally validated; its feature-branch Git boundary is committed and clean-checkout source/package validation passed, while post-integration fresh review and PR/CI evidence remain separate and open.
 - V050-003A and V050-004A remain shared-reference implementations by default; their publicization slices are not implicitly accepted.
 - V050-003B, V050-004B, and V050-006B remain HITL-gated `missing_fields` until explicit maintainer acceptance and independent skill-quality review are present.
 - No default implementation ordering action remains open. Any runtime, installed-plugin, UAT, release, or customer-readiness claim requires a separate qualifying evidence chain.
@@ -1375,4 +1376,4 @@ Not claimed. Source-validation only.
 
 ## Next Action
 
-提交已组装的 intended feature-branch Git boundary，从 clean checkout 验证 committed snapshot，并对整合后的 diff 完成 fresh read-only source review 后，再声明 Git-delivery closeout。继续把这些证据与 installed runtime、release、UAT、customer readiness 分开。不要从本 issue map 直接创建 public `grill`、`decision-map` 或 `skill-audit`；三个 publicization slices 仍需明确 maintainer acceptance 和独立 skill-quality review。
+对整合后的 diff 完成 fresh read-only source review，发布可评审 PR，并记录 CI 结果后，再声明 Git-delivery closeout。继续把这些证据与 installed runtime、release、UAT、customer readiness 分开。不要从本 issue map 直接创建 public `grill`、`decision-map` 或 `skill-audit`；三个 publicization slices 仍需明确 maintainer acceptance 和独立 skill-quality review。
