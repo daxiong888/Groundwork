@@ -1497,6 +1497,12 @@ def _has_unverified_evidence_marker(clause):
         lowered,
     )
     lowered = re.sub(
+        r"\b(?:no|nothing)\s+(?:[a-z0-9_-]+\s+){0,3}"
+        r"(?:missing|unverified|unknown|blocked|insufficient)\b",
+        " ",
+        lowered,
+    )
+    lowered = re.sub(
         r"\bneither\s+(?:missing|unverified|unknown|blocked|insufficient)"
         r"\s+nor\s+(?:missing|unverified|unknown|blocked|insufficient)\b",
         " ",
@@ -1506,6 +1512,8 @@ def _has_unverified_evidence_marker(clause):
         r"没有测试(?:失败|报错|错误)",
         r"(?:并不|并非|并未|不是|不再)(?:存在)?"
         r"(?:缺少|缺失|未验证|未知|阻塞|不足)",
+        r"没有(?:任何)?(?:缺少|缺失|未验证|未知|阻塞|不足)"
+        r"(?:项|内容|证据)?",
     )
     original = str(clause or "")
     for pattern in chinese_positive_patterns:
@@ -2461,6 +2469,8 @@ def _is_test_invocation(invocation):
     if executable in {"mvn", "mvnw", "gradle", "gradlew"}:
         return any(token.lower() == "test" for token in args)
     if executable == "node":
+        if "--test" in args:
+            return True
         script = _first_non_option(args)
         return bool(
             script
@@ -3368,7 +3378,7 @@ def _test_command_output_is_substantive(output):
         r"(?:collected|discovered|executed|found|ran|run)\b",
         r"\b0\s+tests?\s+(?:collected|discovered|executed|found|ran|run)\b",
         r"\b(?:executed|tests?)\s*:\s*0\b",
-        r"(?m)^\s*tests\s+0\s*$",
+        r"(?m)^\s*(?:#\s*)?tests\s+0\s*$",
         r"\ball\s+tests?\s+(?:were\s+)?skipped\b",
         r"\btests?\s+are\s+skipped\b",
     )
@@ -3428,10 +3438,14 @@ def _test_command_output_is_substantive(output):
             return False
         return False
 
-    node_tests = count(r"(?m)^\s*tests\s+(\d+)\s*$")
+    node_tests = count(r"(?m)^\s*(?:#\s*)?tests\s+(\d+)\s*$")
     if node_tests is not None:
-        node_passed = count(r"(?m)^\s*pass\s+(\d+)\s*$") or 0
-        node_failed = count(r"(?m)^\s*fail\s+(\d+)\s*$") or 0
+        node_passed = count(
+            r"(?m)^\s*(?:#\s*)?pass\s+(\d+)\s*$"
+        ) or 0
+        node_failed = count(
+            r"(?m)^\s*(?:#\s*)?fail\s+(\d+)\s*$"
+        ) or 0
         return node_tests > 0 and node_passed + node_failed > 0
 
     positive_execution_patterns = (
@@ -3488,7 +3502,7 @@ def has_observed_evidence(stdout, evidence_kind, *, require_success=False):
                 continue
             invocations = command_invocations(activity["command"])
             if (
-                evidence_kind in {"source", "browser"}
+                evidence_kind in {"source", "tests", "browser"}
                 and len(invocations) != 1
             ):
                 continue

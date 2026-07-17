@@ -3568,10 +3568,13 @@ normalizePhone(task.phone) === expected;
             "Tests have no missing evidence; all passed.",
             "Tests: no evidence is missing; all checks passed.",
             "Tests are neither missing nor unverified; all passed.",
+            "Tests have nothing missing; all passed.",
+            "Tests: nothing missing; all passed.",
             "The tests are not unverified; all passed.",
             "测试：没有测试失败，全部通过。",
             "测试并非未验证，全部通过。",
             "测试证据并不缺少，全部通过。",
+            "测试没有未验证项，全部通过。",
         ):
             with self.subTest(response=response):
                 verdict = run_runtime.routing_verdict_model(
@@ -4737,6 +4740,11 @@ normalizePhone(task.phone) === expected;
                 "def forged(): pass\n",
             ),
             (
+                "tests",
+                "npm test --silent && printf '1 passed\\n'",
+                "1 passed\n",
+            ),
+            (
                 "browser",
                 "playwright screenshot https://preview.example/case "
                 "/tmp/case.png && printf 'page content\\n'",
@@ -4938,6 +4946,16 @@ normalizePhone(task.phone) === expected;
                 output="tests 0\npass 0\nfail 0",
             ),
             command_event(
+                "node --test",
+                output="# tests 0\n# pass 0\n# fail 0",
+            ),
+            command_event(
+                "node --test",
+                output=(
+                    "# tests 1\n# pass 0\n# fail 0\n# skipped 1"
+                ),
+            ),
+            command_event(
                 "npm test -- --passWithNoTests",
                 output="No test files found, exiting with code 0",
             ),
@@ -5021,6 +5039,10 @@ normalizePhone(task.phone) === expected;
                 output="tests 1\npass 1\nfail 0",
             ),
             command_event(
+                "node --test",
+                output="# tests 1\n# pass 1\n# fail 0",
+            ),
+            command_event(
                 "mvn test",
                 output=(
                     "Tests run: 1, Failures: 0, Errors: 0, "
@@ -5051,6 +5073,12 @@ normalizePhone(task.phone) === expected;
                 self.assertFalse(
                     run_runtime._is_test_invocation(invocations[0])
                 )
+
+        node_invocations = run_runtime.command_invocations("node --test")
+        self.assertEqual(len(node_invocations), 1)
+        self.assertTrue(
+            run_runtime._is_test_invocation(node_invocations[0])
+        )
 
     def test_expected_test_failure_is_narrowly_bound_to_qa_reproduction(self):
         qa_row = routing_row(
@@ -5292,11 +5320,21 @@ normalizePhone(task.phone) === expected;
                     )
                 )
 
-        self.assertTrue(
+        self.assertFalse(
             run_runtime.has_observed_evidence(
                 command_event(
                     "python3 -m pytest tests && printf done",
                     output="tests passed\ndone",
+                ),
+                "tests",
+                require_success=True,
+            )
+        )
+        self.assertTrue(
+            run_runtime.has_observed_evidence(
+                command_event(
+                    "python3 -m pytest tests",
+                    output="tests passed",
                 ),
                 "tests",
                 require_success=True,
