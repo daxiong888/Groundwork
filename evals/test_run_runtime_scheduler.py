@@ -3559,6 +3559,63 @@ normalizePhone(task.phone) === expected;
         self.assertEqual(browser["evidence_verdict"], "pass")
         self.assertEqual(runtime["evidence_verdict"], "pass")
 
+    def test_tests_unverified_boundary_rejects_positive_negations(self):
+        for response in (
+            "Tests: no tests failed; all checks passed.",
+            "Tests: no tests have failed; all checks passed.",
+            "Tests: no tests were failing; all checks passed.",
+            "Tests are not missing; all passed.",
+            "Tests have no missing evidence; all passed.",
+            "The tests are not unverified; all passed.",
+            "测试：没有测试失败，全部通过。",
+            "测试并非未验证，全部通过。",
+        ):
+            with self.subTest(response=response):
+                verdict = run_runtime.routing_verdict_model(
+                    routing_row(evidence_required="tests_or_unverified"),
+                    actual="direct",
+                    last=response,
+                    rc=0,
+                    changes=[],
+                    lifecycle_errors=[],
+                    stdout="",
+                )
+                self.assertEqual(verdict["evidence_verdict"], "fail")
+                self.assertEqual(verdict["overall_verdict"], "fail")
+
+        compound_boundary = run_runtime.routing_verdict_model(
+            routing_row(evidence_required="tests_or_unverified"),
+            actual="direct",
+            last=(
+                "Tests: no tests failed because no tests were run."
+            ),
+            rc=0,
+            changes=[],
+            lifecycle_errors=[],
+            stdout="",
+        )
+        self.assertEqual(compound_boundary["evidence_verdict"], "pass")
+        self.assertEqual(compound_boundary["overall_verdict"], "pass")
+
+        for response in (
+            "Test Evidence: not run.",
+            "Test evidence: unverified.",
+            "Tests: no tests were run.",
+            "测试证据：没有测试可运行。",
+        ):
+            with self.subTest(response=response):
+                verdict = run_runtime.routing_verdict_model(
+                    routing_row(evidence_required="tests_or_unverified"),
+                    actual="direct",
+                    last=response,
+                    rc=0,
+                    changes=[],
+                    lifecycle_errors=[],
+                    stdout="",
+                )
+                self.assertEqual(verdict["evidence_verdict"], "pass")
+                self.assertEqual(verdict["overall_verdict"], "pass")
+
     def test_final_response_cannot_self_report_observed_evidence(self):
         source = run_runtime.routing_verdict_model(
             routing_row(evidence_required="source_or_unverified"),
@@ -4775,6 +4832,108 @@ normalizePhone(task.phone) === expected;
             verdict["notes"],
         )
 
+    def test_tests_or_unverified_requires_executed_tests(self):
+        nonexecuting = (
+            command_event(
+                "python3 -m unittest",
+                output="Ran 0 tests in 0.000s\n\nOK",
+            ),
+            command_event(
+                "python3 -m unittest",
+                output="Ran 0 tests in 0.000s\n1 error",
+            ),
+            command_event(
+                "python3 -m unittest tests.test_app",
+                output="s\nRan 1 test in 0.001s\n\nOK (skipped=1)",
+            ),
+            command_event(
+                "python3 -m pytest --collect-only -q",
+                output="3 tests collected in 0.01s",
+            ),
+            command_event(
+                "pytest --co -q",
+                output="3 tests collected in 0.01s",
+            ),
+            command_event(
+                "cargo test --no-run",
+                output="Finished test profile",
+            ),
+            command_event(
+                "cargo test",
+                output="running 0 tests\ntest result: ok.",
+            ),
+            command_event(
+                "go test ./...",
+                output="testing: warning: no tests to run\nPASS",
+            ),
+            command_event(
+                "mvn test",
+                output=(
+                    "Tests run: 2, Failures: 0, Errors: 0, "
+                    "Skipped: 2"
+                ),
+            ),
+            command_event(
+                "python3 -m pytest tests",
+                output="1 skipped",
+            ),
+            command_event(
+                "python3 -m pytest tests",
+                output="0 passed, 2 skipped",
+            ),
+            command_event(
+                "python3 -m pytest tests",
+                output="no tests were run",
+            ),
+            command_event(
+                "python3 -m pytest tests",
+                output="",
+            ),
+        )
+        for stdout in nonexecuting:
+            with self.subTest(stdout=stdout):
+                self.assertFalse(
+                    run_runtime.has_observed_evidence(
+                        stdout,
+                        "tests",
+                        require_success=True,
+                    )
+                )
+                verdict = run_runtime.routing_verdict_model(
+                    routing_row(evidence_required="tests_or_unverified"),
+                    actual="direct",
+                    last="Focused tests passed.",
+                    rc=0,
+                    changes=[],
+                    lifecycle_errors=[],
+                    stdout=stdout,
+                )
+                self.assertEqual(verdict["evidence_verdict"], "fail")
+                self.assertEqual(verdict["overall_verdict"], "fail")
+
+        for stdout in (
+            command_event(
+                "python3 -m unittest tests.test_app",
+                output="Ran 1 test in 0.001s\n\nOK",
+            ),
+            command_event(
+                "python3 -m pytest tests",
+                output="2 passed, 1 skipped in 0.04s",
+            ),
+            command_event(
+                "python3 -m pytest tests",
+                output="0 passed, 1 xfailed in 0.04s",
+            ),
+        ):
+            with self.subTest(stdout=stdout):
+                self.assertTrue(
+                    run_runtime.has_observed_evidence(
+                        stdout,
+                        "tests",
+                        require_success=True,
+                    )
+                )
+
     def test_expected_test_failure_is_narrowly_bound_to_qa_reproduction(self):
         qa_row = routing_row(
             route_boundary="verify-qa-failure",
@@ -5361,9 +5520,18 @@ normalizePhone(task.phone) === expected;
             "CODEX_HOME=/home/test/.codex codex plugin list",
             f"groundwork 0.5.7 {installed_root}",
         )
+        valid_json_inventory = evidence(
+            "CODEX_HOME=/home/test/.codex codex plugin list --json",
+            f"groundwork 0.5.7 {installed_root}",
+        )
         valid_show = evidence(
             "CODEX_HOME=/home/test/.codex "
             "codex plugin show groundwork@groundwork",
+            f"groundwork@groundwork installed root: {installed_root}",
+        )
+        valid_json_show = evidence(
+            "CODEX_HOME=/home/test/.codex "
+            "codex plugin show groundwork@groundwork --json",
             f"groundwork@groundwork installed root: {installed_root}",
         )
         self.assertTrue(
@@ -5374,7 +5542,19 @@ normalizePhone(task.phone) === expected;
         )
         self.assertTrue(
             run_runtime.has_verified_groundwork_claim_evidence(
+                valid_json_inventory,
+                cache_claim,
+            )
+        )
+        self.assertTrue(
+            run_runtime.has_verified_groundwork_claim_evidence(
                 valid_show,
+                cache_claim,
+            )
+        )
+        self.assertTrue(
+            run_runtime.has_verified_groundwork_claim_evidence(
+                valid_json_show,
                 cache_claim,
             )
         )
@@ -5427,6 +5607,21 @@ normalizePhone(task.phone) === expected;
             "codex plugin add groundwork@groundwork",
             f"installed plugin root: {installed_root}",
         )
+        valid_json_refresh = evidence(
+            "CODEX_HOME=/home/test/.codex "
+            "codex plugin add groundwork@groundwork --json",
+            f"installed plugin root: {installed_root}",
+        )
+        valid_leading_json_refresh = evidence(
+            "CODEX_HOME=/home/test/.codex "
+            "codex plugin add --json groundwork@groundwork",
+            f"installed plugin root: {installed_root}",
+        )
+        valid_marketplace_refresh = evidence(
+            "CODEX_HOME=/home/test/.codex "
+            "codex plugin add groundwork --marketplace groundwork --json",
+            f"installed plugin root: {installed_root}",
+        )
         wrong_refresh = evidence(
             "CODEX_HOME=/home/test/.codex "
             "codex plugin add unrelated@market",
@@ -5435,6 +5630,24 @@ normalizePhone(task.phone) === expected;
         self.assertTrue(
             run_runtime.has_verified_groundwork_claim_evidence(
                 valid_refresh,
+                refresh_claim,
+            )
+        )
+        self.assertTrue(
+            run_runtime.has_verified_groundwork_claim_evidence(
+                valid_json_refresh,
+                refresh_claim,
+            )
+        )
+        self.assertTrue(
+            run_runtime.has_verified_groundwork_claim_evidence(
+                valid_leading_json_refresh,
+                refresh_claim,
+            )
+        )
+        self.assertTrue(
+            run_runtime.has_verified_groundwork_claim_evidence(
+                valid_marketplace_refresh,
                 refresh_claim,
             )
         )
@@ -6325,6 +6538,42 @@ release_evidence_claim:
                     ),
                 ]
             ),
+            "invalid_attached_hash_policy_option": "\n".join(
+                [
+                    inventory,
+                    equivalence,
+                    command_event(
+                        "CODEX_HOME=/home/test/.codex "
+                        "python3 --check-hash-based-pycs=default "
+                        f"{runtime_runner} --suite smoke.csv",
+                        output=runtime_summary_output(),
+                    ),
+                ]
+            ),
+            "hash_policy_option_consumes_runner": "\n".join(
+                [
+                    inventory,
+                    equivalence,
+                    command_event(
+                        "CODEX_HOME=/home/test/.codex "
+                        f"python3 --check-hash-based-pycs {runtime_runner} "
+                        "/tmp/fake.py --suite smoke.csv",
+                        output=runtime_summary_output(),
+                    ),
+                ]
+            ),
+            "python_cluster_with_command_mode": "\n".join(
+                [
+                    inventory,
+                    equivalence,
+                    command_event(
+                        "CODEX_HOME=/home/test/.codex "
+                        f"python3 -IBc {runtime_runner} /tmp/fake.py "
+                        "--suite smoke.csv",
+                        output=runtime_summary_output(),
+                    ),
+                ]
+            ),
             "inventory_help": "\n".join(
                 [
                     command_event(
@@ -6521,6 +6770,9 @@ release_evidence_claim:
             "-B -W ignore -X dev",
             "-Wignore -Xdev",
             "--check-hash-based-pycs default",
+            "-IB",
+            "-OB",
+            "-bB",
         ):
             with self.subTest(interpreter_options=interpreter_options):
                 optioned_runtime = run_runtime.routing_verdict_model(
@@ -6612,7 +6864,9 @@ release_evidence_claim:
 
         valid = "\n".join(
             [
-                plugin_add("codex plugin add groundwork@groundwork"),
+                plugin_add(
+                    "codex plugin add groundwork@groundwork --json"
+                ),
                 equivalence,
                 runtime_trial,
             ]
@@ -6623,6 +6877,22 @@ release_evidence_claim:
             ),
             "help": plugin_add("codex plugin add --help"),
             "missing_plugin_operand": plugin_add("codex plugin add"),
+            "wrong_marketplace": plugin_add(
+                "codex plugin add groundwork --marketplace unrelated "
+                "--json"
+            ),
+            "unknown_option": plugin_add(
+                "codex plugin add groundwork@groundwork --unknown"
+            ),
+            "json_value": plugin_add(
+                "codex plugin add groundwork@groundwork --json=pretty"
+            ),
+            "duplicate_json": plugin_add(
+                "codex plugin add --json groundwork@groundwork --json"
+            ),
+            "extra_positional": plugin_add(
+                "codex plugin add groundwork@groundwork extra --json"
+            ),
         }
 
         passed = run_runtime.routing_verdict_model(

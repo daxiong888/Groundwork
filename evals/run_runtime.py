@@ -1449,8 +1449,6 @@ UNVERIFIED_EVIDENCE_MARKERS = (
     "unknown",
     "missing",
     "blocked",
-    "no test",
-    "no tests",
     "no runtime",
     "without runtime",
     "cannot count",
@@ -1466,12 +1464,55 @@ UNVERIFIED_EVIDENCE_MARKERS = (
     "未知",
     "缺少",
     "不可验证",
-    "没有测试",
     "无可运行",
     "不能证明",
     "不能作为",
     "不足以",
 )
+
+
+def _has_unverified_evidence_marker(clause):
+    lowered = str(clause or "").lower()
+    # Positive statements such as "no tests failed" and explicit negations
+    # must not be promoted into an unverified-evidence boundary.
+    lowered = re.sub(
+        r"\bno\s+tests?\s+(?:(?:are|had|has|have|were)\s+)?"
+        r"(?:failed|failing|failures?|errored|errors?)\b",
+        " ",
+        lowered,
+    )
+    lowered = re.sub(
+        r"\b(?:no(?:\s+longer)?|not|never|without)\s+"
+        r"(?:(?:currently|actually|still)\s+)?"
+        r"(?:missing|unverified|unknown|blocked|insufficient)\b",
+        " ",
+        lowered,
+    )
+    chinese_positive_patterns = (
+        r"没有测试(?:失败|报错|错误)",
+        r"(?:并非|不是|不再)(?:缺少|未验证|未知|阻塞|不足)",
+    )
+    original = str(clause or "")
+    for pattern in chinese_positive_patterns:
+        lowered = re.sub(pattern, " ", lowered)
+        original = re.sub(pattern, " ", original)
+    if any(
+        marker in lowered
+        or (
+            not re.fullmatch(r"[a-z0-9_ ]+", marker)
+            and marker in original
+        )
+        for marker in UNVERIFIED_EVIDENCE_MARKERS
+    ):
+        return True
+    return bool(
+        re.search(
+            r"\bno\s+tests?\b(?!\s+(?:(?:are|had|has|have|were)\s+)?"
+            r"(?:failed|failing|failures?|errored|errors?)\b)",
+            lowered,
+        )
+        or re.search(r"没有测试(?!失败|报错|错误)", original)
+    )
 
 
 def has_scoped_unverified_boundary(text, domain_markers):
@@ -1488,10 +1529,7 @@ def has_scoped_unverified_boundary(text, domain_markers):
                 for marker in domain_markers
             ):
                 continue
-            if any(
-                marker in lowered or marker in clause
-                for marker in UNVERIFIED_EVIDENCE_MARKERS
-            ):
+            if _has_unverified_evidence_marker(clause):
                 return True
     return False
 
@@ -2110,6 +2148,9 @@ PYTHON_INTERPRETER_VALUE_OPTIONS = {
     "-X",
     "--check-hash-based-pycs",
 }
+PYTHON_INTERPRETER_CLUSTER_FLAGS = frozenset(
+    "bBdEiIOPqRsSuvx"
+)
 
 
 def _python_execution_target(args):
@@ -2158,16 +2199,19 @@ def _python_execution_target(args):
         if not positional_only and (
             (token.startswith("-W") and len(token) > 2)
             or (token.startswith("-X") and len(token) > 2)
-            or (
-                token.startswith("--check-hash-based-pycs=")
-                and bool(token.split("=", 1)[1])
-            )
         ):
             index += 1
             continue
         if not positional_only and (
             token in PYTHON_INTERPRETER_FLAG_OPTIONS
             or re.fullmatch(r"-(?:b+|O{1,2}|v+)", token)
+            or (
+                len(token) > 2
+                and token.startswith("-")
+                and set(token[1:]).issubset(
+                    PYTHON_INTERPRETER_CLUSTER_FLAGS
+                )
+            )
         ):
             index += 1
             continue
@@ -2325,7 +2369,30 @@ def _is_git_status_invocation(invocation):
 def _is_test_invocation(invocation):
     executable = invocation["executable"]
     args = invocation["args"]
-    if _has_help_or_version(args):
+    nonexecuting_options = {
+        "--co",
+        "--collect-only",
+        "--dry-run",
+        "--fixtures",
+        "--fixtures-per-test",
+        "--list",
+        "--list-only",
+        "--list-tests",
+        "--listtests",
+        "--markers",
+        "--no-run",
+        "--setup-only",
+        "-list",
+    }
+    if _has_help_or_version(args) or any(
+        str(argument).casefold() in nonexecuting_options
+        or any(
+            str(argument).casefold().startswith(option + "=")
+            for option in nonexecuting_options
+            if option.startswith("--")
+        )
+        for argument in args
+    ):
         return False
     if executable in {"pytest", "py.test"}:
         return True
@@ -3240,6 +3307,68 @@ def _structured_browser_activity(activity):
     return _browser_observation_result_is_substantive(matched_tool, result)
 
 
+def _test_command_output_is_substantive(output):
+    text = str(output or "").strip()
+    if not text:
+        return False
+    lowered = text.casefold()
+    zero_execution_patterns = (
+        r"\bran\s+0\s+tests?\b",
+        r"\brunning\s+0\s+tests?\b",
+        r"\bcollected\s+0\s+(?:items?|tests?)\b",
+        r"\bno\s+tests?\s+to\s+run\b",
+        r"\bno\s+tests?\s+(?:were\s+)?"
+        r"(?:collected|discovered|executed|found|ran|run)\b",
+        r"\b0\s+tests?\s+(?:collected|discovered|executed|found|ran|run)\b",
+        r"\b(?:executed|tests?)\s*:\s*0\b",
+        r"\ball\s+tests?\s+(?:were\s+)?skipped\b",
+    )
+    if any(
+        re.search(pattern, lowered)
+        for pattern in zero_execution_patterns
+    ):
+        return False
+    unittest_run = re.search(r"\bran\s+([1-9]\d*)\s+tests?\b", lowered)
+    unittest_skipped = re.search(r"\bskipped\s*=\s*([1-9]\d*)\b", lowered)
+    if (
+        unittest_run
+        and unittest_skipped
+        and int(unittest_run.group(1)) == int(unittest_skipped.group(1))
+    ):
+        return False
+    junit_run = re.search(r"\btests?\s+run\s*:\s*([1-9]\d*)\b", lowered)
+    junit_skipped = re.search(r"\bskipped\s*:\s*([1-9]\d*)\b", lowered)
+    if (
+        junit_run
+        and junit_skipped
+        and int(junit_run.group(1)) == int(junit_skipped.group(1))
+    ):
+        return False
+    positive_execution_patterns = (
+        r"\bran\s+[1-9]\d*\s+tests?\b",
+        r"\brunning\s+[1-9]\d*\s+tests?\b",
+        r"\btests?\s+run\s*:\s*[1-9]\d*\b",
+        r"\b[1-9]\d*\s+"
+        r"(?:passed|failed|failures?|errors?|xfailed|xpassed)\b",
+        r"\b(?:passed|failed|failures?|errors?|executed|tests?|xfailed|xpassed)"
+        r"\s*:\s*[1-9]\d*\b",
+    )
+    if any(
+        re.search(pattern, lowered)
+        for pattern in positive_execution_patterns
+    ):
+        return True
+    if (
+        re.search(
+            r"\b(?:[1-9]\d*)\s+(?:deselected|ignored|skipped)\b",
+            lowered,
+        )
+        or re.search(r"\bcollected\s+[1-9]\d*\s+(?:items?|tests?)\b", lowered)
+    ):
+        return False
+    return True
+
+
 def has_observed_evidence(stdout, evidence_kind, *, require_success=False):
     activities = completed_tool_activities(stdout)
     eligible = [
@@ -3282,6 +3411,14 @@ def has_observed_evidence(stdout, evidence_kind, *, require_success=False):
                 evidence_kind == "source"
                 and matching_invocations
                 and not _source_result_is_substantive(
+                    activity.get("output")
+                )
+            ):
+                continue
+            if (
+                evidence_kind == "tests"
+                and matching_invocations
+                and not _test_command_output_is_substantive(
                     activity.get("output")
                 )
             ):
@@ -3834,13 +3971,78 @@ def _codex_plugin_action_has_required_target(
     if not tokens:
         return False
     action = tokens[1].lower()
+    arguments = tokens[2:]
     if action == "list":
-        return len(tokens) == 2
+        return arguments in ([], ["--json"])
     if action not in {"add", "show"}:
         return False
+
+    if action == "show":
+        positionals = [
+            argument for argument in arguments if argument != "--json"
+        ]
+        return (
+            len(positionals) == 1
+            and arguments.count("--json") <= 1
+            and len(positionals) + arguments.count("--json")
+            == len(arguments)
+            and positionals[0].casefold()
+            == str(expected_spec).casefold()
+        )
+
+    expected_plugin, separator, expected_marketplace = str(
+        expected_spec
+    ).partition("@")
+    if not separator or not expected_plugin or not expected_marketplace:
+        return False
+    marketplace = ""
+    seen_json = False
+    positionals = []
+    index = 0
+    while index < len(arguments):
+        argument = str(arguments[index])
+        if argument == "--json":
+            if seen_json:
+                return False
+            seen_json = True
+            index += 1
+            continue
+        if argument in {"-m", "--marketplace"}:
+            if index + 1 >= len(arguments) or marketplace:
+                return False
+            marketplace = str(arguments[index + 1])
+            index += 2
+            continue
+        if argument.startswith("--marketplace="):
+            if marketplace:
+                return False
+            marketplace = argument.split("=", 1)[1]
+            if not marketplace:
+                return False
+            index += 1
+            continue
+        if argument.startswith("-m") and len(argument) > 2:
+            if marketplace:
+                return False
+            marketplace = argument[2:]
+            index += 1
+            continue
+        if argument.startswith("-"):
+            return False
+        positionals.append(argument)
+        index += 1
+
+    if len(positionals) != 1:
+        return False
+    target = positionals[0]
+    if "@" in target:
+        return (
+            not marketplace
+            and target.casefold() == str(expected_spec).casefold()
+        )
     return (
-        len(tokens) == 3
-        and tokens[2].casefold() == str(expected_spec).casefold()
+        target.casefold() == expected_plugin.casefold()
+        and marketplace.casefold() == expected_marketplace.casefold()
     )
 
 
