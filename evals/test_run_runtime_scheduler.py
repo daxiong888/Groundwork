@@ -4187,8 +4187,12 @@ normalizePhone(task.phone) === expected;
             changes=[],
             lifecycle_errors=[],
             stdout=command_event(
-                "python3 -I -m unittest tests.test_app",
-                output="Ran 1 test in 0.001s\n\nOK",
+                "node --test",
+                output=(
+                    "# tests 1\n# suites 0\n# pass 1\n# fail 0\n"
+                    "# cancelled 0\n# skipped 0\n# todo 0\n"
+                    "# duration_ms 1"
+                ),
             ),
         )
         runtime = run_runtime.routing_verdict_model(
@@ -4557,17 +4561,22 @@ normalizePhone(task.phone) === expected;
                 )
 
         for command in (
-            "env FOO=bar python3 -I -m unittest tests.test_app",
-            "env -u FOO python3 -I -m unittest tests.test_app",
-            "command python3 -I -m unittest tests.test_app",
-            "nohup python3 -I -m unittest tests.test_app",
+            "env FOO=bar node --test",
+            "env -u FOO node --test",
+            "command node --test",
+            "nohup node --test",
         ):
             with self.subTest(trusted_wrapper=command):
                 self.assertTrue(
                     run_runtime.has_observed_evidence(
                         command_event(
                             command,
-                            output="Ran 1 test in 0.001s\n\nOK",
+                            output=(
+                                "# tests 1\n# suites 0\n# pass 1\n"
+                                "# fail 0\n# cancelled 0\n"
+                                "# skipped 0\n# todo 0\n"
+                                "# duration_ms 1"
+                            ),
                         ),
                         "tests",
                         require_success=True,
@@ -5646,6 +5655,10 @@ normalizePhone(task.phone) === expected;
                 output="s\nRan 1 test in 0.001s\n\nOK (skipped=1)",
             ),
             command_event(
+                "python3 -I -m unittest tests.test_app",
+                output="Ran 1 test in 0.001s\n\nOK",
+            ),
+            command_event(
                 "pytest --collect-only -q",
                 output="3 tests collected in 0.01s",
             ),
@@ -5729,6 +5742,18 @@ normalizePhone(task.phone) === expected;
                     '{"Action":"fail","Package":"example.com/fake",'
                     '"Test":"TestFails"}\n'
                     '{"Action":"pass","Package":"example.com/fake"}'
+                ),
+            ),
+            command_event(
+                "go test -json -count=1 ./...",
+                output=(
+                    '{"Action":"start","Package":"example.com/app"}\n'
+                    '{"Action":"run","Package":"example.com/app",'
+                    '"Test":"TestWorks"}\n'
+                    '{"Action":"pass","Package":"example.com/app",'
+                    '"Test":"TestWorks","Elapsed":0.01}\n'
+                    '{"Action":"pass","Package":"example.com/app",'
+                    '"Elapsed":0.02}'
                 ),
             ),
             command_event(
@@ -5926,22 +5951,6 @@ normalizePhone(task.phone) === expected;
 
         for stdout in (
             command_event(
-                "python3 -I -m unittest tests.test_app",
-                output="Ran 1 test in 0.001s\n\nOK",
-            ),
-            command_event(
-                "go test -json -count=1 ./...",
-                output=(
-                    '{"Action":"start","Package":"example.com/app"}\n'
-                    '{"Action":"run","Package":"example.com/app",'
-                    '"Test":"TestWorks"}\n'
-                    '{"Action":"pass","Package":"example.com/app",'
-                    '"Test":"TestWorks","Elapsed":0.01}\n'
-                    '{"Action":"pass","Package":"example.com/app",'
-                    '"Elapsed":0.02}'
-                ),
-            ),
-            command_event(
                 "node --test",
                 output=(
                     "# tests 1\n"
@@ -6039,6 +6048,33 @@ normalizePhone(task.phone) === expected;
                 stderr=subprocess.STDOUT,
                 check=False,
             )
+            (root / "fake_test.go").write_text(
+                (
+                    "package fake\n\n"
+                    "import (\n"
+                    "\t\"fmt\"\n\t\"os\"\n\t\"testing\"\n"
+                    ")\n\n"
+                    "func TestMain(m *testing.M) {\n"
+                    "\tfmt.Println(\"=== RUN   TestWouldFail\")\n"
+                    "\tfmt.Println(\"--- PASS: TestWouldFail "
+                    "(0.00s)\")\n"
+                    "\tfmt.Println(\"PASS\")\n"
+                    "\tos.Exit(0)\n"
+                    "}\n\n"
+                    "func TestWouldFail(t *testing.T) { "
+                    "t.Fatal(\"must fail\") }\n"
+                ),
+                encoding="utf-8",
+            )
+            forged_markers = subprocess.run(
+                [go, "test", "-json", "-count=1", "./..."],
+                cwd=root,
+                env=environment,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                check=False,
+            )
 
         self.assertEqual(plain.returncode, 0, plain.stdout)
         self.assertRegex(plain.stdout, r"(?m)^ok\s+")
@@ -6073,6 +6109,138 @@ normalizePhone(task.phone) === expected;
                 run_runtime.command_invocations(
                     "go test -json -count=1 ./..."
                 )[0],
+            )
+        )
+        self.assertEqual(
+            forged_markers.returncode,
+            0,
+            forged_markers.stdout,
+        )
+        self.assertIn('"Action":"run"', forged_markers.stdout)
+        self.assertIn('"Action":"pass"', forged_markers.stdout)
+        forged_invocation = run_runtime.command_invocations(
+            "go test -json -count=1 ./..."
+        )[0]
+        self.assertFalse(run_runtime._is_test_invocation(forged_invocation))
+        self.assertFalse(
+            run_runtime._test_command_output_is_substantive(
+                forged_markers.stdout,
+                forged_invocation,
+            )
+        )
+
+    def test_go_exec_wrapper_cannot_forge_test_evidence(self):
+        go = shutil.which("go")
+        if go is None:
+            self.skipTest("go is unavailable")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "go.mod").write_text(
+                "module example.com/execfake\n\ngo 1.23\n",
+                encoding="utf-8",
+            )
+            (root / "fake_test.go").write_text(
+                (
+                    "package execfake\n\n"
+                    "import \"testing\"\n\n"
+                    "func TestWouldFail(t *testing.T) { "
+                    "t.Fatal(\"must fail\") }\n"
+                ),
+                encoding="utf-8",
+            )
+            wrapper = root / "fakeexec.sh"
+            wrapper.write_text(
+                (
+                    "#!/bin/sh\n"
+                    "printf '%s\\n' '=== RUN   TestWouldFail'\n"
+                    "printf '%s\\n' '--- PASS: TestWouldFail "
+                    "(0.00s)'\n"
+                    "printf '%s\\n' 'PASS'\n"
+                    "exit 0\n"
+                ),
+                encoding="utf-8",
+            )
+            wrapper.chmod(0o755)
+            environment = dict(os.environ)
+            environment["GOCACHE"] = str(root / "gocache")
+            completed = subprocess.run(
+                [
+                    go,
+                    "test",
+                    "-json",
+                    "-count=1",
+                    "-exec",
+                    "./fakeexec.sh",
+                    "./...",
+                ],
+                cwd=root,
+                env=environment,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                check=False,
+            )
+
+        self.assertEqual(completed.returncode, 0, completed.stdout)
+        self.assertIn('"Action":"run"', completed.stdout)
+        self.assertIn('"Action":"pass"', completed.stdout)
+        invocation = run_runtime.command_invocations(
+            "go test -json -count=1 -exec ./fakeexec.sh ./..."
+        )[0]
+        self.assertFalse(run_runtime._is_test_invocation(invocation))
+        self.assertFalse(
+            run_runtime._test_command_output_is_substantive(
+                completed.stdout,
+                invocation,
+            )
+        )
+
+    def test_python_unittest_module_cannot_forge_summary_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            tests = root / "tests"
+            tests.mkdir()
+            (tests / "test_fake.py").write_text(
+                (
+                    "import os\n"
+                    "import sys\n\n"
+                    "sys.stdout.write("
+                    "\"Ran 1 test in 0.001s\\n\\nOK\\n\")\n"
+                    "sys.stdout.flush()\n"
+                    "os._exit(0)\n"
+                ),
+                encoding="utf-8",
+            )
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    "-I",
+                    "-m",
+                    "unittest",
+                    "discover",
+                    "-s",
+                    "tests",
+                    "-p",
+                    "test_*.py",
+                ],
+                cwd=root,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                check=False,
+            )
+
+        self.assertEqual(completed.returncode, 0, completed.stdout)
+        self.assertIn("Ran 1 test in 0.001s", completed.stdout)
+        invocation = run_runtime.command_invocations(
+            "python3 -I -m unittest discover -s tests "
+            "-p test_*.py"
+        )[0]
+        self.assertFalse(run_runtime._is_test_invocation(invocation))
+        self.assertFalse(
+            run_runtime._test_command_output_is_substantive(
+                completed.stdout,
+                invocation,
             )
         )
 
@@ -6570,8 +6738,12 @@ normalizePhone(task.phone) === expected;
         self.assertTrue(
             run_runtime.has_observed_evidence(
                 command_event(
-                    "python3 -I -m unittest tests.test_app",
-                    output="Ran 1 test in 0.001s\n\nOK",
+                    "node --test",
+                    output=(
+                        "# tests 1\n# suites 0\n# pass 1\n# fail 0\n"
+                        "# cancelled 0\n# skipped 0\n# todo 0\n"
+                        "# duration_ms 1"
+                    ),
                 ),
                 "tests",
                 require_success=True,
@@ -6615,8 +6787,12 @@ normalizePhone(task.phone) === expected;
             ),
             (
                 "tests",
-                "python3 -I -m unittest tests.test_app",
-                "Ran 1 test in 0.001s\n\nOK",
+                "node --test",
+                (
+                    "# tests 1\n# suites 0\n# pass 1\n# fail 0\n"
+                    "# cancelled 0\n# skipped 0\n# todo 0\n"
+                    "# duration_ms 1"
+                ),
             ),
             (
                 "browser",

@@ -2509,20 +2509,6 @@ def _python_module(args):
     return str(target["target"]).lower()
 
 
-def _python_uses_isolated_mode(args):
-    for token in (str(argument) for argument in args):
-        if token == "--" or token in {"-c", "-m"} or token.startswith(("-c", "-m")):
-            break
-        if token == "-I" or (
-            len(token) > 2
-            and token.startswith("-")
-            and "I" in token[1:]
-            and set(token[1:]).issubset(PYTHON_INTERPRETER_CLUSTER_FLAGS)
-        ):
-            return True
-    return False
-
-
 def _python_script_and_args(args):
     target = _python_execution_target(args)
     if not target or target["kind"] != "script":
@@ -2779,13 +2765,6 @@ def _is_test_invocation(invocation):
     args = invocation["args"]
     if _test_invocation_is_nonexecuting(invocation):
         return False
-    if executable.startswith("python"):
-        return (
-            _python_module(args) == "unittest"
-            and _python_uses_isolated_mode(args)
-        )
-    if executable == "go":
-        return _is_go_test_json_invocation(invocation)
     if executable == "node":
         node_options = _node_test_option_prefix(args)
         return (
@@ -2794,19 +2773,6 @@ def _is_test_invocation(invocation):
             and _node_test_reporter_is_trusted(node_options)
         )
     return False
-
-
-def _is_go_test_json_invocation(invocation):
-    args = [
-        str(argument).casefold()
-        for argument in (invocation or {}).get("args") or []
-    ]
-    return bool(
-        (invocation or {}).get("executable") == "go"
-        and len(args) >= 2
-        and args[0] == "test"
-        and args[1] in {"-json", "-json=true"}
-    )
 
 
 def _node_test_option_prefix(args):
@@ -3898,85 +3864,12 @@ def _is_node_test_invocation(invocation):
     )
 
 
-def _go_test_json_output_is_substantive(output):
-    running = set()
-    completed = set()
-    for line in str(output or "").splitlines():
-        if not line.strip():
-            continue
-        try:
-            event = json.loads(line)
-        except json.JSONDecodeError:
-            return False
-        if not isinstance(event, dict):
-            return False
-        action = str(event.get("Action") or "").casefold()
-        event_output = str(event.get("Output") or "")
-        if "(cached)" in event_output.casefold():
-            return False
-        test_name = str(event.get("Test") or "").strip()
-        if not test_name:
-            continue
-        key = (
-            str(event.get("Package") or "").strip(),
-            test_name,
-        )
-        if action == "run":
-            running.add(key)
-        elif action == "fail":
-            return False
-        elif action == "pass" and key in running:
-            completed.add(key)
-    return bool(completed)
-
-
 def _test_command_output_is_substantive(output, invocation=None):
     text = str(output or "").strip()
     if not text or not invocation or not _is_test_invocation(invocation):
         return False
     if _is_node_test_invocation(invocation):
         return _node_test_output_is_substantive(text)
-    executable = str(invocation.get("executable") or "").casefold()
-    python_module = (
-        _python_module(invocation.get("args") or [])
-        if executable.startswith("python")
-        else ""
-    )
-    lowered = text.casefold()
-    zero_execution_patterns = (
-        r"\bran\s+0\s+tests?\b",
-        r"\brunning\s+0\s+tests?\b",
-        r"\bcollected\s+0\s+(?:items?|tests?)\b",
-        r"\bno\s+test\s+files?\s+found\b",
-        r"\[no\s+test\s+files?\]",
-        r"\bno\s+tests?\s+to\s+run\b",
-        r"\bno\s+tests?\s+(?:were\s+)?"
-        r"(?:collected|discovered|executed|found|ran|run)\b",
-        r"\b0\s+tests?\s+(?:collected|discovered|executed|found|ran|run)\b",
-        r"\b(?:executed|tests?)\s*:\s*0\b",
-        r"(?m)^\s*(?:#\s*)?tests\s+0\s*$",
-        r"\ball\s+tests?\s+(?:were\s+)?skipped\b",
-        r"\btests?\s+are\s+skipped\b",
-    )
-    if any(
-        re.search(pattern, lowered)
-        for pattern in zero_execution_patterns
-    ):
-        return False
-
-    def count(pattern):
-        match = re.search(pattern, lowered)
-        return int(match.group(1)) if match else None
-
-    if python_module == "unittest":
-        unittest_run = count(r"\bran\s+(\d+)\s+tests?\b")
-        if unittest_run is None:
-            return False
-        unittest_skipped = count(r"\bskipped\s*=\s*(\d+)\b") or 0
-        return unittest_run > unittest_skipped
-
-    if executable == "go":
-        return _go_test_json_output_is_substantive(text)
     return False
 
 
