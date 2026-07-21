@@ -2411,6 +2411,45 @@ normalizePhone(task.phone) === expected;
                 run_runtime.REPO = old_repo
                 run_runtime.restore_runtime_path_state(path_state)
 
+    def test_runtime_main_normalizes_missing_launcher_in_serial_mode(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_root = Path(tmp) / "runtime"
+            path_state = run_runtime.runtime_path_state()
+            old_selector = dict(run_runtime.RUNTIME_SELECTOR)
+            try:
+                run_runtime.set_runtime_paths(run_root)
+                with mock.patch.object(
+                    run_runtime,
+                    "CODEX_CONTROL_LAUNCHER",
+                    None,
+                ):
+                    exit_code = run_runtime.main(
+                        ["sx-001", "--suite", "smoke.csv"]
+                    )
+
+                summary = json.loads(
+                    (run_root / "summary.json").read_text(
+                        encoding="utf-8"
+                    )
+                )
+                case_result = json.loads(
+                    next((run_root / "cases").glob("*.json")).read_text(
+                        encoding="utf-8"
+                    )
+                )
+            finally:
+                run_runtime.restore_runtime_path_state(path_state)
+                run_runtime.RUNTIME_SELECTOR.clear()
+                run_runtime.RUNTIME_SELECTOR.update(old_selector)
+
+        self.assertEqual(exit_code, 1)
+        self.assertEqual(summary["counts"], {"blocked": 1})
+        self.assertEqual(case_result["verdict"], "blocked")
+        self.assertIn(
+            "no trusted Codex launcher",
+            case_result["notes"],
+        )
+
     def test_prompt_reader_and_cli_reject_bad_headers_and_zero_row_suites(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
@@ -5635,6 +5674,64 @@ normalizePhone(task.phone) === expected;
                 output="testing: warning: no tests to run\nPASS",
             ),
             command_event(
+                "go test ./...",
+                output="ok\texample.com/fake\t0.009s",
+            ),
+            command_event(
+                "go test ./...",
+                output="ok\texample.com/fake\t(cached)",
+            ),
+            command_event(
+                "cargo test",
+                output=(
+                    "running 1 test\n"
+                    "test works ... ok\n"
+                    "test result: ok. 1 passed; 0 failed; 0 ignored"
+                ),
+            ),
+            command_event(
+                "go test -json -count=1 ./...",
+                output=(
+                    '{"Action":"start","Package":"example.com/fake"}\n'
+                    '{"Action":"pass","Package":"example.com/fake",'
+                    '"Elapsed":0.01}'
+                ),
+            ),
+            command_event(
+                "go test -json ./...",
+                output=(
+                    '{"Action":"run","Package":"example.com/fake",'
+                    '"Test":"TestPasses"}\n'
+                    '{"Action":"output","Package":"example.com/fake",'
+                    '"Output":"ok\\tmodule\\t(cached)\\n"}\n'
+                    '{"Action":"pass","Package":"example.com/fake",'
+                    '"Test":"TestPasses"}'
+                ),
+            ),
+            command_event(
+                "go test -json -count=1 ./...",
+                output="not-json",
+            ),
+            command_event(
+                "go test -json -count=1 ./...",
+                output=(
+                    '{"Action":"run","Package":"example.com/fake",'
+                    '"Test":"TestA"}\n'
+                    '{"Action":"pass","Package":"example.com/fake",'
+                    '"Test":"TestB"}'
+                ),
+            ),
+            command_event(
+                "go test -json -count=1 ./...",
+                output=(
+                    '{"Action":"run","Package":"example.com/fake",'
+                    '"Test":"TestFails"}\n'
+                    '{"Action":"fail","Package":"example.com/fake",'
+                    '"Test":"TestFails"}\n'
+                    '{"Action":"pass","Package":"example.com/fake"}'
+                ),
+            ),
+            command_event(
                 "mvn test",
                 output=(
                     "Tests run: 2, Failures: 0, Errors: 0, "
@@ -5833,11 +5930,15 @@ normalizePhone(task.phone) === expected;
                 output="Ran 1 test in 0.001s\n\nOK",
             ),
             command_event(
-                "cargo test",
+                "go test -json -count=1 ./...",
                 output=(
-                    "running 1 test\n"
-                    "test works ... ok\n"
-                    "test result: ok. 1 passed; 0 failed; 0 ignored"
+                    '{"Action":"start","Package":"example.com/app"}\n'
+                    '{"Action":"run","Package":"example.com/app",'
+                    '"Test":"TestWorks"}\n'
+                    '{"Action":"pass","Package":"example.com/app",'
+                    '"Test":"TestWorks","Elapsed":0.01}\n'
+                    '{"Action":"pass","Package":"example.com/app",'
+                    '"Elapsed":0.02}'
                 ),
             ),
             command_event(
@@ -5876,6 +5977,204 @@ normalizePhone(task.phone) === expected;
                         require_success=True,
                     )
                 )
+
+    def test_go_testmain_cannot_skip_mrun_and_produce_evidence(self):
+        go = shutil.which("go")
+        if go is None:
+            self.skipTest("go is unavailable")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "go.mod").write_text(
+                "module example.com/fake\n\ngo 1.23\n",
+                encoding="utf-8",
+            )
+            (root / "fake_test.go").write_text(
+                (
+                    "package fake\n\n"
+                    "import (\n\t\"os\"\n\t\"testing\"\n)\n\n"
+                    "func TestMain(m *testing.M) { os.Exit(0) }\n\n"
+                    "func TestWouldFail(t *testing.T) { "
+                    "t.Fatal(\"must fail\") }\n"
+                ),
+                encoding="utf-8",
+            )
+            environment = dict(os.environ)
+            environment["GOCACHE"] = str(root / "gocache")
+            plain = subprocess.run(
+                [go, "test", "-count=1", "./..."],
+                cwd=root,
+                env=environment,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                check=False,
+            )
+            structured = subprocess.run(
+                [go, "test", "-json", "-count=1", "./..."],
+                cwd=root,
+                env=environment,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                check=False,
+            )
+            (root / "fake_test.go").write_text(
+                (
+                    "package fake\n\n"
+                    "import (\n\t\"os\"\n\t\"testing\"\n)\n\n"
+                    "func TestMain(m *testing.M) { "
+                    "m.Run(); os.Exit(0) }\n\n"
+                    "func TestPasses(t *testing.T) {}\n\n"
+                    "func TestWouldFail(t *testing.T) { "
+                    "t.Fatal(\"must fail\") }\n"
+                ),
+                encoding="utf-8",
+            )
+            masked_failure = subprocess.run(
+                [go, "test", "-json", "-count=1", "./..."],
+                cwd=root,
+                env=environment,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                check=False,
+            )
+
+        self.assertEqual(plain.returncode, 0, plain.stdout)
+        self.assertRegex(plain.stdout, r"(?m)^ok\s+")
+        self.assertFalse(
+            run_runtime._test_command_output_is_substantive(
+                plain.stdout,
+                run_runtime.command_invocations(
+                    "go test -count=1 ./..."
+                )[0],
+            )
+        )
+        self.assertEqual(structured.returncode, 0, structured.stdout)
+        self.assertNotIn('"Test":', structured.stdout)
+        self.assertFalse(
+            run_runtime._test_command_output_is_substantive(
+                structured.stdout,
+                run_runtime.command_invocations(
+                    "go test -json -count=1 ./..."
+                )[0],
+            )
+        )
+        self.assertEqual(
+            masked_failure.returncode,
+            0,
+            masked_failure.stdout,
+        )
+        self.assertIn('"Action":"fail"', masked_failure.stdout)
+        self.assertIn('"Action":"pass"', masked_failure.stdout)
+        self.assertFalse(
+            run_runtime._test_command_output_is_substantive(
+                masked_failure.stdout,
+                run_runtime.command_invocations(
+                    "go test -json -count=1 ./..."
+                )[0],
+            )
+        )
+
+    def test_go_cached_package_result_is_not_current_execution(self):
+        go = shutil.which("go")
+        if go is None:
+            self.skipTest("go is unavailable")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "go.mod").write_text(
+                "module example.com/cached\n\ngo 1.23\n",
+                encoding="utf-8",
+            )
+            (root / "cached_test.go").write_text(
+                (
+                    "package cached\n\n"
+                    "import \"testing\"\n\n"
+                    "func TestPasses(t *testing.T) {}\n"
+                ),
+                encoding="utf-8",
+            )
+            environment = dict(os.environ)
+            environment["GOCACHE"] = str(root / "gocache")
+            for _attempt in range(2):
+                completed = subprocess.run(
+                    [go, "test", "./..."],
+                    cwd=root,
+                    env=environment,
+                    text=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    check=False,
+                )
+                self.assertEqual(
+                    completed.returncode,
+                    0,
+                    completed.stdout,
+                )
+
+        self.assertIn("(cached)", completed.stdout)
+        self.assertFalse(
+            run_runtime._test_command_output_is_substantive(
+                completed.stdout,
+                run_runtime.command_invocations("go test ./...")[0],
+            )
+        )
+
+    def test_cargo_custom_harness_cannot_print_libtest_summary(self):
+        cargo = shutil.which("cargo")
+        if cargo is None:
+            self.skipTest("cargo is unavailable")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            tests = root / "tests"
+            tests.mkdir()
+            (root / "Cargo.toml").write_text(
+                (
+                    "[package]\n"
+                    "name = \"forged\"\n"
+                    "version = \"0.1.0\"\n"
+                    "edition = \"2021\"\n\n"
+                    "[[test]]\n"
+                    "name = \"forged\"\n"
+                    "path = \"tests/forged.rs\"\n"
+                    "harness = false\n"
+                ),
+                encoding="utf-8",
+            )
+            (tests / "forged.rs").write_text(
+                (
+                    "fn main() {\n"
+                    "    println!(\"test result: ok. 1 passed; "
+                    "0 failed; 0 ignored\");\n"
+                    "}\n"
+                ),
+                encoding="utf-8",
+            )
+            environment = dict(os.environ)
+            environment["CARGO_TARGET_DIR"] = str(root / "target")
+            completed = subprocess.run(
+                [cargo, "test"],
+                cwd=root,
+                env=environment,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                check=False,
+            )
+
+        self.assertEqual(completed.returncode, 0, completed.stdout)
+        self.assertIn(
+            "test result: ok. 1 passed; 0 failed; 0 ignored",
+            completed.stdout,
+        )
+        invocation = run_runtime.command_invocations("cargo test")[0]
+        self.assertFalse(run_runtime._is_test_invocation(invocation))
+        self.assertFalse(
+            run_runtime._test_command_output_is_substantive(
+                completed.stdout,
+                invocation,
+            )
+        )
 
         for command in (
             "mvn -DskipTests test",

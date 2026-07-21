@@ -2784,10 +2784,8 @@ def _is_test_invocation(invocation):
             _python_module(args) == "unittest"
             and _python_uses_isolated_mode(args)
         )
-    if executable == "cargo":
-        return _first_non_option(args).lower() == "test"
     if executable == "go":
-        return _first_non_option(args).lower() == "test"
+        return _is_go_test_json_invocation(invocation)
     if executable == "node":
         node_options = _node_test_option_prefix(args)
         return (
@@ -2796,6 +2794,19 @@ def _is_test_invocation(invocation):
             and _node_test_reporter_is_trusted(node_options)
         )
     return False
+
+
+def _is_go_test_json_invocation(invocation):
+    args = [
+        str(argument).casefold()
+        for argument in (invocation or {}).get("args") or []
+    ]
+    return bool(
+        (invocation or {}).get("executable") == "go"
+        and len(args) >= 2
+        and args[0] == "test"
+        and args[1] in {"-json", "-json=true"}
+    )
 
 
 def _node_test_option_prefix(args):
@@ -3887,6 +3898,38 @@ def _is_node_test_invocation(invocation):
     )
 
 
+def _go_test_json_output_is_substantive(output):
+    running = set()
+    completed = set()
+    for line in str(output or "").splitlines():
+        if not line.strip():
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            return False
+        if not isinstance(event, dict):
+            return False
+        action = str(event.get("Action") or "").casefold()
+        event_output = str(event.get("Output") or "")
+        if "(cached)" in event_output.casefold():
+            return False
+        test_name = str(event.get("Test") or "").strip()
+        if not test_name:
+            continue
+        key = (
+            str(event.get("Package") or "").strip(),
+            test_name,
+        )
+        if action == "run":
+            running.add(key)
+        elif action == "fail":
+            return False
+        elif action == "pass" and key in running:
+            completed.add(key)
+    return bool(completed)
+
+
 def _test_command_output_is_substantive(output, invocation=None):
     text = str(output or "").strip()
     if not text or not invocation or not _is_test_invocation(invocation):
@@ -3932,27 +3975,8 @@ def _test_command_output_is_substantive(output, invocation=None):
         unittest_skipped = count(r"\bskipped\s*=\s*(\d+)\b") or 0
         return unittest_run > unittest_skipped
 
-    if executable == "cargo":
-        rust_summary = re.search(
-            r"\btest\s+result\s*:[^\n]*?"
-            r"(\d+)\s+passed;\s*(\d+)\s+failed;[^\n]*?"
-            r"(\d+)\s+ignored\b",
-            lowered,
-        )
-        if not rust_summary:
-            return False
-        passed, failed, _ignored = (
-            int(value) for value in rust_summary.groups()
-        )
-        return passed + failed > 0
-
     if executable == "go":
-        return bool(
-            re.search(
-                r"(?m)^ok\s+\S+(?:\s+(?:\d+(?:\.\d+)?s|\(cached\)))?\s*$",
-                lowered,
-            )
-        )
+        return _go_test_json_output_is_substantive(text)
     return False
 
 
@@ -7956,7 +7980,14 @@ def summarize_routing_results(results):
 def run_parallel_rows(rows, jobs, retry_timeouts=0):
     results = []
     with ThreadPoolExecutor(max_workers=jobs) as executor:
-        future_to_row = {executor.submit(run_case_with_policy, row, retry_timeouts): row for row in rows}
+        future_to_row = {
+            executor.submit(
+                run_case_with_exception_boundary,
+                row,
+                retry_timeouts,
+            ): row
+            for row in rows
+        }
         for future in as_completed(future_to_row):
             row = future_to_row[future]
             try:
@@ -7967,17 +7998,34 @@ def run_parallel_rows(rows, jobs, retry_timeouts=0):
     return results
 
 
+def run_case_with_exception_boundary(row, retry_timeouts=0):
+    try:
+        return run_case_with_policy(row, retry_timeouts)
+    except Exception as exc:
+        return exception_result(row, exc)
+
+
 def execute_rows(rows, jobs, resource_policy, retry_timeouts=0):
     results = []
     parallel_rows, serial_rows = partition_rows(rows, jobs, resource_policy)
     if jobs == 1:
         for row in rows:
-            results.append(run_case_with_policy(row, retry_timeouts))
+            results.append(
+                run_case_with_exception_boundary(
+                    row,
+                    retry_timeouts,
+                )
+            )
     else:
         if parallel_rows:
             results.extend(run_parallel_rows(parallel_rows, jobs, retry_timeouts))
         for row in serial_rows:
-            results.append(run_case_with_policy(row, retry_timeouts))
+            results.append(
+                run_case_with_exception_boundary(
+                    row,
+                    retry_timeouts,
+                )
+            )
     input_indexes = {row.get("id"): row.get("_input_index", 0) for row in rows}
     for result in results:
         result["_input_index"] = input_indexes.get(result.get("id"), 0)
