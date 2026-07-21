@@ -6382,6 +6382,132 @@ normalizePhone(task.phone) === expected;
                     run_runtime._is_node_test_invocation(invocation)
                 )
 
+    def test_node_test_evidence_rejects_no_isolation_mode(self):
+        native_summary = (
+            "# tests 1\n# suites 0\n# pass 1\n# fail 0\n"
+            "# cancelled 0\n# skipped 0\n# todo 0\n"
+            "# duration_ms 1"
+        )
+        accepted = (
+            "node --test",
+            "node --test --test-isolation=process test/app.test.mjs",
+        )
+        rejected = (
+            "node --test --test-isolation=none test/app.test.mjs",
+            "node --test --test-isolation= test/app.test.mjs",
+            "node --test --test-isolation=thread test/app.test.mjs",
+            "node --test --test-isolation=PROCESS test/app.test.mjs",
+        )
+
+        for command in accepted:
+            with self.subTest(accepted_isolation=command):
+                invocation = run_runtime.command_invocations(command)[0]
+                self.assertTrue(
+                    run_runtime._is_test_invocation(invocation)
+                )
+                self.assertTrue(
+                    run_runtime._test_command_output_is_substantive(
+                        native_summary,
+                        invocation,
+                    )
+                )
+        for command in rejected:
+            with self.subTest(rejected_isolation=command):
+                invocation = run_runtime.command_invocations(command)[0]
+                self.assertFalse(
+                    run_runtime._is_test_invocation(invocation)
+                )
+                self.assertFalse(
+                    run_runtime._is_node_test_invocation(invocation)
+                )
+                self.assertFalse(
+                    run_runtime._test_command_output_is_substantive(
+                        native_summary,
+                        invocation,
+                    )
+                )
+
+    def test_node_no_isolation_cannot_print_summary_and_exit_zero(self):
+        node = shutil.which("node")
+        if node is None:
+            self.skipTest("node is unavailable")
+        help_result = subprocess.run(
+            [node, "--help"],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=False,
+        )
+        if "--test-isolation" not in help_result.stdout:
+            self.skipTest("node does not support --test-isolation")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            test_file = root / "fake.test.mjs"
+            test_file.write_text(
+                (
+                    "console.log(`# tests 1\n"
+                    "# suites 0\n"
+                    "# pass 1\n"
+                    "# fail 0\n"
+                    "# cancelled 0\n"
+                    "# skipped 0\n"
+                    "# todo 0\n"
+                    "# duration_ms 1`);\n\n"
+                    "process.exit(0);\n"
+                ),
+                encoding="utf-8",
+            )
+            completed = subprocess.run(
+                [
+                    node,
+                    "--test",
+                    "--test-isolation=none",
+                    test_file.name,
+                ],
+                cwd=root,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                check=False,
+            )
+
+        self.assertEqual(completed.returncode, 0, completed.stdout)
+        self.assertEqual(
+            completed.stdout.strip().splitlines(),
+            [
+                "# tests 1",
+                "# suites 0",
+                "# pass 1",
+                "# fail 0",
+                "# cancelled 0",
+                "# skipped 0",
+                "# todo 0",
+                "# duration_ms 1",
+            ],
+        )
+        command = "node --test --test-isolation=none fake.test.mjs"
+        invocation = run_runtime.command_invocations(command)[0]
+        self.assertFalse(run_runtime._is_test_invocation(invocation))
+        self.assertFalse(
+            run_runtime._test_command_output_is_substantive(
+                completed.stdout,
+                invocation,
+            )
+        )
+        with mock.patch.object(
+            run_runtime,
+            "_observed_invocation_uses_trusted_executable",
+            return_value=True,
+        ):
+            self.assertFalse(
+                run_runtime.has_observed_evidence(
+                    command_event(command, output=completed.stdout),
+                    "tests",
+                    require_success=True,
+                )
+            )
+
     def test_test_evidence_rejects_repo_controlled_delegated_runner(self):
         forged = (
             command_event("npm test", output="1 passed"),

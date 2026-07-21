@@ -2819,6 +2819,11 @@ def _node_test_option_prefix(args):
         if not argument.startswith("-") or argument == "-":
             break
         if (
+            argument.startswith("--test-isolation=")
+            and argument != "--test-isolation=process"
+        ):
+            return None
+        if (
             argument not in options_without_values
             and argument not in options_with_separate_values
             and not argument.startswith(options_with_inline_values)
