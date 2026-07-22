@@ -605,6 +605,76 @@ class RuntimeSchedulerTests(unittest.TestCase):
         self.assertIn("runtime-eval-low", cmd)
         self.assertEqual(cmd[-1], "prompt")
 
+    def test_codex_exec_command_starts_tool_shell_from_evaluator_owned_environment(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            proof_environment = {
+                "PATH": "/proof/bin",
+                "HOME": "/proof/home",
+                "GIT_CONFIG_NOSYSTEM": "1",
+                "GROUNDWORK_ROUTER_OBSERVABILITY": "1",
+                "UNRELATED_INHERITED_KEY": "must-not-reach-tool-shell",
+            }
+
+            cmd = run_runtime.codex_exec_command(
+                root,
+                "read-only",
+                root / "last.txt",
+                "prompt",
+                proof_environment=proof_environment,
+            )
+
+        config_values = [
+            cmd[index + 1]
+            for index, value in enumerate(cmd[:-1])
+            if value == "-c"
+        ]
+        self.assertIn(
+            'shell_environment_policy.inherit="none"',
+            config_values,
+        )
+        set_values = [
+            value
+            for value in config_values
+            if value.startswith("shell_environment_policy.set=")
+        ]
+        self.assertEqual(len(set_values), 1)
+        self.assertIn('PATH = "/proof/bin"', set_values[0])
+        self.assertIn('HOME = "/proof/home"', set_values[0])
+        self.assertIn(
+            'GROUNDWORK_ROUTER_OBSERVABILITY = "1"',
+            set_values[0],
+        )
+        self.assertNotIn("UNRELATED_INHERITED_KEY", set_values[0])
+
+    def test_codex_exec_command_rejects_runtime_shell_environment_override(self):
+        old_selector = dict(run_runtime.RUNTIME_SELECTOR)
+        try:
+            for override in (
+                'shell_environment_policy.inherit="all"',
+                'SHELL_ENVIRONMENT_POLICY.set.NODE_OPTIONS="--require=x"',
+                '"shell_environment_policy".inherit="all"',
+            ):
+                with self.subTest(override=override):
+                    run_runtime.RUNTIME_SELECTOR["codex_config"] = [
+                        override
+                    ]
+                    with tempfile.TemporaryDirectory() as tmp:
+                        root = Path(tmp)
+                        with self.assertRaisesRegex(
+                            RuntimeError,
+                            "cannot override the proof shell environment policy",
+                        ):
+                            run_runtime.codex_exec_command(
+                                root,
+                                "read-only",
+                                root / "last.txt",
+                                "prompt",
+                            )
+        finally:
+            run_runtime.RUNTIME_SELECTOR.clear()
+            run_runtime.RUNTIME_SELECTOR.update(old_selector)
+
     def test_dispatch_read_path_eval_disables_memories_without_affecting_other_rows(self):
         root = Path("/tmp/workspace")
         last_path = Path("/tmp/last.txt")
@@ -775,6 +845,7 @@ normalizePhone(task.phone) === expected;
     def test_run_row_sanitizes_inherited_proof_environment(self):
         inherited = {
             "BASH_ENV": "/tmp/groundwork-fake-bash-env",
+            "BASH_FUNC_node%%": "() { printf forged; }",
             "CARGO_TARGET_DIR": "/tmp/groundwork-fake-cargo-target",
             "CC": "/tmp/groundwork-fake-cc",
             "GIT_DIR": "/tmp/groundwork-fake-git-dir",
@@ -787,6 +858,7 @@ normalizePhone(task.phone) === expected;
             "PYTEST_ADDOPTS": "-p attacker_plugin",
             "PYTHONPATH": "/tmp/groundwork-fake-pythonpath",
             "RUSTFLAGS": "-C linker=/tmp/groundwork-fake-linker",
+            "SHELL": "/tmp/groundwork-fake-shell",
         }
         control = {"GROUNDWORK_ROUTER_OBSERVABILITY": "1"}
         with mock.patch.dict(
@@ -836,6 +908,24 @@ normalizePhone(task.phone) === expected;
         self.assertRegex(
             result["proof_execution_context"][
                 "codex_control_environment_sha256"
+            ],
+            r"^[0-9a-f]{64}$",
+        )
+        self.assertEqual(
+            result["proof_execution_context"][
+                "tool_shell_environment_inherit"
+            ],
+            "none",
+        )
+        self.assertIn(
+            "PATH",
+            result["proof_execution_context"][
+                "tool_shell_environment_keys"
+            ],
+        )
+        self.assertRegex(
+            result["proof_execution_context"][
+                "tool_shell_environment_sha256"
             ],
             r"^[0-9a-f]{64}$",
         )
@@ -1010,6 +1100,109 @@ normalizePhone(task.phone) === expected;
             observed["CODEX_HOME"],
             "/tmp/groundwork-fake-home/.codex",
         )
+
+    def test_sanitized_environment_drops_exported_shell_functions(self):
+        inherited = {
+            "BASH_FUNC_node%%": "() { printf forged; }",
+            "BASH_FUNC_git%%": "() { printf forged; }",
+            "invalid-key": "value",
+            "LEGACY_FUNCTION_EXPORT": "() { printf forged; }",
+            "ORDINARY_KEY": "ordinary-value",
+        }
+
+        child_environment, context = run_runtime.sanitized_codex_environment(
+            inherited
+        )
+
+        for key in (
+            "BASH_FUNC_node%%",
+            "BASH_FUNC_git%%",
+            "invalid-key",
+            "LEGACY_FUNCTION_EXPORT",
+        ):
+            self.assertNotIn(key, child_environment)
+            self.assertIn(key, context["removed_environment_keys"])
+        self.assertEqual(child_environment["ORDINARY_KEY"], "ordinary-value")
+
+    def test_exported_node_function_cannot_forge_test_evidence(self):
+        bash = shutil.which("bash")
+        node = shutil.which("node")
+        if bash is None or node is None:
+            self.skipTest("bash and node are required for exported-function test")
+
+        forged_summary = (
+            "# tests 1\n"
+            "# suites 0\n"
+            "# pass 1\n"
+            "# fail 0\n"
+            "# cancelled 0\n"
+            "# skipped 0\n"
+            "# todo 0\n"
+            "# duration_ms 1\n"
+        )
+        exported_function = (
+            "() { printf '%b' "
+            + json.dumps(forged_summary)
+            + "; }"
+        )
+        hostile_environment = {
+            "PATH": str(Path(node).parent),
+            "BASH_FUNC_node%%": exported_function,
+        }
+
+        imported = subprocess.run(
+            [bash, "--noprofile", "--norc", "-c", "node --test"],
+            env=hostile_environment,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=False,
+        )
+        self.assertEqual(imported.returncode, 0, imported.stdout)
+        self.assertEqual(imported.stdout, forged_summary)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            test_file = workspace / "real.test.mjs"
+            test_file.write_text(
+                "import test from 'node:test';\n"
+                "import assert from 'node:assert/strict';\n"
+                "test('real binary executed', () => assert.equal(1, 1));\n",
+                encoding="utf-8",
+            )
+            with mock.patch.object(
+                run_runtime,
+                "PROOF_EXECUTABLE_PATH",
+                str(Path(node).parent),
+            ):
+                child_environment, context = (
+                    run_runtime.sanitized_codex_environment(
+                        hostile_environment
+                    )
+                )
+                completed = subprocess.run(
+                    [
+                        bash,
+                        "--noprofile",
+                        "--norc",
+                        "-c",
+                        "node --test real.test.mjs",
+                    ],
+                    cwd=workspace,
+                    env=child_environment,
+                    text=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    check=False,
+                )
+
+        self.assertIn(
+            "BASH_FUNC_node%%",
+            context["removed_environment_keys"],
+        )
+        self.assertEqual(completed.returncode, 0, completed.stdout)
+        self.assertIn("real binary executed", completed.stdout)
+        self.assertNotEqual(completed.stdout, forged_summary)
 
     def test_sanitized_environment_drops_invalid_explicit_codex_home(self):
         for value in (

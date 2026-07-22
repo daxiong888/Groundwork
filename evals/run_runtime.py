@@ -836,17 +836,71 @@ def prompt_with_evidence_bindings(prompt, row, cwd):
     )
 
 
-def codex_exec_command(cwd, sandbox, last_path, prompt, row=None):
+def _proof_tool_shell_environment(environment):
+    allowed_keys = (
+        PROOF_TOOL_SHELL_ENVIRONMENT_KEYS
+        | PROOF_CONTROL_ENVIRONMENT_KEYS
+    )
+    return {
+        key: str(environment[key])
+        for key in sorted(allowed_keys)
+        if key in environment
+    }
+
+
+def _proof_tool_shell_codex_config(environment):
+    tool_environment = _proof_tool_shell_environment(environment)
+    inline_environment = ", ".join(
+        key + " = " + json.dumps(value, ensure_ascii=False)
+        for key, value in tool_environment.items()
+    )
+    return [
+        'shell_environment_policy.inherit="none"',
+        "shell_environment_policy.set={ "
+        + inline_environment
+        + " }",
+    ]
+
+
+def _runtime_codex_config_is_proof_safe(value):
+    key = str(value).split("=", 1)[0].strip()
+    if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.-]*", key) is None:
+        return False
+    key = key.lower()
+    return not (
+        key == "shell_environment_policy"
+        or key.startswith("shell_environment_policy.")
+    )
+
+
+def codex_exec_command(
+    cwd,
+    sandbox,
+    last_path,
+    prompt,
+    row=None,
+    *,
+    proof_environment=None,
+):
     if CODEX_CONTROL_LAUNCHER is None:
         raise RuntimeError(
             "no trusted Codex launcher is available"
         )
+    if proof_environment is None:
+        proof_environment, _context = sanitized_codex_environment()
     cmd = [str(CODEX_CONTROL_LAUNCHER)]
     if hook_trust_bypass_enabled():
         cmd.append("--dangerously-bypass-hook-trust")
     for item in RUNTIME_SELECTOR.get("codex_config") or []:
+        if not _runtime_codex_config_is_proof_safe(item):
+            raise RuntimeError(
+                "runtime selector cannot override the proof shell "
+                "environment policy"
+            )
         cmd.extend(["-c", str(item)])
     for item in eval_only_codex_config(row):
+        cmd.extend(["-c", item])
+    for item in _proof_tool_shell_codex_config(proof_environment):
         cmd.extend(["-c", item])
     cmd.extend(
         [
@@ -4178,17 +4232,21 @@ def release_evidence_status(final_response):
     return release_evidence_claim_status(final_response)
 
 
-PROOF_ENVIRONMENT_POLICY_VERSION = "proof-environment-v3"
+PROOF_ENVIRONMENT_POLICY_VERSION = "proof-environment-v4"
 PROOF_EXECUTABLE_POLICY_VERSION = "proof-executable-v3"
 UNSAFE_PROOF_ENVIRONMENT_KEYS = {
     "AR",
     "AS",
+    "BASH_COMPAT",
     "BASH_ENV",
+    "BASH_LOADABLES_PATH",
+    "BASH_XTRACEFD",
     "BASHOPTS",
     "CC",
     "CFLAGS",
     "CDPATH",
     "CLASSPATH",
+    "COMSPEC",
     "COMPILER_PATH",
     "CPATH",
     "CPPFLAGS",
@@ -4199,6 +4257,8 @@ UNSAFE_PROOF_ENVIRONMENT_KEYS = {
     "DIFF_OPTIONS",
     "DYLD_INSERT_LIBRARIES",
     "ENV",
+    "FIGNORE",
+    "FPATH",
     "GIT_ALTERNATE_OBJECT_DIRECTORIES",
     "GIT_CEILING_DIRECTORIES",
     "GIT_COMMON_DIR",
@@ -4221,7 +4281,9 @@ UNSAFE_PROOF_ENVIRONMENT_KEYS = {
     "GOROOT",
     "GOTOOLCHAIN",
     "GOWORK",
+    "GLOBIGNORE",
     "HOME",
+    "IFS",
     "JAVA_HOME",
     "JAVA_TOOL_OPTIONS",
     "JDK_JAVA_OPTIONS",
@@ -4235,15 +4297,20 @@ UNSAFE_PROOF_ENVIRONMENT_KEYS = {
     "NM",
     "OBJC",
     "PAGER",
+    "PATHEXT",
     "PERL5OPT",
     "PATH",
     "PYTHONHOME",
     "PYTHONINSPECT",
     "PYTHONPATH",
     "PYTHONSTARTUP",
+    "PROMPT_COMMAND",
+    "PSMODULEPATH",
+    "PS4",
     "RANLIB",
     "RUBYOPT",
     "SDKROOT",
+    "SHELL",
     "SHELLOPTS",
     "STRIP",
     "USERPROFILE",
@@ -4257,6 +4324,7 @@ UNSAFE_PROOF_ENVIRONMENT_KEYS = {
     "_JAVA_OPTIONS",
 }
 UNSAFE_PROOF_ENVIRONMENT_PREFIXES = (
+    "BASH_FUNC_",
     "CARGO_",
     "DYLD_",
     "GIT_",
@@ -4276,6 +4344,20 @@ PROOF_CONTROL_ENVIRONMENT_KEYS = {
     "GROUNDWORK_ROUTER_OBSERVABILITY_DEBUG",
     "GROUNDWORK_ROUTER_OBSERVABILITY_DISABLED",
     "GROUNDWORK_ROUTER_OBSERVABILITY_MODE",
+}
+PROOF_TOOL_SHELL_ENVIRONMENT_KEYS = {
+    "GIT_CONFIG_GLOBAL",
+    "GIT_CONFIG_NOSYSTEM",
+    "GIT_CONFIG_SYSTEM",
+    "GOENV",
+    "HOME",
+    "PATH",
+    "PYTEST_DISABLE_PLUGIN_AUTOLOAD",
+    "PYTHONNOUSERSITE",
+    "XDG_CACHE_HOME",
+    "XDG_CONFIG_HOME",
+    "XDG_DATA_HOME",
+    "XDG_STATE_HOME",
 }
 INHERITED_ONLY_UNSAFE_PROOF_ENVIRONMENT_KEYS = {
     "GROUNDWORK_CODEX_BYPASS_HOOK_TRUST",
@@ -4712,10 +4794,22 @@ def _proof_executable_identity_matches(candidate, baseline):
     return matches
 
 
+def _proof_environment_key_is_identifier(key):
+    return re.fullmatch(
+        r"[A-Za-z_][A-Za-z0-9_]*",
+        str(key),
+    ) is not None
+
+
 def _proof_environment_key_is_unsafe(key, *, inherited=False):
-    normalized = str(key).upper()
+    key = str(key)
+    normalized = key.upper()
     return (
-        normalized in UNSAFE_PROOF_ENVIRONMENT_KEYS
+        (
+            inherited
+            and not _proof_environment_key_is_identifier(key)
+        )
+        or normalized in UNSAFE_PROOF_ENVIRONMENT_KEYS
         or (
             inherited
             and normalized
@@ -4725,6 +4819,13 @@ def _proof_environment_key_is_unsafe(key, *, inherited=False):
             normalized.startswith(prefix)
             for prefix in UNSAFE_PROOF_ENVIRONMENT_PREFIXES
         )
+    )
+
+
+def _proof_environment_value_is_unsafe(value, *, inherited=False):
+    return bool(
+        inherited
+        and re.match(r"^\s*\(\)\s*\{", str(value))
     )
 
 
@@ -4773,8 +4874,14 @@ def sanitized_codex_environment(environment=None):
     removed = sorted(
         {
             key
-            for key in source
-            if _proof_environment_key_is_unsafe(key, inherited=True)
+            for key, value in source.items()
+            if (
+                _proof_environment_key_is_unsafe(key, inherited=True)
+                or _proof_environment_value_is_unsafe(
+                    value,
+                    inherited=True,
+                )
+            )
         }
         | (
             {"CODEX_HOME"}
@@ -4820,6 +4927,7 @@ def sanitized_codex_environment(environment=None):
     argv_controls = {
         "hook_trust_bypass": hook_trust_bypass_enabled(),
     }
+    tool_shell_environment = _proof_tool_shell_environment(sanitized)
     summary = {
         "environment_policy": PROOF_ENVIRONMENT_POLICY_VERSION,
         "executable_policy": PROOF_EXECUTABLE_POLICY_VERSION,
@@ -4856,6 +4964,15 @@ def sanitized_codex_environment(environment=None):
                 separators=(",", ":"),
             ).encode("utf-8")
         ).hexdigest(),
+        "tool_shell_environment_inherit": "none",
+        "tool_shell_environment_keys": list(tool_shell_environment),
+        "tool_shell_environment_sha256": hashlib.sha256(
+            json.dumps(
+                tool_shell_environment,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest(),
         "argv_control_keys": sorted(argv_controls),
         "argv_controls": argv_controls,
         "argv_control_sha256": hashlib.sha256(
@@ -4879,8 +4996,10 @@ def _proof_invocation_environment_is_safe(invocation):
     )
     return (
         not any(
-            _proof_environment_key_is_unsafe(key)
-            for key in environment
+            not _proof_environment_key_is_identifier(key)
+            or _proof_environment_key_is_unsafe(key)
+            or _proof_environment_value_is_unsafe(value, inherited=True)
+            for key, value in environment.items()
         )
         and not provenance["ignore_environment"]
         and "PATH" not in provenance["unset_variables"]
@@ -7685,7 +7804,14 @@ def run_row(row, timeout_s=None, attempt=1):
     log_path = LOGS / f"{row_id}{attempt_suffix}.jsonl"
     last_path = LAST / f"{row_id}{attempt_suffix}.txt"
     child_environment, proof_execution_context = sanitized_codex_environment()
-    cmd = codex_exec_command(cwd, sandbox, last_path, prompt, row=row)
+    cmd = codex_exec_command(
+        cwd,
+        sandbox,
+        last_path,
+        prompt,
+        row=row,
+        proof_environment=child_environment,
+    )
 
     started = datetime.now(timezone.utc).isoformat()
     try:
