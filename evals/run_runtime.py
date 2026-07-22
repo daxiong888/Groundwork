@@ -2674,54 +2674,271 @@ def _codex_subcommand(args):
     return remaining[0].lower() if remaining else ""
 
 
-def _first_non_option(args):
-    return next((token for token in args if not token.startswith("-")), "")
+SED_PASSIVE_PRINT_SCRIPT = re.compile(
+    r"(?:[0-9]+|\$)(?:,(?:[0-9]+|\$))?p"
+)
+RG_PASSIVE_FLAG_OPTIONS = {
+    "--crlf",
+    "--fixed-strings",
+    "--heading",
+    "--hidden",
+    "--ignore-case",
+    "--json",
+    "--line-number",
+    "--line-regexp",
+    "--multiline",
+    "--multiline-dotall",
+    "--no-config",
+    "--no-filename",
+    "--no-heading",
+    "--no-ignore",
+    "--pcre2",
+    "--smart-case",
+    "--text",
+    "--with-filename",
+    "--word-regexp",
+    "-F",
+    "-S",
+    "-U",
+    "-a",
+    "-i",
+    "-n",
+    "-w",
+    "-x",
+}
+RG_PASSIVE_VALUE_OPTIONS = {
+    "--after-context",
+    "--before-context",
+    "--color",
+    "--context",
+    "--encoding",
+    "--glob",
+    "--max-count",
+    "--type",
+    "--type-not",
+    "-A",
+    "-B",
+    "-C",
+    "-T",
+    "-g",
+    "-m",
+    "-t",
+}
+
+
+def _cat_passive_source_operands(args):
+    tokens = [str(argument) for argument in args]
+    if tokens[:1] == ["--"]:
+        tokens = tokens[1:]
+    if not tokens or any(
+        token == "-" or token.startswith("-")
+        for token in tokens
+    ):
+        return None
+    return tokens
+
+
+def _sed_passive_source_operands(args):
+    tokens = [str(argument) for argument in args]
+    if not tokens or tokens[0] not in {"-n", "--quiet", "--silent"}:
+        return None
+    tokens = tokens[1:]
+    if tokens[:1] == ["-e"]:
+        tokens = tokens[1:]
+    if not tokens or SED_PASSIVE_PRINT_SCRIPT.fullmatch(tokens[0]) is None:
+        return None
+    operands = tokens[1:]
+    if operands[:1] == ["--"]:
+        operands = operands[1:]
+    if not operands or any(
+        operand == "-" or operand.startswith("-")
+        for operand in operands
+    ):
+        return None
+    return operands
+
+
+def _head_tail_passive_source_operands(args):
+    tokens = [str(argument) for argument in args]
+    operands = []
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        if token == "--":
+            operands.extend(tokens[index + 1 :])
+            break
+        if not token.startswith("-") or token == "-":
+            operands.extend(tokens[index:])
+            break
+        if token in {"-q", "--quiet", "-v", "--verbose"}:
+            index += 1
+            continue
+        if token in {"-c", "--bytes", "-n", "--lines"}:
+            if index + 1 >= len(tokens) or re.fullmatch(
+                r"[+-]?[0-9]+(?:[bBkKmMgG])?",
+                tokens[index + 1],
+            ) is None:
+                return None
+            index += 2
+            continue
+        long_value = next(
+            (
+                token.split("=", 1)[1]
+                for option in ("--bytes", "--lines")
+                if token.startswith(option + "=")
+            ),
+            None,
+        )
+        if long_value is not None:
+            if re.fullmatch(
+                r"[+-]?[0-9]+(?:[bBkKmMgG])?",
+                long_value,
+            ) is None:
+                return None
+            index += 1
+            continue
+        attached_value = next(
+            (
+                token[len(option) :]
+                for option in ("-c", "-n")
+                if token.startswith(option) and token != option
+            ),
+            None,
+        )
+        if attached_value is not None and re.fullmatch(
+            r"[+-]?[0-9]+(?:[bBkKmMgG])?",
+            attached_value,
+        ):
+            index += 1
+            continue
+        return None
+    if not operands or any(
+        operand == "-" or operand.startswith("-")
+        for operand in operands
+    ):
+        return None
+    return operands
+
+
+def _rg_passive_source_operands(args):
+    tokens = [str(argument) for argument in args]
+    no_config = False
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        if token == "--":
+            index += 1
+            break
+        if not token.startswith("-") or token == "-":
+            break
+        if token in RG_PASSIVE_FLAG_OPTIONS:
+            no_config = no_config or token == "--no-config"
+            index += 1
+            continue
+        if token in RG_PASSIVE_VALUE_OPTIONS:
+            if index + 1 >= len(tokens):
+                return None
+            index += 2
+            continue
+        if any(
+            token.startswith(option + "=")
+            for option in RG_PASSIVE_VALUE_OPTIONS
+            if option.startswith("--")
+        ):
+            index += 1
+            continue
+        if any(
+            token.startswith(option) and token != option
+            for option in ("-A", "-B", "-C", "-T", "-g", "-m", "-t")
+        ):
+            index += 1
+            continue
+        return None
+    if not no_config or index >= len(tokens):
+        return None
+    paths = tokens[index + 1 :]
+    if any(path == "-" or path.startswith("-") for path in paths):
+        return None
+    return paths
+
+
+def _passive_source_invocation(invocation):
+    executable = invocation["executable"]
+    args = list(invocation.get("args") or [])
+    if _has_help_or_version(args):
+        return None
+    if executable == "cat":
+        operands = _cat_passive_source_operands(args)
+        allow_directories = False
+    elif executable == "sed":
+        operands = _sed_passive_source_operands(args)
+        allow_directories = False
+    elif executable in {"head", "tail"}:
+        operands = _head_tail_passive_source_operands(args)
+        allow_directories = False
+    elif executable == "rg":
+        operands = _rg_passive_source_operands(args)
+        allow_directories = True
+    else:
+        return None
+    if operands is None:
+        return None
+    return {
+        "paths": operands,
+        "allow_directories": allow_directories,
+    }
 
 
 def _is_source_invocation(invocation):
-    executable = invocation["executable"]
-    args = invocation["args"]
-    if _has_help_or_version(args):
+    return _passive_source_invocation(invocation) is not None
+
+
+def _source_invocation_environment_is_safe(invocation):
+    provenance = _environment_provenance(
+        invocation.get("environment_provenance")
+    )
+    return (
+        not (invocation.get("environment") or {})
+        and not (invocation.get("command_wrappers") or [])
+        and not provenance["ignore_environment"]
+        and not provenance["unset_variables"]
+    )
+
+
+def _source_activity_targets_workspace(
+    activity,
+    invocation,
+    case_workspace,
+):
+    workspace = _canonical_existing_directory(case_workspace)
+    if workspace is None:
         return False
-    if executable == "cat":
-        return any(
-            argument != "-" and not str(argument).startswith("-")
-            for argument in args
-        )
-    if executable == "sed":
-        positional = [
-            argument for argument in args if not str(argument).startswith("-")
-        ]
-        return len(positional) >= 2
-    if executable in {"head", "tail"}:
-        return bool(args) and bool(str(args[-1]).strip()) and not str(
-            args[-1]
-        ).startswith(("-", "+")) and not str(args[-1]).isdigit()
-    if executable == "grep":
-        positional = [
-            argument for argument in args if not str(argument).startswith("-")
-        ]
-        return len(positional) >= 2 or (
-            any(
-                argument in {"-e", "--regexp", "-f", "--file"}
-                or str(argument).startswith(("--regexp=", "--file="))
-                for argument in args
-            )
-            and bool(positional)
-        )
-    if executable == "rg":
-        return bool(_first_non_option(args))
-    if executable == "codegraph":
-        positional = [
-            argument for argument in args if not str(argument).startswith("-")
-        ]
-        return (
-            len(positional) >= 2
-            and positional[0].lower() == "explore"
-        )
-    if executable == "git":
-        return _git_subcommand(args) in {"show", "diff", "grep", "log"}
-    return False
+    event_cwd = str(activity.get("cwd") or "").strip()
+    if event_cwd:
+        base = _canonical_existing_directory(event_cwd)
+        if base is None or not _path_is_within(base, workspace):
+            return False
+    else:
+        base = workspace
+    passive = _passive_source_invocation(invocation)
+    if passive is None:
+        return False
+    for raw_path in passive["paths"]:
+        candidate = Path(raw_path)
+        if not candidate.is_absolute():
+            candidate = base / candidate
+        try:
+            resolved = candidate.resolve(strict=True)
+        except (OSError, RuntimeError):
+            return False
+        if not _path_is_within(resolved, workspace):
+            return False
+        if passive["allow_directories"]:
+            if not (resolved.is_file() or resolved.is_dir()):
+                return False
+        elif not resolved.is_file():
+            return False
+    return True
 
 
 def _is_git_status_invocation(invocation):
@@ -3966,7 +4183,13 @@ def _test_command_output_is_substantive(output, invocation=None):
     return False
 
 
-def has_observed_evidence(stdout, evidence_kind, *, require_success=False):
+def has_observed_evidence(
+    stdout,
+    evidence_kind,
+    *,
+    require_success=False,
+    case_workspace=None,
+):
     activities = completed_tool_activities(stdout)
     eligible = [
         activity
@@ -4010,6 +4233,17 @@ def has_observed_evidence(stdout, evidence_kind, *, require_success=False):
                     for invocation in matching_invocations
                     if _observed_invocation_uses_trusted_executable(
                         invocation
+                    )
+                ]
+            if evidence_kind == "source":
+                matching_invocations = [
+                    invocation
+                    for invocation in matching_invocations
+                    if _source_invocation_environment_is_safe(invocation)
+                    and _source_activity_targets_workspace(
+                        activity,
+                        invocation,
+                        case_workspace,
                     )
                 ]
             if (
@@ -4308,6 +4542,7 @@ UNSAFE_PROOF_ENVIRONMENT_KEYS = {
     "PSMODULEPATH",
     "PS4",
     "RANLIB",
+    "RIPGREP_CONFIG_PATH",
     "RUBYOPT",
     "SDKROOT",
     "SHELL",
@@ -7109,7 +7344,10 @@ def evidence_verdict(
                 )
             else:
                 observed_source = has_observed_evidence(
-                    stdout, "source", require_success=True
+                    stdout,
+                    "source",
+                    require_success=True,
+                    case_workspace=case_workspace,
                 )
             if not observed_source and not (
                 allow_unverified_boundary

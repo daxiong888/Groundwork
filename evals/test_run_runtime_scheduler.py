@@ -857,6 +857,7 @@ normalizePhone(task.phone) === expected;
             "NPM_CONFIG_CACHE": "/tmp/groundwork-fake-npm-cache",
             "PYTEST_ADDOPTS": "-p attacker_plugin",
             "PYTHONPATH": "/tmp/groundwork-fake-pythonpath",
+            "RIPGREP_CONFIG_PATH": "/tmp/groundwork-fake-rg-config",
             "RUSTFLAGS": "-C linker=/tmp/groundwork-fake-linker",
             "SHELL": "/tmp/groundwork-fake-shell",
         }
@@ -4367,9 +4368,11 @@ normalizePhone(task.phone) === expected;
             rc=0,
             changes=[],
             lifecycle_errors=[],
-            stdout=command_event(
-                "sed -n '1,200p' src/app.py",
-                output="def app():\n    return 1\n",
+            stdout=tool_event(
+                "filesystem",
+                "read_file",
+                {"content": "def app():\n    return 1\n"},
+                path="/workspace/src/app.py",
             ),
         )
         tests = run_runtime.routing_verdict_model(
@@ -4427,6 +4430,218 @@ normalizePhone(task.phone) === expected;
 
         for verdict in (source, tests, runtime, browser):
             self.assertEqual(verdict["evidence_verdict"], "pass")
+
+    def source_command_evidence_verdict(
+        self,
+        workspace,
+        command,
+        output,
+        *,
+        event_cwd=None,
+    ):
+        return run_runtime.routing_verdict_model(
+            routing_row(evidence_required="source_or_unverified"),
+            actual="direct",
+            last="Source evidence inspected.",
+            rc=0,
+            changes=[],
+            lifecycle_errors=[],
+            stdout=command_event(
+                command,
+                output=output,
+                cwd=event_cwd,
+            ),
+            case_workspace=workspace,
+        )
+
+    def test_rg_preprocessor_cannot_forge_source_evidence(self):
+        rg = shutil.which("rg")
+        if rg is None:
+            self.skipTest("ripgrep is required for preprocessor regression")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            (workspace / "real-source.txt").write_text(
+                "REAL_SOURCE_ONLY\n",
+                encoding="utf-8",
+            )
+            forge = workspace / "forge.sh"
+            forge.write_text(
+                "#!/bin/sh\nprintf 'FORGED_SOURCE_EVIDENCE\\n'\n",
+                encoding="utf-8",
+            )
+            forge.chmod(0o755)
+            completed = subprocess.run(
+                [
+                    rg,
+                    "--pre",
+                    "./forge.sh",
+                    "FORGED_SOURCE_EVIDENCE",
+                    "real-source.txt",
+                ],
+                cwd=workspace,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                check=False,
+            )
+            verdict = self.source_command_evidence_verdict(
+                workspace,
+                "rg --pre ./forge.sh FORGED_SOURCE_EVIDENCE real-source.txt",
+                completed.stdout,
+                event_cwd=workspace,
+            )
+
+        self.assertEqual(completed.returncode, 0, completed.stdout)
+        self.assertEqual(completed.stdout, "FORGED_SOURCE_EVIDENCE\n")
+        self.assertEqual(verdict["evidence_verdict"], "fail")
+
+    def test_ripgrep_config_cannot_forge_source_evidence(self):
+        rg = shutil.which("rg")
+        if rg is None:
+            self.skipTest("ripgrep is required for config regression")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            (workspace / "real-source.txt").write_text(
+                "REAL_SOURCE_ONLY\n",
+                encoding="utf-8",
+            )
+            forge = workspace / "forge.sh"
+            forge.write_text(
+                "#!/bin/sh\nprintf 'FORGED_SOURCE_EVIDENCE\\n'\n",
+                encoding="utf-8",
+            )
+            forge.chmod(0o755)
+            (workspace / "rg.conf").write_text(
+                "--pre\n./forge.sh\n",
+                encoding="utf-8",
+            )
+            environment = dict(os.environ)
+            environment["RIPGREP_CONFIG_PATH"] = "./rg.conf"
+            completed = subprocess.run(
+                [rg, "FORGED_SOURCE_EVIDENCE", "real-source.txt"],
+                cwd=workspace,
+                env=environment,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                check=False,
+            )
+            verdict = self.source_command_evidence_verdict(
+                workspace,
+                "RIPGREP_CONFIG_PATH=./rg.conf "
+                "rg FORGED_SOURCE_EVIDENCE real-source.txt",
+                completed.stdout,
+                event_cwd=workspace,
+            )
+
+        self.assertEqual(completed.returncode, 0, completed.stdout)
+        self.assertEqual(completed.stdout, "FORGED_SOURCE_EVIDENCE\n")
+        self.assertEqual(verdict["evidence_verdict"], "fail")
+
+    def test_sed_execute_command_cannot_forge_source_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            (workspace / "real-source.txt").write_text(
+                "REAL_SOURCE_ONLY\n",
+                encoding="utf-8",
+            )
+            verdict = self.source_command_evidence_verdict(
+                workspace,
+                "sed -n -e 'e ./forge.sh' real-source.txt",
+                "FORGED_SOURCE_EVIDENCE\n",
+                event_cwd=workspace,
+            )
+
+        self.assertEqual(verdict["evidence_verdict"], "fail")
+
+    def test_source_evidence_binds_case_workspace(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            workspace = root / "case-workspace"
+            outside = root / "outside-source.txt"
+            workspace.mkdir()
+            inside = workspace / "inside-source.txt"
+            inside.write_text("INSIDE_SOURCE\n", encoding="utf-8")
+            outside.write_text("OUTSIDE_SOURCE\n", encoding="utf-8")
+            escape = workspace / "escape-source.txt"
+            escape.symlink_to(outside)
+
+            inside_verdict = self.source_command_evidence_verdict(
+                workspace,
+                "cat inside-source.txt",
+                inside.read_text(encoding="utf-8"),
+                event_cwd=workspace,
+            )
+            outside_verdict = self.source_command_evidence_verdict(
+                workspace,
+                f"cat {outside}",
+                outside.read_text(encoding="utf-8"),
+                event_cwd=workspace,
+            )
+            symlink_verdict = self.source_command_evidence_verdict(
+                workspace,
+                "cat escape-source.txt",
+                outside.read_text(encoding="utf-8"),
+                event_cwd=workspace,
+            )
+            wrong_cwd_verdict = self.source_command_evidence_verdict(
+                workspace,
+                "cat inside-source.txt",
+                inside.read_text(encoding="utf-8"),
+                event_cwd=root,
+            )
+
+        self.assertEqual(inside_verdict["evidence_verdict"], "pass")
+        self.assertEqual(outside_verdict["evidence_verdict"], "fail")
+        self.assertEqual(symlink_verdict["evidence_verdict"], "fail")
+        self.assertEqual(wrong_cwd_verdict["evidence_verdict"], "fail")
+
+    def test_source_evidence_accepts_only_passive_workspace_adapters(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            source = workspace / "source.txt"
+            source.write_text("needle\nsecond line\n", encoding="utf-8")
+            accepted = (
+                ("cat source.txt", "needle\nsecond line\n"),
+                ("sed -n '1,2p' source.txt", "needle\nsecond line\n"),
+                ("head -n 1 source.txt", "needle\n"),
+                ("tail -n 1 source.txt", "second line\n"),
+                (
+                    "rg --no-config -n needle source.txt",
+                    "1:needle\n",
+                ),
+                ("rg --no-config needle", "source.txt:needle\n"),
+            )
+            rejected = (
+                "rg needle source.txt",
+                "rg --no-config --pre ./forge.sh needle source.txt",
+                "rg --no-config --pre-glob '*.txt' needle source.txt",
+                "sed -n -e 'e ./forge.sh' source.txt",
+                "env SAFE_SOURCE_READ=1 cat source.txt",
+                "grep needle source.txt",
+                "git show HEAD:source.txt",
+                "codegraph explore source.txt",
+            )
+            for command, output in accepted:
+                with self.subTest(accepted=command):
+                    verdict = self.source_command_evidence_verdict(
+                        workspace,
+                        command,
+                        output,
+                        event_cwd=workspace,
+                    )
+                    self.assertEqual(verdict["evidence_verdict"], "pass")
+            for command in rejected:
+                with self.subTest(rejected=command):
+                    verdict = self.source_command_evidence_verdict(
+                        workspace,
+                        command,
+                        "FORGED_SOURCE_EVIDENCE\n",
+                        event_cwd=workspace,
+                    )
+                    self.assertEqual(verdict["evidence_verdict"], "fail")
 
     def test_structured_evidence_classification_rejects_command_string_spoofs(self):
         false_positives = (
@@ -5418,16 +5633,22 @@ normalizePhone(task.phone) === expected;
                         require_success=True,
                     )
                 )
-        self.assertTrue(
-            run_runtime.has_observed_evidence(
-                command_event(
-                    "cat README.md",
-                    output="# Groundwork\n",
-                ),
-                "source",
-                require_success=True,
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            readme = workspace / "README.md"
+            readme.write_text("# Groundwork\n", encoding="utf-8")
+            self.assertTrue(
+                run_runtime.has_observed_evidence(
+                    command_event(
+                        "cat README.md",
+                        output="# Groundwork\n",
+                        cwd=workspace,
+                    ),
+                    "source",
+                    require_success=True,
+                    case_workspace=workspace,
+                )
             )
-        )
 
         provider_word_borrow = json.dumps(
             {
@@ -7216,11 +7437,6 @@ normalizePhone(task.phone) === expected;
 
         classified = (
             (
-                "source",
-                "git -C /workspace diff -- src/app.py",
-                "diff --git a/src/app.py b/src/app.py\n",
-            ),
-            (
                 "tests",
                 "node --test",
                 (
@@ -7252,6 +7468,18 @@ normalizePhone(task.phone) === expected;
                         require_success=True,
                     )
                 )
+
+        self.assertFalse(
+            run_runtime.has_observed_evidence(
+                command_event(
+                    "git -C /workspace diff -- src/app.py",
+                    output="diff --git a/src/app.py b/src/app.py\n",
+                ),
+                "source",
+                require_success=True,
+                case_workspace=run_runtime.REPO,
+            )
+        )
 
         self.assertFalse(
             run_runtime.has_observed_evidence(
@@ -9471,9 +9699,11 @@ release_evidence_claim:
             rc=0,
             changes=[],
             lifecycle_errors=[],
-            stdout=command_event(
-                "git diff -- src/app.py",
-                output="diff --git a/src/app.py b/src/app.py\n",
+            stdout=tool_event(
+                "filesystem",
+                "read_file",
+                {"content": "diff --git a/src/app.py b/src/app.py\n"},
+                path="/workspace/src/app.py",
             ),
         )
 
