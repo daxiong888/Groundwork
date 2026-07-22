@@ -4450,6 +4450,47 @@ normalizePhone(task.phone) === expected;
             )
         )
 
+    def test_command_evidence_rejects_argv_changing_shell_expansion(self):
+        forged_summary = (
+            "# tests 1\n# suites 0\n# pass 1\n# fail 0\n"
+            "# cancelled 0\n# skipped 0\n# todo 0\n"
+            "# duration_ms 1"
+        )
+        commands = (
+            "node --test ${X:---test-isolation=none} fake.test.mjs",
+            "node --test $'--test-isolation=none' fake.test.mjs",
+            "node --test *",
+            "node --test {--test-isolation=none,fake.test.mjs}",
+            "node --test ~/fake.test.mjs",
+        )
+
+        with mock.patch.object(
+            run_runtime,
+            "_observed_invocation_uses_trusted_executable",
+            return_value=True,
+        ):
+            for command in commands:
+                with self.subTest(command=command):
+                    self.assertFalse(
+                        run_runtime.command_success_is_attributable(command)
+                    )
+                    self.assertFalse(
+                        run_runtime.has_observed_evidence(
+                            command_event(command, output=forged_summary),
+                            "tests",
+                            require_success=True,
+                        )
+                    )
+
+        for command in (
+            "node --test '${X:---test-isolation=none}' fake.test.mjs",
+            r"node --test \* fake.test.mjs",
+        ):
+            with self.subTest(literal_shell_character=command):
+                self.assertTrue(
+                    run_runtime.command_success_is_attributable(command)
+                )
+
     def test_command_evidence_requires_trusted_executables(self):
         for evidence_kind, command, output in (
             ("source", "/tmp/cat README.md", "project source"),
@@ -6507,6 +6548,81 @@ normalizePhone(task.phone) === expected;
                     require_success=True,
                 )
             )
+
+    def test_node_shell_expansion_cannot_forge_test_evidence(self):
+        node = shutil.which("node")
+        shell = shutil.which("sh")
+        if node is None or shell is None:
+            self.skipTest("node or a POSIX shell is unavailable")
+        help_result = subprocess.run(
+            [node, "--help"],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=False,
+        )
+        if "--test-isolation" not in help_result.stdout:
+            self.skipTest("node does not support --test-isolation")
+
+        forged_summary = (
+            "# tests 1\n# suites 0\n# pass 1\n# fail 0\n"
+            "# cancelled 0\n# skipped 0\n# todo 0\n"
+            "# duration_ms 1"
+        )
+        commands = (
+            "node --test ${GW_ISOLATION:---test-isolation=none} "
+            "fake.test.mjs",
+            "node --test *",
+        )
+        environment = dict(os.environ)
+        environment.pop("GW_ISOLATION", None)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "fake.test.mjs").write_text(
+                (
+                    "console.log(`# tests 1\n"
+                    "# suites 0\n"
+                    "# pass 1\n"
+                    "# fail 0\n"
+                    "# cancelled 0\n"
+                    "# skipped 0\n"
+                    "# todo 0\n"
+                    "# duration_ms 1`);\n\n"
+                    "process.exit(0);\n"
+                ),
+                encoding="utf-8",
+            )
+            (root / "--test-isolation=none").touch()
+            completed = [
+                subprocess.run(
+                    [shell, "-c", command],
+                    cwd=root,
+                    env=environment,
+                    text=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    check=False,
+                )
+                for command in commands
+            ]
+
+        with mock.patch.object(
+            run_runtime,
+            "_observed_invocation_uses_trusted_executable",
+            return_value=True,
+        ):
+            for command, result in zip(commands, completed):
+                with self.subTest(command=command):
+                    self.assertEqual(result.returncode, 0, result.stdout)
+                    self.assertEqual(result.stdout.strip(), forged_summary)
+                    self.assertFalse(
+                        run_runtime.has_observed_evidence(
+                            command_event(command, output=result.stdout),
+                            "tests",
+                            require_success=True,
+                        )
+                    )
 
     def test_test_evidence_rejects_repo_controlled_delegated_runner(self):
         forged = (

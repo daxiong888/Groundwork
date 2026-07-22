@@ -1960,6 +1960,38 @@ def _is_unattributable_shell_operator(token):
     return bool(re.fullmatch(r"[;&|]+", str(token or ""))) and token != "&&"
 
 
+def _has_argv_changing_shell_syntax(command):
+    """Reject unescaped shell syntax that can rewrite argv before execution."""
+    quote = None
+    escaped = False
+    for character in str(command or ""):
+        if quote == "'":
+            if character == "'":
+                quote = None
+            continue
+        if escaped:
+            escaped = False
+            continue
+        if character == "\\":
+            escaped = True
+            continue
+        if quote == '"':
+            if character == '"':
+                quote = None
+            elif character in {"$", "`"}:
+                return True
+            continue
+        if character == "'":
+            quote = "'"
+            continue
+        if character == '"':
+            quote = '"'
+            continue
+        if character in {"$", "`", "*", "?", "[", "{", "}", "~"}:
+            return True
+    return False
+
+
 def _shell_command_argument(tokens):
     if not tokens:
         return None
@@ -2258,6 +2290,8 @@ def command_success_is_attributable(command):
     if "\n" in raw_command or "\r" in raw_command:
         return False
     if re.search(r"(?:<<<|<<|>>|<\(|>\(|\$\(|`|[<>])", raw_command):
+        return False
+    if _has_argv_changing_shell_syntax(raw_command):
         return False
     tokens = _shell_tokens(command)
     if not tokens or any(
