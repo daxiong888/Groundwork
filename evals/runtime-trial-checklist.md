@@ -38,7 +38,7 @@ Before any implementation attempt, the fixture should be in its initial intentio
 
 ```bash
 cd evals/fixtures/minimal-task-search
-node test/taskSearch.test.mjs
+node --test test/taskSearch.test.mjs
 ```
 
 Expected initial result: non-zero exit because `filterTasks` ignores the `phone` filter while keeping `activityName` filtering working.

@@ -68,6 +68,8 @@ jobs:
           python -m unittest evals.test_scoring
           python -m unittest evals.test_checks
           python -m unittest evals.test_loop_contracts
+          python -m unittest evals.test_prototype_annotation
+          python -m unittest evals.test_routing_schema_strictness
           python -m unittest evals.test_trace_diagnostics
           python -m unittest evals.test_report
           python -m unittest evals.test_patch_suggestions
@@ -77,6 +79,7 @@ jobs:
           python -m unittest evals.test_route_registry
           python -m unittest evals.test_router_observability
           python -m unittest evals.test_runtime_package_manifest
+          python -m unittest evals.test_uat_evidence_window
           PYTHONPATH=evals python -m unittest evals.test_run_runtime_scheduler
 
       - name: Prompt schema validation

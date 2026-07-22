@@ -38,8 +38,8 @@ class QaGapClosureGateTests(unittest.TestCase):
         verdict="fail",
         authority="existing_and_sufficient",
         risk_change="unchanged_within_boundary",
-        reproduction="command: node test/taskSearch.test.mjs",
-        re_qa="command: node test/taskSearch.test.mjs",
+        reproduction="command: node --test test/taskSearch.test.mjs",
+        re_qa="command: node --test test/taskSearch.test.mjs",
     ):
         return f"""Verification Scope
 - Claim: failed filter can enter bounded remediation
@@ -69,7 +69,7 @@ QA Failure
 
     def test_ready_admission_rejects_missing_reproduction(self):
         report = self._report().replace(
-            "Reproduction: command: node test/taskSearch.test.mjs", "Reproduction: unverified"
+            "Reproduction: command: node --test test/taskSearch.test.mjs", "Reproduction: unverified"
         )
         self.assertIn(
             "Reproduction cannot be unresolved for ready_for_implement",
@@ -656,8 +656,8 @@ QA Failure
             "command: python3 -cprint('ok')",
             "command: ruby --eval=puts(1)",
             "command: deno eval 'console.log(1)'",
-            "command: node test/taskSearch.test.mjs; echo ok",
-            "command: node test/taskSearch.test.mjs || true",
+            "command: node --test test/taskSearch.test.mjs; echo ok",
+            "command: node --test test/taskSearch.test.mjs || true",
             "manual: success",
         ):
             with self.subTest(identity=identity):

@@ -12,7 +12,7 @@ Safe to Share / Redaction Notes: Safe to share as maintainer documentation. It c
 
 ## Core Boundary
 
-The default eval CI gate is schema/source-only. It compiles Python files, parses prompt CSVs, runs dependency-free unit tests, validates schema-shaped fixtures, and runs fixture CLIs. It does not run Codex runtime, does not require secrets, and does not prove installed plugin behavior.
+The default eval CI gate is schema/source-only. It compiles Python files, parses prompt CSVs, runs dependency-free unit tests, validates schema-shaped fixtures, and runs fixture CLIs. Prompt headers, canonical row IDs, required trace-ready columns, and non-empty row sets are validated before row normalization, and `--validate-schema --all-prompts` checks targeted-only and fixture-only rows before the runtime-only execution filter. It does not run Codex runtime, does not require secrets, and does not prove installed plugin behavior.
 
 Runtime eval is opt-in maintainer evidence. A maintainer may run it locally or in a managed environment when they have an explicit reason to inspect real Codex behavior. Runtime eval output is not a release, UAT, cache, marketplace, or customer-readiness claim by itself.
 
@@ -24,7 +24,7 @@ Any runtime eval claim must name:
 - `source_root`: the repository source root or commit under evaluation;
 - `source_cache_equivalence`: the refresh command, install method, or equivalence check connecting source to installed plugin cache;
 - `run_scope`: suites, rows, case filters, retries, timeout policy, and whether the run is targeted or broad;
-- `commands_or_trials`: exact commands or trials executed;
+- `commands_or_trials`: exact commands or trials executed; use `suite:<registered-suite.csv>`, `group:<exact-group>`, `case_id:<exact-id>`, or `prompt_file:<canonical-absolute-path>` for Groundwork runtime selectors, and preserve the exact case ID when reviewing the runner's reversibly encoded per-case artifact path;
 - `limitations`: known missing coverage, unstable environment details, skipped suites, and non-deterministic factors;
 - `missing_evidence`: evidence not collected and why it matters;
 - `redaction_status`: `not_needed`, `applied`, `failed`, or `not_reviewed`;
@@ -57,7 +57,6 @@ python evals/run_runtime.py --validate-schema --suite trace-first-verify-review.
 Optional runtime eval in a maintainer-managed environment:
 
 ```bash
-GROUNDWORK_REPO="$PWD" \
 GROUNDWORK_RUNTIME_ROOT=".groundwork/harness" \
 python evals/run_runtime.py --suite trace-first-verify-review.csv --case-timeout 360
 ```

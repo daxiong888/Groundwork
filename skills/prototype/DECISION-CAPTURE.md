@@ -2,7 +2,7 @@ Target Reader: Codex running the `prototype` skill for decision-oriented prototy
 Reader Action Needed: Capture what the prototype decided, what it rejected, what still needs confirmation, and whether author/reviewer annotations remain separate from the target presentation.
 Decision Supported: Whether prototype findings can become proposed feedback, require verification, route elsewhere, or retain an annotation layer for a named audience.
 Artifact Type: prototype decision-capture reference
-Source of Truth: docs/prd-v0.5-prototype-first-skill-expansion.md FR-530, artifacts/v0.5-prototype-first-skill-expansion/issue-map.md V050-005A, and maintainer-approved GW-PROT-ANNOT-001.
+Source of Truth: docs/prd-v0.5-prototype-first-skill-expansion.md FR-530 and GW-PROT-ANNOT-001; artifacts/v0.5-prototype-first-skill-expansion/issue-map.md V050-005A and GW-PROT-ANNOT-001.
 Scope: Prototype decisions, rejected variants, assumptions, mock fields, client-derived logic, annotation purpose and presentation disposition, contract impact, open questions, and next route.
 Out of Scope: Public visual-handoff skill creation, UI variant mechanics, logic/state lab mechanics, final UI/presentation acceptance, backend/API verification, runtime execution, browser QA, UAT, release, or customer readiness.
 Evidence Level: Source-validation guidance only; prototype outputs are not backend/API, browser, runtime, UAT, release, or acceptance evidence by themselves.
@@ -78,6 +78,14 @@ Every decision-oriented prototype output must include:
 - `Open Questions`: the smallest confirmation questions needed before PRD/API/implementation promotion.
 - `Next Route`: `to-prd`, `to-issues`, `implement`, `verify`, `handoff`, `dispatch`, `cleanup`, or `no follow-up`.
 
+An explicitly named targeted contract-only adapter may request only repeated
+`Annotation Presentation Decision` blocks plus one `Prototype Evidence
+Boundary` section. That fragment is machine-checkable carry-through evidence,
+not a complete decision-oriented prototype output or durable prototype
+artifact. It does not waive the required decision fields for ordinary
+`prototype` responses, and the adapter prompt must say that the fragment-only
+shape is intentional.
+
 Add the `Iteration Checkpoint` only when a prior probe exists or another prototype iteration is actually being considered. Ordinary one-shot prototypes keep the default decision fields without empty loop scaffolding.
 
 ## Annotation Presentation Decision
@@ -88,21 +96,25 @@ This boundary does not classify an accepted product annotation feature, help cop
 
 ```text
 Annotation Presentation Decision
+- Annotation ID:
 - Annotation Purpose:
 - Presentation Disposition: remove_before_final | separate_review_companion | retain_as_audience_content_candidate
+- Audience-facing Source: <required only for retain_as_audience_content_candidate; otherwise omit>
+- Companion Reference: <required only for separate_review_companion; otherwise omit>
 ```
 
 Rules:
 
-1. `Annotation Purpose` identifies the specific annotation or homogeneous annotation group governed by the block, its function, and its intended reader. A generic layer label is insufficient when members have different purposes or audiences.
-2. Use one block per annotation or homogeneous group that shares one purpose, disposition, and source. Record separate blocks when annotations require different dispositions or sources.
-3. An `Audience-facing Source` authorizes only the annotation or group named in the same block; it must not promote any other review aid or meta-layer content.
-4. Default to `remove_before_final` when no audience-facing source is named.
-5. `remove_before_final` excludes the meta-layer from the target UI, export, screenshot, demo, or presentation while allowing the surrounding prototype to remain.
-6. `separate_review_companion` keeps the aid in a separately named review or handoff companion and outside the target UI or presentation surface.
-7. `retain_as_audience_content_candidate` requires a non-empty `Audience-facing Source` naming an explicit user instruction, accepted PRD/task/design decision, or another source with authority for the target audience. Add that field only for this disposition.
-8. Retention as an audience-facing candidate does not prove production implementation, browser/runtime behavior, UAT, release, acceptance, or readiness. Route those claims through their normal source, implementation, and verification boundaries.
-9. `Presentation Disposition` governs only the annotation layer; keep the surrounding prototype's ordinary cleanup or retention decision separate.
+1. `Annotation ID` is a non-empty stable identifier for the specific annotation or homogeneous annotation group. Reuse it unchanged in visual packets, handoffs, verification reports, and companion references; do not renumber it merely because the artifact or owner changes.
+2. `Annotation Purpose` identifies the item or group governed by the block, its function, and its intended reader. A generic layer label is insufficient when members have different purposes or audiences.
+3. Use one block per annotation or homogeneous group that shares one purpose, disposition, and applicable conditional field. Record separate blocks when annotations require different purposes, dispositions, audience-facing sources, or companion references.
+4. `remove_before_final` excludes the meta-layer from the target UI, export, screenshot, demo, or presentation while allowing the surrounding prototype to remain. Omit both conditional fields for this disposition.
+5. `separate_review_companion` keeps the aid in a separately named review or handoff companion and outside the target UI or presentation surface. It requires a non-empty `Companion Reference` in the same block and omits `Audience-facing Source`.
+6. `retain_as_audience_content_candidate` requires a non-empty `Audience-facing Source` in the same block naming an explicit user instruction, accepted PRD/task/design decision, or another source with authority for the target audience. It omits `Companion Reference`.
+7. An `Audience-facing Source` or `Companion Reference` governs only the annotation or group named by the same `Annotation ID`; it must not promote or relocate any other review aid or meta-layer content.
+8. Default to `remove_before_final` when no explicit presentation decision is supported. A missing `Audience-facing Source` forbids retention but does not forbid `separate_review_companion` when a valid `Companion Reference` is named.
+9. Retention as an audience-facing candidate does not prove production implementation, browser/runtime behavior, UAT, release, acceptance, or readiness. Route those claims through their normal source, implementation, and verification boundaries.
+10. `Presentation Disposition` governs only the annotation layer; keep the surrounding prototype's ordinary cleanup or retention decision separate.
 
 ## Decision Status Rules
 
@@ -146,6 +158,15 @@ Mock / Illustrative Fields
 - ... (`mock / illustrative / not backend contract`)
 Client-derived Logic
 - ... (`Derived / illustrative / not backend contract`)
+[Conditional: repeat one block per annotation item or homogeneous group; omit all blocks when no prototype-originated annotation or review aid exists.]
+Annotation Presentation Decision
+- Annotation ID: ...
+- Annotation Purpose: ...
+- Presentation Disposition: remove_before_final | separate_review_companion | retain_as_audience_content_candidate
+- Audience-facing Source: ... (required only for retain_as_audience_content_candidate; otherwise omit)
+- Companion Reference: ... (required only for separate_review_companion; otherwise omit)
+Prototype Evidence Boundary
+<one concise source/contract boundary; keep implementation, browser, runtime, UAT, release, acceptance, and customer readiness unverified unless separately evidenced>
 Contract Impact: none / needs confirmation / confirmed update
 Open Questions
 - ...

@@ -37,7 +37,7 @@ For iterative work, run the conditional Prototype Learning Loop from `DECISION-C
 - Stop before handing prototype findings to PRD, issue, implementation, or contract notes unless contract sources, confirmed fields, mock fields, client-derived logic, and assumptions are separated.
 - Stop before promoting a prototype into durable source truth unless `Contract Impact: confirmed update`.
 - Stop before treating static HTML, screenshots, generated images, UI variants, or logic lab output as browser/runtime/UAT/release/customer evidence without the actual evidence named.
-- Stop before author/reviewer annotations, design notes, debug labels, or review aids enter a target UI or presentation unless `DECISION-CAPTURE.md` records their purpose, presentation disposition, and any required audience-facing source.
+- Stop before author/reviewer annotations, design notes, debug labels, or review aids enter a target UI or presentation unless `DECISION-CAPTURE.md` records their stable `Annotation ID`, purpose, presentation disposition, and, when applicable, the same-block `Audience-facing Source` or `Companion Reference`.
 - Do not let prototype polish imply production capability.
 - Do not use prototype instead of `verify` for backend/API/source truth or readiness claims.
 

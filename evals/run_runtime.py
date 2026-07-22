@@ -4,13 +4,20 @@ import argparse
 import hashlib
 import json
 import os
+try:
+    import pwd
+except ImportError:  # pragma: no cover - unavailable on Windows
+    pwd = None
 import re
+import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import quote, unquote
 
 try:
     from checks.common import has_required_field, missing_required_fields
@@ -25,8 +32,12 @@ try:
         has_diff_only_readiness_pass_claim,
     )
     from checks.loop_checks import (
+        annotation_carrythrough_verification_failures,
+        annotation_handoff_reference_failures,
+        annotation_presentation_decision_failures,
         checkpoint_before_risky_action_failures,
         contract_lineage_failures,
+        contract_lineage_route_companion_failures,
         prototype_iteration_checkpoint_failures,
         prototype_no_delta_stop_failures,
         prototype_one_shot_failures,
@@ -36,6 +47,8 @@ try:
         spec_single_question_failures,
         spec_writeback_failures,
         release_evidence_claim_failures,
+        release_evidence_claim_status,
+        release_evidence_claim_values,
         uat_evidence_window_absence_failures,
         uat_evidence_window_failures,
         uat_handoff_reference_failures,
@@ -60,8 +73,12 @@ except ImportError:  # pragma: no cover - package import path
         has_diff_only_readiness_pass_claim,
     )
     from evals.checks.loop_checks import (
+        annotation_carrythrough_verification_failures,
+        annotation_handoff_reference_failures,
+        annotation_presentation_decision_failures,
         checkpoint_before_risky_action_failures,
         contract_lineage_failures,
+        contract_lineage_route_companion_failures,
         prototype_iteration_checkpoint_failures,
         prototype_no_delta_stop_failures,
         prototype_one_shot_failures,
@@ -71,6 +88,8 @@ except ImportError:  # pragma: no cover - package import path
         spec_single_question_failures,
         spec_writeback_failures,
         release_evidence_claim_failures,
+        release_evidence_claim_status,
+        release_evidence_claim_values,
         uat_evidence_window_absence_failures,
         uat_evidence_window_failures,
         uat_handoff_reference_failures,
@@ -106,6 +125,8 @@ try:
         TRACE_READY_SUITES,
         UNKNOWN_ROUTE,
         boolish,
+        canonical_uat_record_section_text,
+        csv_header_errors,
         expected_skill_for_row,
         host_preemption_allowed,
         is_routing_reliability_row,
@@ -143,6 +164,8 @@ except ImportError:  # pragma: no cover - package import path
         TRACE_READY_SUITES,
         UNKNOWN_ROUTE,
         boolish,
+        canonical_uat_record_section_text,
+        csv_header_errors,
         expected_skill_for_row,
         host_preemption_allowed,
         is_routing_reliability_row,
@@ -191,9 +214,15 @@ LAST = RUN / "last"
 WORKSPACES = RUN / "workspaces"
 RESULTS = RUN / "results.jsonl"
 CASES = RUN / "cases"
+PROOF_HOME = RUN / "proof-home"
 SUMMARY = RUN / "summary.json"
 FAILURES = RUN / "failures.md"
-RUNTIME_SELECTOR = {"model": "", "profile": "", "codex_config": []}
+RUNTIME_SELECTOR = {
+    "model": "",
+    "profile": "",
+    "codex_config": [],
+    "hook_trust_bypass": False,
+}
 
 ROUTING_RELIABILITY_SUITE = "routing-reliability.csv"
 TRACE_FIRST_VERIFY_REVIEW_SUITE = "trace-first-verify-review.csv"
@@ -303,8 +332,51 @@ def optional_boolish(value):
     return str(value).strip().lower() in {"1", "true", "yes", "y"}
 
 
+CASE_ARTIFACT_SAFE_CHARACTERS = (
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.-"
+)
+
+
 def safe_id(value):
-    return re.sub(r"[^A-Za-z0-9_.-]+", "-", str(value)).strip("-") or "case"
+    raw_value = str(value or "")
+    if not raw_value:
+        raise ValueError("case artifact id must not be empty")
+    encoded = quote(
+        raw_value,
+        safe=CASE_ARTIFACT_SAFE_CHARACTERS,
+        encoding="utf-8",
+        errors="strict",
+    )
+    if (
+        not encoded
+        or encoded in {".", ".."}
+        or unquote(encoded, encoding="utf-8", errors="strict") != raw_value
+    ):
+        raise ValueError(
+            f"case artifact id is not reversibly encodable: {raw_value!r}"
+        )
+    return encoded
+
+
+def case_artifact_identity_errors(rows):
+    errors = []
+    seen_stems = {}
+    for row in rows:
+        row_id = str(row.get("id") or "")
+        try:
+            stem = safe_id(row_id)
+        except ValueError as exc:
+            errors.append(f"{row_location(row)} {exc}")
+            continue
+        previous = seen_stems.get(stem)
+        if previous is not None and previous != row_id:
+            errors.append(
+                f"{row_location(row)} case artifact path collision: "
+                f"{row_id!r} and {previous!r} both map to {stem!r}"
+            )
+        else:
+            seen_stems[stem] = row_id
+    return errors
 
 
 def prompt_suites():
@@ -318,15 +390,51 @@ def normalize_suite_name(value):
     return text
 
 
-def read_prompt_rows(path, suite_label=None):
+def canonical_prompt_file(value):
+    path = Path(value)
+    if not path.is_absolute():
+        path = REPO / path
+    return str(path.resolve(strict=False))
+
+
+PROMPT_SOURCE_KINDS = {
+    "registered_suite",
+    "external_prompt_file",
+}
+
+
+def read_prompt_rows(
+    path,
+    suite_label=None,
+    *,
+    allow_empty=False,
+    prompt_source_kind="external_prompt_file",
+):
+    if prompt_source_kind not in PROMPT_SOURCE_KINDS:
+        raise ValueError(
+            f"unknown prompt source kind: {prompt_source_kind}"
+        )
+    path = Path(path)
     rows = []
+    prompt_source = os.path.abspath(os.fspath(path))
     with path.open(newline="") as fh:
         reader = csv.DictReader(fh)
+        label = suite_label or path.name
+        header_errors = csv_header_errors(
+            reader.fieldnames,
+            f"{label}:1",
+        )
+        if header_errors:
+            raise ValueError("; ".join(header_errors))
         for row_number, row in enumerate(reader, start=2):
-            row["_suite"] = suite_label or path.name
+            row["_suite"] = label
             row["_row_number"] = row_number
             row["_fieldnames"] = reader.fieldnames or []
+            row["_prompt_source"] = prompt_source
+            row["_prompt_source_kind"] = prompt_source_kind
             rows.append(row)
+    if not rows and not allow_empty:
+        raise ValueError(f"{suite_label or path.name}: prompt suite has no data rows")
     return rows
 
 
@@ -335,12 +443,22 @@ def read_rows(suites, prompt_files=None):
     for suite in suites:
         suite_name = normalize_suite_name(suite)
         path = REPO / "evals" / "prompts" / suite_name
-        out.extend(read_prompt_rows(path, suite_label=suite_name))
+        out.extend(
+            read_prompt_rows(
+                path,
+                suite_label=suite_name,
+                prompt_source_kind="registered_suite",
+            )
+        )
     for prompt_file in prompt_files or []:
-        path = Path(prompt_file)
-        if not path.is_absolute():
-            path = REPO / path
-        out.extend(read_prompt_rows(path, suite_label=path.name))
+        path = Path(canonical_prompt_file(prompt_file))
+        out.extend(
+            read_prompt_rows(
+                path,
+                suite_label=path.name,
+                prompt_source_kind="external_prompt_file",
+            )
+        )
     return out
 
 
@@ -531,7 +649,7 @@ def changed_files(before, after):
 
 
 def hook_trust_bypass_enabled():
-    return os.environ.get("GROUNDWORK_CODEX_BYPASS_HOOK_TRUST") == "1"
+    return bool(RUNTIME_SELECTOR.get("hook_trust_bypass"))
 
 
 ROUTER_OBSERVABILITY_CONFIG = Path(".groundwork") / "harness" / "router-observability" / "config.json"
@@ -554,11 +672,12 @@ def runtime_path_state():
         "CASES": CASES,
         "SUMMARY": SUMMARY,
         "FAILURES": FAILURES,
+        "PROOF_HOME": PROOF_HOME,
     }
 
 
 def set_runtime_paths(run_root):
-    global RUN, LOGS, LAST, WORKSPACES, RESULTS, CASES, SUMMARY, FAILURES
+    global RUN, LOGS, LAST, WORKSPACES, RESULTS, CASES, SUMMARY, FAILURES, PROOF_HOME
     RUN = Path(run_root)
     LOGS = RUN / "logs"
     LAST = RUN / "last"
@@ -567,10 +686,11 @@ def set_runtime_paths(run_root):
     CASES = RUN / "cases"
     SUMMARY = RUN / "summary.json"
     FAILURES = RUN / "failures.md"
+    PROOF_HOME = RUN / "proof-home"
 
 
 def restore_runtime_path_state(state):
-    global RUN, LOGS, LAST, WORKSPACES, RESULTS, CASES, SUMMARY, FAILURES
+    global RUN, LOGS, LAST, WORKSPACES, RESULTS, CASES, SUMMARY, FAILURES, PROOF_HOME
     RUN = state["RUN"]
     LOGS = state["LOGS"]
     LAST = state["LAST"]
@@ -579,6 +699,7 @@ def restore_runtime_path_state(state):
     CASES = state["CASES"]
     SUMMARY = state["SUMMARY"]
     FAILURES = state["FAILURES"]
+    PROOF_HOME = state["PROOF_HOME"]
 
 
 def normalize_router_observability_mode(value):
@@ -641,6 +762,8 @@ def router_observability_runtime_mode(cwd=None):
 
 
 def score_eligibility_for_runtime_mode(runtime_mode):
+    if bool((runtime_mode or {}).get("hook_trust_bypass")):
+        return "insufficient_evidence"
     mode = str((runtime_mode or {}).get("router_observability_mode") or "disabled")
     if mode == "observe_only":
         return "baseline_eligible"
@@ -668,7 +791,10 @@ def aggregate_runtime_mode(results):
         "router_observability_enabled": any(bool(item.get("router_observability_enabled")) for item in observed),
         "router_observability_mode": primary_mode,
         "router_observability_modes": modes,
-        "hook_trust_bypass": hook_trust_bypass_enabled(),
+        "hook_trust_bypass": any(
+            bool(item.get("hook_trust_bypass"))
+            for item in observed
+        ),
         "evidence_boundary": router_observability_evidence_boundary(primary_mode),
         "activation_sources": sorted({str(item.get("activation_source") or "unknown") for item in observed}),
     }
@@ -688,13 +814,93 @@ def eval_only_codex_config(row):
     return []
 
 
-def codex_exec_command(cwd, sandbox, last_path, prompt, row=None):
-    cmd = ["codex"]
+def prompt_for_row(row):
+    return row.get("prompt") or row.get("input_scenario") or ""
+
+
+def prompt_with_evidence_bindings(prompt, row, cwd):
+    evidence_tokens = {
+        token.strip()
+        for token in str(row.get("evidence_required") or "").split("|")
+        if token.strip()
+    }
+    if "git_status" not in evidence_tokens:
+        return prompt
+    workspace = Path(cwd).resolve(strict=True)
+    command = "git -C " + shlex.quote(str(workspace)) + " status --short"
+    return (
+        prompt.rstrip()
+        + "\n\nEvaluator evidence binding: when collecting git_status evidence, "
+        + f"run `{command}`. Plain or differently targeted git status commands "
+        + "are unverified."
+    )
+
+
+def _proof_tool_shell_environment(environment):
+    allowed_keys = (
+        PROOF_TOOL_SHELL_ENVIRONMENT_KEYS
+        | PROOF_CONTROL_ENVIRONMENT_KEYS
+    )
+    return {
+        key: str(environment[key])
+        for key in sorted(allowed_keys)
+        if key in environment
+    }
+
+
+def _proof_tool_shell_codex_config(environment):
+    tool_environment = _proof_tool_shell_environment(environment)
+    inline_environment = ", ".join(
+        key + " = " + json.dumps(value, ensure_ascii=False)
+        for key, value in tool_environment.items()
+    )
+    return [
+        'shell_environment_policy.inherit="none"',
+        "shell_environment_policy.set={ "
+        + inline_environment
+        + " }",
+    ]
+
+
+def _runtime_codex_config_is_proof_safe(value):
+    key = str(value).split("=", 1)[0].strip()
+    if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.-]*", key) is None:
+        return False
+    key = key.lower()
+    return not (
+        key == "shell_environment_policy"
+        or key.startswith("shell_environment_policy.")
+    )
+
+
+def codex_exec_command(
+    cwd,
+    sandbox,
+    last_path,
+    prompt,
+    row=None,
+    *,
+    proof_environment=None,
+):
+    if CODEX_CONTROL_LAUNCHER is None:
+        raise RuntimeError(
+            "no trusted Codex launcher is available"
+        )
+    if proof_environment is None:
+        proof_environment, _context = sanitized_codex_environment()
+    cmd = [str(CODEX_CONTROL_LAUNCHER)]
     if hook_trust_bypass_enabled():
         cmd.append("--dangerously-bypass-hook-trust")
     for item in RUNTIME_SELECTOR.get("codex_config") or []:
+        if not _runtime_codex_config_is_proof_safe(item):
+            raise RuntimeError(
+                "runtime selector cannot override the proof shell "
+                "environment policy"
+            )
         cmd.extend(["-c", str(item)])
     for item in eval_only_codex_config(row):
+        cmd.extend(["-c", item])
+    for item in _proof_tool_shell_codex_config(proof_environment):
         cmd.extend(["-c", item])
     cmd.extend(
         [
@@ -721,16 +927,22 @@ def codex_exec_command(cwd, sandbox, last_path, prompt, row=None):
 
 
 def run_fixture_command(cwd, cmd):
+    child_environment, _context = sanitized_codex_environment()
+    captured_command = _captured_evaluator_command(cmd)
     proc = subprocess.run(
-        cmd,
+        captured_command,
         cwd=cwd,
         stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
+        env=child_environment,
     )
     if proc.returncode != 0:
-        raise RuntimeError(f"fixture setup command failed ({proc.returncode}): {' '.join(cmd)}\n{proc.stdout}")
+        raise RuntimeError(
+            "fixture setup command failed "
+            f"({proc.returncode}): {' '.join(cmd)}\n{proc.stdout}"
+        )
     return proc.stdout
 
 
@@ -1330,137 +1542,279 @@ def has_prototype_contract_boundary(text):
     )
 
 
-def has_source_or_unverified_evidence(text):
-    lowered = text.lower()
-    source_markers = ["source truth", "source evidence", "source", "canonical", "源码", "源真相", "证据"]
-    unverified_markers = [
-        "unverified",
-        "unknown",
-        "not provided",
-        "not covered",
-        "missing",
-        "blocked",
-        "无法验证",
-        "未验证",
-        "未知",
-        "缺少",
-        "没有",
-        "不可验证",
-        "未提供",
-    ]
-    return any(marker in lowered for marker in source_markers) and any(
-        marker in lowered for marker in unverified_markers
+UNVERIFIED_EVIDENCE_MARKERS = (
+    "not run",
+    "never run",
+    "not covered",
+    "not provided",
+    "unverified",
+    "unknown",
+    "missing",
+    "blocked",
+    "no runtime",
+    "without runtime",
+    "cannot count",
+    "cannot prove",
+    "does not prove",
+    "insufficient",
+    "无法运行",
+    "无法验证",
+    "从未运行",
+    "未运行",
+    "未验证",
+    "未覆盖",
+    "未提供",
+    "未知",
+    "缺少",
+    "不可验证",
+    "无可运行",
+    "不能证明",
+    "不能作为",
+    "不足以",
+)
+
+
+def _has_unverified_evidence_marker(clause):
+    lowered = str(clause or "").lower()
+    # Positive statements such as "no tests failed" and explicit negations
+    # must not be promoted into an unverified-evidence boundary.
+    negative_evidence_marker = (
+        r"(?:missing|unverified|unknown|blocked|insufficient)"
+    )
+    negative_evidence_qualifier = (
+        r"(?:(?:currently|actually|still|presently|explicitly)\s+)*"
+    )
+    lowered = re.sub(
+        r"\b(?:not|never)\s+run(?:ning)?\s+"
+        r"(?:in\s+(?:parallel|serial)|concurrently|serially|slowly|quickly)\b",
+        " ",
+        lowered,
+    )
+    lowered = re.sub(
+        rf"\bneither\b[^;.!?]{{0,64}}\bnor\s+"
+        rf"(?:(?:is|are|was|were)\s+)?"
+        rf"{negative_evidence_qualifier}{negative_evidence_marker}\b",
+        " ",
+        lowered,
+    )
+    lowered = re.sub(
+        rf"\b(?:not|never)\s+"
+        rf"(?:(?:considered|deemed|classified|regarded|treated)"
+        rf"(?:\s+as)?\s+){negative_evidence_qualifier}"
+        rf"{negative_evidence_marker}"
+        rf"(?:\s+(?:or|nor)\s+{negative_evidence_qualifier}"
+        rf"{negative_evidence_marker})*\b",
+        " ",
+        lowered,
+    )
+    lowered = re.sub(
+        rf"\b(?:not|never)\s+{negative_evidence_qualifier}"
+        rf"{negative_evidence_marker}"
+        rf"(?:\s*,\s*{negative_evidence_qualifier}"
+        rf"{negative_evidence_marker})*"
+        rf"\s*,?\s*(?:or|nor)\s+{negative_evidence_qualifier}"
+        rf"{negative_evidence_marker}\b",
+        " ",
+        lowered,
+    )
+    lowered = re.sub(
+        rf"\bno\s+{negative_evidence_qualifier}"
+        rf"{negative_evidence_marker}"
+        rf"(?:\s+[a-z0-9_-]+)?"
+        rf"(?:\s+(?:or|nor)\s+{negative_evidence_qualifier}"
+        rf"{negative_evidence_marker}"
+        rf"(?:\s+[a-z0-9_-]+)?)+\b",
+        " ",
+        lowered,
+    )
+    lowered = re.sub(
+        rf"\b(?:isn['’]t|aren['’]t|wasn['’]t|weren['’]t)\s+"
+        rf"{negative_evidence_qualifier}{negative_evidence_marker}"
+        rf"(?:\s+(?:or|nor)\s+{negative_evidence_qualifier}"
+        rf"{negative_evidence_marker})*\b",
+        " ",
+        lowered,
+    )
+    lowered = re.sub(
+        r"\bno\s+tests?\s+(?:(?:are|had|has|have|were)\s+)?"
+        r"(?:failed|failing|failures?|errored|errors?)\b",
+        " ",
+        lowered,
+    )
+    lowered = re.sub(
+        r"\b(?:no(?:\s+longer)?|not|never|without)\s+"
+        r"(?:(?:currently|actually|still)\s+)?"
+        r"(?:missing|unverified|unknown|blocked|insufficient)\b",
+        " ",
+        lowered,
+    )
+    lowered = re.sub(
+        r"\b(?:no|neither|nothing)\s+"
+        r"(?:[a-z0-9_-]+\s+){0,4}"
+        r"(?:is|are|remains?|was|were)\s+"
+        r"(?:missing|unverified|unknown|blocked|insufficient)"
+        r"(?:\s+(?:or|nor)\s+"
+        r"(?:(?:currently|actually|still|presently|explicitly)\s+)?"
+        r"(?:missing|unverified|unknown|blocked|insufficient))*\b",
+        " ",
+        lowered,
+    )
+    lowered = re.sub(
+        r"\b(?:no|nothing)\s+(?:[a-z0-9_-]+\s+){0,3}"
+        r"(?:missing|unverified|unknown|blocked|insufficient)\b",
+        " ",
+        lowered,
+    )
+    lowered = re.sub(
+        r"\bneither\s+(?:missing|unverified|unknown|blocked|insufficient)"
+        r"\s+nor\s+(?:missing|unverified|unknown|blocked|insufficient)\b",
+        " ",
+        lowered,
+    )
+    chinese_positive_patterns = (
+        r"没有测试(?:失败|报错|错误)",
+        r"(?:并不|并非|并未|不是|不再)(?:存在)?"
+        r"(?:缺少|缺失|未验证|未知|阻塞|不足)",
+        r"(?:绝非|绝不是)(?:存在|处于|属于|被视为)?"
+        r"(?:缺少|缺失|未验证|未知|阻塞|不足)(?:状态|项|内容|证据)?",
+        r"没有(?:处于|属于|被视为)"
+        r"(?:缺少|缺失|未验证|未知|阻塞|不足)(?:状态|项|内容|证据)?",
+        r"没有被(?:标记|视为|认为|判定)为"
+        r"(?:缺少|缺失|未验证|未知|阻塞|不足)(?:状态|项|内容|证据)?",
+        r"不(?:缺少|缺失|未验证|未知|阻塞|不足)"
+        r"(?:，|,)?(?:也)?不(?:处于|属于|被视为)?"
+        r"(?:缺少|缺失|未验证|未知|阻塞|不足)(?:状态|项|内容|证据)?",
+        r"(?:不存在|并无)(?:任何)?"
+        r"(?:缺少|缺失|未验证|未知|阻塞|不足)"
+        r"(?:或(?:缺少|缺失|未验证|未知|阻塞|不足))*"
+        r"(?:项|内容|证据|状态)?",
+        r"没有(?:任何)?(?:缺少|缺失|未验证|未知|阻塞|不足)"
+        r"(?:项|内容|证据)?",
+    )
+    original = str(clause or "")
+    for pattern in chinese_positive_patterns:
+        lowered = re.sub(pattern, " ", lowered)
+        original = re.sub(pattern, " ", original)
+    if any(
+        marker in lowered
+        or (
+            not re.fullmatch(r"[a-z0-9_ ]+", marker)
+            and marker in original
+        )
+        for marker in UNVERIFIED_EVIDENCE_MARKERS
+    ):
+        return True
+    return bool(
+        re.search(
+            r"\bno\s+tests?\b(?!\s+(?:(?:are|had|has|have|were)\s+)?"
+            r"(?:failed|failing|failures?|errored|errors?)\b)",
+            lowered,
+        )
+        or re.search(r"没有测试(?!失败|报错|错误)", original)
     )
 
 
-def has_tests_or_unverified_evidence(text):
-    lowered = text.lower()
-    test_markers = ["test", "tests", "check", "checks", "测试", "自测", "验证", "验证命令", "focused"]
-    unverified_markers = [
-        "not run",
-        "not covered",
-        "unverified",
-        "missing",
-        "blocked",
-        "no test",
-        "no tests",
-        "无法运行",
-        "未运行",
-        "未覆盖",
-        "无可运行",
-        "没有测试",
-        "只读",
-        "不能落文件",
-        "无法安全落地",
-        "缺少",
-    ]
-    return any(marker in lowered for marker in test_markers) and any(
-        marker in lowered for marker in unverified_markers
-    )
+def has_scoped_unverified_boundary(text, domain_markers):
+    def marker_present(marker, lowered_line, original_line):
+        if re.fullmatch(r"[a-z0-9_]+", marker):
+            return bool(re.search(rf"\b{re.escape(marker)}\b", lowered_line))
+        return marker in lowered_line or marker in original_line
 
-
-def has_browser_or_unverified_evidence(text):
-    lowered = text.lower()
-    browser_markers = ["browser", "ui evidence", "runtime / browser", "浏览器", "截图", "录屏", "前端", "ui"]
-    unverified_markers = [
-        "unverified",
-        "not covered",
-        "not provided",
-        "missing",
-        "blocked",
-        "无法验证",
-        "未验证",
-        "未覆盖",
-        "未提供",
-        "缺少",
-    ]
-    return any(marker in lowered for marker in browser_markers) and any(
-        marker in lowered for marker in unverified_markers
-    )
-
-
-def has_runtime_or_unverified_evidence(text):
-    runtime_markers = [
+    all_domain_markers = (
+        "source truth",
+        "source evidence",
+        "source",
+        "canonical",
+        "源码",
+        "源真相",
+        "test",
+        "tests",
+        "check",
+        "checks",
+        "测试",
+        "自测",
+        "验证命令",
+        "browser",
+        "ui evidence",
+        "runtime / browser",
+        "浏览器",
+        "截图",
+        "录屏",
+        "前端",
+        "ui",
         "runtime",
         "runtime evidence",
         "codex exec",
         "run_runtime",
-        "exit code",
-        "command output",
         "运行时",
         "运行证据",
         "运行结果",
         "执行证据",
         "执行结果",
-        "命令输出",
-        "日志",
-    ]
-    runtime_observed_markers = [
-        "exit code",
-        "command output",
-        "run_root",
-        "log:",
-        "logs/",
-        "passed",
-        "pass",
-        "ok",
-        "执行通过",
-        "运行通过",
-        "命令输出",
-    ]
-    unverified_markers = [
-        "not run",
-        "not covered",
-        "not provided",
-        "unverified",
-        "missing",
-        "blocked",
-        "no runtime",
-        "without runtime",
-        "cannot count",
-        "cannot prove",
-        "does not prove",
-        "insufficient",
-        "无法运行",
-        "无法验证",
-        "未运行",
-        "未验证",
-        "未覆盖",
-        "未提供",
-        "缺少",
-        "不能证明",
-        "不能作为",
-        "不足以",
-    ]
+    )
+    current_domain_markers = tuple(domain_markers)
+    other_domain_markers = tuple(
+        marker
+        for marker in all_domain_markers
+        if marker not in current_domain_markers
+    )
     for line in str(text or "").splitlines():
-        lowered = line.lower()
-        if not any(marker in lowered for marker in runtime_markers):
-            continue
-        if any(marker in lowered for marker in unverified_markers):
-            return True
-        if any(marker in lowered for marker in runtime_observed_markers):
-            return True
+        domain_scope_active = False
+        for clause in re.split(r"[;.!?。；！？]+", line):
+            lowered = clause.lower()
+            has_current_domain = any(
+                marker_present(marker, lowered, clause)
+                for marker in current_domain_markers
+            )
+            has_other_domain = any(
+                marker_present(marker, lowered, clause)
+                for marker in other_domain_markers
+            )
+            if has_current_domain:
+                domain_scope_active = True
+            elif has_other_domain:
+                domain_scope_active = False
+            if domain_scope_active and _has_unverified_evidence_marker(clause):
+                return True
     return False
+
+
+def has_source_or_unverified_evidence(text):
+    return has_scoped_unverified_boundary(
+        text,
+        ("source truth", "source evidence", "source", "canonical", "源码", "源真相"),
+    )
+
+
+def has_tests_or_unverified_evidence(text):
+    return has_scoped_unverified_boundary(
+        text,
+        ("test", "tests", "check", "checks", "测试", "自测", "验证命令"),
+    )
+
+
+def has_browser_or_unverified_evidence(text):
+    return has_scoped_unverified_boundary(
+        text,
+        ("browser", "ui evidence", "runtime / browser", "浏览器", "截图", "录屏", "前端", "ui"),
+    )
+
+
+def has_runtime_or_unverified_evidence(text):
+    return has_scoped_unverified_boundary(
+        text,
+        (
+            "runtime",
+            "runtime evidence",
+            "codex exec",
+            "run_runtime",
+            "运行时",
+            "运行证据",
+            "运行结果",
+            "执行证据",
+            "执行结果",
+        ),
+    )
 
 
 def append_failure(failures, notes, failure_type, fix_locus, note):
@@ -1509,21 +1863,4952 @@ def dispatch_has_explicit_split(text):
 
 
 def completed_command_execution_commands(stdout):
-    commands = []
-    for line in stdout.splitlines():
+    return [
+        activity["command"]
+        for activity in completed_tool_activities(stdout)
+        if activity["kind"] == "command_execution"
+    ]
+
+
+def _activity_result_field(payload):
+    for field in ("result", "output", "content"):
+        if field in payload and payload[field] is not None:
+            return field, payload[field]
+    return "", None
+
+
+SUCCESS_ACTIVITY_STATUSES = {"completed", "ok", "success", "succeeded"}
+
+
+def _activity_succeeded(payload):
+    status = str(payload.get("status") or "").lower()
+    return (
+        not payload.get("error")
+        and status in SUCCESS_ACTIVITY_STATUSES
+    )
+
+
+def completed_tool_activities(stdout):
+    activities = []
+    for line in str(stdout or "").splitlines():
         try:
             payload = json.loads(line)
         except json.JSONDecodeError:
             continue
+        payload_type = str(payload.get("type") or "")
         item = payload.get("item")
+        if payload_type == "item.completed" and isinstance(item, dict):
+            item_type = str(item.get("type") or "")
+            if item_type in {"agent_message", "reasoning"}:
+                continue
+            if item_type == "command_execution":
+                command = item.get("command")
+                if isinstance(command, str):
+                    exit_code = item.get("exit_code")
+                    valid_exit_code = type(exit_code) is int
+                    status = str(item.get("status") or "").lower()
+                    output = str(
+                        item.get("aggregated_output")
+                        or item.get("output")
+                        or ""
+                    )
+                    activities.append(
+                        {
+                            "kind": "command_execution",
+                            "command": command,
+                            "cwd": str(item.get("cwd") or ""),
+                            "server": "",
+                            "tool": "",
+                            "detail": json.dumps(
+                                item, ensure_ascii=False, sort_keys=True
+                            ),
+                            "output": output,
+                            "has_result": valid_exit_code,
+                            "succeeded": (
+                                valid_exit_code
+                                and exit_code == 0
+                                and status in SUCCESS_ACTIVITY_STATUSES
+                            ),
+                        }
+                    )
+                continue
+            result_field, result_value = _activity_result_field(item)
+            activities.append(
+                {
+                    "kind": item_type or "tool_activity",
+                    "command": "",
+                    "server": str(item.get("server") or ""),
+                    "tool": str(
+                        item.get("tool")
+                        or item.get("tool_name")
+                        or item.get("name")
+                        or ""
+                    ),
+                    "detail": json.dumps(item, ensure_ascii=False, sort_keys=True),
+                    "output": (
+                        json.dumps(result_value, ensure_ascii=False)
+                        if isinstance(result_value, (dict, list))
+                        else str(result_value)
+                        if result_field
+                        else ""
+                    ),
+                    "has_result": bool(result_field),
+                    "succeeded": _activity_succeeded(item),
+                }
+            )
+        elif payload_type == "tool_call":
+            result_field, result_value = _activity_result_field(payload)
+            activities.append(
+                {
+                    "kind": str(payload.get("tool_name") or "tool_call"),
+                    "command": "",
+                    "server": str(payload.get("server") or ""),
+                    "tool": str(payload.get("tool_name") or ""),
+                    "detail": json.dumps(
+                        payload, ensure_ascii=False, sort_keys=True
+                    ),
+                    "output": (
+                        json.dumps(result_value, ensure_ascii=False)
+                        if isinstance(result_value, (dict, list))
+                        else str(result_value)
+                        if result_field
+                        else ""
+                    ),
+                    "has_result": bool(result_field),
+                    "succeeded": _activity_succeeded(payload),
+                }
+            )
+    return activities
+
+
+def _shell_tokens(command):
+    try:
+        lexer = shlex.shlex(
+            str(command or ""),
+            posix=True,
+            punctuation_chars=";&|",
+        )
+        lexer.whitespace_split = True
+        lexer.commenters = ""
+        return list(lexer)
+    except ValueError:
+        return []
+
+
+def _command_segments(tokens):
+    segments = []
+    current = []
+    for token in tokens:
+        if token in {";", "&&", "||", "|", "&"}:
+            if current:
+                segments.append(current)
+                current = []
+            continue
+        current.append(token)
+    if current:
+        segments.append(current)
+    return segments
+
+
+def _is_unattributable_shell_operator(token):
+    return bool(re.fullmatch(r"[;&|]+", str(token or ""))) and token != "&&"
+
+
+def _has_argv_changing_shell_syntax(command):
+    """Reject unescaped shell syntax that can rewrite argv before execution."""
+    quote = None
+    escaped = False
+    for character in str(command or ""):
+        if quote == "'":
+            if character == "'":
+                quote = None
+            continue
+        if escaped:
+            escaped = False
+            continue
+        if character == "\\":
+            escaped = True
+            continue
+        if quote == '"':
+            if character == '"':
+                quote = None
+            elif character in {"$", "`"}:
+                return True
+            continue
+        if character == "'":
+            quote = "'"
+            continue
+        if character == '"':
+            quote = '"'
+            continue
+        if character in {"$", "`", "*", "?", "[", "{", "}", "~"}:
+            return True
+    return False
+
+
+def _shell_command_argument(tokens):
+    if not tokens:
+        return None
+    executable = Path(tokens[0]).name.lower()
+    if executable not in {"sh", "bash", "zsh", "dash"}:
+        return None
+    for index, token in enumerate(tokens[1:], start=1):
+        if token in {"-l", "--login"}:
+            continue
+        if token == "-c":
+            return tokens[index + 1] if index + 1 < len(tokens) else ""
         if (
-            payload.get("type") == "item.completed"
-            and isinstance(item, dict)
-            and item.get("type") == "command_execution"
-            and isinstance(item.get("command"), str)
+            re.fullmatch(r"-[cl]+", token)
+            and token.count("c") == 1
         ):
-            commands.append(item["command"])
-    return commands
+            return tokens[index + 1] if index + 1 < len(tokens) else ""
+        return None
+    return None
+
+
+def _consume_option_prefix(
+    tokens,
+    *,
+    value_options=(),
+    attached_value_prefixes=(),
+    stop_options=(),
+):
+    remaining = list(tokens)
+    value_options = set(value_options)
+    stop_options = set(stop_options)
+    while remaining:
+        token = remaining[0]
+        if token == "--":
+            return remaining[1:]
+        if token in stop_options:
+            return []
+        if token in value_options:
+            if len(remaining) < 2:
+                return []
+            remaining = remaining[2:]
+            continue
+        if any(
+            token.startswith(option + "=")
+            for option in value_options
+            if option.startswith("--")
+        ):
+            remaining = remaining[1:]
+            continue
+        if any(
+            token.startswith(prefix) and token != prefix
+            for prefix in attached_value_prefixes
+        ):
+            remaining = remaining[1:]
+            continue
+        if token.startswith("-"):
+            remaining = remaining[1:]
+            continue
+        break
+    return remaining
+
+
+def _unwrap_env_tokens(tokens):
+    remaining = list(tokens[1:])
+    while remaining:
+        token = remaining[0]
+        if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", token):
+            remaining.pop(0)
+            continue
+        updated = _consume_option_prefix(
+            remaining,
+            value_options={
+                "-C",
+                "--chdir",
+                "-u",
+                "--unset",
+                "-S",
+                "--split-string",
+            },
+            attached_value_prefixes=("-C", "-u", "-S"),
+        )
+        if updated == remaining:
+            break
+        remaining = updated
+    return remaining
+
+
+def _env_wrapper_is_supported(tokens):
+    remaining = list(tokens[1:])
+    while remaining:
+        token = remaining[0]
+        if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", token):
+            remaining.pop(0)
+            continue
+        if token == "--":
+            return len(remaining) > 1
+        if token in {"-i", "--ignore-environment"}:
+            remaining.pop(0)
+            continue
+        if token in {"-u", "--unset"}:
+            if len(remaining) < 2:
+                return False
+            remaining = remaining[2:]
+            continue
+        if token.startswith("--unset=") or (
+            token.startswith("-u") and token != "-u"
+        ):
+            remaining.pop(0)
+            continue
+        if token.startswith("-"):
+            return False
+        return True
+    return False
+
+
+def _environment_provenance(value=None):
+    value = value or {}
+    return {
+        "ignore_environment": bool(value.get("ignore_environment")),
+        "unset_variables": {
+            str(name).upper()
+            for name in value.get("unset_variables") or set()
+        },
+    }
+
+
+def _env_bindings(tokens, inherited=None, inherited_provenance=None):
+    bindings = dict(inherited or {})
+    provenance = _environment_provenance(inherited_provenance)
+    remaining = list(tokens[1:])
+    value_options = {
+        "-C",
+        "--chdir",
+        "-S",
+        "--split-string",
+    }
+    while remaining:
+        token = remaining[0]
+        if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", token):
+            name, value = token.split("=", 1)
+            bindings[name] = value
+            remaining.pop(0)
+            continue
+        if token in {"-i", "--ignore-environment"}:
+            bindings.clear()
+            provenance["ignore_environment"] = True
+            remaining.pop(0)
+            continue
+        if token in {"-u", "--unset"}:
+            if len(remaining) < 2:
+                break
+            variable = remaining[1]
+            bindings.pop(variable, None)
+            provenance["unset_variables"].add(variable.upper())
+            remaining = remaining[2:]
+            continue
+        if token.startswith("--unset="):
+            variable = token.split("=", 1)[1]
+            bindings.pop(variable, None)
+            provenance["unset_variables"].add(variable.upper())
+            remaining.pop(0)
+            continue
+        if token.startswith("-u") and token != "-u":
+            variable = token[2:]
+            bindings.pop(variable, None)
+            provenance["unset_variables"].add(variable.upper())
+            remaining.pop(0)
+            continue
+        if token == "--":
+            remaining.pop(0)
+            continue
+        if token in value_options:
+            if len(remaining) < 2:
+                break
+            remaining = remaining[2:]
+            continue
+        if any(
+            token.startswith(option + "=")
+            for option in value_options
+            if option.startswith("--")
+        ) or any(
+            token.startswith(prefix) and token != prefix
+            for prefix in ("-C", "-u", "-S")
+        ):
+            remaining.pop(0)
+            continue
+        if token.startswith("-"):
+            remaining.pop(0)
+            continue
+        break
+    return bindings, provenance
+
+
+def _unwrap_npx_tokens(
+    tokens,
+    environment=None,
+    command_wrappers=None,
+    environment_provenance=None,
+):
+    remaining = list(tokens[1:])
+    option_override = False
+    package_override = any(
+        token in {"--package", "-p"}
+        or token.startswith("--package=")
+        or (token.startswith("-p") and token != "-p")
+        for token in remaining
+    )
+
+    def with_npx_provenance(invocations, *, call_mode=False):
+        marked = []
+        for invocation in invocations:
+            invocation = dict(invocation)
+            invocation["npx_wrapper"] = {
+                "raw_executable": tokens[0],
+                "package_override": package_override,
+                "call_mode": call_mode,
+                "option_override": option_override,
+            }
+            marked.append(invocation)
+        return marked
+
+    while remaining:
+        token = remaining[0]
+        if token in {"-c", "--call"}:
+            if len(remaining) < 2:
+                return []
+            return with_npx_provenance(
+                [
+                    invocation
+                    for nested in _command_segments(_shell_tokens(remaining[1]))
+                    for invocation in _unwrap_command_segment(
+                        nested,
+                        environment=environment,
+                        command_wrappers=command_wrappers,
+                        environment_provenance=environment_provenance,
+                    )
+                ],
+                call_mode=True,
+            )
+        if token.startswith("--call="):
+            nested_command = token.split("=", 1)[1]
+            return with_npx_provenance(
+                [
+                    invocation
+                    for nested in _command_segments(_shell_tokens(nested_command))
+                    for invocation in _unwrap_command_segment(
+                        nested,
+                        environment=environment,
+                        command_wrappers=command_wrappers,
+                        environment_provenance=environment_provenance,
+                    )
+                ],
+                call_mode=True,
+            )
+        updated = _consume_option_prefix(
+            remaining,
+            value_options={"--package", "-p", "--shell"},
+            attached_value_prefixes=("-p",),
+            stop_options={"--help", "-h", "--version", "-v"},
+        )
+        if updated == remaining:
+            break
+        option_override = True
+        remaining = updated
+    return with_npx_provenance(
+        _unwrap_command_segment(
+            remaining,
+            environment=environment,
+            command_wrappers=command_wrappers,
+            environment_provenance=environment_provenance,
+        )
+    )
+
+
+def _npx_call_payload(tokens):
+    remaining = list(tokens[1:])
+    while remaining:
+        token = remaining[0]
+        if token in {"-c", "--call"}:
+            return remaining[1] if len(remaining) > 1 else ""
+        if token.startswith("--call="):
+            return token.split("=", 1)[1]
+        updated = _consume_option_prefix(
+            remaining,
+            value_options={"--package", "-p", "--shell"},
+            attached_value_prefixes=("-p",),
+            stop_options={"--help", "-h", "--version", "-v"},
+        )
+        if updated == remaining:
+            return None
+        remaining = updated
+    return None
+
+
+def command_success_is_attributable(command):
+    raw_command = str(command or "")
+    if "\n" in raw_command or "\r" in raw_command:
+        return False
+    if re.search(r"(?:<<<|<<|>>|<\(|>\(|\$\(|`|[<>])", raw_command):
+        return False
+    if _has_argv_changing_shell_syntax(raw_command):
+        return False
+    tokens = _shell_tokens(command)
+    if not tokens or any(
+        _is_unattributable_shell_operator(token) or token == "!"
+        for token in tokens
+    ):
+        return False
+    for segment in _command_segments(tokens):
+        normalized = list(segment)
+        while True:
+            while normalized and re.fullmatch(
+                r"[A-Za-z_][A-Za-z0-9_]*=.*", normalized[0]
+            ):
+                normalized.pop(0)
+            if not normalized:
+                return False
+            executable = Path(normalized[0]).name.lower()
+            if executable == "env":
+                if not _env_wrapper_is_supported(normalized):
+                    return False
+                normalized = _unwrap_env_tokens(normalized)
+                continue
+            if executable in {"command", "builtin", "exec", "nohup"}:
+                normalized = normalized[1:]
+                if normalized and normalized[0] == "--":
+                    normalized = normalized[1:]
+                continue
+            break
+        if not normalized:
+            return False
+        if Path(normalized[0]).name.lower() == "npx":
+            call_payload = _npx_call_payload(normalized)
+            if call_payload is not None and (
+                not call_payload
+                or not command_success_is_attributable(call_payload)
+            ):
+                return False
+        nested_command = _shell_command_argument(normalized)
+        if nested_command is not None and not command_success_is_attributable(
+            nested_command
+        ):
+            return False
+    return True
+
+
+def _command_wrapper_invocation(tokens, environment):
+    return {
+        "executable": Path(tokens[0]).name.lower(),
+        "raw_executable": tokens[0],
+        "args": list(tokens[1:]),
+        "environment": dict(environment or {}),
+    }
+
+
+def _unwrap_command_segment(
+    segment,
+    environment=None,
+    command_wrappers=None,
+    environment_provenance=None,
+):
+    tokens = list(segment)
+    environment = dict(environment or {})
+    command_wrappers = list(command_wrappers or [])
+    environment_provenance = _environment_provenance(
+        environment_provenance
+    )
+    while tokens and re.fullmatch(
+        r"[A-Za-z_][A-Za-z0-9_]*=.*", tokens[0]
+    ):
+        name, value = tokens.pop(0).split("=", 1)
+        environment[name] = value
+    if not tokens:
+        return []
+
+    executable = Path(tokens[0]).name.lower()
+    if executable == "env":
+        if not _env_wrapper_is_supported(tokens):
+            return []
+        command_wrappers.append(
+            _command_wrapper_invocation(tokens, environment)
+        )
+        environment, environment_provenance = _env_bindings(
+            tokens,
+            inherited=environment,
+            inherited_provenance=environment_provenance,
+        )
+        return _unwrap_command_segment(
+            _unwrap_env_tokens(tokens),
+            environment=environment,
+            command_wrappers=command_wrappers,
+            environment_provenance=environment_provenance,
+        )
+    if executable in {"command", "builtin", "exec", "nohup"}:
+        command_wrappers.append(
+            _command_wrapper_invocation(tokens, environment)
+        )
+        remaining = tokens[1:]
+        if remaining and remaining[0] == "--":
+            remaining = remaining[1:]
+        return _unwrap_command_segment(
+            remaining,
+            environment=environment,
+            command_wrappers=command_wrappers,
+            environment_provenance=environment_provenance,
+        )
+    if executable in {"sh", "bash", "zsh", "dash"}:
+        nested_command = _shell_command_argument(tokens)
+        if nested_command is not None:
+            command_wrappers.append(
+                _command_wrapper_invocation(tokens, environment)
+            )
+            return [
+                invocation
+                for nested in _command_segments(_shell_tokens(nested_command))
+                for invocation in _unwrap_command_segment(
+                    nested,
+                    environment=environment,
+                    command_wrappers=command_wrappers,
+                    environment_provenance=environment_provenance,
+                )
+            ]
+    if executable == "npx":
+        return _unwrap_npx_tokens(
+            tokens,
+            environment=environment,
+            command_wrappers=command_wrappers,
+            environment_provenance=environment_provenance,
+        )
+    return [
+        {
+            "executable": executable,
+            "raw_executable": tokens[0],
+            "args": tokens[1:],
+            "environment": environment,
+            "command_wrappers": command_wrappers,
+            "environment_provenance": environment_provenance,
+        }
+    ]
+
+
+def command_invocations(command):
+    return [
+        invocation
+        for segment in _command_segments(_shell_tokens(command))
+        for invocation in _unwrap_command_segment(segment)
+    ]
+
+
+PYTHON_INTERPRETER_FLAG_OPTIONS = {
+    "-B",
+    "-d",
+    "-E",
+    "-i",
+    "-I",
+    "-P",
+    "-q",
+    "-R",
+    "-s",
+    "-S",
+    "-u",
+    "-x",
+}
+PYTHON_INTERPRETER_VALUE_OPTIONS = {
+    "-W",
+    "-X",
+    "--check-hash-based-pycs",
+}
+PYTHON_INTERPRETER_CLUSTER_FLAGS = frozenset(
+    "bBdEiIOPqRsSuvx"
+)
+
+
+def _python_execution_target(args):
+    """Parse the Python interpreter prefix without mistaking option values for code."""
+    tokens = [str(token) for token in args]
+    index = 0
+    positional_only = False
+    while index < len(tokens):
+        token = tokens[index]
+        if not positional_only and token == "--":
+            positional_only = True
+            index += 1
+            continue
+        if not positional_only and token in {
+            "--help",
+            "--help-all",
+            "--help-env",
+            "--help-xoptions",
+            "--version",
+            "-?",
+            "-h",
+            "-V",
+            "-VV",
+        }:
+            return None
+        if not positional_only and token in {"-c", "-m"}:
+            if index + 1 >= len(tokens):
+                return None
+            kind = "command" if token == "-c" else "module"
+            return {
+                "kind": kind,
+                "target": tokens[index + 1],
+                "args": tokens[index + 2 :],
+            }
+        if not positional_only and token.startswith(("-c", "-m")) and len(token) > 2:
+            return {
+                "kind": "command" if token.startswith("-c") else "module",
+                "target": token[2:],
+                "args": tokens[index + 1 :],
+            }
+        if not positional_only and token in PYTHON_INTERPRETER_VALUE_OPTIONS:
+            if index + 1 >= len(tokens):
+                return None
+            index += 2
+            continue
+        if not positional_only and (
+            (token.startswith("-W") and len(token) > 2)
+            or (token.startswith("-X") and len(token) > 2)
+        ):
+            index += 1
+            continue
+        if not positional_only and (
+            token in PYTHON_INTERPRETER_FLAG_OPTIONS
+            or re.fullmatch(r"-(?:b+|O{1,2}|v+)", token)
+            or (
+                len(token) > 2
+                and token.startswith("-")
+                and set(token[1:]).issubset(
+                    PYTHON_INTERPRETER_CLUSTER_FLAGS
+                )
+            )
+        ):
+            index += 1
+            continue
+        if not positional_only and token.startswith("-") and token != "-":
+            return None
+        return {
+            "kind": "stdin" if token == "-" else "script",
+            "target": token,
+            "args": tokens[index + 1 :],
+        }
+    return None
+
+
+def _python_module(args):
+    target = _python_execution_target(args)
+    if not target or target["kind"] != "module":
+        return ""
+    return str(target["target"]).lower()
+
+
+def _python_script_and_args(args):
+    target = _python_execution_target(args)
+    if not target or target["kind"] != "script":
+        return None
+    return str(target["target"]), list(target["args"])
+
+
+def _has_help_or_version(args):
+    return any(
+        token in {"--help", "-h", "--version", "-V"}
+        for token in args
+    )
+
+
+def _git_subcommand(args):
+    if _has_help_or_version(args):
+        return ""
+    remaining = _consume_option_prefix(
+        args,
+        value_options={
+            "-C",
+            "-c",
+            "--git-dir",
+            "--work-tree",
+            "--namespace",
+            "--super-prefix",
+            "--config-env",
+        },
+        attached_value_prefixes=("-C", "-c"),
+        stop_options={"--help", "-h", "--version", "-v"},
+    )
+    return remaining[0].lower() if remaining else ""
+
+
+def _package_manager_positionals(args):
+    if _has_help_or_version(args):
+        return []
+    remaining = _consume_option_prefix(
+        args,
+        value_options={
+            "--prefix",
+            "--cwd",
+            "--dir",
+            "-C",
+            "--filter",
+            "--workspace",
+            "-w",
+            "--project",
+            "--config",
+        },
+        attached_value_prefixes=("-C", "-w"),
+        stop_options={"--help", "-h", "--version", "-V"},
+    )
+    return [token.lower() for token in remaining if not token.startswith("-")]
+
+
+def _codex_subcommand(args):
+    if _has_help_or_version(args):
+        return ""
+    remaining = _consume_option_prefix(
+        args,
+        value_options={
+            "-c",
+            "--config",
+            "-m",
+            "--model",
+            "-p",
+            "--profile",
+            "-C",
+            "--cd",
+        },
+        attached_value_prefixes=("-c", "-m", "-p", "-C"),
+        stop_options={"--help", "-h", "--version", "-V"},
+    )
+    return remaining[0].lower() if remaining else ""
+
+
+SED_PASSIVE_PRINT_SCRIPT = re.compile(
+    r"(?:[0-9]+|\$)(?:,(?:[0-9]+|\$))?p"
+)
+RG_PASSIVE_FLAG_OPTIONS = {
+    "--crlf",
+    "--fixed-strings",
+    "--heading",
+    "--hidden",
+    "--ignore-case",
+    "--json",
+    "--line-number",
+    "--line-regexp",
+    "--multiline",
+    "--multiline-dotall",
+    "--no-config",
+    "--no-filename",
+    "--no-heading",
+    "--no-ignore",
+    "--pcre2",
+    "--smart-case",
+    "--text",
+    "--with-filename",
+    "--word-regexp",
+    "-F",
+    "-S",
+    "-U",
+    "-a",
+    "-i",
+    "-n",
+    "-w",
+    "-x",
+}
+RG_PASSIVE_VALUE_OPTIONS = {
+    "--after-context",
+    "--before-context",
+    "--color",
+    "--context",
+    "--encoding",
+    "--glob",
+    "--max-count",
+    "--type",
+    "--type-not",
+    "-A",
+    "-B",
+    "-C",
+    "-T",
+    "-g",
+    "-m",
+    "-t",
+}
+
+
+def _cat_passive_source_operands(args):
+    tokens = [str(argument) for argument in args]
+    if tokens[:1] == ["--"]:
+        tokens = tokens[1:]
+    if not tokens or any(
+        token == "-" or token.startswith("-")
+        for token in tokens
+    ):
+        return None
+    return tokens
+
+
+def _sed_passive_source_operands(args):
+    tokens = [str(argument) for argument in args]
+    if not tokens or tokens[0] not in {"-n", "--quiet", "--silent"}:
+        return None
+    tokens = tokens[1:]
+    if tokens[:1] == ["-e"]:
+        tokens = tokens[1:]
+    if not tokens or SED_PASSIVE_PRINT_SCRIPT.fullmatch(tokens[0]) is None:
+        return None
+    operands = tokens[1:]
+    if operands[:1] == ["--"]:
+        operands = operands[1:]
+    if not operands or any(
+        operand == "-" or operand.startswith("-")
+        for operand in operands
+    ):
+        return None
+    return operands
+
+
+def _head_tail_passive_source_operands(args):
+    tokens = [str(argument) for argument in args]
+    operands = []
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        if token == "--":
+            operands.extend(tokens[index + 1 :])
+            break
+        if not token.startswith("-") or token == "-":
+            operands.extend(tokens[index:])
+            break
+        if token in {"-q", "--quiet", "-v", "--verbose"}:
+            index += 1
+            continue
+        if token in {"-c", "--bytes", "-n", "--lines"}:
+            if index + 1 >= len(tokens) or re.fullmatch(
+                r"[+-]?[0-9]+(?:[bBkKmMgG])?",
+                tokens[index + 1],
+            ) is None:
+                return None
+            index += 2
+            continue
+        long_value = next(
+            (
+                token.split("=", 1)[1]
+                for option in ("--bytes", "--lines")
+                if token.startswith(option + "=")
+            ),
+            None,
+        )
+        if long_value is not None:
+            if re.fullmatch(
+                r"[+-]?[0-9]+(?:[bBkKmMgG])?",
+                long_value,
+            ) is None:
+                return None
+            index += 1
+            continue
+        attached_value = next(
+            (
+                token[len(option) :]
+                for option in ("-c", "-n")
+                if token.startswith(option) and token != option
+            ),
+            None,
+        )
+        if attached_value is not None and re.fullmatch(
+            r"[+-]?[0-9]+(?:[bBkKmMgG])?",
+            attached_value,
+        ):
+            index += 1
+            continue
+        return None
+    if not operands or any(
+        operand == "-" or operand.startswith("-")
+        for operand in operands
+    ):
+        return None
+    return operands
+
+
+def _rg_passive_source_operands(args):
+    tokens = [str(argument) for argument in args]
+    no_config = False
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        if token == "--":
+            index += 1
+            break
+        if not token.startswith("-") or token == "-":
+            break
+        if token in RG_PASSIVE_FLAG_OPTIONS:
+            no_config = no_config or token == "--no-config"
+            index += 1
+            continue
+        if token in RG_PASSIVE_VALUE_OPTIONS:
+            if index + 1 >= len(tokens):
+                return None
+            index += 2
+            continue
+        if any(
+            token.startswith(option + "=")
+            for option in RG_PASSIVE_VALUE_OPTIONS
+            if option.startswith("--")
+        ):
+            index += 1
+            continue
+        if any(
+            token.startswith(option) and token != option
+            for option in ("-A", "-B", "-C", "-T", "-g", "-m", "-t")
+        ):
+            index += 1
+            continue
+        return None
+    if not no_config or index >= len(tokens):
+        return None
+    paths = tokens[index + 1 :]
+    if any(path == "-" or path.startswith("-") for path in paths):
+        return None
+    return paths
+
+
+def _passive_source_invocation(invocation):
+    executable = invocation["executable"]
+    args = list(invocation.get("args") or [])
+    if _has_help_or_version(args):
+        return None
+    if executable == "cat":
+        operands = _cat_passive_source_operands(args)
+        allow_directories = False
+    elif executable == "sed":
+        operands = _sed_passive_source_operands(args)
+        allow_directories = False
+    elif executable in {"head", "tail"}:
+        operands = _head_tail_passive_source_operands(args)
+        allow_directories = False
+    elif executable == "rg":
+        operands = _rg_passive_source_operands(args)
+        allow_directories = True
+    else:
+        return None
+    if operands is None:
+        return None
+    return {
+        "paths": operands,
+        "allow_directories": allow_directories,
+    }
+
+
+def _is_source_invocation(invocation):
+    return _passive_source_invocation(invocation) is not None
+
+
+def _source_invocation_environment_is_safe(invocation):
+    provenance = _environment_provenance(
+        invocation.get("environment_provenance")
+    )
+    return (
+        not (invocation.get("environment") or {})
+        and not (invocation.get("command_wrappers") or [])
+        and not provenance["ignore_environment"]
+        and not provenance["unset_variables"]
+    )
+
+
+def _source_activity_targets_workspace(
+    activity,
+    invocation,
+    case_workspace,
+):
+    workspace = _canonical_existing_directory(case_workspace)
+    if workspace is None:
+        return False
+    event_cwd = str(activity.get("cwd") or "").strip()
+    if event_cwd:
+        base = _canonical_existing_directory(event_cwd)
+        if base is None or not _path_is_within(base, workspace):
+            return False
+    else:
+        base = workspace
+    passive = _passive_source_invocation(invocation)
+    if passive is None:
+        return False
+    for raw_path in passive["paths"]:
+        candidate = Path(raw_path)
+        if not candidate.is_absolute():
+            candidate = base / candidate
+        try:
+            resolved = candidate.resolve(strict=True)
+        except (OSError, RuntimeError):
+            return False
+        if not _path_is_within(resolved, workspace):
+            return False
+        if passive["allow_directories"]:
+            if not (resolved.is_file() or resolved.is_dir()):
+                return False
+        elif not resolved.is_file():
+            return False
+    return True
+
+
+def _is_git_status_invocation(invocation):
+    return (
+        invocation["executable"] == "git"
+        and _git_subcommand(invocation["args"]) == "status"
+    )
+
+
+def _canonical_existing_directory(value):
+    if value is None or str(value).strip() == "":
+        return None
+    path = Path(str(value))
+    try:
+        resolved = path.resolve(strict=True)
+    except (OSError, RuntimeError):
+        return None
+    return resolved if resolved.is_dir() else None
+
+
+def _git_status_workspace_override(args):
+    if _has_help_or_version(args):
+        return None, False
+    override = None
+    tokens = [str(token) for token in args]
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        if token == "status":
+            return override, True
+        if token == "-C":
+            if override is not None or index + 1 >= len(tokens):
+                return None, False
+            override = tokens[index + 1]
+            index += 2
+            continue
+        if token.startswith("-C") and token != "-C":
+            if override is not None:
+                return None, False
+            override = token[2:]
+            index += 1
+            continue
+        if token.startswith("-"):
+            return None, False
+        return None, False
+    return None, False
+
+
+def _git_status_activity_targets_workspace(activity, case_workspace):
+    workspace = _canonical_existing_directory(case_workspace)
+    if workspace is None:
+        return False
+    invocations = command_invocations(activity.get("command"))
+    if len(invocations) != 1:
+        return False
+    invocation = invocations[0]
+    if (
+        not _is_git_status_invocation(invocation)
+        or not _observed_invocation_uses_trusted_executable(invocation)
+    ):
+        return False
+    override, valid = _git_status_workspace_override(invocation.get("args") or [])
+    if not valid:
+        return False
+    event_cwd = _canonical_existing_directory(activity.get("cwd"))
+    if override is None:
+        return event_cwd == workspace
+    override_path = Path(override)
+    if not override_path.is_absolute():
+        return False
+    return _canonical_existing_directory(override_path) == workspace
+
+
+TEST_NONEXECUTING_OPTIONS = {
+    "--co",
+    "--collect-only",
+    "--dry-run",
+    "--fixtures",
+    "--fixtures-per-test",
+    "--list",
+    "--list-only",
+    "--list-tests",
+    "--listtests",
+    "--markers",
+    "--no-run",
+    "--setup-only",
+    "-list",
+}
+
+
+def _test_invocation_is_nonexecuting(invocation):
+    executable = invocation["executable"]
+    args = [str(argument) for argument in invocation.get("args") or []]
+    lowered_args = [argument.casefold() for argument in args]
+    if _has_help_or_version(args) or any(
+        argument in TEST_NONEXECUTING_OPTIONS
+        or any(
+            argument.startswith(option + "=")
+            for option in TEST_NONEXECUTING_OPTIONS
+            if option.startswith("--")
+        )
+        for argument in lowered_args
+    ):
+        return True
+    if executable in {"mvn", "mvnw"}:
+        skip_properties = {
+            "-dskiptests",
+            "-dskiptests=true",
+            "-dmaven.test.skip",
+            "-dmaven.test.skip=true",
+        }
+        if any(argument in skip_properties for argument in lowered_args):
+            return True
+    if executable in {"gradle", "gradlew"}:
+        for index, argument in enumerate(lowered_args):
+            if argument in {"-x", "--exclude-task"}:
+                if (
+                    index + 1 < len(lowered_args)
+                    and lowered_args[index + 1] == "test"
+                ):
+                    return True
+            if argument in {"-xtest", "--exclude-task=test"}:
+                return True
+    return False
+
+
+def _is_test_invocation(invocation):
+    executable = invocation["executable"]
+    args = invocation["args"]
+    if _test_invocation_is_nonexecuting(invocation):
+        return False
+    if executable == "node":
+        node_options = _node_test_option_prefix(args)
+        return (
+            node_options is not None
+            and "--test" in node_options
+            and _node_test_reporter_is_trusted(node_options)
+        )
+    return False
+
+
+def _node_test_option_prefix(args):
+    """Return only Node interpreter options before the script/eval target."""
+    options = []
+    index = 0
+    options_with_separate_values = {
+        "--test-concurrency",
+        "--test-name-pattern",
+        "--test-reporter",
+        "--test-reporter-destination",
+        "--test-shard",
+        "--test-timeout",
+    }
+    options_without_values = {
+        "--experimental-test-coverage",
+        "--test",
+        "--test-force-exit",
+        "--test-only",
+        "--test-update-snapshots",
+    }
+    options_with_inline_values = (
+        "--test-concurrency=",
+        "--test-coverage-branches=",
+        "--test-coverage-exclude=",
+        "--test-coverage-functions=",
+        "--test-coverage-include=",
+        "--test-coverage-lines=",
+        "--test-isolation=",
+        "--test-name-pattern=",
+        "--test-reporter=",
+        "--test-reporter-destination=",
+        "--test-shard=",
+        "--test-timeout=",
+    )
+    reporter_options = {
+        "--test-reporter",
+        "--test-reporter-destination",
+    }
+    while index < len(args):
+        argument = str(args[index])
+        if argument == "--":
+            break
+        if not argument.startswith("-") or argument == "-":
+            break
+        if (
+            argument.startswith("--test-isolation=")
+            and argument != "--test-isolation=process"
+        ):
+            return None
+        if (
+            argument not in options_without_values
+            and argument not in options_with_separate_values
+            and not argument.startswith(options_with_inline_values)
+        ):
+            return None
+        options.append(argument)
+        if argument in options_with_separate_values:
+            if index + 1 >= len(args):
+                return None
+            if argument in reporter_options:
+                options.append(str(args[index + 1]))
+            index += 2
+            continue
+        index += 1
+    return options
+
+
+def _node_test_reporter_is_trusted(node_options):
+    reporters = []
+    destinations = []
+    index = 0
+    while index < len(node_options):
+        argument = str(node_options[index])
+        if argument == "--test-reporter":
+            if index + 1 >= len(node_options):
+                return False
+            reporters.append(str(node_options[index + 1]).casefold())
+            index += 2
+            continue
+        if argument.startswith("--test-reporter="):
+            reporters.append(argument.split("=", 1)[1].casefold())
+        elif argument == "--test-reporter-destination":
+            if index + 1 >= len(node_options):
+                return False
+            destinations.append(str(node_options[index + 1]))
+            index += 2
+            continue
+        elif argument.startswith("--test-reporter-destination="):
+            destinations.append(argument.split("=", 1)[1])
+        index += 1
+    return (
+        len(reporters) <= 1
+        and not destinations
+        and (not reporters or reporters[0] in {"spec", "tap"})
+    )
+
+
+def _is_browser_invocation(invocation):
+    executable = invocation["executable"]
+    args = invocation["args"]
+    if _has_help_or_version(args):
+        return False
+    if executable == "playwright":
+        positionals = _playwright_command_positionals(args)
+        subcommand = positionals[0].lower() if positionals else ""
+        if subcommand == "screenshot":
+            return True
+        if subcommand != "test":
+            return False
+        nonexecuting_options = {
+            "--dry-run",
+            "--list",
+            "--list-only",
+            "--pass-with-no-tests",
+        }
+        return not any(
+            argument in nonexecuting_options
+            or any(
+                argument.startswith(option + "=")
+                for option in nonexecuting_options
+            )
+            for argument in args
+        )
+    if executable in {
+        "chromium",
+        "chromium-browser",
+        "google-chrome",
+        "chrome-headless-shell",
+    }:
+        return any(
+            token.startswith(("--headless", "--screenshot"))
+            for token in args
+        )
+    return False
+
+
+PLAYWRIGHT_TARGET_VALUE_OPTIONS = {
+    "-b",
+    "--browser",
+    "--channel",
+    "--color-scheme",
+    "--device",
+    "--geolocation",
+    "--http-credentials",
+    "--lang",
+    "--load-storage",
+    "--locale",
+    "--proxy-bypass",
+    "--proxy-server",
+    "--save-har",
+    "--save-storage",
+    "--timeout",
+    "--timezone",
+    "--user-agent",
+    "--viewport-size",
+    "--wait-for-selector",
+    "--wait-for-timeout",
+}
+
+
+def _playwright_command_positionals(args):
+    positionals = []
+    index = 0
+    positional_only = False
+    while index < len(args):
+        argument = str(args[index])
+        if positional_only:
+            positionals.append(argument)
+            index += 1
+            continue
+        if argument == "--":
+            positional_only = True
+            index += 1
+            continue
+        if argument in PLAYWRIGHT_TARGET_VALUE_OPTIONS:
+            if index + 1 >= len(args):
+                return []
+            index += 2
+            continue
+        if any(
+            argument.startswith(option + "=")
+            for option in PLAYWRIGHT_TARGET_VALUE_OPTIONS
+            if option.startswith("--")
+        ) or (
+            argument.startswith("-b")
+            and argument != "-b"
+        ):
+            index += 1
+            continue
+        if argument.startswith("-"):
+            index += 1
+            continue
+        positionals.append(argument)
+        index += 1
+    return positionals
+
+
+def _playwright_test_output_is_noop(output):
+    normalized = " ".join(str(output or "").casefold().split())
+    if re.search(r"\b[1-9][0-9]*\s+passed\b", normalized) or re.search(
+        r"\bpassed\s*:\s*[1-9][0-9]*\b", normalized
+    ):
+        return False
+    return any(
+        re.search(pattern, normalized)
+        for pattern in (
+            r"(?:^|[,\s])0\s+passed\b",
+            r"\bpassed\s*:\s*0\b",
+            r"\b[1-9][0-9]*\s+skipped\b",
+            r"\bskipped\s*:\s*[1-9][0-9]*\b",
+            r"\b[1-9][0-9]*\s+did\s+not\s+run\b",
+            r"\bdid\s+not\s+run\s*:\s*[1-9][0-9]*\b",
+            r"\b0\s+(?:tests?\s+)?executed\b",
+            r"\bexecuted\s*:\s*0\b",
+            r"\btests?\s*:\s*0\b",
+            r"^(?:all\s+)?tests?\s+(?:were\s+)?skipped\b",
+        )
+    )
+
+
+def _browser_command_output_is_substantive(output, invocation=None):
+    stripped = str(output or "").strip()
+    normalized = " ".join(stripped.casefold().split())
+    playwright_test_noop = bool(
+        invocation
+        and invocation.get("executable") == "playwright"
+        and (
+            _playwright_command_positionals(
+                invocation.get("args") or []
+            )[:1]
+            == ["test"]
+        )
+        and _playwright_test_output_is_noop(stripped)
+    )
+    return (
+        bool(stripped)
+        and not _text_is_error_shaped(stripped)
+        and not _browser_scalar_is_acknowledgement(stripped)
+        and not re.match(r"^listing tests?\b", normalized)
+        and not re.match(r"^no tests? found\b", normalized)
+        and not re.search(r"\btotal:\s*0 tests?\b", normalized)
+        and not playwright_test_noop
+    )
+
+
+def _is_runtime_invocation(invocation):
+    executable = invocation["executable"]
+    args = invocation["args"]
+    if _has_help_or_version(args) or "--validate-schema" in args:
+        return False
+    if executable == "codex":
+        return _codex_subcommand(args) == "exec"
+    if executable.startswith("python"):
+        module = _python_module(args)
+        if module == "http.server":
+            return True
+        script_and_args = _python_script_and_args(args)
+        script = script_and_args[0] if script_and_args else ""
+        return Path(script).name.lower() == "run_runtime.py"
+    if executable == "run_runtime.py":
+        return True
+    return False
+
+
+def _observed_invocation_uses_trusted_executable(invocation):
+    npx_wrapper = invocation.get("npx_wrapper")
+    if isinstance(npx_wrapper, dict):
+        return False
+    return (
+        _proof_invocation_environment_is_safe(invocation)
+        and _proof_invocation_uses_trusted_executable(invocation)
+    )
+
+
+def _observed_runtime_activity_is_substantive(activity, invocation):
+    if not _is_runtime_invocation(invocation):
+        return False
+    executable = invocation["executable"]
+    args = invocation["args"]
+    if executable.startswith("python"):
+        script_and_args = _python_script_and_args(args)
+        script = script_and_args[0] if script_and_args else ""
+    elif executable == "run_runtime.py":
+        script = str(invocation.get("raw_executable") or "")
+    else:
+        script = ""
+    if script and Path(script).name.lower() == "run_runtime.py":
+        return (
+            _proof_runtime_environment_is_safe(invocation)
+            and _proof_invocation_uses_trusted_executable(invocation)
+            and _is_canonical_groundwork_runtime_runner(invocation)
+            and _runtime_activity_has_nonempty_success_summary(activity)
+        )
+    return _observed_invocation_uses_trusted_executable(invocation)
+
+
+def _is_groundwork_runtime_invocation(invocation):
+    executable = invocation["executable"]
+    args = invocation["args"]
+    if _has_help_or_version(args) or "--validate-schema" in args:
+        return False
+    if executable == "codex":
+        return _codex_subcommand(args) == "exec"
+    if executable.startswith("python"):
+        if _python_module(args):
+            return False
+        script_and_args = _python_script_and_args(args)
+        script = script_and_args[0] if script_and_args else ""
+        return Path(script).name.lower() == "run_runtime.py"
+    return executable == "run_runtime.py"
+
+
+def _activity_detail_payload(activity):
+    try:
+        payload = json.loads(str(activity.get("detail") or "{}"))
+    except json.JSONDecodeError:
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _activity_result_value(activity):
+    detail = _activity_detail_payload(activity)
+    field, value = _activity_result_field(detail)
+    if field:
+        return value
+    item = detail.get("item")
+    if isinstance(item, dict):
+        _field, value = _activity_result_field(item)
+        return value
+    return None
+
+
+def _text_is_error_shaped(value):
+    text = str(value or "").strip().casefold()
+    if not text:
+        return False
+    first_line = text.splitlines()[0].strip()
+    return bool(
+        re.match(
+            r"^(?:"
+            r"(?:error|fatal)(?:\s*:|\s+-)|"
+            r"failed(?:\s+to|\s*:)|"
+            r"unable\s+to|"
+            r"cannot\b|"
+            r"cancelled\b|"
+            r"canceled\b|"
+            r"permission\s+denied\b|"
+            r"no\s+such\s+file\b|"
+            r"file\s+not\s+found\b|"
+            r"missing\s+(?:document|file|resource|source)\b|"
+            r"not\s+found\b|"
+            r"timed?\s+out\b|"
+            r"traceback\b"
+            r")",
+            first_line,
+        )
+    )
+
+
+def _source_result_is_substantive(result):
+    if isinstance(result, str):
+        stripped = result.strip()
+        if not stripped or _text_is_error_shaped(stripped):
+            return False
+        try:
+            decoded = json.loads(stripped)
+        except json.JSONDecodeError:
+            decoded = None
+        if decoded is not None and decoded != result:
+            return _source_result_is_substantive(decoded)
+        return not _browser_scalar_is_acknowledgement(stripped)
+    if isinstance(result, list):
+        return any(_source_result_is_substantive(item) for item in result)
+    if not isinstance(result, dict):
+        return False
+    content_keys = {
+        "content",
+        "contents",
+        "data",
+        "document",
+        "html",
+        "lines",
+        "result",
+        "rows",
+        "source",
+        "text",
+        "tree",
+    }
+    return any(
+        key in content_keys and _source_result_is_substantive(value)
+        for key, value in result.items()
+    )
+
+
+def _structured_source_activity(activity):
+    server = re.sub(
+        r"[^a-z0-9]+", "_", activity["server"].lower()
+    ).strip("_")
+    tool = re.sub(
+        r"[^a-z0-9]+", "_", (activity["tool"] or activity["kind"]).lower()
+    ).strip("_")
+    kind = re.sub(
+        r"[^a-z0-9]+", "_", activity["kind"].lower()
+    ).strip("_")
+    trusted_pairs = {
+        ("codegraph", "codegraph_explore"),
+        ("codegraph", "explore"),
+        ("filesystem", "open_file"),
+        ("filesystem", "read_file"),
+        ("filesystem", "read_mcp_resource"),
+        ("functions", "read_mcp_resource"),
+    }
+    trusted_direct_kinds = {
+        "codegraph_explore",
+        "open_file",
+        "read_file",
+        "read_mcp_resource",
+    }
+    trusted_source_tool = (
+        (server, tool) in trusted_pairs
+        or (not server and kind in trusted_direct_kinds and tool == kind)
+    )
+    return trusted_source_tool and _source_result_is_substantive(
+        _structured_source_content(activity)
+    )
+
+
+SOURCE_REQUEST_CONTAINERS = {
+    "args",
+    "arguments",
+    "input",
+    "item",
+    "parameters",
+    "params",
+    "payload",
+    "request",
+    "request_data",
+}
+
+
+def _structured_request_values(activity, target_keys):
+    values = set()
+    normalized_target_keys = {
+        re.sub(r"[^a-z0-9]+", "_", str(key).casefold()).strip("_")
+        for key in target_keys
+    }
+
+    def visit(value):
+        if not isinstance(value, dict):
+            return
+        for raw_key, child in value.items():
+            key = re.sub(
+                r"[^a-z0-9]+", "_", str(raw_key).casefold()
+            ).strip("_")
+            if (
+                key in normalized_target_keys
+                and isinstance(child, str)
+                and child.strip()
+            ):
+                values.add(child.strip())
+            if key in SOURCE_REQUEST_CONTAINERS:
+                if isinstance(child, dict):
+                    visit(child)
+                elif isinstance(child, list):
+                    for item in child:
+                        visit(item)
+
+    visit(_activity_detail_payload(activity))
+    return values
+
+
+def _mcp_resource_text_content(activity, result):
+    if not isinstance(result, dict):
+        return None
+    contents = result.get("contents")
+    if not isinstance(contents, list) or len(contents) != 1:
+        return None
+    resource = contents[0]
+    if (
+        not isinstance(resource, dict)
+        or "blob" in resource
+        or not isinstance(resource.get("text"), str)
+        or not isinstance(resource.get("uri"), str)
+        or not resource["uri"].strip()
+    ):
+        return None
+    resource_uri = resource["uri"].strip()
+    requested_uris = _structured_request_values(
+        activity, {"resource_uri", "uri"}
+    )
+    if requested_uris != {resource_uri}:
+        return None
+    return resource["text"]
+
+
+def _structured_source_content(activity):
+    result = _activity_result_value(activity)
+    tool = re.sub(
+        r"[^a-z0-9]+",
+        "_",
+        (activity.get("tool") or activity.get("kind") or "").casefold(),
+    ).strip("_")
+    if tool == "read_mcp_resource":
+        if isinstance(result, dict):
+            return _mcp_resource_text_content(activity, result)
+        if (
+            isinstance(result, str)
+            and len(
+                _structured_request_values(
+                    activity, {"resource_uri", "uri"}
+                )
+            )
+            == 1
+        ):
+            return result
+        return None
+    if isinstance(result, str):
+        return result
+    if not isinstance(result, dict):
+        return None
+    candidates = [
+        value
+        for key, value in result.items()
+        if key in {"content", "contents", "source", "text"}
+        and isinstance(value, str)
+    ]
+    return candidates[0] if len(candidates) == 1 else None
+
+
+def _browser_scalar_is_acknowledgement(value):
+    normalized = " ".join(
+        re.sub(r"[^a-z0-9]+", " ", str(value or "").casefold()).split()
+    )
+    if not normalized:
+        return True
+    acknowledgement_states = (
+        r"accepted|acknowledged|captured|complete|completed|done|generated|"
+        r"initialized|loaded|ok|queued|ready|saved|scheduled|started|"
+        r"success|successful|successfully|succeeded"
+    )
+    if re.fullmatch(rf"(?:{acknowledgement_states})", normalized):
+        return True
+    control_nouns = (
+        r"browser|capture|content|document|image|initialization|operation|"
+        r"page|recording|report|request|session|snapshot|tool|trace"
+    )
+    return bool(
+        re.fullmatch(
+            rf"(?:(?:{control_nouns})[ \t]+){{1,6}}"
+            rf"(?:was[ \t]+)?(?:{acknowledgement_states})",
+            normalized,
+        )
+    )
+
+
+def _browser_observation_result_is_substantive(tool, result):
+    if isinstance(result, str):
+        stripped = result.strip()
+        if not stripped or _text_is_error_shaped(stripped):
+            return False
+        try:
+            decoded = json.loads(stripped)
+        except json.JSONDecodeError:
+            decoded = None
+        if decoded is not None and decoded != result:
+            return _browser_observation_result_is_substantive(tool, decoded)
+        lowered = stripped.casefold()
+        if _browser_scalar_is_acknowledgement(stripped):
+            return False
+        if tool in {
+            "browser_screenshot",
+            "page_screenshot",
+            "screenshot",
+            "take_screenshot",
+        }:
+            return bool(
+                re.match(r"^(?:data:image/|attachment:|/)", stripped)
+                or re.search(r"\.(?:gif|jpe?g|png|webp)(?:\?.*)?$", lowered)
+                or re.fullmatch(
+                    r"[A-Za-z0-9+/=\r\n]{32,}",
+                    stripped,
+                )
+            )
+        if tool in {
+            "accessibility_snapshot",
+            "browser_evaluate",
+            "dom_snapshot",
+            "evaluate",
+            "extract",
+            "get_dom",
+            "get_html",
+            "get_page_content",
+            "page_content",
+            "page_snapshot",
+            "read_page",
+            "snapshot",
+        }:
+            return len(stripped) >= 8
+        if tool in {"lighthouse", "performance_report"}:
+            return bool(
+                re.search(
+                    r"\b(?:audit|cls|fcp|lcp|metric|performance|score|"
+                    r"timing|trace|ttfb)\b",
+                    lowered,
+                )
+                and re.search(r"\d", stripped)
+            )
+        return False
+    if (
+        tool in {"browser_evaluate", "evaluate", "extract"}
+        and (
+            result is None
+            or isinstance(result, (bool, int, float))
+        )
+    ):
+        return True
+    if isinstance(result, list):
+        return bool(result) and tool in {
+            "accessibility_snapshot",
+            "browser_evaluate",
+            "console_messages",
+            "dom_snapshot",
+            "evaluate",
+            "extract",
+            "get_console_logs",
+            "get_network_requests",
+            "network_requests",
+            "page_snapshot",
+            "snapshot",
+        }
+    if not isinstance(result, dict):
+        return False
+
+    marker_keys = {
+        "accessibility_snapshot": {
+            "accessibility",
+            "nodes",
+            "root",
+            "snapshot",
+            "tree",
+        },
+        "browser_evaluate": {
+            "content",
+            "data",
+            "items",
+            "result",
+            "rows",
+            "text",
+            "value",
+        },
+        "browser_screenshot": {
+            "artifact",
+            "attachment",
+            "base64",
+            "bytes",
+            "data",
+            "image",
+            "images",
+            "path",
+            "paths",
+            "screenshot",
+        },
+        "console_messages": {"console", "entries", "events", "logs", "messages"},
+        "dom_snapshot": {
+            "content",
+            "document",
+            "dom",
+            "html",
+            "nodes",
+            "root",
+            "snapshot",
+            "tree",
+        },
+        "evaluate": {
+            "content",
+            "data",
+            "items",
+            "result",
+            "rows",
+            "text",
+            "value",
+        },
+        "extract": {
+            "content",
+            "data",
+            "items",
+            "matches",
+            "result",
+            "rows",
+            "text",
+            "value",
+        },
+        "get_console_logs": {"console", "entries", "events", "logs", "messages"},
+        "get_dom": {"content", "document", "dom", "html", "nodes", "root", "tree"},
+        "get_html": {"content", "document", "html", "text"},
+        "get_network_requests": {
+            "entries",
+            "events",
+            "har",
+            "network",
+            "requests",
+        },
+        "get_page_content": {
+            "content",
+            "document",
+            "html",
+            "nodes",
+            "text",
+        },
+        "lighthouse": {
+            "audits",
+            "categories",
+            "metrics",
+            "report",
+            "scores",
+        },
+        "network_requests": {
+            "entries",
+            "events",
+            "har",
+            "network",
+            "requests",
+        },
+        "page_content": {
+            "content",
+            "document",
+            "html",
+            "nodes",
+            "text",
+        },
+        "page_screenshot": {
+            "artifact",
+            "attachment",
+            "base64",
+            "bytes",
+            "data",
+            "image",
+            "images",
+            "path",
+            "paths",
+            "screenshot",
+        },
+        "page_snapshot": {
+            "accessibility",
+            "content",
+            "document",
+            "dom",
+            "html",
+            "nodes",
+            "root",
+            "snapshot",
+            "text",
+            "tree",
+        },
+        "performance_report": {
+            "audits",
+            "entries",
+            "metrics",
+            "performance",
+            "report",
+            "timings",
+            "trace",
+        },
+        "read_page": {
+            "accessibility",
+            "content",
+            "document",
+            "dom",
+            "html",
+            "nodes",
+            "text",
+            "tree",
+        },
+        "screenshot": {
+            "artifact",
+            "attachment",
+            "base64",
+            "bytes",
+            "data",
+            "image",
+            "images",
+            "path",
+            "paths",
+            "screenshot",
+        },
+        "snapshot": {
+            "accessibility",
+            "content",
+            "document",
+            "dom",
+            "html",
+            "nodes",
+            "root",
+            "snapshot",
+            "text",
+            "tree",
+        },
+        "take_screenshot": {
+            "artifact",
+            "attachment",
+            "base64",
+            "bytes",
+            "data",
+            "image",
+            "images",
+            "path",
+            "paths",
+            "screenshot",
+        },
+    }
+    expected_keys = marker_keys.get(tool, set())
+    empty_collection_observations = {
+        ("console_messages", "console"),
+        ("console_messages", "entries"),
+        ("console_messages", "events"),
+        ("console_messages", "logs"),
+        ("console_messages", "messages"),
+        ("get_console_logs", "console"),
+        ("get_console_logs", "entries"),
+        ("get_console_logs", "events"),
+        ("get_console_logs", "logs"),
+        ("get_console_logs", "messages"),
+        ("get_network_requests", "entries"),
+        ("get_network_requests", "events"),
+        ("get_network_requests", "requests"),
+        ("network_requests", "entries"),
+        ("network_requests", "events"),
+        ("network_requests", "requests"),
+    }
+    acknowledgement_keys = {
+        "accepted",
+        "acknowledged",
+        "allowed",
+        "claimed",
+        "cleared",
+        "closed",
+        "completed",
+        "configured",
+        "detail",
+        "disabled",
+        "enabled",
+        "message",
+        "ok",
+        "queued",
+        "ready",
+        "scheduled",
+        "started",
+        "status",
+        "stopped",
+        "success",
+        "timestamp",
+    }
+
+    def structured_value_is_substantive(value):
+        if isinstance(value, dict):
+            meaningful_keys = set(value).difference(acknowledgement_keys)
+            if not meaningful_keys:
+                return False
+            return any(
+                structured_value_is_substantive(value[key])
+                for key in meaningful_keys
+            )
+        if isinstance(value, list):
+            return any(structured_value_is_substantive(item) for item in value)
+        if isinstance(value, bool) or value is None:
+            return False
+        if isinstance(value, (int, float)):
+            return True
+        return _browser_observation_result_is_substantive(tool, value)
+
+    for key in expected_keys.intersection(result):
+        value = result[key]
+        if (
+            tool in {"browser_evaluate", "evaluate", "extract"}
+            and key in {"data", "result", "value"}
+            and value is not None
+            and not isinstance(value, (dict, list))
+        ):
+            return True
+        if (
+            isinstance(value, (list, dict))
+            and not value
+            and (tool, key) in empty_collection_observations
+        ):
+            return True
+        if structured_value_is_substantive(value):
+            return True
+    return False
+
+
+def _structured_browser_activity(activity):
+    server = activity["server"].lower()
+    tool = re.sub(
+        r"[^a-z0-9]+", "_", activity["tool"].lower()
+    ).strip("_")
+    observation_tools = {
+        "accessibility_snapshot",
+        "browser_evaluate",
+        "browser_screenshot",
+        "console_messages",
+        "dom_snapshot",
+        "evaluate",
+        "extract",
+        "get_console_logs",
+        "get_dom",
+        "get_html",
+        "get_network_requests",
+        "get_page_content",
+        "lighthouse",
+        "network_requests",
+        "page_content",
+        "page_screenshot",
+        "page_snapshot",
+        "performance_report",
+        "read_page",
+        "screenshot",
+        "snapshot",
+        "take_screenshot",
+    }
+    control_tokens = {
+        "claim",
+        "clear",
+        "close",
+        "configure",
+        "disable",
+        "enable",
+        "open",
+        "permission",
+        "set",
+        "start",
+        "stop",
+    }
+    normalized_server = re.sub(
+        r"[^a-z0-9]+", "_", server
+    ).strip("_")
+    matched_tool = tool if tool in observation_tools else ""
+    trusted_server = normalized_server in {
+        "browser",
+        "browser_use",
+        "chrome",
+        "chrome_devtools",
+        "devtools",
+    }
+    if not (
+        trusted_server
+        and matched_tool
+        and not control_tokens.intersection(tool.split("_"))
+        and bool(str(activity.get("output") or "").strip())
+    ):
+        return False
+    result = _activity_result_value(activity)
+    return _browser_observation_result_is_substantive(matched_tool, result)
+
+
+NODE_TEST_REQUIRED_SUMMARY_KEYS = (
+    "tests",
+    "pass",
+    "fail",
+    "cancelled",
+    "skipped",
+    "todo",
+)
+NODE_TEST_SUMMARY_KEYS = {
+    *NODE_TEST_REQUIRED_SUMMARY_KEYS,
+    "suites",
+}
+
+
+def _node_test_output_is_substantive(output):
+    lines = str(output or "").splitlines()
+    patterns = []
+    for prefix in (r"#", "ℹ"):
+        patterns.append(
+            (
+                re.compile(
+                    r"^\s*"
+                    + prefix
+                    + r"\s*("
+                    + "|".join(sorted(NODE_TEST_SUMMARY_KEYS))
+                    + r")\s+(\d+)\s*$",
+                    re.IGNORECASE,
+                ),
+                re.compile(
+                    r"^\s*"
+                    + prefix
+                    + r"\s*duration_ms\s+"
+                    r"(?:\d+(?:\.\d*)?|\.\d+)\s*$",
+                    re.IGNORECASE,
+                ),
+            )
+        )
+
+    matched_formats = []
+    for counter_pattern, duration_pattern in patterns:
+        if any(
+            counter_pattern.fullmatch(line)
+            or duration_pattern.fullmatch(line)
+            for line in lines
+        ):
+            matched_formats.append((counter_pattern, duration_pattern))
+    if len(matched_formats) != 1:
+        return False
+    counter_pattern, duration_pattern = matched_formats[0]
+
+    counters = {}
+    counter_indexes = {}
+    duration_indexes = []
+    for index, line in enumerate(lines):
+        match = counter_pattern.fullmatch(line)
+        if match is not None:
+            key = match.group(1).casefold()
+            counters.setdefault(key, []).append(int(match.group(2)))
+            counter_indexes.setdefault(key, []).append(index)
+        elif duration_pattern.fullmatch(line):
+            duration_indexes.append(index)
+
+    if (
+        any(len(values) != 1 for values in counters.values())
+        or any(
+            len(counters.get(key, [])) != 1
+            for key in NODE_TEST_REQUIRED_SUMMARY_KEYS
+        )
+        or len(duration_indexes) != 1
+    ):
+        return False
+
+    tests_index = counter_indexes["tests"][0]
+    summary_key_order = (
+        "tests",
+        "suites",
+        "pass",
+        "fail",
+        "cancelled",
+        "skipped",
+        "todo",
+    )
+    observed_key_order = tuple(
+        key
+        for key, _index in sorted(
+            (
+                (key, indexes[0])
+                for key, indexes in counter_indexes.items()
+            ),
+            key=lambda item: item[1],
+        )
+    )
+    expected_key_order = tuple(
+        key for key in summary_key_order if key in counters
+    )
+    if observed_key_order != expected_key_order:
+        return False
+    final_nonempty_index = next(
+        (
+            index
+            for index in range(len(lines) - 1, -1, -1)
+            if lines[index].strip()
+        ),
+        -1,
+    )
+    if duration_indexes[0] != final_nonempty_index:
+        return False
+    for line in lines[tests_index:]:
+        if (
+            line.strip()
+            and counter_pattern.fullmatch(line) is None
+            and duration_pattern.fullmatch(line) is None
+        ):
+            return False
+
+    values = {
+        key: counters[key][0]
+        for key in NODE_TEST_REQUIRED_SUMMARY_KEYS
+    }
+    accounted = sum(
+        values[key]
+        for key in ("pass", "fail", "cancelled", "skipped", "todo")
+    )
+    return (
+        values["tests"] == accounted
+        and values["pass"] + values["fail"] > 0
+    )
+
+
+def _is_node_test_invocation(invocation):
+    node_options = _node_test_option_prefix(
+        (invocation or {}).get("args") or []
+    )
+    return bool(
+        invocation
+        and invocation.get("executable") == "node"
+        and node_options is not None
+        and "--test" in node_options
+    )
+
+
+def _test_command_output_is_substantive(output, invocation=None):
+    text = str(output or "").strip()
+    if not text or not invocation or not _is_test_invocation(invocation):
+        return False
+    if _is_node_test_invocation(invocation):
+        return _node_test_output_is_substantive(text)
+    return False
+
+
+def has_observed_evidence(
+    stdout,
+    evidence_kind,
+    *,
+    require_success=False,
+    case_workspace=None,
+):
+    activities = completed_tool_activities(stdout)
+    eligible = [
+        activity
+        for activity in activities
+        if activity["has_result"]
+        and (activity["succeeded"] or not require_success)
+    ]
+    command_predicates = {
+        "source": _is_source_invocation,
+        "tests": _is_test_invocation,
+        "browser": _is_browser_invocation,
+        "runtime": _is_runtime_invocation,
+    }
+    predicate = command_predicates.get(evidence_kind)
+    if predicate is None:
+        return False
+    for activity in eligible:
+        if activity["kind"] == "command_execution":
+            attributable = command_success_is_attributable(
+                activity["command"]
+            )
+            if (
+                require_success
+                or evidence_kind in {"browser", "runtime"}
+            ) and not attributable:
+                continue
+            invocations = command_invocations(activity["command"])
+            if (
+                evidence_kind in {"source", "tests", "browser"}
+                and len(invocations) != 1
+            ):
+                continue
+            matching_invocations = [
+                invocation
+                for invocation in invocations
+                if predicate(invocation)
+            ]
+            if evidence_kind in {"source", "tests"}:
+                matching_invocations = [
+                    invocation
+                    for invocation in matching_invocations
+                    if _observed_invocation_uses_trusted_executable(
+                        invocation
+                    )
+                ]
+            if evidence_kind == "source":
+                matching_invocations = [
+                    invocation
+                    for invocation in matching_invocations
+                    if _source_invocation_environment_is_safe(invocation)
+                    and _source_activity_targets_workspace(
+                        activity,
+                        invocation,
+                        case_workspace,
+                    )
+                ]
+            if (
+                evidence_kind == "source"
+                and matching_invocations
+                and not _source_result_is_substantive(
+                    activity.get("output")
+                )
+            ):
+                continue
+            if (
+                evidence_kind == "tests"
+                and matching_invocations
+                and not _test_command_output_is_substantive(
+                    activity.get("output"),
+                    matching_invocations[0],
+                )
+            ):
+                continue
+            if (
+                evidence_kind == "browser"
+                and matching_invocations
+                and (
+                    not _observed_invocation_uses_trusted_executable(
+                        matching_invocations[0]
+                    )
+                    or not _browser_command_output_is_substantive(
+                        activity.get("output"),
+                        matching_invocations[0],
+                    )
+                )
+            ):
+                continue
+            if (
+                evidence_kind == "runtime"
+                and matching_invocations
+                and not any(
+                    _observed_runtime_activity_is_substantive(
+                        activity, invocation
+                    )
+                    for invocation in matching_invocations
+                )
+            ):
+                continue
+            if matching_invocations:
+                return True
+        if evidence_kind == "source" and _structured_source_activity(activity):
+            return True
+        if evidence_kind == "browser" and _structured_browser_activity(activity):
+            return True
+    return False
+
+
+def observed_evidence_kinds(stdout):
+    return [
+        evidence_kind
+        for evidence_kind in ("source", "tests", "browser", "runtime")
+        if has_observed_evidence(stdout, evidence_kind)
+    ]
+
+
+EXPECTED_FAILED_TEST_ROUTE_BOUNDARIES = {
+    "qa-gap-closure-admission",
+    "verify-qa-failure",
+}
+
+
+def _expected_failed_test_command(row, final_response):
+    if (
+        str(row.get("source_truth") or "").strip() != "test_evidence"
+        or str(row.get("route_boundary") or "").strip()
+        not in EXPECTED_FAILED_TEST_ROUTE_BOUNDARIES
+        or "qa_fix_qa"
+        not in {
+            token.strip()
+            for token in str(row.get("output_contract") or "").split("|")
+            if token.strip()
+        }
+    ):
+        return ""
+    matches = [
+        match.group(1).strip().strip("`")
+        for match in re.finditer(
+            r"(?m)^-[ \t]+Reproduction:[ \t]+command:[ \t]*(.+?)[ \t]*$",
+            str(final_response or ""),
+        )
+    ]
+    if len(matches) != 1:
+        return ""
+    expected_command = matches[0]
+    scenario = str(
+        row.get("input_scenario") or row.get("prompt") or ""
+    )
+    return expected_command if expected_command in scenario else ""
+
+
+def _expected_test_failure_output_is_substantive(output):
+    text = str(output or "").strip()
+    if not text or _text_is_error_shaped(text):
+        return False
+    lowered = text.casefold()
+    phase_failure_patterns = (
+        r"\berror(?:s)?\s+(?:during|in)\s+collection\b",
+        r"\berror\s+collecting\b",
+        r"\bcollection\s+(?:error|failed|failure)\b",
+        r"\bcollected\s+0\s+items?\b",
+        r"\bno\s+tests?\s+(?:collected|ran|were\s+run)\b",
+        r"\b0\s+tests?\s+(?:collected|ran|executed)\b",
+        r"\berror\s+during\s+(?:setup|teardown)\b",
+        r"\bsetup\s+(?:error|failed|failure)\b",
+        r"\btest\s+suite\s+failed\s+to\s+run\b",
+        r"\bimport(?:error|\s+error|\s+failed|\s+failure)\b",
+    )
+    if any(re.search(pattern, lowered) for pattern in phase_failure_patterns):
+        return False
+    infrastructure_markers = (
+        "0 failed",
+        "0 failures",
+        "cannot find module",
+        "command not found",
+        "connection refused",
+        "crash",
+        "enoent",
+        "failed to start",
+        "file not found",
+        "importerror",
+        "module not found",
+        "no such file",
+        "permission denied",
+        "runner failed",
+        "timed out",
+    )
+    if any(marker in lowered for marker in infrastructure_markers):
+        return False
+    expected_vs_actual = bool(
+        re.search(r"\bexpected\b", lowered)
+        and re.search(r"\bactual\b", lowered)
+    )
+    standard_assertion_failure = bool(
+        re.search(
+            r"(?im)(?:"
+            r"\bassertionerror\b|"
+            r"\berr_assertion\b|"
+            r"\bassert(?:ion)?[ \t]+(?:error|fail(?:ed|ure)?)\b|"
+            r"^[ \t]*(?:e[ \t]+)?assert\b|"
+            r"^[ \t]*not[ \t]+ok\b"
+            r")",
+            lowered,
+        )
+    )
+    uncaught_language_error = bool(
+        re.search(
+            r"(?im)^[ \t]*(?:syntaxerror|typeerror|referenceerror)\s*:",
+            text,
+        )
+    )
+    if uncaught_language_error and not (
+        expected_vs_actual or standard_assertion_failure
+    ):
+        return False
+    return expected_vs_actual or standard_assertion_failure
+
+
+def _canonical_expected_failure_fixture_marker(
+    row, expected_tokens, output
+):
+    return (
+        str(row.get("fixture") or "").rstrip("/")
+        == "evals/fixtures/minimal-task-search"
+        and expected_tokens
+        == ["node", "--test", "test/taskSearch.test.mjs"]
+        and str(output or "").strip().casefold()
+        == "expected failure reproduced"
+    )
+
+
+def has_observed_expected_test_failure(stdout, row, final_response):
+    expected_command = _expected_failed_test_command(row, final_response)
+    expected_tokens = _shell_tokens(expected_command)
+    if not expected_tokens:
+        return False
+    for activity in completed_tool_activities(stdout):
+        if (
+            activity["kind"] != "command_execution"
+            or not activity["has_result"]
+            or activity["succeeded"]
+            or not command_success_is_attributable(activity["command"])
+            or _shell_tokens(activity["command"]) != expected_tokens
+        ):
+            continue
+        detail = _activity_detail_payload(activity)
+        exit_code = detail.get("exit_code")
+        status = str(detail.get("status") or "").casefold()
+        invocations = command_invocations(activity["command"])
+        if (
+            type(exit_code) is int
+            and exit_code != 0
+            and status == "failed"
+            and len(invocations) == 1
+            and _is_test_invocation(invocations[0])
+            and _observed_invocation_uses_trusted_executable(
+                invocations[0]
+            )
+            and (
+                _expected_test_failure_output_is_substantive(
+                    activity.get("output")
+                )
+                or _canonical_expected_failure_fixture_marker(
+                    row,
+                    expected_tokens,
+                    activity.get("output"),
+                )
+            )
+        ):
+            return True
+    return False
+
+
+def release_evidence_status(final_response):
+    return release_evidence_claim_status(final_response)
+
+
+PROOF_ENVIRONMENT_POLICY_VERSION = "proof-environment-v4"
+PROOF_EXECUTABLE_POLICY_VERSION = "proof-executable-v3"
+UNSAFE_PROOF_ENVIRONMENT_KEYS = {
+    "AR",
+    "AS",
+    "BASH_COMPAT",
+    "BASH_ENV",
+    "BASH_LOADABLES_PATH",
+    "BASH_XTRACEFD",
+    "BASHOPTS",
+    "CC",
+    "CFLAGS",
+    "CDPATH",
+    "CLASSPATH",
+    "COMSPEC",
+    "COMPILER_PATH",
+    "CPATH",
+    "CPPFLAGS",
+    "CPLUS_INCLUDE_PATH",
+    "CXX",
+    "CXXFLAGS",
+    "DEVELOPER_DIR",
+    "DIFF_OPTIONS",
+    "DYLD_INSERT_LIBRARIES",
+    "ENV",
+    "FIGNORE",
+    "FPATH",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_CEILING_DIRECTORIES",
+    "GIT_COMMON_DIR",
+    "GIT_CONFIG_PARAMETERS",
+    "GIT_CONFIG_GLOBAL",
+    "GIT_CONFIG_SYSTEM",
+    "GIT_CONFIG_NOSYSTEM",
+    "GIT_DIR",
+    "GIT_EXEC_PATH",
+    "GIT_EXTERNAL_DIFF",
+    "GIT_INDEX_FILE",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_WORK_TREE",
+    "GOCACHE",
+    "GOENV",
+    "GOFLAGS",
+    "GOMOD",
+    "GOMODCACHE",
+    "GOPATH",
+    "GOROOT",
+    "GOTOOLCHAIN",
+    "GOWORK",
+    "GLOBIGNORE",
+    "HOME",
+    "IFS",
+    "JAVA_HOME",
+    "JAVA_TOOL_OPTIONS",
+    "JDK_JAVA_OPTIONS",
+    "LD",
+    "LDFLAGS",
+    "LD_PRELOAD",
+    "LIBRARY_PATH",
+    "MACOSX_DEPLOYMENT_TARGET",
+    "MAKEFLAGS",
+    "MFLAGS",
+    "NM",
+    "OBJC",
+    "PAGER",
+    "PATHEXT",
+    "PERL5OPT",
+    "PATH",
+    "PYTHONHOME",
+    "PYTHONINSPECT",
+    "PYTHONPATH",
+    "PYTHONSTARTUP",
+    "PROMPT_COMMAND",
+    "PSMODULEPATH",
+    "PS4",
+    "RANLIB",
+    "RIPGREP_CONFIG_PATH",
+    "RUBYOPT",
+    "SDKROOT",
+    "SHELL",
+    "SHELLOPTS",
+    "STRIP",
+    "USERPROFILE",
+    "VIRTUAL_ENV",
+    "XDG_CACHE_HOME",
+    "XDG_CONFIG_HOME",
+    "XDG_DATA_HOME",
+    "XDG_RUNTIME_DIR",
+    "XDG_STATE_HOME",
+    "ZDOTDIR",
+    "_JAVA_OPTIONS",
+}
+UNSAFE_PROOF_ENVIRONMENT_PREFIXES = (
+    "BASH_FUNC_",
+    "CARGO_",
+    "DYLD_",
+    "GIT_",
+    "GIT_CONFIG_KEY_",
+    "GIT_CONFIG_VALUE_",
+    "GRADLE_",
+    "LD_",
+    "MAVEN_",
+    "NPM_CONFIG_",
+    "NODE_",
+    "PYTEST_",
+    "PYTHON",
+    "RUST",
+)
+PROOF_CONTROL_ENVIRONMENT_KEYS = {
+    "GROUNDWORK_ROUTER_OBSERVABILITY",
+    "GROUNDWORK_ROUTER_OBSERVABILITY_DEBUG",
+    "GROUNDWORK_ROUTER_OBSERVABILITY_DISABLED",
+    "GROUNDWORK_ROUTER_OBSERVABILITY_MODE",
+}
+PROOF_TOOL_SHELL_ENVIRONMENT_KEYS = {
+    "GIT_CONFIG_GLOBAL",
+    "GIT_CONFIG_NOSYSTEM",
+    "GIT_CONFIG_SYSTEM",
+    "GOENV",
+    "HOME",
+    "PATH",
+    "PYTEST_DISABLE_PLUGIN_AUTOLOAD",
+    "PYTHONNOUSERSITE",
+    "XDG_CACHE_HOME",
+    "XDG_CONFIG_HOME",
+    "XDG_DATA_HOME",
+    "XDG_STATE_HOME",
+}
+INHERITED_ONLY_UNSAFE_PROOF_ENVIRONMENT_KEYS = {
+    "GROUNDWORK_CODEX_BYPASS_HOOK_TRUST",
+    "GROUNDWORK_CODEX_TIMEOUT",
+    "GROUNDWORK_REPO",
+    "GROUNDWORK_RUNTIME_ROOT",
+}
+ALLOWED_GROUNDWORK_PROOF_ENVIRONMENT_KEYS = {
+    "GROUNDWORK_CODEX_TIMEOUT",
+    "GROUNDWORK_REPO",
+    "GROUNDWORK_RUNTIME_ROOT",
+}
+
+
+def _resolved_executable_path(value):
+    if not value:
+        return None
+    path = Path(value)
+    try:
+        if not path.is_file() or not os.access(path, os.X_OK):
+            return None
+        return path.resolve(strict=True)
+    except OSError:
+        return None
+
+
+PROOF_EXECUTABLE_NAMES = (
+    "bash",
+    "cargo",
+    "cat",
+    "chrome-headless-shell",
+    "chromium",
+    "chromium-browser",
+    "codegraph",
+    "codex",
+    "dash",
+    "diff",
+    "env",
+    "go",
+    "git",
+    "google-chrome",
+    "gradle",
+    "gradlew",
+    "grep",
+    "head",
+    "mvn",
+    "mvnw",
+    "node",
+    "nohup",
+    "npm",
+    "npx",
+    "playwright",
+    "pnpm",
+    "py.test",
+    "pytest",
+    "rg",
+    "sed",
+    "sh",
+    "tail",
+    "yarn",
+    "zsh",
+)
+PROOF_EXECUTABLE_IDENTITY_FIELDS = (
+    "launcher_path",
+    "launcher_device",
+    "launcher_inode",
+    "launcher_mode",
+    "launcher_uid",
+    "launcher_gid",
+    "launcher_size",
+    "launcher_mtime_ns",
+    "launcher_ctime_ns",
+    "resolved_path",
+    "resolved_device",
+    "resolved_inode",
+    "resolved_mode",
+    "resolved_uid",
+    "resolved_gid",
+    "resolved_size",
+    "resolved_mtime_ns",
+    "resolved_ctime_ns",
+)
+
+
+def _sha256_file(path):
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as handle:
+        while True:
+            chunk = handle.read(1024 * 1024)
+            if not chunk:
+                break
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _path_is_within(path, root):
+    try:
+        Path(path).relative_to(Path(root))
+        return True
+    except ValueError:
+        return False
+
+
+def _proof_untrusted_roots():
+    roots = [
+        REPO,
+        ROOT,
+        Path("/tmp"),
+        Path("/private/tmp"),
+        Path("/var/tmp"),
+        Path(tempfile.gettempdir()),
+    ]
+    return tuple(
+        root.resolve(strict=False)
+        for root in roots
+    )
+
+
+def _proof_path_has_untrusted_write_control(path):
+    try:
+        path_stat = Path(path).stat()
+    except OSError:
+        return True
+    uid_getter = getattr(os, "geteuid", None) or getattr(
+        os,
+        "getuid",
+        None,
+    )
+    current_uid = uid_getter() if uid_getter is not None else None
+    if current_uid is not None and path_stat.st_uid == current_uid:
+        return True
+    if path_stat.st_mode & 0o022:
+        return True
+    try:
+        return os.access(path, os.W_OK)
+    except OSError:
+        return True
+
+
+def _proof_executable_location_is_safe(path):
+    candidate = Path(path)
+    if not candidate.is_absolute():
+        return False
+    resolved = candidate.resolve(strict=False)
+    if any(
+        _path_is_within(candidate, root)
+        or _path_is_within(resolved, root)
+        for root in _proof_untrusted_roots()
+    ):
+        return False
+    for executable_path in {candidate, resolved}:
+        if _proof_path_has_untrusted_write_control(executable_path):
+            return False
+    current = candidate.parent
+    while True:
+        if _proof_path_has_untrusted_write_control(current):
+            return False
+        if current == current.parent:
+            break
+        current = current.parent
+    return True
+
+
+def _proof_executable_identity(value, *, include_hash=True):
+    if not value:
+        return None
+    raw_path = Path(value)
+    if not raw_path.is_absolute():
+        return None
+    try:
+        launcher = raw_path.parent.resolve(strict=True) / raw_path.name
+        if not launcher.is_file() or not os.access(launcher, os.X_OK):
+            return None
+        resolved = launcher.resolve(strict=True)
+        if (
+            not _proof_executable_location_is_safe(launcher)
+            or not _proof_executable_location_is_safe(resolved)
+        ):
+            return None
+        launcher_stat = launcher.lstat()
+        resolved_stat = resolved.stat()
+        if resolved_stat.st_mode & 0o022:
+            return None
+        identity = {
+            "launcher_path": str(launcher),
+            "launcher_device": launcher_stat.st_dev,
+            "launcher_inode": launcher_stat.st_ino,
+            "launcher_mode": launcher_stat.st_mode,
+            "launcher_uid": launcher_stat.st_uid,
+            "launcher_gid": launcher_stat.st_gid,
+            "launcher_size": launcher_stat.st_size,
+            "launcher_mtime_ns": launcher_stat.st_mtime_ns,
+            "launcher_ctime_ns": launcher_stat.st_ctime_ns,
+            "resolved_path": str(resolved),
+            "resolved_device": resolved_stat.st_dev,
+            "resolved_inode": resolved_stat.st_ino,
+            "resolved_mode": resolved_stat.st_mode,
+            "resolved_uid": resolved_stat.st_uid,
+            "resolved_gid": resolved_stat.st_gid,
+            "resolved_size": resolved_stat.st_size,
+            "resolved_mtime_ns": resolved_stat.st_mtime_ns,
+            "resolved_ctime_ns": resolved_stat.st_ctime_ns,
+        }
+        if include_hash:
+            identity["sha256"] = _sha256_file(resolved)
+        return identity
+    except OSError:
+        return None
+
+
+def _codex_control_launcher():
+    search_path = str(os.environ.get("PATH") or os.defpath)
+    for entry in search_path.split(os.pathsep):
+        directory = Path(entry)
+        if not entry or not directory.is_absolute():
+            continue
+        try:
+            canonical_directory = directory.resolve(strict=True)
+        except OSError:
+            continue
+        candidate = shutil.which("codex", path=str(canonical_directory))
+        if not candidate:
+            continue
+        raw_path = Path(candidate)
+        try:
+            launcher = raw_path.parent.resolve(strict=True) / raw_path.name
+        except OSError:
+            continue
+        if (
+            launcher.is_file()
+            and os.access(launcher, os.X_OK)
+            and _proof_executable_location_is_safe(launcher)
+        ):
+            return launcher
+    return None
+
+
+CODEX_CONTROL_LAUNCHER = _codex_control_launcher()
+
+
+def _proof_executable_discovery_path():
+    directories = []
+    candidates = []
+    if CODEX_CONTROL_LAUNCHER is not None:
+        candidates.append(CODEX_CONTROL_LAUNCHER.parent)
+    candidates.extend(
+        [
+            Path(sys.executable).resolve(strict=True).parent,
+            Path("/usr/local/go/bin"),
+            Path("/usr/local/bin"),
+            Path("/Library/Apple/usr/bin"),
+            Path("/usr/bin"),
+            Path("/bin"),
+            Path("/usr/sbin"),
+            Path("/sbin"),
+        ]
+    )
+    for directory in candidates:
+        try:
+            canonical = directory.resolve(strict=True)
+        except OSError:
+            continue
+        value = str(canonical)
+        if value not in directories:
+            directories.append(value)
+    return os.pathsep.join(directories)
+
+
+PROOF_EXECUTABLE_DISCOVERY_PATH = _proof_executable_discovery_path()
+
+
+def _trusted_executable_identity_from_path(executable, path_value=None):
+    search_path = str(
+        path_value
+        if path_value is not None
+        else PROOF_EXECUTABLE_DISCOVERY_PATH
+    )
+    for entry in search_path.split(os.pathsep):
+        directory = Path(entry)
+        if not entry or not directory.is_absolute():
+            continue
+        try:
+            canonical_directory = directory.resolve(strict=True)
+        except OSError:
+            continue
+        candidate = shutil.which(executable, path=str(canonical_directory))
+        identity = _proof_executable_identity(candidate)
+        if identity is not None:
+            return identity
+    return None
+
+
+PROOF_EXECUTABLE_IDENTITIES = {
+    executable: _trusted_executable_identity_from_path(executable)
+    for executable in PROOF_EXECUTABLE_NAMES
+}
+PROOF_EXECUTABLE_BASELINES = {
+    executable: (
+        Path(identity["resolved_path"])
+        if identity is not None
+        else None
+    )
+    for executable, identity in PROOF_EXECUTABLE_IDENTITIES.items()
+}
+PROOF_EXECUTABLE_LAUNCHERS = {
+    executable: (
+        Path(identity["launcher_path"])
+        if identity is not None
+        else None
+    )
+    for executable, identity in PROOF_EXECUTABLE_IDENTITIES.items()
+}
+PYTHON_EXECUTABLE_IDENTITY = _proof_executable_identity(sys.executable)
+PYTHON_EXECUTABLE_BASELINE = (
+    Path(PYTHON_EXECUTABLE_IDENTITY["resolved_path"])
+    if PYTHON_EXECUTABLE_IDENTITY is not None
+    else None
+)
+PYTHON_EXECUTABLE_IDENTITIES = {}
+if PYTHON_EXECUTABLE_IDENTITY is not None:
+    python_directory = Path(sys.executable).resolve(strict=True).parent
+    for python_name in {
+        "python",
+        "python3",
+        Path(sys.executable).name,
+    }:
+        python_candidate = shutil.which(
+            python_name,
+            path=str(python_directory),
+        )
+        python_identity = _proof_executable_identity(python_candidate)
+        if (
+            python_identity is not None
+            and python_identity["resolved_path"]
+            == PYTHON_EXECUTABLE_IDENTITY["resolved_path"]
+        ):
+            PYTHON_EXECUTABLE_IDENTITIES[python_name.casefold()] = python_identity
+
+
+def _proof_executable_path():
+    directories = []
+    if CODEX_CONTROL_LAUNCHER is not None:
+        directories.append(str(CODEX_CONTROL_LAUNCHER.parent))
+    identities = list(PYTHON_EXECUTABLE_IDENTITIES.values()) + [
+        identity
+        for identity in PROOF_EXECUTABLE_IDENTITIES.values()
+        if identity is not None
+    ]
+    for identity in identities:
+        directory = str(Path(identity["launcher_path"]).parent)
+        if directory not in directories:
+            directories.append(directory)
+    if CODEX_CONTROL_LAUNCHER is not None:
+        control_directory = str(CODEX_CONTROL_LAUNCHER.parent)
+        if control_directory not in directories:
+            directories.append(control_directory)
+    return os.pathsep.join(directories)
+
+
+EMPTY_PROOF_EXECUTABLE_PATH = os.path.join(
+    os.sep,
+    "nonexistent",
+    "groundwork-proof-bin",
+)
+PROOF_EXECUTABLE_PATH = (
+    _proof_executable_path()
+    or EMPTY_PROOF_EXECUTABLE_PATH
+)
+_PROOF_EXECUTABLE_VERIFICATION_CACHE = set()
+
+
+def _controlled_proof_executable_path():
+    return (
+        str(PROOF_EXECUTABLE_PATH).strip()
+        or EMPTY_PROOF_EXECUTABLE_PATH
+    )
+
+
+def _captured_evaluator_command(command):
+    if not command:
+        raise RuntimeError(
+            "trusted evaluator launcher is required for an empty command"
+        )
+    raw_executable = str(command[0])
+    executable = Path(raw_executable).name.casefold()
+    identities = (
+        PYTHON_EXECUTABLE_IDENTITIES
+        if executable.startswith("python")
+        else PROOF_EXECUTABLE_IDENTITIES
+    )
+    identity = identities.get(executable)
+    if identity is None:
+        raise RuntimeError(
+            f"no trusted evaluator launcher is available for {executable}"
+        )
+    launcher = str(identity["launcher_path"])
+    if (
+        ("/" in raw_executable or "\\" in raw_executable)
+        and not _proof_executable_identity_matches(
+            raw_executable,
+            identity,
+        )
+    ):
+        raise RuntimeError(
+            f"the evaluator launcher is not the captured {executable} identity"
+        )
+    return [launcher, *[str(item) for item in command[1:]]]
+
+
+def _proof_executable_identity_matches(candidate, baseline):
+    if baseline is None:
+        return False
+    current = _proof_executable_identity(candidate, include_hash=False)
+    if current is None or any(
+        current.get(field) != baseline.get(field)
+        for field in PROOF_EXECUTABLE_IDENTITY_FIELDS
+    ):
+        return False
+    cache_key = tuple(
+        current.get(field)
+        for field in PROOF_EXECUTABLE_IDENTITY_FIELDS
+    ) + (baseline.get("sha256"),)
+    if cache_key in _PROOF_EXECUTABLE_VERIFICATION_CACHE:
+        return True
+    try:
+        matches = (
+            _sha256_file(current["resolved_path"])
+            == baseline.get("sha256")
+        )
+    except OSError:
+        return False
+    if matches:
+        _PROOF_EXECUTABLE_VERIFICATION_CACHE.add(cache_key)
+    return matches
+
+
+def _proof_environment_key_is_identifier(key):
+    return re.fullmatch(
+        r"[A-Za-z_][A-Za-z0-9_]*",
+        str(key),
+    ) is not None
+
+
+def _proof_environment_key_is_unsafe(key, *, inherited=False):
+    key = str(key)
+    normalized = key.upper()
+    return (
+        (
+            inherited
+            and not _proof_environment_key_is_identifier(key)
+        )
+        or normalized in UNSAFE_PROOF_ENVIRONMENT_KEYS
+        or (
+            inherited
+            and normalized
+            in INHERITED_ONLY_UNSAFE_PROOF_ENVIRONMENT_KEYS
+        )
+        or any(
+            normalized.startswith(prefix)
+            for prefix in UNSAFE_PROOF_ENVIRONMENT_PREFIXES
+        )
+    )
+
+
+def _proof_environment_value_is_unsafe(value, *, inherited=False):
+    return bool(
+        inherited
+        and re.match(r"^\s*\(\)\s*\{", str(value))
+    )
+
+
+def _proof_executable_manifest_digest():
+    payload = {
+        "policy": PROOF_EXECUTABLE_POLICY_VERSION,
+        "executables": PROOF_EXECUTABLE_IDENTITIES,
+        "python": PYTHON_EXECUTABLE_IDENTITIES,
+    }
+    return hashlib.sha256(
+        json.dumps(
+            payload,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+
+
+def _codex_home_from_environment(environment):
+    candidate = str(environment.get("CODEX_HOME") or "").strip()
+    if not candidate and pwd is not None:
+        try:
+            candidate = str(
+                Path(pwd.getpwuid(os.getuid()).pw_dir) / ".codex"
+            )
+        except (KeyError, OSError):
+            candidate = ""
+    if not candidate:
+        return None
+    path = Path(candidate)
+    if not path.is_absolute():
+        return None
+    resolved = path.resolve(strict=False)
+    if any(
+        _path_is_within(resolved, root)
+        for root in _proof_untrusted_roots()
+    ):
+        return None
+    return str(resolved)
+
+
+def sanitized_codex_environment(environment=None):
+    source = dict(os.environ if environment is None else environment)
+    raw_codex_home = str(source.get("CODEX_HOME") or "").strip()
+    codex_home = _codex_home_from_environment(source)
+    removed = sorted(
+        {
+            key
+            for key, value in source.items()
+            if (
+                _proof_environment_key_is_unsafe(key, inherited=True)
+                or _proof_environment_value_is_unsafe(
+                    value,
+                    inherited=True,
+                )
+            )
+        }
+        | (
+            {"CODEX_HOME"}
+            if raw_codex_home and codex_home is None
+            else set()
+        )
+    )
+    sanitized = {
+        key: value
+        for key, value in source.items()
+        if key not in removed
+    }
+    sanitized.pop("CODEX_HOME", None)
+    controlled_path = _controlled_proof_executable_path()
+    sanitized["PATH"] = controlled_path
+    proof_home = PROOF_HOME.resolve(strict=False)
+    enforced_environment = {
+        "GIT_CONFIG_GLOBAL": os.devnull,
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_CONFIG_SYSTEM": os.devnull,
+        "GOENV": "off",
+        "HOME": str(proof_home),
+        "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
+        "PYTHONNOUSERSITE": "1",
+        "XDG_CACHE_HOME": str(proof_home / ".cache"),
+        "XDG_CONFIG_HOME": str(proof_home / ".config"),
+        "XDG_DATA_HOME": str(proof_home / ".local" / "share"),
+        "XDG_STATE_HOME": str(proof_home / ".local" / "state"),
+    }
+    sanitized.update(enforced_environment)
+    if codex_home is not None:
+        sanitized["CODEX_HOME"] = codex_home
+    codex_control_environment = (
+        {"CODEX_HOME": codex_home}
+        if codex_home is not None
+        else {}
+    )
+    retained_control_environment = {
+        key: sanitized[key]
+        for key in sorted(PROOF_CONTROL_ENVIRONMENT_KEYS)
+        if key in sanitized
+    }
+    argv_controls = {
+        "hook_trust_bypass": hook_trust_bypass_enabled(),
+    }
+    tool_shell_environment = _proof_tool_shell_environment(sanitized)
+    summary = {
+        "environment_policy": PROOF_ENVIRONMENT_POLICY_VERSION,
+        "executable_policy": PROOF_EXECUTABLE_POLICY_VERSION,
+        "controlled_path_sha256": hashlib.sha256(
+            controlled_path.encode("utf-8")
+        ).hexdigest(),
+        "tool_manifest_sha256": _proof_executable_manifest_digest(),
+        "removed_environment_keys": removed,
+        "retained_control_environment_keys": list(
+            retained_control_environment
+        ),
+        "retained_control_environment_sha256": hashlib.sha256(
+            json.dumps(
+                retained_control_environment,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest(),
+        "enforced_environment_keys": sorted(enforced_environment),
+        "enforced_environment_sha256": hashlib.sha256(
+            json.dumps(
+                enforced_environment,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest(),
+        "codex_control_environment_keys": list(
+            codex_control_environment
+        ),
+        "codex_control_environment_sha256": hashlib.sha256(
+            json.dumps(
+                codex_control_environment,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest(),
+        "tool_shell_environment_inherit": "none",
+        "tool_shell_environment_keys": list(tool_shell_environment),
+        "tool_shell_environment_sha256": hashlib.sha256(
+            json.dumps(
+                tool_shell_environment,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest(),
+        "argv_control_keys": sorted(argv_controls),
+        "argv_controls": argv_controls,
+        "argv_control_sha256": hashlib.sha256(
+            json.dumps(
+                argv_controls,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest(),
+    }
+    return sanitized, summary
+
+
+def _proof_invocation_environment_is_safe(invocation):
+    environment = {
+        str(key).upper(): str(value)
+        for key, value in (invocation.get("environment") or {}).items()
+    }
+    provenance = _environment_provenance(
+        invocation.get("environment_provenance")
+    )
+    return (
+        not any(
+            not _proof_environment_key_is_identifier(key)
+            or _proof_environment_key_is_unsafe(key)
+            or _proof_environment_value_is_unsafe(value, inherited=True)
+            for key, value in environment.items()
+        )
+        and not provenance["ignore_environment"]
+        and "PATH" not in provenance["unset_variables"]
+    )
+
+
+def _proof_runtime_environment_is_safe(invocation):
+    if not _proof_invocation_environment_is_safe(invocation):
+        return False
+    environment = {
+        str(key).upper(): str(value)
+        for key, value in (invocation.get("environment") or {}).items()
+    }
+    groundwork_keys = {
+        key for key in environment if key.startswith("GROUNDWORK_")
+    }
+    if not groundwork_keys.issubset(
+        ALLOWED_GROUNDWORK_PROOF_ENVIRONMENT_KEYS
+    ):
+        return False
+    repo_override = environment.get("GROUNDWORK_REPO")
+    if repo_override is None:
+        return True
+    override_path = Path(repo_override)
+    if (
+        not override_path.is_absolute()
+        or ".." in override_path.parts
+        or "." in override_path.parts
+        or str(override_path) != repo_override
+    ):
+        return False
+    try:
+        return override_path.resolve(strict=True) == REPO.resolve(strict=True)
+    except OSError:
+        return False
+
+
+PROOF_SHELL_BUILTIN_WRAPPERS = {"builtin", "command", "exec"}
+PROOF_SHELL_WRAPPERS = {"bash", "dash", "sh", "zsh"}
+
+
+def _proof_executable_is_trusted(invocation):
+    raw_executable = str(invocation.get("raw_executable") or "").strip()
+    executable = str(invocation.get("executable") or "").lower()
+    if not raw_executable or not executable:
+        return False
+    if executable == "run_runtime.py":
+        return _is_canonical_groundwork_runtime_runner(invocation)
+    if Path(raw_executable).name.lower() != executable:
+        return False
+    baseline = (
+        PYTHON_EXECUTABLE_IDENTITIES.get(executable)
+        if executable.startswith("python")
+        else PROOF_EXECUTABLE_IDENTITIES.get(executable)
+    )
+    if baseline is None:
+        return False
+    candidate = (
+        baseline["launcher_path"]
+        if "/" not in raw_executable and "\\" not in raw_executable
+        else raw_executable
+    )
+    return _proof_executable_identity_matches(candidate, baseline)
+
+
+def _proof_command_wrappers_are_trusted(invocation):
+    wrappers = invocation.get("command_wrappers") or []
+    if not isinstance(wrappers, list):
+        return False
+    for wrapper in wrappers:
+        if not isinstance(wrapper, dict):
+            return False
+        raw_executable = str(
+            wrapper.get("raw_executable") or ""
+        ).strip()
+        executable = str(wrapper.get("executable") or "").lower()
+        if executable in PROOF_SHELL_WRAPPERS:
+            return False
+        if executable in PROOF_SHELL_BUILTIN_WRAPPERS:
+            if (
+                raw_executable != executable
+                or "/" in raw_executable
+                or "\\" in raw_executable
+            ):
+                return False
+        elif not _proof_executable_is_trusted(wrapper):
+            return False
+    return True
+
+
+def _proof_invocation_uses_trusted_executable(invocation):
+    return (
+        _proof_command_wrappers_are_trusted(invocation)
+        and _proof_executable_is_trusted(invocation)
+    )
+
+
+def _normalized_claim_root(value):
+    return str(value or "").strip().rstrip("/")
+
+
+def _claim_roots_are_independent(installed_root, source_root):
+    installed_value = _normalized_claim_root(installed_root)
+    source_value = _normalized_claim_root(source_root)
+    if not installed_value or not source_value:
+        return False
+    installed_norm = os.path.normpath(installed_value)
+    source_norm = os.path.normpath(source_value)
+    if installed_norm == source_norm:
+        return False
+    normalized_paths = (Path(installed_norm), Path(source_norm))
+    for child, parent in (
+        normalized_paths,
+        tuple(reversed(normalized_paths)),
+    ):
+        try:
+            child.relative_to(parent)
+        except ValueError:
+            continue
+        return False
+
+    installed_path = Path(installed_value)
+    source_path = Path(source_value)
+    if installed_path.exists() and source_path.exists():
+        try:
+            installed_resolved = installed_path.resolve(strict=True)
+            source_resolved = source_path.resolve(strict=True)
+        except OSError:
+            return False
+        if installed_resolved == source_resolved:
+            return False
+        try:
+            source_resolved.relative_to(installed_resolved)
+        except ValueError:
+            pass
+        else:
+            return False
+        try:
+            installed_resolved.relative_to(source_resolved)
+        except ValueError:
+            pass
+        else:
+            return False
+    return True
+
+
+def _equivalence_operands(args, allowed_options, value_options=()):
+    operands = []
+    index = 0
+    while index < len(args):
+        argument = args[index]
+        if argument == "--":
+            operands.extend(args[index + 1 :])
+            break
+        if argument in value_options:
+            if index + 1 >= len(args):
+                return None
+            index += 2
+            continue
+        if argument.startswith("-"):
+            if argument not in allowed_options:
+                return None
+            index += 1
+            continue
+        operands.append(argument)
+        index += 1
+    return operands
+
+
+def _operands_bind_both_roots(operands, installed_root, source_root):
+    if (
+        len(operands) != 2
+        or not _claim_roots_are_independent(
+            installed_root, source_root
+        )
+    ):
+        return False
+    normalized_operands = {
+        os.path.normpath(str(operand)) for operand in operands
+    }
+    return normalized_operands == {
+        os.path.normpath(_normalized_claim_root(installed_root)),
+        os.path.normpath(_normalized_claim_root(source_root)),
+    }
+
+
+def _source_equivalence_invocation_proves_match(
+    activity, invocation, installed_root, source_root
+):
+    executable = invocation["executable"]
+    args = invocation["args"]
+    if (
+        _has_help_or_version(args)
+        or not _proof_invocation_environment_is_safe(invocation)
+        or not _proof_invocation_uses_trusted_executable(invocation)
+    ):
+        return False
+    if executable == "diff":
+        allowed_options = {
+            "-q",
+            "-r",
+            "-s",
+            "-qr",
+            "-rq",
+            "--brief",
+            "--recursive",
+            "--report-identical-files",
+        }
+        operands = _equivalence_operands(args, allowed_options)
+        if operands is None or not _operands_bind_both_roots(
+            operands, installed_root, source_root
+        ):
+            return False
+        return any(
+            option in args
+            for option in ("-r", "-qr", "-rq", "--recursive")
+        )
+    if executable == "git" and _git_subcommand(args) == "diff":
+        unsafe_options = {
+            argument
+            for argument in args
+            if argument.startswith("-")
+            and argument
+            not in {
+                "--no-index",
+                "--quiet",
+                "--exit-code",
+                "--no-ext-diff",
+                "--",
+            }
+        }
+        operands = [
+            argument
+            for argument in args
+            if argument != "diff" and not argument.startswith("-")
+        ]
+        return (
+            not unsafe_options
+            and "--no-index" in args
+            and _operands_bind_both_roots(
+                operands, installed_root, source_root
+            )
+        )
+    return False
+
+
+def _source_equivalence_activity_matches_claim(activity, claim_values):
+    installed_root = claim_values["installed_plugin_root"]
+    source_root = claim_values["source_root"]
+    invocations = command_invocations(activity["command"])
+    return (
+        len(invocations) == 1
+        and _source_equivalence_invocation_proves_match(
+            activity, invocations[0], installed_root, source_root
+        )
+    )
+
+
+def _codex_plugin_tokens(invocation):
+    if invocation["executable"] != "codex":
+        return []
+    remaining = _consume_option_prefix(
+        invocation["args"],
+        value_options={
+            "-c",
+            "--config",
+            "-m",
+            "--model",
+            "-p",
+            "--profile",
+            "-C",
+            "--cd",
+        },
+        attached_value_prefixes=("-c", "-m", "-p", "-C"),
+        stop_options={"--help", "-h", "--version", "-V"},
+    )
+    if len(remaining) < 2 or remaining[0].lower() != "plugin":
+        return []
+    return remaining
+
+
+def _codex_plugin_action(invocation):
+    tokens = _codex_plugin_tokens(invocation)
+    return tokens[1].lower() if tokens else ""
+
+
+def _installed_plugin_identity(installed_root):
+    installed_path = Path(
+        os.path.normpath(_normalized_claim_root(installed_root))
+    )
+    for parent in installed_path.parents:
+        if parent.name != "cache":
+            continue
+        try:
+            relative_parts = installed_path.relative_to(parent).parts
+        except ValueError:
+            continue
+        if len(relative_parts) != 3:
+            continue
+        marketplace, plugin, version = relative_parts[:3]
+        if (
+            marketplace != "groundwork"
+            or plugin != "groundwork"
+            or not version
+        ):
+            continue
+        return {
+            "marketplace": marketplace,
+            "plugin": plugin,
+            "version": version,
+            "spec": f"{plugin}@{marketplace}",
+        }
+    return {}
+
+
+def _codex_plugin_action_has_required_target(
+    invocation, expected_spec
+):
+    tokens = _codex_plugin_tokens(invocation)
+    if not tokens:
+        return False
+    action = tokens[1].lower()
+    arguments = tokens[2:]
+    if action == "list":
+        return arguments in ([], ["--json"])
+    if action not in {"add", "show"}:
+        return False
+
+    if action == "show":
+        positionals = [
+            argument for argument in arguments if argument != "--json"
+        ]
+        return (
+            len(positionals) == 1
+            and arguments.count("--json") <= 1
+            and len(positionals) + arguments.count("--json")
+            == len(arguments)
+            and positionals[0].casefold()
+            == str(expected_spec).casefold()
+        )
+
+    expected_plugin, separator, expected_marketplace = str(
+        expected_spec
+    ).partition("@")
+    if not separator or not expected_plugin or not expected_marketplace:
+        return False
+    marketplace = ""
+    seen_json = False
+    positionals = []
+    index = 0
+    while index < len(arguments):
+        argument = str(arguments[index])
+        if argument == "--json":
+            if seen_json:
+                return False
+            seen_json = True
+            index += 1
+            continue
+        if argument in {"-m", "--marketplace"}:
+            if index + 1 >= len(arguments) or marketplace:
+                return False
+            marketplace = str(arguments[index + 1])
+            index += 2
+            continue
+        if argument.startswith("--marketplace="):
+            if marketplace:
+                return False
+            marketplace = argument.split("=", 1)[1]
+            if not marketplace:
+                return False
+            index += 1
+            continue
+        if argument.startswith("-m") and len(argument) > 2:
+            if marketplace:
+                return False
+            marketplace = argument[2:]
+            index += 1
+            continue
+        if argument.startswith("-"):
+            return False
+        positionals.append(argument)
+        index += 1
+
+    if len(positionals) != 1:
+        return False
+    target = positionals[0]
+    if "@" in target:
+        return (
+            not marketplace
+            and target.casefold() == str(expected_spec).casefold()
+        )
+    return (
+        target.casefold() == expected_plugin.casefold()
+        and marketplace.casefold() == expected_marketplace.casefold()
+    )
+
+
+def _activity_output_confirms_plugin(
+    activity, installed_root, identity, action
+):
+    root = re.escape(_normalized_claim_root(installed_root))
+    negative_status = re.compile(
+        r"(?i)\b(?:diagnostic|disabled|error|failed|fatal|inactive|"
+        r"ignored|missing|not[ \t]+"
+        r"(?:active|installed|loaded|selected)|removed|unloaded|would[ \t]+"
+        r"(?:install|load|select)|warn(?:ing)?)\b"
+    )
+    output = str(activity.get("output") or "")
+    if negative_status.search(output):
+        return False
+    root_lines = [
+        line
+        for line in output.splitlines()
+        if re.search(
+            rf"(?<![A-Za-z0-9_.:/-]){root}(?![A-Za-z0-9_.:/-])",
+            line,
+        )
+    ]
+    if not root_lines:
+        return False
+
+    plugin = re.escape(str(identity.get("plugin") or ""))
+    version = re.escape(str(identity.get("version") or ""))
+    spec = re.escape(str(identity.get("spec") or ""))
+    if not plugin or not version or not spec:
+        return False
+
+    def without_root(line):
+        return re.sub(root, " ", line, flags=re.IGNORECASE)
+
+    if action == "list":
+        return any(
+            (
+                re.search(
+                    rf"(?<![A-Za-z0-9_.-]){plugin}"
+                    rf"(?![A-Za-z0-9_.-])",
+                    without_root(line),
+                    re.IGNORECASE,
+                )
+                and re.search(
+                    rf"(?<![A-Za-z0-9_.-]){version}"
+                    rf"(?![A-Za-z0-9_.-])",
+                    without_root(line),
+                    re.IGNORECASE,
+                )
+            )
+            or re.search(
+                rf"(?<![A-Za-z0-9_.@-]){spec}"
+                rf"(?![A-Za-z0-9_.@-])",
+                without_root(line),
+                re.IGNORECASE,
+            )
+            for line in root_lines
+        )
+
+    positive_status = re.compile(
+        r"(?i)\b(?:active|added|enabled|installed|loaded|selected)\b"
+    )
+    return any(
+        positive_status.search(without_root(line))
+        or re.search(
+            rf"(?<![A-Za-z0-9_.@-]){spec}"
+            rf"(?![A-Za-z0-9_.@-])",
+            without_root(line),
+            re.IGNORECASE,
+        )
+        for line in root_lines
+    )
+
+
+def _codex_plugin_activity_matches_claim(
+    activity, claim_values, allowed_actions
+):
+    invocations = command_invocations(activity["command"])
+    if len(invocations) != 1:
+        return False
+    invocation = invocations[0]
+    if _has_help_or_version(invocation["args"]):
+        return False
+    unsafe_action_options = {
+        "-n",
+        "--check",
+        "--dry-run",
+        "--no-op",
+        "--noop",
+    }
+    if any(
+        argument in unsafe_action_options
+        or argument.startswith("--dry-run=")
+        or argument.startswith("--no-")
+        for argument in invocation["args"]
+    ):
+        return False
+    if (
+        not _proof_invocation_environment_is_safe(invocation)
+        or not _proof_invocation_uses_trusted_executable(invocation)
+    ):
+        return False
+    codex_home = _codex_home_for_installed_root(
+        claim_values["installed_plugin_root"]
+    )
+    identity = _installed_plugin_identity(
+        claim_values["installed_plugin_root"]
+    )
+    action = _codex_plugin_action(invocation)
+    configured_codex_home = str(
+        (invocation.get("environment") or {}).get("CODEX_HOME") or ""
+    )
+    return (
+        bool(codex_home)
+        and bool(identity)
+        and configured_codex_home == codex_home
+        and action in allowed_actions
+        and _codex_plugin_action_has_required_target(
+            invocation, identity["spec"]
+        )
+        and _activity_output_confirms_plugin(
+            activity,
+            claim_values["installed_plugin_root"],
+            identity,
+            action,
+        )
+    )
+
+
+def _codex_home_for_installed_root(installed_root):
+    installed_path = Path(
+        os.path.normpath(_normalized_claim_root(installed_root))
+    )
+    for parent in installed_path.parents:
+        if parent.name == "cache" and parent.parent.name == "plugins":
+            return str(parent.parent.parent)
+    return ""
+
+
+def _is_canonical_groundwork_runtime_runner(invocation):
+    executable = invocation["executable"]
+    args = invocation["args"]
+    if executable.startswith("python"):
+        script_and_args = _python_script_and_args(args)
+        script = script_and_args[0] if script_and_args else ""
+    elif executable == "run_runtime.py":
+        script = str(invocation.get("raw_executable") or "")
+    else:
+        return False
+    if not script:
+        return False
+    script_path = Path(script)
+    if script_path.is_absolute():
+        candidate = script_path
+    else:
+        if script_path.as_posix().lstrip("./") != "evals/run_runtime.py":
+            return False
+        candidate = REPO / script_path
+    return candidate.resolve() == (REPO / "evals/run_runtime.py").resolve()
+
+
+def _groundwork_runtime_invocation_uses_claim_roots(
+    invocation, installed_root, _source_root
+):
+    codex_home = _codex_home_for_installed_root(installed_root)
+    if not codex_home:
+        return False
+    configured_codex_home = str(
+        (invocation.get("environment") or {}).get("CODEX_HOME") or ""
+    )
+    if configured_codex_home != codex_home:
+        return False
+    return (
+        _proof_runtime_environment_is_safe(invocation)
+        and _proof_invocation_uses_trusted_executable(invocation)
+        and _is_canonical_groundwork_runtime_runner(invocation)
+    )
+
+
+def _normalized_trial_identifier(value):
+    return re.sub(r"[^a-z0-9]+", "_", str(value or "").lower()).strip("_")
+
+
+def _activity_trial_identifiers(activity):
+    identifiers = {
+        _normalized_trial_identifier(activity.get("command")),
+    }
+    for invocation in command_invocations(activity["command"]):
+        executable = str(
+            invocation.get("raw_executable") or invocation["executable"]
+        )
+        arguments = [str(argument) for argument in invocation.get("args") or []]
+        identifiers.add(
+            _normalized_trial_identifier(" ".join([executable, *arguments]))
+        )
+        identifiers.add(
+            _normalized_trial_identifier(
+                " ".join([str(invocation["executable"]), *arguments])
+            )
+        )
+    return {identifier for identifier in identifiers if identifier}
+
+
+def _nonruntime_chain_matches_trial(
+    activation_activity, equivalence_activity, claim_values, trial
+):
+    trial_identifier = _normalized_trial_identifier(trial)
+    if not trial_identifier:
+        return False
+
+    claim_type = str(claim_values.get("claim_type") or "").lower()
+    action = ""
+    activation_invocations = command_invocations(
+        activation_activity["command"]
+    )
+    if len(activation_invocations) == 1:
+        action = _codex_plugin_action(activation_invocations[0])
+
+    identifiers = (
+        _activity_trial_identifiers(activation_activity)
+        | _activity_trial_identifiers(equivalence_activity)
+        | {
+            "equivalence",
+            "source_equivalence",
+            "plugin_equivalence",
+            f"{claim_type}_equivalence",
+        }
+    )
+    if claim_type.startswith("cache"):
+        identifiers.add("cache_equivalence")
+    if action in {"list", "show"}:
+        identifiers.update(
+            {
+                "inventory",
+                "plugin_inventory",
+                f"{claim_type}_inventory",
+                f"codex_plugin_{action}",
+                f"plugin_{action}",
+            }
+        )
+    elif action == "add":
+        identifiers.update(
+            {
+                "refresh",
+                "plugin_refresh",
+                "refresh_plugin",
+                "cache_refresh",
+                "refresh_cache",
+                f"{claim_type}_refresh",
+                f"refresh_{claim_type}",
+                "codex_plugin_add",
+                "plugin_add",
+            }
+        )
+    return trial_identifier in identifiers
+
+
+def _runtime_activity_matches_trial(activity, claim_values, trial):
+    installed_root = claim_values["installed_plugin_root"]
+    source_root = claim_values["source_root"]
+    all_invocations = command_invocations(activity["command"])
+    if len(all_invocations) != 1:
+        return False
+    if not _runtime_activity_has_nonempty_success_summary(activity):
+        return False
+    runtime_invocations = [
+        invocation
+        for invocation in all_invocations
+        if _is_groundwork_runtime_invocation(invocation)
+        and _groundwork_runtime_invocation_uses_claim_roots(
+            invocation, installed_root, source_root
+        )
+    ]
+    if not runtime_invocations:
+        return False
+    summary = _runtime_activity_success_summary(activity)
+    return any(
+        _runtime_selector_matches_trial(
+            invocation,
+            summary,
+            trial,
+            run_scope=claim_values.get("run_scope"),
+        )
+        for invocation in runtime_invocations
+    )
+
+
+def _strict_unique_string_list(value, *, allow_empty=True):
+    if not isinstance(value, list):
+        return None
+    if any(
+        not isinstance(item, str) or not item.strip()
+        for item in value
+    ):
+        return None
+    normalized = [item.strip() for item in value]
+    if len(normalized) != len(set(normalized)):
+        return None
+    if not allow_empty and not normalized:
+        return None
+    return normalized
+
+
+def _runtime_activity_success_summary(activity):
+    for line in str(activity.get("output") or "").splitlines():
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        summary = payload.get("summary")
+        if not isinstance(summary, dict):
+            continue
+        rows = summary.get("rows")
+        failures = summary.get("failures")
+        counts = summary.get("counts")
+        suites = summary.get("suites")
+        requested_suites = summary.get("requested_suites")
+        prompt_files = summary.get("prompt_files")
+        requested_case_ids = summary.get("requested_case_ids")
+        executed_case_ids = summary.get("executed_case_ids")
+        all_prompts = summary.get("all_prompts")
+        rerun_failures = summary.get("rerun_failures")
+        normalized_suites = _strict_unique_string_list(
+            suites, allow_empty=False
+        )
+        normalized_requested_suites = _strict_unique_string_list(
+            requested_suites
+        )
+        normalized_prompt_files = _strict_unique_string_list(
+            prompt_files
+        )
+        normalized_requested_case_ids = _strict_unique_string_list(
+            requested_case_ids
+        )
+        normalized_executed_case_ids = _strict_unique_string_list(
+            executed_case_ids, allow_empty=False
+        )
+        if (
+            type(rows) is int
+            and rows > 0
+            and isinstance(failures, list)
+            and failures == []
+            and isinstance(counts, dict)
+            and set(counts) == {"pass"}
+            and type(counts.get("pass")) is int
+            and counts["pass"] >= 0
+            and counts.get("pass") == rows
+            and normalized_suites is not None
+            and normalized_requested_suites is not None
+            and normalized_prompt_files is not None
+            and normalized_requested_case_ids is not None
+            and normalized_executed_case_ids is not None
+            and len(normalized_executed_case_ids) == rows
+            and normalized_suites
+            == normalized_requested_suites + normalized_prompt_files
+            and type(all_prompts) is bool
+            and isinstance(rerun_failures, str)
+        ):
+            return summary
+    return None
+
+
+def _runtime_activity_has_nonempty_success_summary(activity):
+    return _runtime_activity_success_summary(activity) is not None
+
+
+def _groundwork_runtime_cli_args(invocation):
+    args = list(invocation.get("args") or [])
+    if invocation["executable"].startswith("python"):
+        script_and_args = _python_script_and_args(args)
+        return script_and_args[1] if script_and_args else []
+    return args
+
+
+def _runtime_execution_selectors(invocation):
+    args = _groundwork_runtime_cli_args(invocation)
+    selectors = {
+        "suites": [],
+        "prompt_files": [],
+        "groups": [],
+        "case_ids": [],
+        "all_prompts": False,
+        "rerun_failures": [],
+    }
+    value_options = {
+        "--suite",
+        "--prompt-file",
+        "--jobs",
+        "--model",
+        "--profile",
+        "--codex-config",
+        "--resource-policy",
+        "--rerun-failures",
+        "--group",
+        "--case-timeout",
+        "--retry-timeouts",
+    }
+    flag_options = {"--all-prompts", "--serial"}
+    index = 0
+    positional_only = False
+    while index < len(args):
+        argument = str(args[index])
+        if positional_only:
+            selectors["case_ids"].append(argument)
+            index += 1
+            continue
+        if argument == "--":
+            positional_only = True
+            index += 1
+            continue
+        if argument in flag_options:
+            if argument == "--all-prompts":
+                selectors["all_prompts"] = True
+            index += 1
+            continue
+        option = next(
+            (
+                candidate
+                for candidate in value_options
+                if argument.startswith(candidate + "=")
+            ),
+            "",
+        )
+        if option:
+            value = argument.split("=", 1)[1]
+            index += 1
+        elif argument in value_options:
+            if index + 1 >= len(args):
+                return None
+            option = argument
+            value = str(args[index + 1])
+            index += 2
+        elif argument.startswith("-"):
+            return None
+        else:
+            selectors["case_ids"].append(argument)
+            index += 1
+            continue
+        if not value:
+            return None
+        if option == "--suite":
+            selectors["suites"].append(normalize_suite_name(value))
+        elif option == "--prompt-file":
+            selectors["prompt_files"].append(canonical_prompt_file(value))
+        elif option == "--group":
+            selectors["groups"] = [value]
+        elif option == "--rerun-failures":
+            selectors["rerun_failures"] = [value]
+    selectors["suites"] = unique_in_order(selectors["suites"])
+    selectors["prompt_files"] = unique_in_order(
+        selectors["prompt_files"]
+    )
+    selectors["case_ids"] = unique_in_order(selectors["case_ids"])
+    return selectors
+
+
+def _legacy_suite_identifier_aliases(value):
+    name = normalize_suite_name(value)
+    aliases = set()
+    for identifier in {
+        _normalized_trial_identifier(name),
+        _normalized_trial_identifier(Path(name).stem),
+    }:
+        if identifier:
+            aliases.update(
+                {
+                    identifier,
+                    f"suite_{identifier}",
+                    f"run_runtime_{identifier}",
+                }
+            )
+    return aliases
+
+
+def _runtime_selector_identifier_aliases(kind, value):
+    raw_value = str(value or "").strip()
+    if not raw_value:
+        return set()
+    if kind == "suite":
+        suite_name = normalize_suite_name(raw_value)
+        registered_suites = prompt_suites()
+        if (
+            suite_name != Path(suite_name).name
+            or suite_name not in registered_suites
+        ):
+            return set()
+        owners = {}
+        for registered_suite in registered_suites:
+            for alias in _legacy_suite_identifier_aliases(
+                registered_suite
+            ):
+                owners.setdefault(alias, set()).add(registered_suite)
+        return {
+            f"suite:{suite_name}",
+            *{
+                alias
+                for alias in _legacy_suite_identifier_aliases(suite_name)
+                if owners.get(alias) == {suite_name}
+            },
+        }
+    if kind == "prompt_file":
+        return {f"prompt_file:{canonical_prompt_file(raw_value)}"}
+    if kind == "group":
+        return {f"group:{raw_value}"}
+    if kind == "case_id":
+        return {f"case_id:{raw_value}"}
+    return set()
+
+
+def _runtime_summary_matches_explicit_sources(selectors, summary):
+    summary_suites = list(summary.get("suites") or [])
+    summary_requested_suites = list(
+        summary.get("requested_suites") or []
+    )
+    summary_prompt_files = list(summary.get("prompt_files") or [])
+    summary_requested_case_ids = list(
+        summary.get("requested_case_ids") or []
+    )
+    summary_executed_case_ids = list(
+        summary.get("executed_case_ids") or []
+    )
+
+    if selectors["suites"] or selectors["prompt_files"]:
+        expected_requested_suites = selectors["suites"]
+        expected_prompt_files = selectors["prompt_files"]
+    elif (
+        selectors["all_prompts"]
+        or selectors["case_ids"]
+        or selectors["rerun_failures"]
+    ):
+        expected_requested_suites = prompt_suites()
+        expected_prompt_files = []
+    else:
+        expected_requested_suites = list(DEFAULT_SUITES)
+        expected_prompt_files = []
+
+    if (
+        summary_requested_suites != expected_requested_suites
+        or summary_prompt_files != expected_prompt_files
+        or summary_suites
+        != expected_requested_suites + expected_prompt_files
+        or summary.get("all_prompts") is not selectors["all_prompts"]
+    ):
+        return False
+
+    expected_group = selectors["groups"][-1] if selectors["groups"] else None
+    if summary.get("group") != expected_group:
+        return False
+
+    expected_rerun = (
+        selectors["rerun_failures"][-1]
+        if selectors["rerun_failures"]
+        else ""
+    )
+    if str(summary.get("rerun_failures") or "") != expected_rerun:
+        return False
+
+    if selectors["case_ids"]:
+        if selectors["rerun_failures"]:
+            if not set(selectors["case_ids"]).issubset(
+                summary_requested_case_ids
+            ):
+                return False
+        elif summary_requested_case_ids != selectors["case_ids"]:
+            return False
+    elif not selectors["rerun_failures"] and summary_requested_case_ids:
+        return False
+
+    if summary_requested_case_ids and set(summary_executed_case_ids) != set(
+        summary_requested_case_ids
+    ):
+        return False
+    return True
+
+
+def _runtime_scope_matches_selectors(selectors, run_scope):
+    run_scope = str(run_scope or "").lower()
+    has_targeted_selector = bool(
+        selectors["suites"]
+        or selectors["prompt_files"]
+        or selectors["groups"]
+        or selectors["case_ids"]
+        or selectors["rerun_failures"]
+    )
+    if run_scope == "full":
+        return selectors["all_prompts"] and not has_targeted_selector
+    if run_scope == "targeted":
+        return has_targeted_selector
+    return False
+
+
+def _runtime_selector_matches_trial(
+    invocation, summary, trial, *, run_scope
+):
+    if not isinstance(summary, dict):
+        return False
+    selectors = _runtime_execution_selectors(invocation)
+    if selectors is None or not _runtime_summary_matches_explicit_sources(
+        selectors, summary
+    ) or not _runtime_scope_matches_selectors(selectors, run_scope):
+        return False
+    trial_identifier = str(trial or "").strip()
+    if not trial_identifier:
+        return False
+    if str(run_scope or "").lower() == "full":
+        return trial_identifier in {
+            "all_prompts",
+            "full",
+            "full_runtime",
+            "run_runtime_all_prompts",
+        }
+    selector_values = (
+        [("suite", value) for value in selectors["suites"]]
+        + [
+            ("prompt_file", value)
+            for value in selectors["prompt_files"]
+        ]
+        + [("group", value) for value in selectors["groups"]]
+        + [("case_id", value) for value in selectors["case_ids"]]
+        + [
+            ("case_id", value)
+            for value in unique_in_order(
+                list(summary.get("requested_case_ids") or [])
+                + list(summary.get("executed_case_ids") or [])
+            )
+        ]
+    )
+    return any(
+        trial_identifier
+        in _runtime_selector_identifier_aliases(kind, value)
+        for kind, value in selector_values
+    )
+
+
+def has_verified_groundwork_claim_evidence(stdout, claim_values):
+    if not claim_values:
+        return False
+    claim_type = str(claim_values.get("claim_type") or "").lower()
+    if claim_type not in {"runtime", "cache", "marketplace", "cache_refresh"}:
+        return True
+    required_provenance = [
+        claim_values.get("installed_plugin_root"),
+        claim_values.get("source_root"),
+        claim_values.get("refresh_method"),
+        claim_values.get("refresh_evidence"),
+    ]
+    trials = list(claim_values.get("commands_or_trials") or [])
+    sentinel_values = {"", "unverified", "not_run", "not_applicable"}
+    if (
+        any(
+            str(value or "").strip().lower() in sentinel_values
+            for value in required_provenance
+        )
+        or not trials
+    ):
+        return False
+    for root_field in ("installed_plugin_root", "source_root"):
+        root_value = str(claim_values.get(root_field) or "")
+        root_path = Path(root_value)
+        if (
+            not root_path.is_absolute()
+            or ".." in root_path.parts
+            or "." in root_path.parts
+            or str(root_path) != root_value
+        ):
+            return False
+
+    if not _claim_roots_are_independent(
+        claim_values["installed_plugin_root"],
+        claim_values["source_root"],
+    ):
+        return False
+
+    all_activities = completed_tool_activities(stdout)
+    successful_activities = [
+        (index, activity)
+        for index, activity in enumerate(all_activities)
+        if activity["kind"] == "command_execution"
+        and activity["succeeded"]
+        and activity["has_result"]
+        and command_success_is_attributable(activity["command"])
+    ]
+    refresh_method = str(claim_values["refresh_method"]).lower()
+    allowed_plugin_actions = (
+        {"add"}
+        if refresh_method == "refresh_step"
+        else {"list", "show"}
+    )
+    activation_activities = [
+        (index, activity)
+        for index, activity in successful_activities
+        if _codex_plugin_activity_matches_claim(
+            activity, claim_values, allowed_plugin_actions
+        )
+    ]
+    equivalence_activities = [
+        (index, activity)
+        for index, activity in successful_activities
+        if _source_equivalence_activity_matches_claim(
+            activity, claim_values
+        )
+    ]
+    qualifying_chains = [
+        (
+            activation_index,
+            activation,
+            equivalence_index,
+            equivalence,
+        )
+        for activation_index, activation in activation_activities
+        for equivalence_index, equivalence in equivalence_activities
+        if equivalence_index == activation_index + 1
+    ]
+    if not qualifying_chains:
+        return False
+    if claim_type != "runtime":
+        return any(
+            all(
+                _nonruntime_chain_matches_trial(
+                    activation,
+                    equivalence,
+                    claim_values,
+                    trial,
+                )
+                for trial in trials
+            )
+            for (
+                _activation_index,
+                activation,
+                _equivalence_index,
+                equivalence,
+            ) in qualifying_chains
+        )
+    equivalence_chain_indexes = {
+        equivalence_index
+        for (
+            _activation_index,
+            _activation,
+            equivalence_index,
+            _equivalence,
+        ) in qualifying_chains
+    }
+    return all(
+        any(
+            activity_index - 1 in equivalence_chain_indexes
+            and _runtime_activity_matches_trial(
+                activity, claim_values, trial
+            )
+            for activity_index, activity in successful_activities
+        )
+        for trial in trials
+    )
+
+
+def _target_value_matches(expected, observed):
+    expected = str(expected or "").strip()
+    observed = str(observed or "").strip()
+    if not expected or not observed:
+        return False
+    return observed == expected
+
+
+def _command_invocation_target_values(invocation):
+    values = set()
+    executable = invocation["executable"]
+    args = list(invocation.get("args") or [])
+    if executable == "playwright":
+        positionals = _playwright_command_positionals(args)
+        if positionals and positionals[0].lower() in {
+            "open",
+            "screenshot",
+        } and len(positionals) >= 2:
+            values.add(positionals[1].strip())
+    elif executable in {
+        "chromium",
+        "chromium-browser",
+        "google-chrome",
+        "chrome-headless-shell",
+    }:
+        values.update(
+            str(argument).strip()
+            for argument in args
+            if argument
+            and not str(argument).startswith("-")
+            and (
+                "://" in str(argument)
+                or str(argument).startswith(("/", "./"))
+            )
+        )
+    return {value for value in values if value}
+
+
+def has_observed_target_evidence(
+    stdout, evidence_kind, target, *, require_success=False
+):
+    for activity in completed_tool_activities(stdout):
+        if not activity["has_result"] or (
+            require_success and not activity["succeeded"]
+        ):
+            continue
+        if activity["kind"] == "command_execution":
+            if require_success and not command_success_is_attributable(
+                activity["command"]
+            ):
+                continue
+            invocations = command_invocations(activity["command"])
+            if evidence_kind == "browser" and len(invocations) != 1:
+                continue
+            for invocation in invocations:
+                if evidence_kind == "browser" and _is_browser_invocation(
+                    invocation
+                ):
+                    if (
+                        _observed_invocation_uses_trusted_executable(
+                            invocation
+                        )
+                        and _browser_command_output_is_substantive(
+                            activity.get("output"),
+                            invocation,
+                        )
+                        and any(
+                            _target_value_matches(target, value)
+                            for value in _command_invocation_target_values(
+                                invocation
+                            )
+                        )
+                    ):
+                        return True
+                if evidence_kind == "runtime" and _is_runtime_invocation(
+                    invocation
+                ):
+                    if not _observed_runtime_activity_is_substantive(
+                        activity, invocation
+                    ):
+                        continue
+                    if _is_groundwork_runtime_invocation(invocation):
+                        summary = _runtime_activity_success_summary(activity)
+                        if _runtime_selector_matches_trial(
+                            invocation,
+                            summary,
+                            target,
+                            run_scope="targeted",
+                        ):
+                            return True
+                    elif any(
+                        _target_value_matches(target, value)
+                        for value in _command_invocation_target_values(
+                            invocation
+                        )
+                    ):
+                        return True
+        if (
+            evidence_kind == "browser"
+            and _structured_browser_activity(activity)
+            and any(
+                _target_value_matches(target, value)
+                for value in _structured_activity_target_values(
+                    activity
+                )
+            )
+        ):
+            return True
+    return False
+
+
+def _annotation_covered_external_targets(row):
+    output_contract = {
+        token.strip()
+        for token in str(row.get("output_contract") or "").split("|")
+        if token.strip()
+    }
+    if "annotation_carrythrough_verification" not in output_contract:
+        return set()
+
+    def parse_map(field):
+        parsed = {}
+        for item in str(row.get(field) or "").split("|"):
+            if item.count("=") != 1:
+                continue
+            annotation_id, value = (
+                part.strip() for part in item.split("=", 1)
+            )
+            if annotation_id and value:
+                parsed[annotation_id] = value
+        return parsed
+
+    verdicts = parse_map("annotation_expected_carrythrough_verdicts")
+    targets = parse_map("annotation_expected_observed_targets")
+    external_targets = []
+    for annotation_id, verdict in verdicts.items():
+        if verdict != "covered":
+            continue
+        target = str(targets.get(annotation_id) or "").strip()
+        lowered_target = target.lower()
+        for evidence_kind in ("browser", "runtime"):
+            prefix = evidence_kind + ":"
+            if lowered_target.startswith(prefix) and target[len(prefix) :]:
+                external_targets.append(
+                    (
+                        annotation_id,
+                        evidence_kind,
+                        target[len(prefix) :],
+                    )
+                )
+    return external_targets
+
+
+def _requires_uat_fixture_source_provenance(row):
+    return (
+        str(row.get("fixture") or "").rstrip("/")
+        == "evals/fixtures/uat-evidence-window"
+        and bool(re.fullmatch(r"uat-window-[A-Za-z0-9_.:-]+", str(row.get("id") or "")))
+    )
+
+
+def _required_fixture_source_files(row):
+    suite = str(row.get("_suite") or "")
+    fixture = str(row.get("fixture") or "").rstrip("/")
+    row_id = str(row.get("id") or "")
+    if suite == "prototype-annotation.csv":
+        if row_id in {"prototype-annotation-001", "prototype-annotation-002"}:
+            names = ("index.html",)
+        elif row_id == "prototype-annotation-004":
+            names = ("decision-source.md", "visual-packet.md")
+        else:
+            names = ("decision-source.md",)
+        return [REPO / fixture / name for name in names]
+    output_tokens = {
+        token.strip()
+        for token in str(row.get("output_contract") or "").split("|")
+        if token.strip()
+    }
+    if "contract_lineage" in output_tokens and fixture:
+        return [REPO / fixture / "SCENARIO.md"]
+    return []
+
+
+def _fixture_source_argument_matches(argument, source_file):
+    raw_argument = str(argument or "").strip()
+    expected = Path(source_file).resolve()
+    if not raw_argument:
+        return False
+    aliases = {expected.name, f"./{expected.name}", str(expected)}
+    try:
+        relative = expected.relative_to(REPO.resolve()).as_posix()
+    except ValueError:
+        relative = ""
+    if relative:
+        aliases.update({relative, f"./{relative}"})
+    return raw_argument in aliases
+
+
+STRUCTURED_ACTIVITY_TARGET_KEYS = {
+    "file",
+    "file_path",
+    "filepath",
+    "page_id",
+    "pageid",
+    "path",
+    "ref_id",
+    "resource_uri",
+    "stable_target_id",
+    "tab_id",
+    "tabid",
+    "target",
+    "target_id",
+    "targetid",
+    "uri",
+    "url",
+}
+STRUCTURED_ACTIVITY_REQUEST_CONTAINERS = {
+    "args",
+    "arguments",
+    "input",
+    "item",
+    "parameters",
+    "params",
+    "request",
+    "request_data",
+}
+
+
+def _structured_activity_target_values(activity, *, include_result=False):
+    values = set()
+
+    def visit(value, *, allow_containers):
+        if not isinstance(value, dict):
+            return
+        for raw_key, child in value.items():
+            key = re.sub(
+                r"[^a-z0-9]+", "_", str(raw_key).casefold()
+            ).strip("_")
+            if (
+                key in STRUCTURED_ACTIVITY_TARGET_KEYS
+                and isinstance(child, (str, int))
+                and not isinstance(child, bool)
+                and str(child).strip()
+            ):
+                values.add(str(child).strip())
+            if key in STRUCTURED_ACTIVITY_REQUEST_CONTAINERS or (
+                include_result and key in {"result", "output"}
+            ):
+                if isinstance(child, dict):
+                    visit(child, allow_containers=True)
+                elif isinstance(child, list):
+                    for item in child:
+                        visit(item, allow_containers=True)
+
+    visit(_activity_detail_payload(activity), allow_containers=True)
+    return values
+
+
+def _fixture_source_target_aliases(source_file):
+    expected = Path(source_file).resolve()
+    candidates = {str(expected), expected.as_uri()}
+    try:
+        relative = expected.relative_to(REPO.resolve()).as_posix()
+    except ValueError:
+        relative = ""
+    if relative:
+        candidates.update({relative, f"./{relative}"})
+    return candidates
+
+
+def _structured_activity_targets_fixture_source(activity, source_file):
+    return bool(
+        _structured_activity_target_values(activity)
+        .intersection(_fixture_source_target_aliases(source_file))
+    )
+
+
+def _is_passive_fixture_read_invocation(invocation, source_file):
+    executable = invocation["executable"]
+    args = list(invocation.get("args") or [])
+    if executable == "cat":
+        operands = [argument for argument in args if argument != "--"]
+        return (
+            bool(operands)
+            and all(
+                argument != "-" and not str(argument).startswith("-")
+                for argument in operands
+            )
+            and any(
+                _fixture_source_argument_matches(argument, source_file)
+                for argument in operands
+            )
+        )
+    if executable == "sed":
+        return (
+            len(args) == 3
+            and args[0] in {"-n", "--quiet", "--silent"}
+            and re.fullmatch(
+                r"(?:[0-9]+|\$)(?:,(?:[0-9]+|\$))?p",
+                str(args[1]),
+            )
+            is not None
+            and _fixture_source_argument_matches(args[2], source_file)
+        )
+    return False
+
+
+def has_required_fixture_source_evidence(stdout, source_files):
+    remaining = {
+        Path(source_file).resolve(): Path(source_file).read_text(
+            encoding="utf-8"
+        ).strip()
+        for source_file in source_files
+        if Path(source_file).is_file()
+    }
+    if len(remaining) != len(source_files):
+        return False
+    for activity in completed_tool_activities(stdout):
+        if (
+            not activity["succeeded"]
+            or not activity["has_result"]
+            or not str(activity.get("output") or "").strip()
+        ):
+            continue
+        if activity["kind"] == "command_execution":
+            if not command_success_is_attributable(activity["command"]):
+                continue
+            invocations = command_invocations(activity["command"])
+            if len(invocations) != 1:
+                continue
+            for source_file, canonical_content in list(remaining.items()):
+                if (
+                    _is_passive_fixture_read_invocation(
+                        invocations[0], source_file
+                    )
+                    and _observed_invocation_uses_trusted_executable(
+                        invocations[0]
+                    )
+                    and str(activity.get("output") or "").strip()
+                    == canonical_content
+                ):
+                    remaining.pop(source_file)
+        elif _structured_source_activity(activity):
+            observed_content = _structured_source_content(activity)
+            for source_file, canonical_content in list(remaining.items()):
+                if (
+                    _structured_activity_targets_fixture_source(
+                        activity, source_file
+                    )
+                    and str(observed_content or "").strip()
+                    == canonical_content
+                ):
+                    remaining.pop(source_file)
+        if not remaining:
+            return True
+    return not remaining
+
+
+def _output_contains_uat_record_section(output, row_id):
+    records_path = (
+        REPO / "evals/fixtures/uat-evidence-window/records.md"
+    )
+    if not records_path.is_file():
+        return False
+    try:
+        observed_section = canonical_uat_record_section_text(
+            str(output or ""), row_id
+        )
+        canonical_section = canonical_uat_record_section_text(
+            records_path.read_text(encoding="utf-8"), row_id
+        )
+    except ValueError:
+        return False
+    return observed_section.strip() == canonical_section.strip()
+
+
+def has_uat_fixture_source_evidence(stdout, row_id):
+    row_id = str(row_id or "")
+    if not row_id:
+        return False
+    for activity in completed_tool_activities(stdout):
+        if (
+            not activity["succeeded"]
+            or not activity["has_result"]
+        ):
+            continue
+        if activity["kind"] == "command_execution":
+            observed_content = str(activity.get("output") or "")
+            if not _output_contains_uat_record_section(
+                observed_content, row_id
+            ):
+                continue
+            if not command_success_is_attributable(activity["command"]):
+                continue
+            invocations = command_invocations(activity["command"])
+            if len(invocations) != 1:
+                continue
+            records_path = (
+                REPO / "evals/fixtures/uat-evidence-window/records.md"
+            )
+            if any(
+                _is_passive_fixture_read_invocation(
+                    invocation, records_path
+                )
+                and _observed_invocation_uses_trusted_executable(
+                    invocation
+                )
+                for invocation in invocations
+            ):
+                return True
+        elif _structured_source_activity(activity):
+            observed_content = _structured_source_content(activity)
+            if not _output_contains_uat_record_section(
+                observed_content, row_id
+            ):
+                continue
+            records_path = (
+                REPO / "evals/fixtures/uat-evidence-window/records.md"
+            )
+            if _structured_activity_targets_fixture_source(
+                activity, records_path
+            ):
+                return True
+    return False
 
 
 def dispatch_default_read_path_violations(stdout):
@@ -1648,6 +6933,49 @@ def output_contract_verdict(row, schema, actual, final_response):
                     "skill_output_contract",
                     lineage_failure,
                 )
+            for companion_failure in contract_lineage_route_companion_failures(
+                final_response, actual, row
+            ):
+                append_failure(
+                    failures,
+                    notes,
+                    "output_contract_failure",
+                    "skill_output_contract",
+                    companion_failure,
+                )
+        elif token == "annotation_carrythrough_verification":
+            for annotation_failure in annotation_carrythrough_verification_failures(
+                final_response, row
+            ):
+                append_failure(
+                    failures,
+                    notes,
+                    "output_contract_failure",
+                    "skill_output_contract",
+                    annotation_failure,
+                )
+        elif token == "annotation_handoff_reference":
+            for annotation_failure in annotation_handoff_reference_failures(
+                final_response, row
+            ):
+                append_failure(
+                    failures,
+                    notes,
+                    "output_contract_failure",
+                    "skill_output_contract",
+                    annotation_failure,
+                )
+        elif token == "annotation_presentation_decision":
+            for annotation_failure in annotation_presentation_decision_failures(
+                final_response, row
+            ):
+                append_failure(
+                    failures,
+                    notes,
+                    "output_contract_failure",
+                    "skill_output_contract",
+                    annotation_failure,
+                )
         elif token == "release_evidence_claim":
             for release_claim_failure in release_evidence_claim_failures(
                 final_response, row
@@ -1672,7 +7000,7 @@ def output_contract_verdict(row, schema, actual, final_response):
                 )
         elif token == "uat_evidence_window_forbidden":
             for uat_window_failure in uat_evidence_window_absence_failures(
-                final_response
+                final_response, row
             ):
                 append_failure(
                     failures,
@@ -1820,12 +7148,101 @@ def output_contract_verdict(row, schema, actual, final_response):
     return "pass", notes, failures
 
 
-def evidence_verdict(row, schema, actual, final_response, changes, stdout):
+def evidence_verdict(
+    row,
+    schema,
+    actual,
+    final_response,
+    changes,
+    stdout,
+    *,
+    case_workspace=None,
+    proof_execution_context=None,
+):
     notes = []
     failures = []
     tokens = schema["evidence_required"]
     future_tokens = schema["evidence_required_future_tokens"]
-    combined = stdout + "\n" + final_response
+    claim_values = release_evidence_claim_values(final_response)
+    claim_status = str(
+        (claim_values or {}).get("evidence_status") or ""
+    ).lower()
+    claim_type = str(
+        (claim_values or {}).get("claim_type") or ""
+    ).lower()
+    allow_unverified_boundary = claim_status != "verified"
+    bypassed_hook_trust = bool(
+        (
+            (proof_execution_context or {}).get(
+                "argv_controls"
+            )
+            or {}
+        ).get("hook_trust_bypass")
+    )
+    if claim_status == "verified" and bypassed_hook_trust:
+        append_failure(
+            failures,
+            notes,
+            "evidence_failure",
+            "evidence_collection",
+            "verified claims are unavailable when the explicit hook trust bypass is active",
+        )
+    if (
+        claim_status == "verified"
+        and claim_type in {"runtime", "cache", "marketplace", "cache_refresh"}
+        and not has_verified_groundwork_claim_evidence(stdout, claim_values)
+    ):
+        append_failure(
+            failures,
+            notes,
+            "evidence_failure",
+            "evidence_collection",
+            "verified Groundwork plugin-bound claim is not tied to the installed "
+            "root, source refresh/equivalence activity, and any required installed-root runtime trial",
+        )
+    if claim_status == "verified" and claim_type == "release":
+        append_failure(
+            failures,
+            notes,
+            "evidence_failure",
+            "evidence_collection",
+            "verified release claims require an external maintainer decision "
+            "and release evidence adapter; the deterministic runner cannot self-verify them",
+        )
+    if claim_status == "verified" and claim_type == "uat":
+        if not _requires_uat_fixture_source_provenance(row):
+            append_failure(
+                failures,
+                notes,
+                "evidence_failure",
+                "evidence_collection",
+                "verified UAT claims require a claim-specific canonical UAT evidence adapter",
+            )
+        elif not has_uat_fixture_source_evidence(
+            stdout, row.get("id")
+        ):
+            append_failure(
+                failures,
+                notes,
+                "evidence_failure",
+                "evidence_collection",
+                "verified UAT claim is missing its canonical records.md section evidence",
+            )
+    for (
+        _annotation_id,
+        evidence_kind,
+        target,
+    ) in _annotation_covered_external_targets(row):
+        if not has_observed_target_evidence(
+            stdout, evidence_kind, target, require_success=True
+        ):
+            append_failure(
+                failures,
+                notes,
+                "evidence_failure",
+                "evidence_collection",
+                f"covered annotation {evidence_kind} target requires successful observed {evidence_kind} activity",
+            )
 
     if future_tokens:
         append_failure(
@@ -1870,7 +7287,16 @@ def evidence_verdict(row, schema, actual, final_response, changes, stdout):
                     "gate evidence missing fields: " + ", ".join(missing),
                 )
         elif token == "git_status":
-            if "git status" not in combined:
+            if not any(
+                activity["kind"] == "command_execution"
+                and activity["succeeded"]
+                and command_success_is_attributable(activity["command"])
+                and _git_status_activity_targets_workspace(
+                    activity,
+                    case_workspace,
+                )
+                for activity in completed_tool_activities(stdout)
+            ):
                 append_failure(
                     failures,
                     notes,
@@ -1906,16 +7332,61 @@ def evidence_verdict(row, schema, actual, final_response, changes, stdout):
                     "direct fallback changed files: " + "; ".join(changes[:5]),
                 )
         elif token == "source_or_unverified":
-            if not has_source_or_unverified_evidence(combined):
+            uat_fixture_provenance = _requires_uat_fixture_source_provenance(row)
+            required_source_files = _required_fixture_source_files(row)
+            if uat_fixture_provenance:
+                observed_source = has_uat_fixture_source_evidence(
+                    stdout, row.get("id")
+                )
+            elif required_source_files:
+                observed_source = has_required_fixture_source_evidence(
+                    stdout, required_source_files
+                )
+            else:
+                observed_source = has_observed_evidence(
+                    stdout,
+                    "source",
+                    require_success=True,
+                    case_workspace=case_workspace,
+                )
+            if not observed_source and not (
+                allow_unverified_boundary
+                and has_source_or_unverified_evidence(final_response)
+            ):
+                if uat_fixture_provenance:
+                    missing_note = (
+                        "missing source evidence from records.md section "
+                        + str(row.get("id") or "")
+                    )
+                elif required_source_files:
+                    missing_note = (
+                        "missing canonical fixture source evidence from: "
+                        + ", ".join(
+                            source_file.name
+                            for source_file in required_source_files
+                        )
+                    )
+                else:
+                    missing_note = (
+                        "missing source evidence or explicit unverified source boundary"
+                    )
                 append_failure(
                     failures,
                     notes,
                     "evidence_failure",
                     "evidence_collection",
-                    "missing source evidence or explicit unverified source boundary",
+                    missing_note,
                 )
         elif token == "tests_or_unverified":
-            if not has_tests_or_unverified_evidence(combined):
+            observed_tests = has_observed_evidence(
+                stdout, "tests", require_success=True
+            ) or has_observed_expected_test_failure(
+                stdout, row, final_response
+            )
+            if not observed_tests and not (
+                allow_unverified_boundary
+                and has_tests_or_unverified_evidence(final_response)
+            ):
                 append_failure(
                     failures,
                     notes,
@@ -1924,7 +7395,12 @@ def evidence_verdict(row, schema, actual, final_response, changes, stdout):
                     "missing test evidence or explicit unverified test boundary",
                 )
         elif token == "browser_or_unverified":
-            if not has_browser_or_unverified_evidence(combined):
+            if not has_observed_evidence(
+                stdout, "browser", require_success=True
+            ) and not (
+                allow_unverified_boundary
+                and has_browser_or_unverified_evidence(final_response)
+            ):
                 append_failure(
                     failures,
                     notes,
@@ -1933,7 +7409,12 @@ def evidence_verdict(row, schema, actual, final_response, changes, stdout):
                     "missing browser evidence or explicit unverified browser boundary",
                 )
         elif token == "runtime_or_unverified":
-            if not has_runtime_or_unverified_evidence(combined):
+            if not has_observed_evidence(
+                stdout, "runtime", require_success=True
+            ) and not (
+                allow_unverified_boundary
+                and has_runtime_or_unverified_evidence(final_response)
+            ):
                 append_failure(
                     failures,
                     notes,
@@ -2271,6 +7752,8 @@ def routing_verdict_model(
     sandbox="unknown",
     case_validation_errors=None,
     response_shape_candidate=None,
+    case_workspace=None,
+    proof_execution_context=None,
 ):
     schema = routing_schema_for_row(row)
     behavior_route = response_shape_candidate or actual
@@ -2298,7 +7781,14 @@ def routing_verdict_model(
         host_verdict, host_notes, host_failures = host_preemption_verdict_details(row, behavior_route, last, changes)
         output_verdict, output_notes, output_failures = output_contract_verdict(row, schema, behavior_route, last)
         evidence_status, evidence_notes, evidence_failures = evidence_verdict(
-            row, schema, behavior_route, last, changes, stdout
+            row,
+            schema,
+            behavior_route,
+            last,
+            changes,
+            stdout,
+            case_workspace=case_workspace,
+            proof_execution_context=proof_execution_context,
         )
         behavior_status, behavior_notes, behavior_failures = behavior_verdict(
             row,
@@ -2384,17 +7874,20 @@ def changed_file_paths(changes):
 
 def run_static_gated_evaluator_check(cwd, command):
     """Run evaluator-owned commands only after the fixture purity gate passes."""
+    child_environment, _context = sanitized_codex_environment()
     try:
+        captured_command = _captured_evaluator_command(command)
         return subprocess.run(
-            command,
+            captured_command,
             cwd=cwd,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
             timeout=20,
+            env=child_environment,
         )
-    except FileNotFoundError as exc:
+    except (FileNotFoundError, RuntimeError) as exc:
         return subprocess.CompletedProcess(command, 127, stdout=str(exc))
     except subprocess.TimeoutExpired as exc:
         output = exc.stdout or ""
@@ -2514,23 +8007,49 @@ def validate_lifecycle_state_artifacts(cwd, files, changes):
 
 def write_case_result(result):
     case_path = CASES / f"{safe_id(result['id'])}.json"
+    if case_path.exists():
+        try:
+            existing = json.loads(case_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise RuntimeError(
+                f"refusing to overwrite unreadable case result: {case_path}"
+            ) from exc
+        existing_id = existing.get("id") if isinstance(existing, dict) else None
+        if existing_id != result["id"]:
+            raise RuntimeError(
+                "case artifact path collision: "
+                f"{result['id']!r} would overwrite {existing_id!r} at "
+                f"{case_path}"
+            )
     case_path.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return case_path
 
 
 def run_row(row, timeout_s=None, attempt=1):
     row_id = row["id"]
-    prompt = row.get("prompt") or row.get("input_scenario") or ""
     expected = expected_skill_for_row(row)
     metadata = case_metadata(row)
     timeout_s = timeout_s or metadata["timeout_s"]
     cwd, sandbox, workspace_note = choose_workspace(row)
+    prompt = prompt_with_evidence_bindings(
+        prompt_for_row(row),
+        row,
+        cwd,
+    )
     before = snapshot(cwd)
 
     attempt_suffix = "" if attempt == 1 else f"-attempt{attempt}"
     log_path = LOGS / f"{row_id}{attempt_suffix}.jsonl"
     last_path = LAST / f"{row_id}{attempt_suffix}.txt"
-    cmd = codex_exec_command(cwd, sandbox, last_path, prompt, row=row)
+    child_environment, proof_execution_context = sanitized_codex_environment()
+    cmd = codex_exec_command(
+        cwd,
+        sandbox,
+        last_path,
+        prompt,
+        row=row,
+        proof_environment=child_environment,
+    )
 
     started = datetime.now(timezone.utc).isoformat()
     try:
@@ -2541,6 +8060,7 @@ def run_row(row, timeout_s=None, attempt=1):
             stderr=subprocess.STDOUT,
             text=True,
             timeout=timeout_s,
+            env=child_environment,
         )
         stdout = proc.stdout
         rc = proc.returncode
@@ -2549,6 +8069,9 @@ def run_row(row, timeout_s=None, attempt=1):
         if isinstance(stdout, bytes):
             stdout = stdout.decode("utf-8", errors="replace")
         rc = 124
+    except OSError as exc:
+        stdout = f"codex exec launch failed: {exc}\n"
+        rc = 127
 
     log_path.write_text(stdout, encoding="utf-8")
     last = last_path.read_text(encoding="utf-8") if last_path.exists() else ""
@@ -2576,6 +8099,8 @@ def run_row(row, timeout_s=None, attempt=1):
         sandbox=sandbox,
         case_validation_errors=case_validation_errors,
         response_shape_candidate=response_shape_candidate,
+        case_workspace=cwd,
+        proof_execution_context=proof_execution_context,
     )
     result = {
         "id": row_id,
@@ -2601,8 +8126,14 @@ def run_row(row, timeout_s=None, attempt=1):
         "attempt": attempt,
         "cwd": str(cwd),
         "sandbox": sandbox,
-        "hook_trust_bypass": hook_trust_bypass_enabled(),
+        "hook_trust_bypass": bool(
+            proof_execution_context["argv_controls"][
+                "hook_trust_bypass"
+            ]
+        ),
         "runtime_mode": runtime_mode,
+        "proof_execution_context": proof_execution_context,
+        "observed_evidence": observed_evidence_kinds(stdout),
         "score_eligibility": score_eligibility_for_runtime_mode(runtime_mode),
         "acceptable_routes": acceptable_routes,
         "workspace_note": workspace_note,
@@ -2745,7 +8276,14 @@ def summarize_routing_results(results):
 def run_parallel_rows(rows, jobs, retry_timeouts=0):
     results = []
     with ThreadPoolExecutor(max_workers=jobs) as executor:
-        future_to_row = {executor.submit(run_case_with_policy, row, retry_timeouts): row for row in rows}
+        future_to_row = {
+            executor.submit(
+                run_case_with_exception_boundary,
+                row,
+                retry_timeouts,
+            ): row
+            for row in rows
+        }
         for future in as_completed(future_to_row):
             row = future_to_row[future]
             try:
@@ -2756,25 +8294,71 @@ def run_parallel_rows(rows, jobs, retry_timeouts=0):
     return results
 
 
+def run_case_with_exception_boundary(row, retry_timeouts=0):
+    try:
+        return run_case_with_policy(row, retry_timeouts)
+    except Exception as exc:
+        return exception_result(row, exc)
+
+
 def execute_rows(rows, jobs, resource_policy, retry_timeouts=0):
     results = []
     parallel_rows, serial_rows = partition_rows(rows, jobs, resource_policy)
     if jobs == 1:
         for row in rows:
-            results.append(run_case_with_policy(row, retry_timeouts))
+            results.append(
+                run_case_with_exception_boundary(
+                    row,
+                    retry_timeouts,
+                )
+            )
     else:
         if parallel_rows:
             results.extend(run_parallel_rows(parallel_rows, jobs, retry_timeouts))
         for row in serial_rows:
-            results.append(run_case_with_policy(row, retry_timeouts))
+            results.append(
+                run_case_with_exception_boundary(
+                    row,
+                    retry_timeouts,
+                )
+            )
     input_indexes = {row.get("id"): row.get("_input_index", 0) for row in rows}
     for result in results:
         result["_input_index"] = input_indexes.get(result.get("id"), 0)
     return results
 
 
-def write_summary(results, jobs, suites, resource_policy, group=None):
+def write_summary(
+    results,
+    jobs,
+    suites,
+    resource_policy,
+    group=None,
+    *,
+    all_prompts=False,
+    requested_suites=None,
+    prompt_files=None,
+    requested_case_ids=None,
+    rerun_failures="",
+):
     ordered = sorted(results, key=lambda item: item.get("_input_index", 0))
+    suites = [str(item) for item in suites]
+    requested_suites = (
+        [str(item) for item in requested_suites]
+        if requested_suites is not None
+        else list(suites)
+    )
+    prompt_files = [
+        canonical_prompt_file(item) for item in (prompt_files or [])
+    ]
+    requested_case_ids = [
+        str(item) for item in (requested_case_ids or [])
+    ]
+    executed_case_ids = [
+        str(result.get("id") or "")
+        for result in ordered
+        if str(result.get("id") or "")
+    ]
     with RESULTS.open("w", encoding="utf-8") as fh:
         for result in ordered:
             serializable = dict(result)
@@ -2807,7 +8391,16 @@ def write_summary(results, jobs, suites, resource_policy, group=None):
         "group": group,
         "runtime_selector": dict(RUNTIME_SELECTOR),
         "suites": suites,
+        "all_prompts": bool(all_prompts),
+        "requested_suites": requested_suites,
+        "prompt_files": prompt_files,
+        "requested_case_ids": requested_case_ids,
+        "executed_case_ids": executed_case_ids,
+        "rerun_failures": str(rerun_failures or ""),
         "runtime_mode": runtime_mode,
+        "score_eligibility": score_eligibility_for_runtime_mode(
+            runtime_mode
+        ),
         "rows": len(ordered),
         "counts": counts,
         "failures": failures,
@@ -2876,6 +8469,14 @@ def parse_args(argv=None):
         help="Optional codex exec -c key=value override. May be repeated.",
     )
     parser.add_argument(
+        "--bypass-hook-trust",
+        action="store_true",
+        help=(
+            "Debug-only Codex hook trust bypass. The control is recorded "
+            "and makes the run insufficient as verified evidence."
+        ),
+    )
+    parser.add_argument(
         "--resource-policy",
         choices=["auto", "none"],
         default="auto",
@@ -2898,15 +8499,24 @@ def main(argv=None):
     global CODEX_EXEC_TIMEOUT
     CODEX_EXEC_TIMEOUT = args.case_timeout
 
-    target_ids = set(args.ids)
+    explicit_case_ids = unique_in_order(
+        [str(row_id) for row_id in args.ids]
+    )
+    target_ids = set(explicit_case_ids)
     if args.rerun_failures:
         try:
             target_ids.update(load_failure_ids(args.rerun_failures))
         except (OSError, ValueError, json.JSONDecodeError) as exc:
             print(f"rerun_failures_error={exc}", flush=True)
             return 2
+    resolved_case_ids = explicit_case_ids + sorted(
+        target_ids - set(explicit_case_ids)
+    )
 
-    prompt_files = args.prompt_file or []
+    prompt_files = [
+        Path(canonical_prompt_file(path))
+        for path in (args.prompt_file or [])
+    ]
     explicit_suites = bool(args.suite)
     explicit_ids = bool(target_ids)
     if args.suite:
@@ -2916,13 +8526,24 @@ def main(argv=None):
     else:
         suites = prompt_suites() if args.all_prompts or target_ids or args.validate_schema else DEFAULT_SUITES
     suite_labels = list(suites) + [str(path) for path in prompt_files]
-    rows = read_rows(suites, prompt_files)
-    if (args.all_prompts or args.validate_schema) and not explicit_suites and not explicit_ids and not prompt_files:
-        rows, skipped_rows = filter_auto_discovery_rows(rows)
-        if skipped_rows:
-            skipped_ids = ",".join(row["id"] for row in skipped_rows)
-            print(f"skipped_auto_discovery_rows={len(skipped_rows)}:{skipped_ids}", flush=True)
+    try:
+        rows = read_rows(suites, prompt_files)
+    except (OSError, ValueError, csv.Error) as exc:
+        print(
+            json.dumps(
+                {
+                    "schema_validation": "fail",
+                    "suites": suite_labels,
+                    "rows": 0,
+                    "errors": [str(exc)],
+                },
+                ensure_ascii=False,
+            ),
+            flush=True,
+        )
+        return 2
     schema_errors, _normalized_schema = validate_routing_schema(rows)
+    schema_errors.extend(case_artifact_identity_errors(rows))
     if args.validate_schema:
         if target_ids:
             rows = [row for row in rows if row["id"] in target_ids]
@@ -2960,16 +8581,19 @@ def main(argv=None):
             flush=True,
         )
         return 2
-
-    LOGS.mkdir(parents=True, exist_ok=True)
-    LAST.mkdir(parents=True, exist_ok=True)
-    WORKSPACES.mkdir(parents=True, exist_ok=True)
-    CASES.mkdir(parents=True, exist_ok=True)
+    if args.all_prompts and not explicit_suites and not explicit_ids and not prompt_files:
+        rows, skipped_rows = filter_auto_discovery_rows(rows)
+        if skipped_rows:
+            skipped_ids = ",".join(row["id"] for row in skipped_rows)
+            print(f"skipped_auto_discovery_rows={len(skipped_rows)}:{skipped_ids}", flush=True)
 
     jobs = 1 if args.serial else max(1, args.jobs)
     RUNTIME_SELECTOR["model"] = str(args.model or "")
     RUNTIME_SELECTOR["profile"] = str(args.profile or "")
     RUNTIME_SELECTOR["codex_config"] = [str(item) for item in (args.codex_config or [])]
+    RUNTIME_SELECTOR["hook_trust_bypass"] = bool(
+        args.bypass_hook_trust
+    )
 
     if target_ids:
         rows = [row for row in rows if row["id"] in target_ids]
@@ -2979,6 +8603,22 @@ def main(argv=None):
             return 2
     if args.group:
         rows = [row for row in rows if row_matches_group(row, args.group)]
+    if not rows:
+        print("no_matching_rows=1", flush=True)
+        return 2
+
+    LOGS.mkdir(parents=True, exist_ok=True)
+    LAST.mkdir(parents=True, exist_ok=True)
+    WORKSPACES.mkdir(parents=True, exist_ok=True)
+    CASES.mkdir(parents=True, exist_ok=True)
+    for path in (
+        PROOF_HOME,
+        PROOF_HOME / ".cache",
+        PROOF_HOME / ".config",
+        PROOF_HOME / ".local" / "share",
+        PROOF_HOME / ".local" / "state",
+    ):
+        path.mkdir(parents=True, exist_ok=True)
 
     for index, row in enumerate(rows):
         row["_input_index"] = index
@@ -2998,7 +8638,18 @@ def main(argv=None):
             (row.get("_input_index", 0) for row in rows if row.get("id") == result.get("id")),
             0,
         )
-    summary = write_summary(results, jobs, suite_labels, args.resource_policy, args.group)
+    summary = write_summary(
+        results,
+        jobs,
+        suite_labels,
+        args.resource_policy,
+        args.group,
+        all_prompts=bool(args.all_prompts),
+        requested_suites=suites,
+        prompt_files=[str(path) for path in prompt_files],
+        requested_case_ids=resolved_case_ids,
+        rerun_failures=str(args.rerun_failures or ""),
+    )
     print(json.dumps({"summary": summary}, ensure_ascii=False), flush=True)
     return 1 if summary["failures"] else 0
 

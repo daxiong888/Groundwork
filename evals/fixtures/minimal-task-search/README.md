@@ -17,7 +17,7 @@ filtering but ignores the phone filter.
 Run from this directory:
 
 ```bash
-node test/taskSearch.test.mjs
+node --test test/taskSearch.test.mjs
 ```
 
 Expected before implementation:

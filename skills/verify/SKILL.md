@@ -63,9 +63,10 @@ The default block contains `Claim`, `Covered`, and `Missing`. After it, give one
 - Runtime/model selector or mismatch: `RUNTIME-CAPABILITY-BRANCH.md` and `skills/_shared/RUNTIME-CAPABILITY.md`.
 - Runtime/cache/release/UAT/customer/marketplace/installed-plugin readiness: `RELEASE-READINESS-BRANCH.md` and `skills/_shared/RELEASE-EVIDENCE-CLAIM.md`.
 - Native closeout, merge readiness, cleanup separation, or closeout git-boundary: `NATIVE-CLOSEOUT-BRANCH.md`.
-- Browser-visible, responsive, interaction, visual, console, or network evidence: `UI-READINESS-BRANCH.md` and `UI-TOOL-ROUTER.md`.
+- Browser-visible, responsive, interaction, visual, console, network, or prototype annotation decision carry-through evidence: `UI-READINESS-BRANCH.md` and `UI-TOOL-ROUTER.md`. Load this branch for source/packet/handoff-only annotation carry-through checks even when no browser claim is made.
 - Fresh-context subagent review prompts: `SUBAGENT-REVIEW-BRANCH.md` and `skills/_shared/SUBAGENT-DELEGATION.md`.
 - Frontend-facing contract docs: `CONTRACT-DOC-REVIEW.md`.
+- Cross-boundary contract lineage or fix-owner tracing: `LENSES.md` and `skills/_shared/CONTRACT-NOTES.md`. Load the shared contract only when the claim crosses ownership or representation boundaries; do not load it for ordinary verification.
 - Named lens selection: `LENSES.md`.
 - Adversarial evidence sufficiency, strongest-counterexample, edge-state, or claim-boundary review: `skills/_shared/ADVERSARIAL-REVIEW.md`.
 

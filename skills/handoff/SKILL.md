@@ -17,7 +17,7 @@ Do not use for one-off explanations, PRD creation, issue slicing, code edits, re
 - `review-package`: review-focused handoff. Load `REVIEW-PACKAGE.md`.
 - `native-handoff`: Codex Local/Worktree continuation package. Load `NATIVE-HANDOFF-PACKAGE.md`; this route prepares the package only.
 - `state-freshness`: existing lifecycle state must be referenced. Load `STATE-FRESHNESS.md`.
-- `complex`: managed worktree, role separation, visual packet, release/cache/runtime/wiki, or clean-review gaps affect continuation.
+- `complex`: managed worktree, role separation, visual packet, prototype `Annotation Presentation Decision`, release/cache/runtime/wiki, or clean-review gaps affect continuation.
 
 ## Evidence Boundary
 
@@ -36,7 +36,7 @@ Use branch references for full review, native handoff, lifecycle, visual, role-s
 - Review handoff shape: `REVIEW-PACKAGE.md`.
 - Native Local/Worktree handoff schema and rules: `NATIVE-HANDOFF-PACKAGE.md`.
 - State freshness algorithm: `STATE-FRESHNESS.md`.
-- Complex role/runtime/cache/release/wiki/visual details: `COMPLEX-HANDOFF-BRANCHES.md`.
+- Complex role/runtime/cache/release/wiki/visual or prototype-annotation carry-through details: `COMPLEX-HANDOFF-BRANCHES.md`.
 - Root-cause/minimal-solution summary for complex continuation: `skills/_shared/FIRST-PRINCIPLES.md`.
 - Strongest remaining risk, unverified assumptions, or claim-boundary notes: `skills/_shared/ADVERSARIAL-REVIEW.md`.
 - Fresh-context review delegation: `skills/_shared/SUBAGENT-DELEGATION.md`.

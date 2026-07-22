@@ -2,7 +2,7 @@ Target Reader: Codex running `prototype`, `handoff`, or `verify` when visual han
 Reader Action Needed: Structure visual packets for review while preserving source, runtime, browser, UAT, and release evidence boundaries.
 Decision Supported: Whether a visual packet is only a communication artifact, what it may communicate, and which claims require separate evidence.
 Artifact Type: shared visual handoff packet contract
-Source of Truth: docs/prd-v0.5-prototype-first-skill-expansion.md FR-532, AC-B5, AC-C4, AC-D1, artifacts/v0.5-prototype-first-skill-expansion/issue-map.md V050-005C, and maintainer-approved GW-PROT-ANNOT-001.
+Source of Truth: docs/prd-v0.5-prototype-first-skill-expansion.md FR-532, AC-B5, AC-C4, AC-D1, and GW-PROT-ANNOT-001; artifacts/v0.5-prototype-first-skill-expansion/issue-map.md V050-005C and GW-PROT-ANNOT-001.
 Scope: Visual handoff packet sections, mock-vs-confirmed field marking, API contract mapping, prototype annotation disposition carry-through, open questions, do-not-assume guidance, and evidence boundaries.
 Out of Scope: Public `visual-handoff` skill creation, browser automation, runtime proof, source/API verification, UAT, release, customer readiness, UI variants, and logic/state lab mechanics.
 Evidence Level: Source-validation guidance only; visual packets are communication/review artifacts unless separate source, browser, runtime, UAT, or release evidence is produced and named.
@@ -18,7 +18,9 @@ HTML packets, screenshots, generated images, static prototypes, prototype output
 
 ## Required Sections
 
-Every visual handoff packet must include these sections or explicitly mark them `not applicable` with a reason:
+Every visual handoff packet must include each unconditional section below or explicitly mark it `not applicable` with a reason.
+
+`Annotation Presentation Decision` is the conditional exception: include one section per prototype-originated annotation item or homogeneous group, and omit the section entirely when no such annotation or review aid exists.
 
 ```text
 Overview
@@ -29,6 +31,7 @@ API Contract Table
 Error / Empty / Loading States
 AC -> UI Behavior -> API Evidence Mapping
 Mock vs Confirmed Field Badges
+Annotation Presentation Decision (conditional; repeatable)
 Open Questions
 Do Not Implement / Do Not Assume
 Evidence Boundary
@@ -44,6 +47,7 @@ Minimum section intent:
 - `Error / Empty / Loading States`: visible user-facing states and whether each is confirmed or proposed.
 - `AC -> UI Behavior -> API Evidence Mapping`: acceptance criterion, UI behavior, source/API evidence, and gap.
 - `Mock vs Confirmed Field Badges`: each field marked as confirmed, proposed, mock, or client-derived.
+- `Annotation Presentation Decision`: for each applicable `Annotation ID`, preserve the `Annotation Purpose`, `Presentation Disposition`, and the disposition-specific field from `skills/prototype/DECISION-CAPTURE.md`. `retain_as_audience_content_candidate` carries its same-block `Audience-facing Source`; `separate_review_companion` carries its same-block `Companion Reference`; `remove_before_final` carries neither.
 - `Open Questions`: smallest unresolved decisions before implementation or contract promotion.
 - `Do Not Implement / Do Not Assume`: explicit non-contract fields, visual-only conveniences, unsupported API/schema assumptions, and readiness claims that are not proven.
 - `Evidence Boundary`: the exact evidence layer available and missing for source/API, browser, runtime, UAT, release, and customer readiness.
@@ -75,9 +79,9 @@ Use this boundary table when visual packet evidence could be overclaimed:
 
 ## Skill Integration
 
-- `prototype`: may create or review visual packets as prototype/communication output. It must classify mock, proposed, confirmed, and client-derived fields using `skills/prototype/CONTRACT-BOUNDARY.md`. When prototype-originated annotations or review aids exist, preserve the `Annotation Presentation Decision` from `skills/prototype/DECISION-CAPTURE.md`; keep `remove_before_final` and `separate_review_companion` content outside the target UI or presentation surface.
-- `handoff`: may cite or package visual packets for continuation. It must keep packet claims under `Do-Not-Assume` unless source/API, browser, runtime, UAT, or release evidence is separately named.
-- `verify`: may verify whether a packet is evidence-sufficient for a readiness claim. It must block or mark unverified any browser, runtime, UAT, release, customer-readiness, or API/schema truth claim based only on packet output.
+- `prototype`: may create or review visual packets as prototype/communication output. It must classify mock, proposed, confirmed, and client-derived fields using `skills/prototype/CONTRACT-BOUNDARY.md`. When prototype-originated annotations or review aids exist, preserve every `Annotation Presentation Decision` from `skills/prototype/DECISION-CAPTURE.md`; keep `remove_before_final` and `separate_review_companion` content outside the target UI or presentation surface.
+- `handoff`: may cite or package visual packets for continuation. It must preserve each annotation decision block inline or cite one resolvable canonical decision reference plus the complete set of carried `Annotation ID` values. It must keep packet claims under `Do-Not-Assume` unless source/API, browser, runtime, UAT, or release evidence is separately named.
+- `verify`: may verify whether a packet is evidence-sufficient for a readiness claim. It must compare annotation carry-through per `Annotation ID` and block or mark unverified any missing or mismatched purpose, disposition, conditional field, browser/runtime/UAT/release/customer-readiness evidence, or API/schema truth claim based only on packet output.
 
 ## Hard Stops
 
