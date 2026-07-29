@@ -7,6 +7,7 @@ Groundwork is a Codex-native evidence-first R&D workflow base. The public skill 
 ## Audience And Document Roles
 
 - `README.md` is the user-facing GitHub entry point for people evaluating or installing Groundwork.
+- `README.zh-CN.md` is the Simplified Chinese translation of `README.md`. Keep it in sync when `README.md` changes.
 - `README.runtime.md` is the installed runtime package README and is copied into the generated marketplace package as `README.md`.
 - `AGENTS.md` is source-checkout-only maintainer guidance for Codex agents working in this repository. It is not bundled into the installed runtime package.
 - `docs/` contains canonical maintainer architecture, workflow, PRD, and evidence documents. Prefer linking to an existing canonical doc over making the README carry maintainer detail.

@@ -1,5 +1,7 @@
 # Groundwork
 
+English | [简体中文](README.zh-CN.md)
+
 Groundwork is a lightweight Codex plugin for evidence-first R&D work. It helps Codex handle non-trivial tasks without turning every request into a heavy process.
 
 Use it when a task needs clearer requirements, scoped implementation, verification evidence, a compact handoff, dispatch packaging, or project wiki maintenance. Small, obvious, low-risk questions should stay direct.
