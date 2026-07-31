@@ -44,11 +44,11 @@ Confirm source/acceptance, stop if not accepted enough, apply locale, split vert
 
 ## Output Shape
 
-Default to tracker-neutral drafts containing title/goal, ACs, blockers or dependencies, and verification expectation. State the accepted source once for the package. Add AFK/HITL, contract impact, missing fields, triage candidate, ordering, next action, or artifact recommendation only when it changes execution or review. Do not add runtime, model, worktree, isolation, or parallelization candidates; `dispatch` owns those decisions after `triage` establishes readiness.
+Default to tracker-neutral drafts containing title/goal, ACs, blockers or dependencies, and the canonical Markdown field `Verification Expectation`. A verification expectation describes a future verification signal; `verification evidence` means an already run, observed, and citable result, not a second issue-draft field. State the accepted source once for the package. Add AFK/HITL, contract impact, missing fields, triage candidate, ordering, next action, or artifact recommendation only when it changes execution or review. Do not add runtime, model, worktree, isolation, or parallelization candidates; `dispatch` owns those decisions after `triage` establishes readiness.
 
 ## Stop Condition
 
-Stop when each draft has a vertical slice, ACs, material blockers/dependencies, and verification evidence needed. Require execution type, contract impact, triage recommendation, or next action only when applicable.
+Stop when each draft has a vertical slice, ACs, material blockers/dependencies, and a `Verification Expectation`. Require execution type, contract impact, triage recommendation, or next action only when applicable.
 
 ## Artifact Rule
 

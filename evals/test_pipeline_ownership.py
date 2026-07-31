@@ -47,5 +47,17 @@ class PipelineOwnershipTests(unittest.TestCase):
         self.assertNotIn("map labels to the canonical snake_case keys", review)
         self.assertIn("owns the canonical `native_handoff_package` machine schema", scenario)
 
+    def test_to_issues_uses_verification_expectation_as_the_only_draft_field(self):
+        skill = self.read("skills/to-issues/SKILL.md")
+        output_shape = skill.split("## Output Shape", 1)[1].split("## Stop Condition", 1)[0]
+        stop_condition = skill.split("## Stop Condition", 1)[1].split("## Artifact Rule", 1)[0]
+
+        self.assertIn("canonical Markdown field `Verification Expectation`", output_shape)
+        self.assertIn("future verification signal", output_shape)
+        self.assertIn("already run, observed, and citable result", output_shape)
+        self.assertIn("a `Verification Expectation`", stop_condition)
+        self.assertNotIn("verification evidence needed", stop_condition.casefold())
+
+
 if __name__ == "__main__":
     unittest.main()
