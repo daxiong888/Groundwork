@@ -28,9 +28,20 @@ Candidate isolation: `git diff HEAD^ HEAD` contained only the four authorized pr
 | Exact changed-row allowlist check | Pass; only `to-issues-001`–`003`, `006`–`008`, `013`–`018`, `rr-003`, `rr-planmode-accepted-001`, `sx-002`, `life-023`, and `life-024` changed |
 | Read-only invariants | Pass; `life-018` and `life-022` unchanged; `to-issues-013`–`018` absent; `Verification Evidence Needed` absent; `skills/` unchanged |
 
-## Remaining Phase 0 Gates
+## G56-BASE-002 — `to-prd` progressive-disclosure oracle
 
-- G56-BASE-002: pending at this snapshot.
+Correction commit: `68ec82472bc1bc97100705b6845e6067c16632e3`
+
+Candidate isolation: `git diff HEAD^ HEAD` contained only `evals/test_progressive_disclosure.py`. `skills/to-prd/*` still matched `e070e1c`, and the Phase 1C durable-mode test was absent.
+
+| Check | Result |
+| --- | --- |
+| `python3 -B -m unittest evals.test_progressive_disclosure.ProgressiveDisclosureTests.test_to_prd_has_prompt_provided_compact_fast_path` | Pass; 1 test |
+| Correction scope check | Pass; one test file only; no `skills/to-prd/*` diff |
+| Candidate-oracle exclusion check | Pass; no Phase 1C durable-mode test or candidate-only sentence |
+
+## Remaining Phase 0 Gate
+
 - G56-BASE-003: pending at this snapshot.
 
 Phase 1 candidate application is not authorized by this partial baseline alone.
