@@ -1,16 +1,16 @@
 # GRILL-BEFORE-WRITE
 
 Target Reader: Codex running the Groundwork `to-prd` skill.
-Reader Action Needed: Check PRD drafting inputs before writing requirement content.
-Decision Supported: Whether PRD drafting can proceed or must stop for evidence-first clarification.
-Artifact Type: shared PRD pre-write gate
+Reader Action Needed: Check full durable PRD content inputs after the Durable Write Gate passes.
+Decision Supported: Whether full durable PRD content drafting can proceed or must stop for evidence-first clarification.
+Artifact Type: branch-specific full-durable PRD content gate
 Source of Truth: Groundwork PRD shaping contract, shared grilling reference, and domain-language promotion guardrails.
-Scope: PRD pre-write buckets, evidence-first clarification, question-count mode, domain-language conflict handling, and write gate.
+Scope: Full durable PRD pre-write buckets, evidence-first clarification, question-count mode, domain-language conflict handling, and content gate.
 Out of Scope: Accepting PRDs, implementing requirements, verifying readiness, runtime execution, release approval, or replacing downstream issue slicing.
 Evidence Level: Source-validation policy only. This gate does not prove implementation readiness, runtime behavior, UAT readiness, release readiness, or customer readiness.
 Safe to Share / Redaction Notes: Safe to share as-is; contains no secrets, credentials, PII, private logs, or production payloads.
 
-Use this gate before drafting or revising any PRD output.
+Use this content gate only for `full durable` mode, after the owning `SKILL.md` Durable Write Gate passes. Do not load or apply it for `compact conversation` or `compact durable` output. Explicit interactive grilling in conversation uses `skills/_shared/GRILLING.md` and does not activate this durable-only gate.
 
 ## Mandatory pre-write check
 
@@ -47,9 +47,9 @@ When no material term conflict exists, do not print a full domain-language bucke
 - Do not treat glossary-only alignment as PRD acceptance, backend/API contract truth, source truth, or implementation readiness.
 - If user terminology conflicts with repo/source/API/UI terminology and affects correctness, surface the conflict instead of silently resolving it.
 
-## Write gate
+## Full-durable content gate
 
-You may proceed to PRD writing only when:
+After the Durable Write Gate passes, full durable PRD content drafting may proceed only when:
 
 - the six buckets are present,
 - assumptions are clearly separated from facts,

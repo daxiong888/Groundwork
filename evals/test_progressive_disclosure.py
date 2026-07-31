@@ -625,6 +625,40 @@ class ProgressiveDisclosureTests(unittest.TestCase):
         for cue in ("install", "marketplace", "runtime", "workflow", "version", "skill-selection"):
             self.assertIn(cue, fast_path)
 
+    def test_to_prd_durable_modes_load_references_only_after_the_write_gate(self):
+        skill = self.read("skills/to-prd/SKILL.md")
+        grill = self.read("skills/to-prd/GRILL-BEFORE-WRITE.md")
+        with (ROOT / "evals/prompts/to-prd.csv").open(newline="", encoding="utf-8") as handle:
+            rows = {row["id"]: row for row in csv.DictReader(handle)}
+
+        modes = skill.split("## Output Modes And Reference Loading", 1)[1].split(
+            "## Durable Write Gate", 1
+        )[0]
+        self.assertIn("`compact conversation`", modes)
+        self.assertIn("`compact durable`", modes)
+        self.assertIn("`full durable`", modes)
+        self.assertIn("Do not load durable-only content or template references", modes)
+        self.assertIn("conditionally load `skills/_shared/GRILLING.md`", modes)
+        self.assertIn("a failed or unknown Durable Write Gate returns to conversation output", modes)
+        self.assertIn("a passing compact durable gate loads `PRD-TEMPLATE.md`", modes)
+        self.assertIn("a passing full durable gate loads and executes `GRILL-BEFORE-WRITE.md`", modes)
+        self.assertIn("content convergence precedes artifact writing", modes)
+        self.assertLess(modes.index("Run the Durable Write Gate first"), modes.index("loads and executes `GRILL-BEFORE-WRITE.md`"))
+        self.assertLess(modes.index("loads and executes `GRILL-BEFORE-WRITE.md`"), modes.index("then loads the artifact template"))
+        self.assertEqual(skill.count("`skills/_shared/GRILLING.md`"), 1)
+        self.assertEqual(skill.count("`GRILL-BEFORE-WRITE.md`"), 1)
+        self.assertEqual(skill.count("`PRD-TEMPLATE.md`"), 1)
+
+        self.assertIn("only for `full durable` mode", grill)
+        self.assertIn("after the owning `SKILL.md` Durable Write Gate passes", grill)
+        self.assertIn("Do not load or apply it for `compact conversation` or `compact durable`", grill)
+        self.assertIn("Explicit interactive grilling in conversation uses `skills/_shared/GRILLING.md`", grill)
+
+        self.assertIn("without loading GRILL-BEFORE-WRITE", rows["to-prd-008"]["expected_behavior"])
+        self.assertIn("then load and execute GRILL-BEFORE-WRITE", rows["to-prd-012"]["expected_behavior"])
+        self.assertIn("shared GRILLING", rows["to-prd-013"]["expected_behavior"])
+        self.assertIn("Fail the Durable Write Gate", rows["to-prd-014"]["expected_behavior"])
+
     def test_public_runtime_contracts_do_not_embed_repo_specific_maintenance_rules(self):
         paths = [
             "skills/to-prd/SKILL.md",

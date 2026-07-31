@@ -34,9 +34,9 @@ Load `skills/_shared/FIRST-PRINCIPLES.md` only when PRD shaping must separate pr
 
 ## Workflow
 
-Choose the compact or full path. State target reader, decision, facts, assumptions, open questions, and evidence level; ask only if blocked; mark unknown backend/business/acceptance facts as **NEEDS CLARIFICATION**; keep AC IDs stable; recommend `to-issues` only when accepted enough.
+Choose the output mode, then state target reader, decision, facts, assumptions, open questions, and evidence level; ask only if blocked; mark unknown backend/business/acceptance facts as **NEEDS CLARIFICATION**; keep AC IDs stable; recommend `to-issues` only when accepted enough.
 
-When a raw or ambiguous recurring workflow or multi-turn clarification still has one material decision blocking the next route, use the Spec Convergence Loop from `skills/_shared/GRILLING.md`: resolve one material decision per turn, canonically write back the decision, and continue only when a new blocker remains. A clear recurring spec and an explicitly requested non-interactive gap list stay on their normal paths. Use the workflow loop lens conditionally; do not manufacture triggers, schedules, checkpoints, AI steps, or artifacts the requirement does not need.
+When a raw or ambiguous recurring workflow or multi-turn clarification still has one material decision blocking the next route, use the shared Spec Convergence Loop: resolve one material decision per turn, canonically write back the decision, and continue only when a new blocker remains. A clear recurring spec and an explicitly requested non-interactive gap list stay on their normal paths. Use the workflow loop lens conditionally; do not manufacture triggers, schedules, checkpoints, AI steps, or artifacts the requirement does not need.
 
 ## Acceptance Classification
 
@@ -45,10 +45,16 @@ When a raw or ambiguous recurring workflow or multi-turn clarification still has
 - **Open Question**: names only a missing decision. Mark it **NEEDS CLARIFICATION** when blocking, and do not assign it an AC ID.
 Split mixed product statements and group Confirmed and Proposed ACs separately when both exist. An Open Question may reference a Proposed AC to request confirmation; that semantic link is not itself duplication or a contract violation. Keep workflow, readiness, and slicing rules in Next Step or a gate, not in product ACs. Do not recommend or enter `to-issues` while any Proposed AC or blocking Open Question remains.
 
+## Output Modes And Reference Loading
+
+- `compact conversation`: choose the output mode before reference loading; this is the default when no durable artifact is written. Do not load durable-only content or template references. When the user explicitly requests interactive grilling or a material blocker requires the Spec Convergence Loop, conditionally load `skills/_shared/GRILLING.md`; it owns interactive convergence and does not activate a durable gate or authorize a file write.
+- `compact durable`: the user explicitly requests persistence, the requirement has converged to one bounded decision, and no material ambiguity, unresolved product/business decision, cross-domain or source-contract conflict, multi-owner/role coordination, or multi-contract downstream impact remains. Run the Durable Write Gate; a failed or unknown Durable Write Gate returns to conversation output and names the unmet condition, while a passing compact durable gate loads `PRD-TEMPLATE.md`, the artifact-shape owner used by both durable modes. Do not load the full durable content gate by default.
+- `full durable`: the user explicitly requests a full PRD, or the document must resolve material assumptions/questions, multi-owner/domain decisions, source-contract conflicts, cross-owner/role coordination, or decisions affecting multiple downstream contracts. Run the Durable Write Gate first; a failed or unknown gate returns to conversation output and names the unmet condition, while a passing full durable gate loads and executes `GRILL-BEFORE-WRITE.md`, the full-durable content-gate owner, then loads the artifact template so content convergence precedes artifact writing.
+
 ## Durable Write Gate
 
 Write or update a durable PRD file only when all four conditions are true: (1) the user explicitly requested file persistence; (2) a source-of-truth artifact is useful or artifact promotion is justified; (3) the active route is write-capable; and (4) audience-first header fields are complete.
-If any condition is false or unknown, keep the output in conversation and identify the unmet condition. After the gate passes, load `PRD-TEMPLATE.md` and include the source, evidence, and lifecycle boundary appropriate to the promoted artifact.
+If any condition is false or unknown, keep the output in conversation and identify the unmet condition. After the gate passes, follow the selected durable mode's reference order and include the source, evidence, and lifecycle boundary appropriate to the promoted artifact.
 
 ## Hard Stops
 
@@ -62,13 +68,11 @@ If any condition is false or unknown, keep the output in conversation and identi
 
 ## Output Shape
 
-Default compact conversation PRD/spec: Problem / Intent, ACs, material Open Questions, and Next Step. Add Target Reader, Decision Supported, Known Facts, Assumptions, or Not In Scope only when they change review or acceptance.
+Compact conversation PRD/spec: Problem / Intent, ACs, material Open Questions, and Next Step. Add Target Reader, Decision Supported, Known Facts, Assumptions, or Not In Scope only when they change review or acceptance.
 
-Durable PRD artifact: apply the Durable Write Gate.
+Durable PRD artifact: apply the Durable Write Gate and the selected compact/full mode's reference order.
 
 Plan Mode durable artifact gate: Proposed Action, Target, Approval Needed, Write-capable Route, Promotion Condition, Canonical Target Path, Post-Plan Owner.
-
-Full durable PRD fields live in `GRILL-BEFORE-WRITE.md` and `PRD-TEMPLATE.md`.
 
 ## Stop / Artifact Rule
 
