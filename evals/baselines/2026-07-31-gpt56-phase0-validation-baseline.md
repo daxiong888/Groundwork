@@ -40,8 +40,27 @@ Candidate isolation: `git diff HEAD^ HEAD` contained only `evals/test_progressiv
 | Correction scope check | Pass; one test file only; no `skills/to-prd/*` diff |
 | Candidate-oracle exclusion check | Pass; no Phase 1C durable-mode test or candidate-only sentence |
 
-## Remaining Phase 0 Gate
+## G56-BASE-003 — Dispatch package-only oracle
 
-- G56-BASE-003: pending at this snapshot.
+Correction commit: `5b802f57d6a93872a40fddddc14db5e3091dd0d3`
 
-Phase 1 candidate application is not authorized by this partial baseline alone.
+Candidate isolation: `git diff HEAD^ HEAD` contained only `evals/prompts/dispatch.csv::dispatch-009`. `skills/dispatch/*` was unchanged and `dispatch-022` was absent.
+
+| Check | Result |
+| --- | --- |
+| `python3 -B evals/run_runtime.py --validate-schema --suite dispatch.csv` as part of the cumulative Phase 0 schema run | Pass; dispatch suite contained 21 rows |
+| Correction scope check | Pass; one CSV file and only `dispatch-009` changed |
+| Package-only oracle check | Pass; execution remains with the owning runtime/operator even when explicitly requested and tools are available |
+
+## Completed Phase 0 Validation Baseline
+
+The cumulative clean state after G56-BASE-003 contained the tracked PRD, the three isolated corrections, and the first two evidence updates, with no Phase 1 candidate.
+
+| Check | Result |
+| --- | --- |
+| Parse every `evals/prompts/*.csv` with `csv.DictReader` | `csv ok` |
+| Schema validation for `dispatch.csv`, `to-issues.csv`, `routing-reliability.csv`, `smoke.csv`, and `lifecycle-preflight-regressions.csv` | Pass; 5 suites, 101 rows, 0 errors |
+| Coverage manifest plus corrected BASE-002 target unittest | Pass; 10 tests |
+| Phase 1 exclusion | Pass; no `skills/` diff from `e070e1c`, no `dispatch-022`, and no Phase 1A/1B/1C focused test methods |
+
+The commit that finalizes this report is the Phase 0 validation baseline parent for Phase 1. Later Phase 1 checks must start from that commit and must not be presented as Phase 0 evidence.
