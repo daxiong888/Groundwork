@@ -32,6 +32,20 @@ class PipelineOwnershipTests(unittest.TestCase):
         self.assertIn("`dispatch` is the sole post-readiness runtime/package route owner", workflow)
         self.assertNotIn("runtime candidate fields", workflow)
 
+    def test_native_handoff_machine_and_display_owners_are_distinct(self):
+        native = self.read("skills/handoff/NATIVE-HANDOFF-PACKAGE.md")
+        review = self.read("skills/handoff/REVIEW-PACKAGE.md")
+        scenario = self.read("evals/scenarios/native-handoff-package.md")
+
+        self.assertIn("owns the canonical `native_handoff_package` machine schema", native)
+        self.assertIn("`skills/handoff/SKILL.md` owns route selection", native)
+        self.assertIn("`skills/handoff/REVIEW-PACKAGE.md` owns the human-readable display shape", native)
+        self.assertIn("from `NATIVE-HANDOFF-PACKAGE.md`", review)
+        self.assertIn("human-readable display labels only", review)
+        self.assertIn("does not own or require a second label-to-key mapping", review)
+        self.assertNotIn("from `skills/handoff/SKILL.md`", review)
+        self.assertNotIn("map labels to the canonical snake_case keys", review)
+        self.assertIn("owns the canonical `native_handoff_package` machine schema", scenario)
 
 if __name__ == "__main__":
     unittest.main()

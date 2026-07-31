@@ -50,8 +50,9 @@ Field rules:
 ## Evaluation Hooks
 
 - `evals/prompts/handoff.csv` includes Local to Worktree unavailable-context and Worktree to Local visible-context prompt rows.
-- `skills/handoff/SKILL.md` owns the package schema and direction rules.
-- `skills/handoff/REVIEW-PACKAGE.md` owns the review package additions when a native handoff package is included.
+- `skills/handoff/SKILL.md` owns native-handoff route selection and behavior boundaries.
+- `skills/handoff/NATIVE-HANDOFF-PACKAGE.md` owns the canonical `native_handoff_package` machine schema and field rules.
+- `skills/handoff/REVIEW-PACKAGE.md` owns the human-readable display shape when a native handoff package is included.
 
 ## Evidence Boundary
 

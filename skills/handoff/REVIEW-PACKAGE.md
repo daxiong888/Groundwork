@@ -57,15 +57,7 @@ Native Handoff Package
 - Redaction Notes:
 ```
 
-Canonical machine schema: use the YAML `native_handoff_package` shape from `skills/handoff/SKILL.md`. Title Case fields in this review package are display labels only. When adapters or parsers need stable keys, map labels to the canonical snake_case keys:
-
-- Direction (`native_handoff_package.direction`)
-- Worktree Path Availability (`native_handoff_package.native_context.worktree_path.availability`)
-- Worktree Association (`native_handoff_package.native_context.worktree_association`)
-- Route Decision Ref (`native_handoff_package.route_decision_ref`)
-- Relevant Artifacts (`native_handoff_package.relevant_artifacts`)
-- Changed Files (`native_handoff_package.changed_files`)
-- Redaction Notes (`native_handoff_package.redaction_notes`)
+Canonical machine schema: use the YAML `native_handoff_package` shape from `NATIVE-HANDOFF-PACKAGE.md`, which owns the stable snake_case keys. Title Case fields in this review package are human-readable display labels only. Adapters and parsers consume the canonical machine schema directly; this display contract does not own or require a second label-to-key mapping.
 
 Rules:
 

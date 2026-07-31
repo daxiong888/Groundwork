@@ -4,7 +4,7 @@ Target Reader: Codex preparing Local-to-Worktree or Worktree-to-Local continuati
 Reader Action Needed: Produce a compact native handoff package without claiming Groundwork executes official Codex Handoff or native Git operations.
 Decision Supported: Whether a future session has enough explicit native context, evidence, changed-file boundary, risks, and stop condition to continue.
 Artifact Type: branch-specific handoff reference
-Source of Truth: `skills/handoff/SKILL.md`, `skills/handoff/REVIEW-PACKAGE.md`, and Codex-native handoff boundary rules.
+Source of Truth: This file owns the canonical `native_handoff_package` machine schema and field rules; `skills/handoff/SKILL.md` owns route selection and behavior boundaries; `skills/handoff/REVIEW-PACKAGE.md` owns the human-readable display shape.
 Scope: Native handoff schema, availability markers, changed-file boundary, evidence, and redaction rules.
 Out of Scope: Creating Codex worktrees, moving threads, staging, committing, pushing, archiving, or performing official Codex Handoff.
 Evidence Level: Source-validation rule only.
