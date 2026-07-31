@@ -590,8 +590,18 @@ class ProgressiveDisclosureTests(unittest.TestCase):
         self.assertIn("source/package behavior", skill)
         self.assertIn("compact conversation PRD/spec", skill)
         self.assertIn("durable PRD artifact", skill)
-        self.assertIn("load `PRD-TEMPLATE.md`, apply audience-first artifact fields", skill)
+        self.assertIn("## Durable Write Gate", skill)
+        self.assertIn("Write or update a durable PRD file only when all four conditions are true", skill)
+        self.assertIn("If any condition is false or unknown, keep the output in conversation", skill)
         self.assertIn("Mark missing product facts as **NEEDS CLARIFICATION**", skill)
+
+        durable_gate_index = skill.index("Durable Write Gate")
+        template_index = skill.index("`PRD-TEMPLATE.md`")
+        self.assertLess(durable_gate_index, template_index)
+        self.assertRegex(
+            skill[durable_gate_index : template_index + len("`PRD-TEMPLATE.md`")],
+            r"\bloads? `PRD-TEMPLATE\.md`",
+        )
 
         fast_path_index = skill.index("## Fast Path: Prompt-Provided Compact PRD")
         required_evidence_index = skill.index("## Required Evidence")
