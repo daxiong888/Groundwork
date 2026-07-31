@@ -38,11 +38,23 @@ Choose the compact or full path. State target reader, decision, facts, assumptio
 
 When a raw or ambiguous recurring workflow or multi-turn clarification still has one material decision blocking the next route, use the Spec Convergence Loop from `skills/_shared/GRILLING.md`: resolve one material decision per turn, canonically write back the decision, and continue only when a new blocker remains. A clear recurring spec and an explicitly requested non-interactive gap list stay on their normal paths. Use the workflow loop lens conditionally; do not manufacture triggers, schedules, checkpoints, AI steps, or artifacts the requirement does not need.
 
+## Acceptance Classification
+
+- **Confirmed AC**: supported by the user or an inspected source. Source-preserving normalization is allowed, but must not change scope, behavior, channel, state transition, or business outcome.
+- **Proposed AC — NEEDS CONFIRMATION**: useful for convergence but dependent on a new product decision.
+- **Open Question**: names only a missing decision. Mark it **NEEDS CLARIFICATION** when blocking, and do not assign it an AC ID.
+Split mixed product statements and group Confirmed and Proposed ACs separately when both exist. An Open Question may reference a Proposed AC to request confirmation; that semantic link is not itself duplication or a contract violation. Keep workflow, readiness, and slicing rules in Next Step or a gate, not in product ACs. Do not recommend or enter `to-issues` while any Proposed AC or blocking Open Question remains.
+
+## Durable Write Gate
+
+Write or update a durable PRD file only when all four conditions are true: (1) the user explicitly requested file persistence; (2) a source-of-truth artifact is useful or artifact promotion is justified; (3) the active route is write-capable; and (4) audience-first header fields are complete.
+If any condition is false or unknown, keep the output in conversation and identify the unmet condition. After the gate passes, load `PRD-TEMPLATE.md` and include the source, evidence, and lifecycle boundary appropriate to the promoted artifact.
+
 ## Hard Stops
 
 - Stop before drafting only when a missing target reader, decision, fact, or acceptance boundary would materially change the spec. Do not print empty fields merely to prove they were considered.
-- Stop before writing a durable PRD file unless requested, artifact promotion is justified, the route is write-capable, and audience-first header fields are present.
-- Stop before recommending `to-issues` while blocking **NEEDS CLARIFICATION** remains.
+- Stop before writing or updating a durable PRD file unless the Durable Write Gate passes.
+- Stop before recommending or entering `to-issues` while any Proposed AC or blocking **NEEDS CLARIFICATION** remains.
 - Stop before promising or producing issue drafts, issue packs, agent-ready slices, or parallel agent work from raw requests to split issues for agents. For raw agent-slicing requests, output only compact PRD/spec shaping, missing fields, and the downstream acceptance gate until source is accepted enough.
 - Do not invent backend fields, states, APIs, metrics, owners, timelines, or acceptance details.
 - Do not promote prototype-only, wiki-only, glossary-only, stale, uncited, or external-search claims beyond their evidence layer.
@@ -52,7 +64,7 @@ When a raw or ambiguous recurring workflow or multi-turn clarification still has
 
 Default compact conversation PRD/spec: Problem / Intent, ACs, material Open Questions, and Next Step. Add Target Reader, Decision Supported, Known Facts, Assumptions, or Not In Scope only when they change review or acceptance.
 
-Durable PRD artifact: load `PRD-TEMPLATE.md`, apply audience-first artifact fields, and include the full source/evidence/lifecycle boundary only when artifact promotion is justified.
+Durable PRD artifact: apply the Durable Write Gate.
 
 Plan Mode durable artifact gate: Proposed Action, Target, Approval Needed, Write-capable Route, Promotion Condition, Canonical Target Path, Post-Plan Owner.
 
@@ -60,4 +72,4 @@ Full durable PRD fields live in `GRILL-BEFORE-WRITE.md` and `PRD-TEMPLATE.md`.
 
 ## Stop / Artifact Rule
 
-Stop when intent, ACs, open questions, evidence boundary, and next action are reviewable, and the next route's material decisions are resolved or explicitly gated. Default to conversation output. Write/update PRD files only when requested, source-of-truth useful, or artifact promotion is justified. Redact sensitive data.
+Stop when intent, ACs, open questions, evidence boundary, and next action are reviewable, and the next route's material decisions are resolved or explicitly gated. Default to conversation output; durable writes are governed only by the Durable Write Gate. Redact sensitive data.
