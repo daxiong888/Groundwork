@@ -25,9 +25,9 @@ Start from accepted source. Put missing blockers, source context, contract impac
 
 Load `skills/_shared/FIRST-PRINCIPLES.md` only when accepted source still needs vertical slices tied to the primitive problem, hard constraints, minimal behavior change, and falsifiable verification signal. Load `skills/_shared/ADVERSARIAL-REVIEW.md` only when slicing could hide cross-layer contract risk, unsupported readiness, unverified source truth, or non-independent verification.
 
-Load `skills/_shared/LIFECYCLE-PREFLIGHT.md` and artifact promotion only before splitting source that will drive another session, remote issue creation, implementation, verification, or handoff. Load locale guard for user-visible text. Final readiness belongs to `triage`; runtime and package routing belong to `dispatch` after readiness.
+Before splitting, classify both source authority and downstream intent. Load `skills/_shared/LIFECYCLE-PREFLIGHT.md` and apply artifact promotion for durable save, paste-ready tracker use, remote issue creation, cross-session/agent use, implementation, verification, handoff, git/remote mutation, or unknown/ambiguous downstream intent. Paste-ready output is downstream intent unless the user explicitly requests format preview for current-conversation review only and says it will not be used externally.
 
-`accepted enough` means canonical artifact, accepted PRD/spec/plan, issue-ready artifact, or named external task with owner/authority, clear ACs, and no unresolved mixed source truth.
+The only full-preflight no-load branch requires a canonical accepted local artifact or an external accepted source with explicit owner/authority, clear ACs, no mixed or conflicting source truth, current-conversation review only, and explicitly no downstream intent. Still run the local source, acceptance, criteria, artifact, and downstream-intent checks, and state in ordinary visible text that the drafts are current-review-only and not downstream-ready. Load locale guard for user-visible text. Final readiness belongs to `triage`; runtime and package routing belong to `dispatch` after readiness. `accepted enough` means a canonical accepted local artifact, issue-ready artifact, or named external accepted task with owner/authority, clear ACs, and no unresolved mixed source truth; a conversation-only accepted PRD must be promoted or assigned an external canonical source before any issue split.
 
 ## Workflow
 
@@ -35,16 +35,16 @@ Confirm source/acceptance, stop if not accepted enough, apply locale, split vert
 
 ## Hard Stops
 
-- Stop before splitting unless source is `prd_accepted`, `issue_ready`, or named external accepted source with owner/authority.
+- Stop before splitting unless source is a canonical local artifact in `prd_accepted` or `issue_ready` state, or a named external accepted source with owner/authority.
 - Stop before drafting issue criteria unless source criteria are clear; if AC IDs are missing but criteria exist, preserve text and record missing stable IDs.
 - Stop before ready-for-agent candidates unless each slice is vertical, behavior-visible, and independently verifiable.
-- Stop before downstream issue creation, implementation handoff, or multi-session use when accepted source remains conversation-only.
+- Stop before any issue split when accepted source remains conversation-only; require artifact promotion or a named external canonical source.
 - Do not invent AC IDs, owners, blockers, contract impact, verification evidence, runtime facts, or readiness.
 - Do not mark final readiness or emit executable Goal Contracts.
 
 ## Output Shape
 
-Default to tracker-neutral drafts containing title/goal, ACs, blockers or dependencies, and the canonical Markdown field `Verification Expectation`. A verification expectation describes a future verification signal; `verification evidence` means an already run, observed, and citable result, not a second issue-draft field. State the accepted source once for the package. Add AFK/HITL, contract impact, missing fields, triage candidate, ordering, next action, or artifact recommendation only when it changes execution or review. Do not add runtime, model, worktree, isolation, or parallelization candidates; `dispatch` owns those decisions after `triage` establishes readiness.
+Default to tracker-neutral drafts containing title/goal, ACs, blockers or dependencies, and the canonical Markdown field `Verification Expectation`. A verification expectation describes a future verification signal; `verification evidence` means an already run, observed, and citable result, not a second issue-draft field. State the accepted source once for the package. For the narrow no-load branch, also state that the drafts are current-review-only and not downstream-ready. Add AFK/HITL, contract impact, missing fields, triage candidate, ordering, next action, or artifact recommendation only when it changes execution or review. Do not add runtime, model, worktree, isolation, or parallelization candidates; `dispatch` owns those decisions after `triage` establishes readiness.
 
 ## Stop Condition
 

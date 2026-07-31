@@ -656,6 +656,38 @@ class ProgressiveDisclosureTests(unittest.TestCase):
         for path in references:
             self.assertIn("skills/_shared/LIFECYCLE-PREFLIGHT.md", self.read(path), path)
 
+        lifecycle = self.read("skills/_shared/LIFECYCLE-PREFLIGHT.md")
+        to_issues = self.read("skills/to-issues/SKILL.md")
+        promotion = self.read("skills/_shared/ARTIFACT-PROMOTION.md")
+
+        self.assertIn("The only issue/task-splitting lazy-load exception is `to-issues`", lifecycle)
+        self.assertIn("current-conversation review", lifecycle)
+        self.assertIn("explicitly no durable, paste-ready tracker use, remote, cross-session/agent", lifecycle)
+        self.assertIn("A format-only paste-ready preview explicitly limited to current-conversation review with no external use is not downstream intent", lifecycle)
+        self.assertIn("Unknown or ambiguous downstream intent does not qualify", lifecycle)
+        self.assertIn("does not bypass artifact promotion", lifecycle)
+        self.assertIn("The only full-preflight no-load branch", to_issues)
+        self.assertIn("unknown/ambiguous downstream intent", to_issues)
+        self.assertIn("current-review-only and not downstream-ready", to_issues)
+        self.assertIn("Paste-ready output is downstream intent unless", to_issues)
+        self.assertIn("before any issue split", to_issues)
+        self.assertIn("promote it first or explicitly cite an external issue/PR as canonical", promotion)
+
+    def test_to_issues_active_fixtures_force_full_preflight_for_downstream_or_unknown_use(self):
+        with (ROOT / "evals/prompts/to-issues.csv").open(newline="", encoding="utf-8") as handle:
+            rows = {row["id"]: row for row in csv.DictReader(handle)}
+
+        for row_id in ("to-issues-003", "to-issues-007"):
+            behavior = rows[row_id]["expected_behavior"]
+            self.assertIn("Run full lifecycle preflight", behavior, row_id)
+            self.assertIn("paste-ready tracker use is downstream intent", behavior, row_id)
+            self.assertIn("do not use the current-review-only no-load branch", behavior, row_id)
+
+        unknown_behavior = rows["to-issues-020"]["expected_behavior"]
+        self.assertIn("Run full lifecycle preflight", unknown_behavior)
+        self.assertIn("downstream intent is unknown or ambiguous", unknown_behavior)
+        self.assertIn("do not use the current-review-only no-load branch", unknown_behavior)
+
     def test_branch_references_have_audience_first_headers(self):
         paths = [
             "skills/dispatch/EXAMPLES.md",

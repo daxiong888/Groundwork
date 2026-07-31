@@ -29,6 +29,8 @@ Run preflight before non-trivial actions involving new requirements, issue/task 
 
 Skip for small direct answers, trivial rewrites, simple explanations, and one-off edits with no artifact, git action, verification claim, or remote mutation.
 
+The only issue/task-splitting lazy-load exception is `to-issues` with a canonical accepted local artifact or an external accepted source with explicit owner/authority, clear acceptance criteria, no mixed or conflicting source truth, output explicitly limited to current-conversation review, and explicitly no durable, paste-ready tracker use, remote, cross-session/agent, implementation, verification, handoff, git, or other downstream intent. A format-only paste-ready preview explicitly limited to current-conversation review with no external use is not downstream intent. Unknown or ambiguous downstream intent does not qualify and must run full preflight. This exception skips loading the full reference only; it does not bypass artifact promotion or the local source, acceptance, criteria, artifact, and downstream-intent checks.
+
 ## Preflight Snapshot
 
 ```md
