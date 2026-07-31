@@ -330,6 +330,20 @@ class ProgressiveDisclosureTests(unittest.TestCase):
         }
         self.assertEqual(compact_routes, details_routes)
 
+    def test_dispatch_approval_gate_never_authorizes_dispatch_execution(self):
+        branches = self.read("skills/dispatch/DISPATCH-ROUTER-BRANCHES.md")
+        with (ROOT / "evals/prompts/dispatch.csv").open(newline="", encoding="utf-8") as handle:
+            rows = {row["id"]: row for row in csv.DictReader(handle)}
+
+        self.assertIn("Dispatch stops after emitting the approval gate", branches)
+        self.assertIn("record the gate as satisfied", branches)
+        self.assertIn("do not ask for the same approval again", branches)
+        self.assertIn("Only the owning executor or runtime may proceed", branches)
+        self.assertNotIn("Proceed only after explicit approval", branches)
+        self.assertIn("execution remains with the owning runtime or operator", rows["dispatch-009"]["expected_behavior"])
+        self.assertIn("approval gate as satisfied", rows["dispatch-022"]["expected_behavior"])
+        self.assertIn("only the owning executor or runtime may proceed", rows["dispatch-022"]["expected_behavior"])
+
     def test_dispatch_and_result_contracts_have_one_base_schema_with_adapter_deltas(self):
         details = self.read("skills/dispatch/DISPATCH-PACKAGE-DETAILS.md")
         examples = self.read("skills/dispatch/EXAMPLES.md")

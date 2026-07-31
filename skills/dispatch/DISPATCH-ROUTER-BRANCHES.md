@@ -74,7 +74,7 @@ Rollback/Undo:
 Approval Needed:
 ```
 
-Proceed only after explicit approval and tool availability are both confirmed.
+Dispatch stops after emitting the approval gate. If explicit approval is already evidenced, record the gate as satisfied and do not ask for the same approval again. Only the owning executor or runtime may proceed after required approval and tool availability are confirmed.
 
 ## Clean Review Claims
 
