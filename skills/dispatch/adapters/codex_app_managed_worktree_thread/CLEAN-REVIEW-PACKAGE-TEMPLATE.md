@@ -69,7 +69,7 @@ clean_review_package:
 
   output_required:
     output_type: review_findings
-    severity_order: "P0_P1_P2_P3; findings may be grounded items or []"
+    severity_order: P0_P1_P2_P3
     verdict: "pass | needs_remediation | blocked | unverified"
     coverage:
       covered: []
