@@ -19,7 +19,7 @@ Material implementation follows this loop:
 ```text
 implementation + self-check
 -> fresh read-only clean review
--> scoped remediation when findings exist
+-> scoped remediation when grounded P0-P2 findings require changes
 -> self-check the remediation
 -> fresh read-only clean review of the latest diff
 -> verify/readiness only when the claimed boundary needs it
@@ -123,7 +123,7 @@ This status is not `clean_review_passed`, independent verification, readiness, m
 
 ## Remediation Flow
 
-When review returns findings:
+When review returns grounded P0-P2 findings that require changes:
 
 1. Keep review read-only and route writes through the owning implementation path.
 2. Fix only cited findings or explicitly accepted gap-closure items.
@@ -132,14 +132,14 @@ When review returns findings:
 5. Mark the previous review stale when material files changed.
 6. Route the latest diff to a fresh independent reviewer unless the complete low-risk exception applies.
 
-Do not expand a review finding into unrelated cleanup or let the reviewer directly fix and approve the same material change.
+Do not expand a review finding into unrelated cleanup or let the reviewer directly fix and approve the same material change. Pass-level P3 observations stay outside this flow unless separately accepted as new work.
 
 ## Hard Failures
 
 - Self-review or self-run tests are labeled clean review or independent verification.
 - A reviewer edits the change and still claims clean-review authority for it.
 - A previous review is reused after a material fix.
-- Low-risk intake is used for material work, without complete eligibility, or as clean-review/readiness evidence.
+- Low-risk intake is used for material work, without complete eligibity, or as clean-review/readiness evidence.
 - A pass omits reviewed scope or covered/not-covered evidence, or a reviewer manufactures findings, severity, or a coordinator-generated repeat without a grounded violation, live evidence gap, or material delta.
 - Prompt preference is presented as reviewer, subagent, child-thread, runtime, cache, or selector execution evidence.
 
