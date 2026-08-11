@@ -69,7 +69,7 @@ clean_review_package:
 
   output_required:
     output_type: review_findings
-    severity_order: P0_P1_P2_P3
+    severity_order: "P0_P1_P2_P3; findings may be grounded items or []"
     verdict: "pass | needs_remediation | blocked | unverified"
     coverage:
       covered: []
@@ -95,9 +95,9 @@ clean_review_package:
 - A human decision may accept the risk of proceeding without Clean Review Evidence, but it must not convert forked or nested reviewer output into a clean-review `pass`.
 - Mark absent validation, redacted-but-needed diff detail, missing source truth, or unclear acceptance mapping as `unverified` or `blocked`.
 - Treat `review_loop.previous_review_stale_reason` as evidence that earlier review output cannot be reused. It is not itself a blocker to performing this fresh review; this reviewer may return `pass` only after independently reviewing the latest material change in the supplied package and citing that fresh evidence.
-- If remediation is needed, return findings and route writes separately; do not perform the fix inside clean review.
-- Cite package sections, file paths, commands, or supplied observations for each finding.
-- Report coverage explicitly. `covered` must name the package areas actually reviewed; `not_covered` must name missing, redacted, unavailable, or intentionally skipped areas.
+- If remediation is needed, return findings and route writes separately; do not perform the fix inside clean review. Use `needs_remediation` only when at least one grounded P0-P2 finding requires a change; a grounded P3 may accompany `pass` without becoming a remediation requirement.
+- Cite package sections, file paths, commands, or supplied observations for each finding. A finding must identify a supplied source-truth, acceptance-criterion, contract, invariant, or required-evidence violation, name a reachable consequence, and may be `[]` when none exists; do not populate severity or manufacture P3 merely because the shape exposes it.
+- Report coverage explicitly. `covered` must name the package areas actually reviewed; `not_covered` must name missing, redacted, unavailable, or intentionally skipped areas. Theoretical constructibility, unrequested future-proofing, optional confidence, duplicate validation, and style preferences are not findings; requested security/migration/verification and stated trust boundaries remain in scope. Another check or review requires a live uncertainty and outcome-dependent next action; unchanged material, evidence, and scope stop.
 - Do not treat the child implementation self-review as clean review evidence.
 - Do not claim final readiness, UAT, release, merge-back, archive, branch cleanup, commit, push, PR, or remote mutation unless the supplied package includes direct evidence.
 
