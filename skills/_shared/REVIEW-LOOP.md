@@ -90,7 +90,7 @@ review_loop:
   next_route: "clean_reviewer | dispatch_write_task | verify | triage | human_decision | done"
 ```
 
-Set `next_review_required: true` whenever the latest material change lacks current clean-review evidence. Source loop state in a review input package is context, not proof that review passed. Before requesting another check or review round, name the live uncertainty and how different outcomes change the next action; unchanged material, evidence, and claim scope stop the loop.
+Set `next_review_required: true` whenever the latest material change lacks current clean-review evidence. Source loop state in a review input package is context, not proof that review passed. Before requesting another check or review round, name the live uncertainty and how different outcomes change the next action; unchanged material, evidence, and claim scope stop only coordinator-generated confidence loops, while an explicit user request for another independent review remains a fan-out trigger.
 
 ## Low-Risk Coordinator Intake
 
@@ -140,7 +140,7 @@ Do not expand a review finding into unrelated cleanup or let the reviewer direct
 - A reviewer edits the change and still claims clean-review authority for it.
 - A previous review is reused after a material fix.
 - Low-risk intake is used for material work, without complete eligibility, or as clean-review/readiness evidence.
-- A pass omits reviewed scope or covered/not-covered evidence, or a reviewer manufactures findings, severity, or another round without a grounded violation, live evidence gap, or material delta.
+- A pass omits reviewed scope or covered/not-covered evidence, or a reviewer manufactures findings, severity, or a coordinator-generated repeat without a grounded violation, live evidence gap, or material delta.
 - Prompt preference is presented as reviewer, subagent, child-thread, runtime, cache, or selector execution evidence.
 
 ## Skill Ownership
