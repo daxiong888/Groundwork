@@ -48,7 +48,7 @@ Split mixed product statements and group Confirmed and Proposed ACs separately w
 ## Durable Write Gate
 
 Write or update a durable PRD file only when all four conditions are true: (1) the user explicitly requested file persistence; (2) a source-of-truth artifact is useful or artifact promotion is justified; (3) the active route is write-capable; and (4) audience-first header fields are complete.
-If any condition is false or unknown, keep the output in conversation and identify the unmet condition. After the gate passes, load `PRD-TEMPLATE.md` and include the source, evidence, and lifecycle boundary appropriate to the promoted artifact.
+If any condition is false or unknown, keep the output in conversation and identify the unmet condition. After the gate passes, load `PRD-TEMPLATE.md`, apply audience-first artifact fields, and include the source, evidence, and lifecycle boundary appropriate to the promoted artifact.
 
 ## Hard Stops
 
