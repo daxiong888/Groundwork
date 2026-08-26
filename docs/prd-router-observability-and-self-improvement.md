@@ -1,16 +1,16 @@
 # PRD: Groundwork Router Telemetry and Improvement Loop
 
-Target Reader: Groundwork maintainers and eval authors responsible for improving route boundaries without increasing runtime coupling.
+Target Reader: Groundwork maintainers responsible for improving route boundaries without increasing runtime coupling.
 
-Reader Action Needed: Maintain the telemetry/runtime boundary, use reviewed traces to design offline regressions, and reject changes that turn observability into a second router.
+Reader Action Needed: Maintain the telemetry/runtime boundary, use reviewed traces to form bounded improvement proposals, and reject changes that turn observability into a second router or a second Candidate authority.
 
 Decision Supported: Which signals belong in the installed runtime, which analyses belong in the Maintainer Lab, and what evidence is required before claiming routing improvement.
 
 Artifact Type: accepted product and architecture contract.
 
-Source of Truth: `scripts/codex-hooks/groundwork_router_event.py`, `scripts/codex-hooks/groundwork_route_registry.json`, `scripts/codex-hooks/groundwork_route_detection.py`, `scripts/codex-hooks/groundwork_router_telemetry.py`, `hooks/hooks.json`, `docs/router-observability-harness.md`, `docs/quarantined-learnings.md`, `evals/verdict_model.py`, and `evals/patch_suggestions.py`.
+Source of Truth: `scripts/codex-hooks/groundwork_router_event.py`, `scripts/codex-hooks/groundwork_route_registry.json`, `scripts/codex-hooks/groundwork_route_detection.py`, `scripts/codex-hooks/groundwork_router_telemetry.py`, `hooks/hooks.json`, `docs/router-observability-harness.md`, `docs/quarantined-learnings.md`, and `docs/prd-plugin-candidate-trial-migration-v1.md`.
 
-Scope: dormant observe-only hooks, project opt-in, privacy controls, minimized telemetry, candidate signal separation, offline evaluation, human-reviewed regression promotion, and runtime complexity limits.
+Scope: dormant observe-only hooks, project opt-in, privacy controls, minimized telemetry, candidate signal separation, human-reviewed proposal formation, separately authorized Candidate trials, and runtime complexity limits.
 
 Out of Scope: a new public router skill, prompt injection, guided modes, live verdicts/cards, profile inference, learned routing, automatic skill mutation, automatic CSV/PR/issue writes, runtime execution, and readiness claims.
 
@@ -20,7 +20,7 @@ Safe to Share / Redaction Notes: Safe to share as architecture. Local telemetry 
 
 Status: implemented source contract; installed runtime verification remains a separate gate.
 
-Last Updated: 2026-07-14.
+Last Updated: 2026-08-25.
 
 ## Problem
 
@@ -41,7 +41,7 @@ The required product is therefore telemetry, not a live evaluator.
 2. Keep prompt, skill-load, response-shape, tool, and permission evidence distinct.
 3. Default to hashes and metadata; require explicit opt-in for snippets or raw capture.
 4. Keep hooks non-blocking and behavior-neutral.
-5. Move scoring, profile analysis, cards, replay, and regression promotion into the Maintainer Lab.
+5. Keep proposal formation and any separately authorized Candidate trial in the Maintainer Lab; telemetry itself never scores or promotes a Candidate.
 6. Allow future authoritative host traces without changing the meaning of existing candidate fields.
 
 ## Runtime Contract
@@ -94,12 +94,13 @@ Offline analysis may:
 
 - replay natural prompts;
 - compare source-backed expected behavior;
-- score output contracts and evidence boundaries;
-- measure visible-output UX;
-- generate reviewed router cards or reports;
-- draft regression rows after human review.
+- inspect output contracts and evidence boundaries;
+- measure visible-output UX for a bounded investigation;
+- form one human-reviewed improvement proposal;
+- add an ordinary source test when deterministic behavior has a real source owner;
+- prepare a Candidate Trial Pack only in a separately authorized epoch.
 
-`docs/quarantined-learnings.md` owns the Maintainer Lab learning-state and promotion protocol. Automatic telemetry, nightly, report, and patch-suggestion tools may emit `learning_status=observed`, `promotion_target=none`, `human_decision=none`, and `auto_apply=false` only. Reproduction, quarantine, acceptance, ordinary implementation, clean review, target-specific validation, and promotion remain separately owned gates.
+`docs/quarantined-learnings.md` owns the Maintainer Lab learning-state and the single human decision. Telemetry may only provide an observed signal; it cannot create a Candidate verdict, change `human_decision`, mutate a proposal, or satisfy release evidence. Reproduction, quarantine, acceptance, ordinary implementation, clean review, target-specific validation, Candidate Trial authorization, and promotion remain separately owned gates.
 
 Offline analysis must keep three test concerns orthogonal:
 
@@ -121,7 +122,7 @@ A behavior or output pass cannot substitute for discovery evidence.
 - default forbidden routes;
 - skill-description boundary fragments.
 
-Classifier behavior, public metadata, state-machine docs, and eval expectations must validate against the registry. Regexes may implement language recognition, but they must not create an independent route taxonomy.
+Classifier behavior, public metadata, state-machine docs, and source-owned behavior evidence must validate against the registry. Regexes may implement language recognition, but they must not create an independent route taxonomy.
 
 ## Required Metrics
 
@@ -148,10 +149,9 @@ Routing accuracy, false-positive rate, profile quality, or pass/fail verdicts ar
 - Stop hooks write metadata and coverage, not live scores/cards/profile recommendations.
 - Tool and permission events have deterministic replay ordering plus captured-record diagnostics that separate observed-supported, observed-unsupported, unclassified, and malformed records.
 - Secret redaction covers supported token/password/key patterns.
-- Runtime hook files import no source-only `evals` package.
+- Runtime hook files import no Maintainer Lab module.
 - Package boundary checks include every runtime telemetry dependency.
-- Maintainer-side verdict/card helpers remain source-only.
-- Generated patch suggestions remain `observed` and non-applying; they cannot mark themselves reproduced, quarantined, accepted, or promoted.
+- Telemetry output cannot emit a promotion verdict or satisfy Candidate/release evidence.
 
 ## Non-Goals And Hard Negatives
 
@@ -160,8 +160,8 @@ Routing accuracy, false-positive rate, profile quality, or pass/fail verdicts ar
 - Do not infer model profile or reasoning effort from prompt keywords in the installed package.
 - Do not generate `dispatch-decision.json`, `router-score.json`, or `router-card.md` at Stop.
 - Do not call output markers actual skill use.
-- Do not automatically mutate skills, eval CSV, GitHub, trackers, or automations.
-- Do not conflate redacted artifact promotion, learning/source promotion, and default-suite promotion.
+- Do not automatically mutate skills, behavior cases, GitHub, trackers, or automations.
+- Do not conflate redacted telemetry, proposal acceptance, Candidate direction, and release verification.
 
 ## Verification
 

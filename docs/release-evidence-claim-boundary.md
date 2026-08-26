@@ -1,287 +1,142 @@
 # Release Evidence Claim Boundary
 
-Target Reader: Groundwork maintainers, release reviewers, CI gate authors, runtime eval operators, and clean-review coordinators.
-Reader Action Needed: Use this template before saying an eval platform change is runtime-verified, release-ready, UAT-ready, customer-ready, cache-equivalent, or marketplace-ready.
-Decision Supported: Whether a readiness claim is source-only, runtime-verified, release-ready, UAT/customer-ready, unsupported, or intentionally not claimed.
-Artifact Type: maintainer doc
-Source of Truth: `docs/prd-v0.4.x-trace-first-eval-platform-roadmap.md`, `artifacts/v0.4.x-trace-first-eval-platform-roadmap/issue-map.md`, `docs/optional-runtime-eval-gate.md`, `docs/eval-trace-artifacts.md`, and the v0.4.0 release evidence plan.
-Scope: Release evidence claim vocabulary, required fields, source/runtime/release/UAT boundaries, and minimal v0.4.x eval release claim examples for V045-003.
-Out of Scope: Running CI, running Codex runtime evals, refreshing plugin cache, proving cache/source equivalence, publishing releases, approving UAT, customer acceptance, marketplace publishing, or committing runtime artifacts.
-Evidence Level: Documentation and template only. This file defines the claim shape and review boundary; it does not verify runtime behavior or release readiness.
-Safe to Share / Redaction Notes: Safe to share as maintainer documentation. It contains templates and examples only; no secrets, credentials, PII, raw traces, private URLs, runtime logs, or customer payloads.
+Target Reader: Groundwork maintainers and reviewers making runtime, cache, release, UAT, marketplace, installed-plugin, or cache-refresh claims.
+Reader Action Needed: Bind each claim to the shared evidence object and leave it `unverified` when direct claim-specific evidence is missing.
+Decision Supported: Whether available evidence supports the named layer without being promoted from a weaker source/package/Candidate layer.
+Artifact Type: canonical maintainer evidence policy.
+Source of Truth: `skills/_shared/RELEASE-EVIDENCE-CLAIM.md`, `skills/_shared/EVIDENCE-BOUNDARY.md`, `skills/_shared/RUNTIME-CAPABILITY.md`, and `docs/prd-plugin-candidate-trial-migration-v1.md`.
+Scope: Current post-M3 evidence classes, installed/source binding, direct runtime receipts, Candidate/release separation, and UAT/release escalation.
+Out of Scope: Executing a runtime check, choosing a release process, approving UAT, publishing a marketplace package, or proving customer readiness.
+Evidence Level: Current source contract only; no installed package, runtime, release, or UAT activity is claimed here.
+Safe to Share / Redaction Notes: Safe to share as-is; redact private paths, credentials, customer data, private URLs, and raw logs from real receipts.
 
-## Core Boundary
+Groundwork uses claim-scoped evidence. A stronger label needs evidence produced at that layer; weaker artifacts do not add up into a stronger claim.
 
-> [!IMPORTANT]
-> This document defines the Maintainer Lab's full release-evidence dossier. Runtime-packaged skill output and deterministic evals use the compact three-state object in `skills/_shared/RELEASE-EVIDENCE-CLAIM.md` (`verified`, `unverified`, `not_applicable`). The full dossier may record `partial` and additional readiness dimensions, but it must not be passed to the compact runtime checker or treated as the runtime package schema.
+```mermaid
+flowchart LR
+  S["Source diff + ordinary tests"] --> P["Generated package"]
+  P --> E["Installed/source equivalence"]
+  E --> R["Direct runtime activity"]
+  R --> D["release_runtime_verification receipt"]
+  D --> M["Separate maintainer release decision"]
 
-Docs, schema files, unit tests, prompt CSV parsing, source-only CI, report generation, and patch suggestion generation are `source_validation` evidence. They can support implementation conformance and review confidence, but they are not runtime verification and cannot by themselves prove release, UAT, customer, marketplace, or cache readiness.
-
-Runtime verification requires a named runtime environment and evidence that the runtime used the intended source or installed plugin cache. Release readiness requires a broader maintainer decision over source, runtime, cache/source equivalence, open risks, limitations, and missing evidence. UAT and customer readiness require separate UAT/customer evidence.
-
-For the compact runtime object, merely naming roots, an equivalence label, and a trial is not enough. A verified Groundwork plugin-bound claim requires adjacent terminal-success activities: a supported `codex plugin list/show` inventory step (or `codex plugin add` refresh step) under the `CODEX_HOME` derived from an exact `.../plugins/cache/groundwork/groundwork/<version>` installed root; positive output naming that root; and the immediately next completed activity performing a complete recursive comparison with an independent declared source root. The two roots may not be identical, ancestor/descendant paths, or existing realpath aliases. Excludes, content normalization, partial-file comparison, dry-run, and no-op refreshes do not qualify. A verified runtime claim then requires the immediately next completed activity to run the repository's canonical `evals/run_runtime.py` under the same `CODEX_HOME`, without `--validate-schema`, match each declared typed trial, and emit a non-empty summary whose run scope, selectors, complete prompt-file sources, actual requested/executed case IDs, counts, types, and all-pass result agree exactly. Exact identities are `suite:<registered-suite.csv>`, `group:<exact-group>`, `case_id:<exact-id>`, and `prompt_file:<canonical-absolute-path>`; registered suites may additionally use a legacy suite alias only when it is globally unique. Per-case result artifacts use reversible ID encoding and must not collapse two exact IDs onto one path. A `--rerun-failures` path or filename is transport metadata, not trial identity. Empty group/ID selections and zero-row summaries fail closed.
-
-Proof executables, whether written as bare names or explicit paths, are captured at module load only from the running Python directory, fixed system-tool directories, and the validated directory containing the selected Codex control launcher. Arbitrary ambient `PATH` entries are not searched as proof roots. Repository, runtime-output, and platform temporary roots are rejected, as are launchers, resolved files, or ancestor directories owned or writable by the current evaluator identity, including owner-controlled `0755` locations. If no qualifying Codex launcher or toolchain exists, proof-grade runtime launch or command evidence fails closed; user-managed NVM, Homebrew, or similar roots are not silently promoted into proof roots. The baseline records launcher and resolved-file identity plus a SHA-256 digest, and every accepted activity must still match that identity and digest. Evaluator-owned commands are launched through the captured absolute launcher; explicit paths must identify that same executable, and Python aliases must resolve to `sys.executable`. A missing trusted launcher blocks the command, and an empty discovered tool set uses a non-existent absolute sentinel path rather than an empty `PATH`, so current-directory executables cannot be selected. `GROUNDWORK_REPO`, when explicitly present in a proof command, must be an absolute canonical path whose realpath is the current repository. Unknown or semantics-changing `GROUNDWORK_*`, PATH, Python, loader, Git, Node/npm, pytest, Cargo/Rust, Go, compiler, Java/Maven, and Gradle overrides are rejected. `run_row` and evaluator-owned subprocesses receive a sanitized environment with a controlled `PATH`; inherited keys must be ordinary environment identifiers, exported Bash-function entries such as `BASH_FUNC_node%%` and function-shaped values are removed, and shell startup controls fail closed. `HOME` and XDG state are replaced by a neutral proof home bound to the selected run root, while `CODEX_HOME` is retained only when it resolves to a separate absolute safe control path derived from an explicit value or the operating-system account home. Invalid explicit values are removed rather than inherited. The Codex tool shell is independently forced to `shell_environment_policy.inherit="none"` and receives only the evaluator-owned proof environment plus declared router-observability controls; runtime selectors cannot override this policy. Hook-trust bypass is accepted only through the explicit debug CLI selector, never from ambient environment. Its effective non-secret value and digest are recorded in the proof context; a bypassed run is `insufficient_evidence` and cannot support a `verified` claim. The evidence context also records policy and tool-manifest digests, removed environment-key names, enforced non-secret environment keys and digest, retained router-control key names and value digest, the tool-shell inherit mode/key set/digest, plus the separate Codex control-path key and digest. This is launch-trust binding and same-path tamper detection, not binary-signature or supply-chain attestation. An unrelated runtime-shaped command, arbitrary same-named script, source/schema-only runner, or root token printed only in unrelated output does not satisfy the claim.
-
-Observed tool activity is successful only with an explicit terminal status (`completed`, `ok`, `success`, or `succeeded`); command activity also requires an integer, non-boolean zero exit code and an executable that matches the captured identity and digest. Arbitrary same-named paths, same-path replacement, `npx` substitution, and non-canonical Groundwork runtime scripts fail closed. Current command-string activities have no structured post-expansion argv, so they reject unescaped shell syntax that can rewrite argv, including parameter or ANSI-C expansion, glob patterns, brace expansion, and tilde expansion. Test evidence accepts only `node --test` under the default or explicit `--test-isolation=process` mode with trusted options and a native `spec` or `tap` summary. `--test-isolation=none`, empty values, unknown isolation modes, and expansion-hidden options fail closed because repository test files could otherwise share the runner process and forge its output and termination. Python `unittest`, Go, Cargo, direct or module-form pytest, delegated package-manager scripts, `npx playwright`, and filename-inferred Node scripts remain unverified because repository-controlled discovery modules, `TestMain`, execution wrappers, custom harnesses, hooks, or scripts can forge runner-looking output and successful termination. Proof-grade support for those runners requires evaluator-owned execution telemetry that the tested repository cannot forge. For Node, `--test` and reporter options must occur in the interpreter-option prefix before the first positional script target or `--`; script arguments that merely contain those tokens do not qualify. `git_status` evidence must target the canonical case workspace through an exact absolute `git -C <case-workspace> status ...` command or a structured event whose `cwd` resolves to that workspace; `--git-dir`, `--work-tree`, relative `-C`, shell `cd`, and unrelated repositories do not qualify. Output-dependent source/browser evidence requires one unwrapped invocation so a sibling command cannot lend aggregate output. Structured fixture source must come from a trusted server/tool pair, expose one actual result-content field, and equal the canonical content rather than merely contain it. A standard MCP resource read must return exactly one requested-URI-matched text resource; multiple resources, URI drift, and blobs do not qualify. UAT source selection reuses the schema's canonical visible-section selector. Browser command evidence must be observation-producing (`test`, screenshot, or headless screenshot), bind URLs, paths, and opaque IDs by exact string identity after option-arity parsing, and return substantive, non-error, non-acknowledgement output; `playwright open`, help/version, test listing/discovery/no-test modes, all-skipped or zero-execution results, and empty output do not qualify. A mixed browser test result with at least one executed passing test may still qualify. Structured console/network empty collections and scalar evaluate values such as `false` or `0` remain valid observations when returned by the trusted observation adapter.
-
-Generic command source evidence is limited to passive reads bound to the canonical case workspace: option-free `cat`; `sed -n` with a static `p` range; bounded `head` or `tail`; and `rg --no-config` with known passive options. Every explicit source path and event working directory must remain inside the workspace after symlink resolution. Inline environment assignments, command wrappers, `RIPGREP_CONFIG_PATH`, ripgrep preprocessors, executable or extra-I/O sed scripts, generic grep, Git source commands, and CLI CodeGraph output fail closed. Trusted structured filesystem/CodeGraph adapters and exact canonical fixture readers remain separate source-evidence paths.
-
-The deterministic runner does not self-approve generic `release` claims. Those require a separate maintainer decision adapter. Generic `uat` claims require a claim-specific canonical UAT evidence adapter; source validation, runtime output, or a claim object alone is insufficient.
-
-## Claim Types
-
-Use one of these `claim_type` values:
-
-- `source_validation`: source, schema, CSV, unit test, static fixture, report, or documentation evidence only.
-- `runtime`: real Codex runtime behavior was exercised.
-- `cache`: installed plugin cache state or source/cache equivalence was checked.
-- `release`: maintainer release-readiness decision.
-- `uat`: UAT-readiness or UAT result claim.
-- `customer`: customer-readiness or customer-acceptance claim.
-- `marketplace`: marketplace package or install-path readiness claim.
-- `cache_refresh`: supported plugin cache refresh action.
-- `not_applicable`: readiness is intentionally not claimed.
-
-Use one of these `evidence_status` values:
-
-- `verified`: the required evidence for this claim type is present and named.
-- `partial`: some evidence exists, but required fields or checks are missing.
-- `unverified`: the claim is being discussed but lacks required evidence.
-- `not_applicable`: the claim is intentionally out of scope.
-
-## Required Template
-
-Every runtime, cache, release, UAT, customer, marketplace, or cache-refresh claim must use this shape. Source-only claims should also use it when there is a risk of being mistaken for runtime or release evidence.
-
-```yaml
-release_evidence_claim:
-  claim_type: source_validation | runtime | cache | release | uat | customer | marketplace | cache_refresh | not_applicable
-  claim: ""
-  evidence_status: verified | partial | unverified | not_applicable
-  installed_plugin_root: ""
-  source_root: ""
-  source_ref: ""
-  refresh_or_equivalence:
-    method: refresh_step | source_cache_equivalence | tracked_commit_equivalence | not_run | not_applicable
-    evidence: ""
-  run_scope:
-    kind: targeted | full | smoke | not_run | not_applicable
-    suites: []
-    cases: []
-    commands_or_trials: []
-  redaction:
-    status: not_needed | applied | failed | not_reviewed | not_applicable
-    reviewer: human | tool | unknown | not_applicable
-    notes: []
-  limitations: []
-  missing_evidence: []
-  readiness_claims:
-    runtime: not_claimed | source_only | verified
-    cache: not_claimed | partial | verified
-    release: not_claimed | partial | verified
-    uat: not_claimed | partial | verified
-    customer: not_claimed | partial | verified
+  C["Candidate Trial\ncandidate_direction"] -. "never upgrades" .-> R
+  T["Hook telemetry / historical baseline"] -. "never upgrades" .-> R
 ```
 
-Required fields:
+## Evidence Layers
 
-- `claim_type`
-- `evidence_status`
-- `installed_plugin_root`
-- `source_root`
-- `refresh_or_equivalence.method`
-- `refresh_or_equivalence.evidence`
-- `run_scope.kind`
-- `run_scope.commands_or_trials`
-- `limitations`
-- `missing_evidence`
+| Layer | What it can establish | What it cannot establish alone |
+| --- | --- | --- |
+| Source | The inspected diff and ordinary deterministic checks | Generated package, installed cache, runtime behavior, release, or UAT |
+| Generated package | Package shape, inventory, hashes, and source-side boundaries | Which package is installed or executed |
+| Installed/source equivalence | A complete independent installed root matches the named source/package root | Runtime behavior or release readiness |
+| Candidate direction | A bounded Baseline/Candidate comparison informed one human proposal decision | Runtime/release/UAT/customer readiness |
+| Direct runtime | Named activity executed against a bound installed package and environment | Maintainer release approval or UAT unless those were separately performed |
+| Release/UAT | Claim-specific canonical decision and evidence | Broader customer readiness outside the recorded scope |
 
-If a required field is not applicable, write `not_applicable` and explain why in `limitations` or `missing_evidence`.
+## Candidate / Release Firewall
 
-## Evidence Status Rules
-
-`source_validation` may be `verified` from commands such as:
-
-- Python syntax checks;
-- prompt CSV parsing;
-- schema validation;
-- unit tests;
-- fixture CLI runs;
-- `git diff --check` over the relevant diff.
-
-`source_validation` must not be rewritten as `runtime`, `release`, `uat`, or `customer` unless the corresponding evidence fields are present.
-
-`runtime` cannot be `verified` unless:
-
-- `installed_plugin_root` is named;
-- `source_root` and `source_ref` are named;
-- refresh or source/cache equivalence is documented;
-- run scope and exact commands/trials are named;
-- limitations and missing evidence are explicit;
-- raw traces or logs are kept in scratch or redacted before promotion.
-
-`release` cannot be `verified` unless:
-
-- source validation is complete for the release scope;
-- runtime/cache evidence required by the release decision is named or explicitly marked not required;
-- open P1/P2 risks are resolved or accepted by a maintainer;
-- missing evidence is documented;
-- release-specific limitations are explicit.
-
-`uat` and `customer` cannot be `verified` from source validation, runtime eval, score JSON, reports, traces, or patch suggestions alone. They require separate UAT/customer evidence from the relevant environment, data, reviewer, or customer acceptance process.
-
-## Minimal v0.4.x Eval Examples
-
-Schema/source-only CI evidence:
+Candidate Trial receipts are fixed at:
 
 ```yaml
-release_evidence_claim:
-  claim_type: source_validation
-  claim: "v0.4.x trace-first eval schema/source gate passed locally or in CI."
-  evidence_status: verified
-  installed_plugin_root: not_applicable
-  source_root: "$SOURCE_ROOT"
-  source_ref: "$COMMIT_SHA"
-  refresh_or_equivalence:
-    method: not_applicable
-    evidence: "No installed plugin cache is used by the schema/source gate."
-  run_scope:
-    kind: targeted
-    suites:
-      - trace-first-verify-review.csv
-    cases: []
-    commands_or_trials:
-      - "python evals/run_runtime.py --validate-schema --suite trace-first-verify-review.csv"
-      - "python -m unittest evals.test_schema_validation evals.test_scoring evals.test_checks evals.test_trace_diagnostics evals.test_report evals.test_patch_suggestions"
-      - "PYTHONPATH=evals python -m unittest evals.test_run_runtime_scheduler"
-      - "python evals/report.py --run-dir evals/fixtures/report"
-      - "python evals/patch_suggestions.py --run-dir evals/fixtures/patch-suggestions"
-  redaction:
-    status: not_applicable
-    reviewer: not_applicable
-    notes:
-      - "No raw runtime trace or private payload is produced by this source-only gate."
-  limitations:
-    - "This does not run Codex runtime."
-    - "This does not prove installed plugin cache behavior."
-    - "This does not claim release, UAT, or customer readiness."
-  missing_evidence:
-    - "installed plugin root"
-    - "source/cache equivalence"
-    - "real runtime eval output"
-    - "release approval"
-    - "UAT/customer evidence"
-  readiness_claims:
-    runtime: source_only
-    cache: not_claimed
-    release: not_claimed
-    uat: not_claimed
-    customer: not_claimed
+evidence_class: candidate_direction
 ```
 
-Optional runtime evidence after a maintainer-managed run:
+They exist only to help a human choose whether to reject, defer, or promote a Candidate proposal. The following are still insufficient for a runtime or release claim:
+
+- a Candidate materially outperforming Baseline;
+- a human promotion decision;
+- matching source and installed package hashes without direct execution;
+- a source/package/CI pass;
+- hook telemetry, output shape, route candidates, local scores, or historical baselines;
+- saying the Candidate and release scopes are the same.
+
+Groundwork runtime behavior can be marked verified only from a separately authorized direct receipt with:
+
+```yaml
+evidence_class: release_runtime_verification
+```
+
+The Candidate Trial runner is not a release phase. There is no repo-owned default model suite, compatibility wrapper, score, report, or old Eval runner that can manufacture this receipt.
+
+## Required Direct Receipt Binding
+
+Use the exact `release_evidence_claim` object in `skills/_shared/RELEASE-EVIDENCE-CLAIM.md`. A verified Groundwork runtime/cache/marketplace/cache-refresh behavior claim binds all of the following:
+
+1. explicit authorization for the direct activity;
+2. released package digest;
+3. task or fixture hash;
+4. original acceptance or invariant source hash for expected behavior;
+5. complete installed/source equivalence between independent roots;
+6. installed plugin root and source root;
+7. runtime/environment identity, including launcher and relevant non-secret controls;
+8. direct outcome and targeted/full scope;
+9. receipt validity and limitations;
+10. named completed commands or trials.
+
+If a required binding is missing, contradictory, stale, aliased, partial, or not directly observed, use:
+
+```yaml
+evidence_status: unverified
+```
+
+and name the exact limitation. Do not substitute another model's judgment, prose reconstruction, a dry run, a no-op refresh, or a historical report.
+
+## Release And UAT Are Additional Decisions
+
+A valid `release_runtime_verification` receipt supports only its named runtime claim. A generic release claim still needs a separate maintainer release decision. A UAT claim still needs its claim-specific canonical UAT evidence and, when the system can change, the conditional UAT Evidence Window from the shared contract.
+
+Non-plugin UAT can set plugin/cache fields to `not_applicable`, but it still needs a concrete source identity, direct trial, scope, result, limitations, and `evidence_class: claim_specific_direct_evidence`.
+
+Codex App Handoff packages, clean-review packages, deployment plans, and final-response wording do not become direct evidence merely because they cite this contract.
+
+## Maintainer Review Checklist
+
+- Is the claim type and exact scope explicit?
+- Is the evidence class correct, and is `candidate_direction` rejected for runtime/release/UAT?
+- Does verified Groundwork runtime behavior have an independently authorized `release_runtime_verification` receipt?
+- Are package, task/fixture, expectation source, installed/source, runtime/environment, outcome, validity, scope, and limitations all bound?
+- Does each cited activity have a completed terminal result rather than a command-shaped sentence?
+- Are release and UAT decisions kept separate from runtime execution?
+- If any answer is no, is the claim explicitly `unverified` with the missing evidence named?
+
+## Examples
+
+Source and package checks only:
 
 ```yaml
 release_evidence_claim:
   claim_type: runtime
-  claim: "Targeted trace-first verify/review runtime behavior was exercised for a maintained environment."
-  evidence_status: partial
-  installed_plugin_root: "$INSTALLED_PLUGIN_ROOT"
-  source_root: "$SOURCE_ROOT"
-  source_ref: "$COMMIT_SHA"
-  refresh_or_equivalence:
-    method: source_cache_equivalence
-    evidence: "Record the supported plugin inventory/refresh output and the immediately following complete root comparison here."
-  run_scope:
-    kind: targeted
-    suites:
-      - trace-first-verify-review.csv
-    cases: []
-    commands_or_trials:
-      - "CODEX_HOME=\"$CODEX_HOME\" codex plugin list"
-      - "diff -qr \"$INSTALLED_PLUGIN_ROOT\" \"$SOURCE_ROOT\""
-      - "CODEX_HOME=\"$CODEX_HOME\" GROUNDWORK_RUNTIME_ROOT=\".groundwork/harness\" python evals/run_runtime.py --suite trace-first-verify-review.csv --case-timeout 360"
-  redaction:
-    status: not_reviewed
-    reviewer: unknown
-    notes:
-      - "Raw runtime output remains in `.groundwork/harness/` until redaction review."
-  limitations:
-    - "This is targeted runtime evidence only."
-    - "Release readiness still requires maintainer decision and missing-evidence review."
-  missing_evidence:
-    - "redacted promoted report"
-    - "release approval"
-    - "UAT/customer evidence"
-  readiness_claims:
-    runtime: verified
-    cache: partial
-    release: not_claimed
-    uat: not_claimed
-    customer: not_claimed
-```
-
-Unsupported release claim:
-
-```yaml
-release_evidence_claim:
-  claim_type: release
-  claim: "v0.4.x eval platform is release-ready."
+  claim: "The generated package behaves correctly in the installed runtime."
   evidence_status: unverified
-  installed_plugin_root: ""
-  source_root: "$SOURCE_ROOT"
-  source_ref: "$COMMIT_SHA"
-  refresh_or_equivalence:
+  evidence_class: release_runtime_verification
+  installed_plugin_root: "unverified"
+  source_root: "/reviewed/source"
+  cache_or_source_refresh:
     method: not_run
-    evidence: "Only source/schema checks were run."
-  run_scope:
-    kind: not_run
-    suites: []
-    cases: []
-    commands_or_trials: []
-  redaction:
-    status: not_applicable
-    reviewer: not_applicable
-    notes: []
+    evidence: ""
+  run_scope: not_run
+  commands_or_trials: []
+  receipt_binding:
+    authorization: "not_run"
+    released_package_digest: "sha256:source-package-only"
+    task_or_fixture_hash: "unverified"
+    expectation_source_hash: "unverified"
+    installed_source_equivalence: "not_run"
+    runtime_environment_identity: "unverified"
+    direct_outcome: "not_run"
+    validity: "unverified"
+    scope: "not_run"
   limitations:
-    - "Source/schema checks alone are not release evidence."
-  missing_evidence:
-    - "installed plugin root"
-    - "source/cache equivalence or supported refresh"
-    - "runtime eval evidence if required by release scope"
-    - "maintainer release decision"
-    - "UAT/customer evidence if claimed"
-  readiness_claims:
-    runtime: source_only
-    cache: not_claimed
-    release: not_claimed
-    uat: not_claimed
-    customer: not_claimed
+    - "No separately authorized direct runtime activity was performed."
 ```
 
-## Review Checklist
+Candidate evidence only:
 
-- The claim has a `release_evidence_claim` object.
-- `claim_type` and `evidence_status` match the actual evidence.
-- Source-only evidence is not labeled `runtime_verified`.
-- CI pass is not treated as release readiness.
-- Runtime eval pass is not treated as UAT or customer readiness.
-- Installed plugin root is named for runtime/cache/plugin claims.
-- Source root and source ref are named.
-- Refresh or source/cache equivalence is named, or explicitly not applicable.
-- Plugin-bound verified evidence records adjacent terminal-success plugin inventory/refresh, complete post-state root comparison, and any runtime trial under the same `CODEX_HOME`.
-- Installed/source roots are independent, executable resolution is baseline/live-bound, and no exclude, normalization, partial-file, dry-run, no-op, schema-only, arbitrary provider, wrapped fixture substring, or arbitrary same-named runner is promoted into evidence.
-- Run scope and exact commands/trials are listed.
-- Limitations and missing evidence are non-empty for partial or unverified claims.
-- Raw traces/logs are scratch-only or redacted before promotion.
-- UAT/customer readiness has separate environment, data, reviewer, or customer evidence.
+```text
+Candidate receipt evidence_class=candidate_direction.
+The proposal decision may use it; release_evidence_claim remains unverified.
+```
 
-## Non-Goals
-
-- no automatic release approval;
-- no automatic UAT/customer acceptance;
-- no runtime eval execution from this template;
-- no plugin cache mutation;
-- no raw trace or runtime log commits;
-- no readiness promotion from score JSON, report, or patch suggestions alone.
+Verified runtime is allowed only after inspecting a separate receipt whose direct bindings match the claim. Even then, report release and UAT as separate decisions rather than silently upgrading them.

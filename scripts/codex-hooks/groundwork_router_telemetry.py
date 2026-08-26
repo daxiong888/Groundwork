@@ -2,7 +2,8 @@
 
 This runtime module records redacted/hash-based signals only. It does not inject
 prompts, score routes, infer model profiles, or claim authoritative skill loads.
-Maintainer-side analysis belongs under evals/.
+Maintainer-side analysis belongs in ordinary source tests and human-reviewed
+proposal records; runtime telemetry emits candidate signals only.
 """
 
 import hashlib

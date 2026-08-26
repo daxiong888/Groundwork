@@ -1,6 +1,0 @@
-{"type":"tool_call","tool_name":"shell","payload":{"command":"npm test"},"timestamp":0}
-{"type":"tool_result","tool_name":"shell","payload":{"command":"npm test","exit_code":1,"stderr":"command failed"},"timestamp":1}
-{"type":"tool_call","tool_name":"shell","payload":{"command":"npm test"},"timestamp":2}
-{"type":"tool_result","tool_name":"shell","payload":{"command":"npm test","exit_code":1,"stderr":"command failed"},"timestamp":3}
-{"type":"tool_call","tool_name":"shell","payload":{"command":"npm test"},"timestamp":4}
-{"type":"tool_result","tool_name":"shell","payload":{"command":"npm test","exit_code":1,"stderr":"command failed"},"timestamp":5}

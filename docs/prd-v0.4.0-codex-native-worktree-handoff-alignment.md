@@ -1,5 +1,8 @@
 # PRD v0.4.0: Codex-native Worktree and Handoff Alignment
 
+> [!IMPORTANT]
+> 本文保留 v0.4.0 功能决策与实现历史。文中 `evals/` 路径、旧 Eval 命令和 suite 要求已由 `docs/prd-plugin-candidate-trial-migration-v1.md` 的减法迁移废止，只能作为历史事实，不能作为当前架构、命令或 Candidate authority。
+
 Target Reader: Groundwork maintainers, dispatch reviewers, runtime adapter authors, and future implementation agents planning the v0.4.0 worktree alignment release.
 Reader Action Needed: Review, confirm, and use this PRD as the source truth for issue slicing and implementation planning.
 Decision Supported: Whether Groundwork should shrink managed worktree ownership into Codex-native governance, handoff, evidence, and closeout contracts for v0.4.0.

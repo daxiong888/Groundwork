@@ -5,6 +5,5 @@
 #
 # See docs/worktreeinclude-safety.md before adding project-specific entries.
 
-examples/local-config.placeholder.json
 fixtures/redacted-smoke-fixture.placeholder.json
 tools/local-settings.placeholder.toml

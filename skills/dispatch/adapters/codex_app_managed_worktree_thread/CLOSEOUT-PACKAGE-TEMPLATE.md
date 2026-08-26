@@ -88,6 +88,6 @@ Archive, worktree cleanup, and branch cleanup are separate from merge and from e
 | `failed` / `blocked` | `failed`, `blocked`, or `human_decision` | `not_applicable` | Match retained failure evidence and decision need. |
 | approved fallback topology | `resolved` | `approved_topology_change` | Requires explicit approval plus merge-source evidence. |
 
-## Eval Hooks
+## Regression Boundaries
 
 Reject closeout packages that merge without required evidence, combine independent axes, claim archive/cleanup/runtime/cache/release/UAT completion without separate evidence, retain broad legacy fields as native fields, treat pending worktree ids as resolved, or use a manual fallback without explicit approval.

@@ -1,18 +1,18 @@
 # Router Telemetry Harness
 
-Target Reader: Groundwork maintainers, Codex hook reviewers, and eval authors using local traces to improve routing and output contracts.
+Target Reader: Groundwork maintainers and Codex hook reviewers using local traces to investigate routing and output contracts.
 
-Reader Action Needed: Decide whether to opt a project into observe-only telemetry, inspect its minimized artifacts, and promote only reviewed evidence into offline eval work.
+Reader Action Needed: Decide whether to opt a project into observe-only telemetry, inspect its minimized artifacts, and promote only reviewed evidence into a quarantined proposal or ordinary source check.
 
 Decision Supported: Whether a local trace is safe and sufficient for a maintainer investigation; never whether a route, runtime, release, UAT, or customer claim passed.
 
 Artifact Type: canonical maintainer harness guide.
 
-Source of Truth: `hooks/hooks.json`, `scripts/codex-hooks/groundwork_router_telemetry.py`, `scripts/codex-hooks/groundwork_route_detection.py`, `scripts/codex-hooks/groundwork_route_registry.json`, `evals/verdict_model.py`, `evals/patch_suggestions.py`, and `docs/quarantined-learnings.md`.
+Source of Truth: `hooks/hooks.json`, `scripts/codex-hooks/groundwork_router_telemetry.py`, `scripts/codex-hooks/groundwork_route_detection.py`, `scripts/codex-hooks/groundwork_route_registry.json`, and `docs/quarantined-learnings.md`.
 
-Scope: dormant plugin-bundled hooks, project opt-in, hash/redaction policy, prompt-route candidates, response-shape candidates, ordered tool/permission events, coverage diagnostics, and offline promotion.
+Scope: dormant plugin-bundled hooks, project opt-in, hash/redaction policy, prompt-route candidates, response-shape candidates, ordered tool/permission events, coverage diagnostics, and human-reviewed proposal input.
 
-Out of Scope: prompt injection, guided modes, live scoring, model/profile inference, router cards, authoritative skill-load claims, automatic eval mutation, automatic dispatch/execution, release/UAT/customer readiness, and cache equivalence.
+Out of Scope: prompt injection, guided modes, live scoring, model/profile inference, router cards, authoritative skill-load claims, automatic proposal/test mutation, automatic dispatch/execution, release/UAT/customer readiness, and cache equivalence.
 
 Evidence Level: source implementation and local telemetry contract. Trace artifacts are improvement evidence only.
 
@@ -40,7 +40,7 @@ The runtime and Maintainer Lab have separate responsibilities:
 | Layer | Responsibilities | Must Not Do |
 | --- | --- | --- |
 | Runtime telemetry | Opt-in detection, hashing, redaction, event ordering, coverage, prompt-route candidate, response-shape candidate. | Inject prompts, score pass/fail, infer execution profile, generate router cards, or call response shape an actual route. |
-| Maintainer Lab | Replay, scoring, behavior checks, output UX checks, reviewed eval backfill, trend reporting. | Upgrade telemetry into runtime/release/UAT truth without stronger evidence. |
+| Maintainer Lab | Human reproduction, source-backed expectations, ordinary behavior checks, output UX review, and quarantined proposal handling. | Upgrade telemetry into Candidate direction or runtime/release/UAT truth without separately qualifying evidence. |
 
 ## Opt-In
 
@@ -128,13 +128,12 @@ Hashes reduce exposure but do not make an artifact public. Keep `.groundwork/har
 
 Use `docs/quarantined-learnings.md` as the canonical learning-state and promotion protocol:
 
-1. Record telemetry/eval output as `learning_status=observed`, `promotion_target=none`, and `human_decision=none` only. Inspect candidate fields and coverage diagnostics.
-2. Reproduce the prompt with a natural eval case and a source-backed expected behavior; do not copy secrets or private raw content. Advance to `reproduced` only after that review.
+1. Record telemetry output as `learning_status=observed`, `promotion_target=none`, and `human_decision=none` only. Inspect candidate fields and coverage diagnostics.
+2. Reproduce the prompt in an isolated task/workspace, or in a separately authorized Candidate Trial, with source-backed expected behavior. Do not copy secrets or private raw content. Advance to `reproduced` only after that review.
 3. Obtain authoritative skill-load evidence when the host exposes it; otherwise evaluate behavior and output UX without claiming routing accuracy.
-4. Use `evals/verdict_model.py` only in the Maintainer Lab to create reviewed scores or cards.
-5. Quarantine a proposal only when owner/fix locus, evidence delta, risk, rollback, target, and promotion criteria are complete. Artifact redaction/promotion does not advance learning status.
-6. Require explicit human acceptance before ordinary scoped implementation. Material patches require focused self-check and fresh read-only clean review; runtime-packaged changes require the package boundary and any claimed runtime/cache gate.
-7. Promote only the named target after its specific gate and explicit human decision. A post-promotion recurrence starts a new `observed` record.
+4. Quarantine a proposal only when owner/fix locus, evidence delta, risk, rollback, target, and promotion criteria are complete. Artifact redaction/promotion does not advance learning status.
+5. Require explicit human acceptance before ordinary scoped implementation. Material patches require focused self-check and fresh read-only clean review; runtime-packaged changes require the package boundary and any separately claimed runtime/cache receipt.
+6. Promote only the named target after its specific gate and explicit human decision. Telemetry itself never produces that decision. A post-promotion recurrence starts a new `observed` record.
 
 No evidence delta means no automatic rerun or duplicate proposal. The loop may stop at `rejected`, remain `quarantined` for `needs-info/defer`, or pause at `accepted` while implementation/review/validation evidence is missing.
 

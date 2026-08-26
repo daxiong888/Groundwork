@@ -22,13 +22,13 @@ Maintain auditable zh-CN trigger parity for public skills, prioritized first for
 
 - zh-CN positive trigger examples in the skill's `Trigger Contract`;
 - zh-CN should-not-trigger examples in the skill's `Trigger Contract`;
-- zh-CN route-conflict eval rows for adjacent skills.
+- bounded zh-CN route-conflict behavior cases for adjacent skills when a proposal needs direction evidence.
 
-Do not claim full per-skill parity unless a manifest or checker proves the claimed coverage for each public skill. A recommended full-parity target is at least 5 zh-CN positive examples, 3 zh-CN should-not-trigger examples, and 2 zh-CN adjacent route-conflict eval rows per public skill.
+Do not claim full per-skill parity from prose examples or a single trial. A parity claim needs claim-scoped evidence for the affected routes and locale; no repository-wide numeric quota or default suite is implied.
 
-Do not solve trigger parity by frontmatter phrase stuffing. Prefer explicit `Trigger Contract` examples and focused eval rows that name the route boundary, expected route, acceptable adjacent routes, and forbidden route theft.
+Do not solve trigger parity by frontmatter phrase stuffing. Prefer explicit `Trigger Contract` examples and, when authorized, focused behavior cases that name the route boundary, expected route, acceptable adjacent routes, and forbidden route theft.
 
-Route-conflict rows should cover common zh-CN natural expressions, not only literal skill names. For example, prompts about assigning ready work, choosing worktrees or subagents, clean-review fanout, and runtime selection should protect `dispatch`; prompts about "只写计划，不改代码" should protect `write-plan`; prompts about "能不能给 agent 做", blockers, and ownership should protect `triage`; prompts about project wiki query/update/audit should protect `wiki`; prompts about release, UAT, integration, evidence chains, and source-truth validation should protect `verify`.
+Route-conflict cases should use common zh-CN natural expressions, not only literal skill names. For example, prompts about assigning ready work, choosing worktrees or subagents, clean-review fanout, and runtime selection should protect `dispatch`; prompts about "只写计划，不改代码" should protect `write-plan`; prompts about "能不能给 agent 做", blockers, and ownership should protect `triage`; prompts about project wiki query/update/audit should protect `wiki`; prompts about release, UAT, integration, evidence chains, and source-truth validation should protect `verify`.
 
 ## Locale Detection
 

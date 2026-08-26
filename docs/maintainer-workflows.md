@@ -106,13 +106,6 @@ Handoff should reference canonical artifacts instead of copying full PRDs, issue
 
 `prototype` answers a product, interaction, state, visual, or business-rule question with a throwaway artifact. Prototype output is not backend contract unless source-backed or explicitly confirmed.
 
-## Case Studies
-
-See [`../examples/`](../examples/) for real Groundwork maintenance examples:
-
-- [`01-scope-first-verification`](../examples/01-scope-first-verification/) shows how readiness checks start with explicit scope and evidence.
-- [`02-prototype-contract-boundary`](../examples/02-prototype-contract-boundary/) shows how prototype output stays separate from backend contract truth.
-
 ## Artifact Discipline
 
 Groundwork is conversation-first by default. Write durable artifacts only when they support review, reuse, execution, verification, UAT, release, or handoff.
@@ -127,7 +120,7 @@ It is not a new runtime, plugin split, automation layer, task database, or subag
 
 ## Public Skill Expansion Boundary
 
-Groundwork no longer treats the public skill surface as fixed-count by default. It treats expansion as a quality-gated maintainer decision: accepted scope must explicitly authorize the new public skill, and the candidate must pass the shared [`SKILL-QUALITY.md`](../skills/_shared/SKILL-QUALITY.md) checklist, routing review, and positive, negative, and hard-negative eval expectations before merge.
+Groundwork no longer treats the public skill surface as fixed-count by default. It treats expansion as a quality-gated maintainer decision: accepted scope must explicitly authorize the new public skill, and the candidate must pass the shared [`SKILL-QUALITY.md`](../skills/_shared/SKILL-QUALITY.md) checklist, routing review, and positive, negative, and hard-negative behavior expectations before merge.
 
 Maintainers should first classify new behavior as one of five surfaces: public skill, shared reference, branch/workflow lens, router behavior, or one-off guide. Use the smallest surface that preserves a clear trigger contract and evidence boundary. A candidate that lacks a distinct invocation moment, conflicts with an existing route, or cannot state should-not-trigger cases should stay out of `skills/<name>/SKILL.md`.
 

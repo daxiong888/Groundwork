@@ -64,7 +64,7 @@ If true, dispatch may use `main_thread_direct`, `main_thread_readonly`, or one l
 - Use `skills/verify/SKILL.md` for evidence sufficiency/readiness, not implementation conformance alone.
 - Use `skills/handoff/SKILL.md` only for compact continuation/review context; handoff is not execution, clean review, verification, or closeout.
 
-## Eval Hooks
+## Regression Boundaries
 
 Reject: child implementer claiming `review_passed`; P1/API/migration/security/auth/permissions/data/package-schema/adapter work skipping clean review; verifier replacing clean review or implementation; handoff executing follow-up work; coordinator closeout based only on child self-check for complex work.
 

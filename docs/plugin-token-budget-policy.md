@@ -1,14 +1,14 @@
 # Plugin Token Budget Policy
 
-Target Reader: Groundwork maintainers changing runtime package contents, public skill entries, or Plugin Eval benchmark workflows.
-Reader Action Needed: Keep token discipline as a source-validation quality gate before claiming runtime-package or benchmark readiness.
-Decision Supported: Whether a change preserves the lightweight runtime boundary and public skill entry budget.
+Target Reader: Groundwork maintainers changing runtime package contents or public skill entries.
+Reader Action Needed: Keep token discipline as an ordinary source/package quality gate without promoting it into runtime evidence.
+Decision Supported: Whether a source change preserves the lightweight runtime boundary and public skill entry budget.
 Artifact Type: maintainer policy
-Source of Truth: `scripts/runtime_package_manifest.json`, `scripts/build_local_marketplace.py`, `scripts/check_runtime_package_boundary.py`, `scripts/check_skill_entry_budget.py`, `README.runtime.md`, and `docs/plugin-eval-clean-workflow.md`.
-Scope: Runtime package boundary, SKILL.md entry-file budget checks, benchmark trend recording, and source-validation CI gates.
-Out of Scope: Official tokenizer parity, Plugin Eval static budget replacement, release approval, marketplace publication, installed-cache refresh, UAT, or customer readiness.
-Evidence Level: Source-validation policy and local static checks only. Runtime evidence still requires installed-plugin/cache evidence named by the run.
-Safe to Share / Redaction Notes: Safe to share as-is; benchmark run outputs may contain local paths and should be reviewed before sharing.
+Source of Truth: `scripts/runtime_package_manifest.json`, `scripts/build_local_marketplace.py`, `scripts/check_runtime_package_boundary.py`, `scripts/check_skill_entry_budget.py`, and `README.runtime.md`.
+Scope: Runtime package boundary, SKILL.md entry-file budget checks, and ordinary source/package CI gates.
+Out of Scope: Official tokenizer parity, model benchmark workflows, Candidate direction, release approval, marketplace publication, installed-cache refresh, UAT, or customer readiness.
+Evidence Level: Source-validation policy and local static checks only. Runtime evidence requires a separately authorized direct receipt.
+Safe to Share / Redaction Notes: Safe to share as-is; generated manifests or command outputs may contain local context and should be reviewed before sharing.
 
 Groundwork treats token discipline as part of product quality. Public entry files must stay small enough to route the user to the right lazy-loaded contract, and the runtime package must stay separate from the maintainer repository.
 
@@ -16,7 +16,7 @@ Groundwork treats token discipline as part of product quality. Public entry file
 
 1. Runtime package is not the repository.
 
-The runtime package contains only `.codex-plugin/`, `skills/`, `hooks/hooks.json`, `scripts/codex-hooks/`, `README.md`, and `LICENSE`. Repository-only roots such as `.github/`, `docs/`, `evals/`, `artifacts/`, and `schemas/` must not enter the packaged plugin, and no scripts outside the exact observability hook allowlist may be packaged.
+The runtime package contains only `.codex-plugin/`, `skills/`, `hooks/hooks.json`, `scripts/codex-hooks/`, `README.md`, and `LICENSE`. Repository-only roots such as `.github/`, `docs/`, `tests/`, and `artifacts/` must not enter the packaged plugin, and no scripts outside the exact observability hook allowlist may be packaged.
 
 2. Evidence-first means claim-scoped evidence, not repository-wide search.
 
@@ -64,12 +64,4 @@ Current structural ceilings are intentionally explicit rather than estimated tok
 
 It also fails any public `SKILL.md` with a fenced inline example longer than 40 lines, and it blocks YAML schema-like blocks unless the file carries an explicit `token-budget: allow-full-yaml-schema` exemption.
 
-Line and reference checks are structural guardrails, not tokenizer estimates. Reference depth begins at the ten public skill entries; standalone shared documents do not inflate an execution-path metric merely because they cite other source contracts. These checks stop unexplained architecture growth and complement observed usage measurements; they do not claim official tokenizer parity.
-
-## Benchmark Trend
-
-Record static and observed token budget movement whenever a package-boundary or public-entry change is benchmarked. Use `docs/plugin-eval-clean-workflow.md` for the clean benchmark procedure and preserve the run manifest path.
-
-| Date | Change scope | Source gate | Static budget trend | Observed usage trend | Evidence |
-| --- | --- | --- | --- | --- | --- |
-| 2026-07-01 | PR 6 token budget guardrail source gates | `check_runtime_package_boundary.py`, `check_skill_entry_budget.py` | Baseline static budget trend recording added; no Plugin Eval replacement claimed | Not run in this source-validation change | Local source checks only |
+Line and reference checks are structural guardrails, not tokenizer estimates. Reference depth begins at the ten public skill entries; standalone shared documents do not inflate an execution-path metric merely because they cite other source contracts. These checks stop unexplained architecture growth; they do not claim official tokenizer parity, model behavior, or Candidate improvement.

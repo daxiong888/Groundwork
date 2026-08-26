@@ -1,5 +1,8 @@
 # Groundwork v0.3 PRD: GSD-lite Lifecycle State Contract
 
+> [!IMPORTANT]
+> 本文保留 v0.3 功能决策与实现历史。文中 `evals/` 路径、旧 Eval 命令和 suite 要求已由 `docs/prd-plugin-candidate-trial-migration-v1.md` 的减法迁移废止，只能作为历史事实，不能作为当前架构、命令或 Candidate authority。
+
 Target Reader: Groundwork maintainer implementing and reviewing v0.3.
 Reader Action Needed: Decide whether to add a narrow lifecycle-state contract and use this PRD as the implementation source of truth.
 Decision Supported: Whether v0.3 should add workstream-scoped `STATE.md` / optional `ROADMAP.md` without adding runtime, CLI, hooks, task DB, or new public skills.

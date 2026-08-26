@@ -34,7 +34,7 @@ Independent role separation and clean-review fan-out are required when a change 
 - a public skill, skill-routing policy, shared guardrail, adapter contract, package template, schema, shared fixture, state machine, or shared config;
 - runtime, router, selector, model, hook, or installed-package policy;
 - API/schema, security, permissions, privacy, data correctness, migration, or data-write behavior;
-- broad eval behavior, cross-module workflow behavior, or frontend/backend contract truth;
+- broad behavior, cross-module workflow behavior, or frontend/backend contract truth;
 - release, UAT, customer, runtime, browser, marketplace, cache-refresh, skill-quality, or public-surface approval.
 
 Fan out when any additional trigger applies: a P0/P1 finding; customer-visible or release/UAT risk; validation skipped, failed, partial, environment-limited, or followed by a validation-fix iteration; missing or materially redacted diff/evidence; stale or compacted coordinator context; multiple concurrent returns; the user requested independent review; a reviewer edited the change; or a previous review became stale after a material fix.

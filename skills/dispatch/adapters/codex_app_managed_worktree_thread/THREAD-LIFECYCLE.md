@@ -81,6 +81,6 @@ Archive readiness is not a thread state. Set `archive.status: ready` only after 
 
 Thread archive may remove a Codex-managed worktree, but it is not branch cleanup evidence. Record `archive.status` and `branch_cleanup.status` independently even when both are finalized in one approved closeout operation.
 
-## Eval Hooks
+## Regression Boundaries
 
 Reject child prompts/results that self-archive; advance `pendingWorktreeId` to `child_thread_created` without resolved child thread/worktree path; combine pending init with parent-thread implementation/manual fallback without approval; put review/merge/archive/cleanup values in `thread_status`; or claim that runtime return, review pass, merge, archive, or branch cleanup implies another axis.

@@ -5,7 +5,7 @@ Reader Action Needed: Preserve the Runtime Kernel / Maintainer Lab boundary and 
 Decision Supported: Where a behavior belongs, which component owns it, and which evidence can support a completion claim.
 Artifact Type: canonical current architecture.
 Source of Truth: `.codex-plugin/plugin.json`, `scripts/runtime_package_manifest.json`, the ten public `skills/*/SKILL.md` contracts, `scripts/codex-hooks/groundwork_route_registry.json`, and repo-local `AGENTS.md`.
-Scope: Groundwork current unreleased post-v0.5.7 source architecture, package boundary, route ownership, Dispatch contracts, optional observability, eval separation, and evidence boundaries.
+Scope: Groundwork current unreleased post-v0.5.7 source architecture, package boundary, route ownership, Dispatch contracts, optional observability, Candidate-direction separation, and evidence boundaries.
 Out of Scope: Historical design chronology, release approval, installed-cache equivalence, marketplace publication, UAT, or customer readiness.
 Evidence Level: current source contract; stronger runtime and release claims require their own evidence.
 Safe to Share / Redaction Notes: safe to share as-is.
@@ -41,7 +41,7 @@ Runtime-packaged files must be self-contained. A runtime Markdown command or loc
 
 ### Maintainer Lab
 
-The source checkout owns architecture docs, eval suites, schemas, artifacts, examples, research, historical baselines, build helpers, and source-only maintenance scripts. These are not installed runtime inputs and cannot prove installed-plugin behavior merely because they pass locally.
+The source checkout owns architecture docs, ordinary tests, the dormant Candidate Trial transport, artifacts, research, build helpers, and source-only maintenance scripts. These are not installed runtime inputs and cannot prove installed-plugin behavior merely because they pass locally. Removed legacy Eval material remains available only through Git history and cannot become current authority.
 
 Repo-specific maintenance rules belong in `AGENTS.md`, not in public runtime skill entrypoints.
 
@@ -115,8 +115,8 @@ The Codex App managed-worktree adapter is an internal lazy-loaded adapter contra
 Consumers must load or validate against that registry:
 
 - runtime prompt classifier;
-- eval routing schema;
-- workflow-state documentation tests;
+- ordinary route-registry and hook tests;
+- workflow-state source tests;
 - feedback-transition route/state/non-automatic validation;
 - public skill directory/description validation.
 
@@ -134,22 +134,23 @@ When enabled, runtime hooks may record minimized candidate metadata, hashes, red
 - present captured records as the denominator for every host event;
 - persist unredacted prompt or response text.
 
-Offline scoring, comparison, regression promotion, and analysis belong to the Maintainer Lab.
+Offline investigation, human comparison, proposal handling, and source-backed regression work belong to the Maintainer Lab.
 
-## Eval Architecture
+## Candidate Trial And Source Gates
 
-Maintainer eval responsibilities are separated as follows:
+Groundwork no longer has a repo-owned score/report/default-suite authority. Current responsibilities are deliberately narrow:
 
-- `evals/suite_registry.py`: default suite selection;
-- `evals/routing_schema.py`: shared eval vocabulary, loading public routes from the runtime registry;
-- `evals/case_oracles/`: fixture-owned case-specific behavior checks;
-- `evals/run_runtime.py`: orchestration, execution, result assembly, and CLI;
-- `evals/routing_summary.py`: shared routing summaries;
-- `evals/coverage-manifest.toml`: stdlib-readable coverage inventory.
+- `tests/`: ordinary deterministic source, package, lint, review-contract, Candidate-transport, and hook gates; no real model calls;
+- `scripts/run_plugin_candidate_trial.py`: dormant, plugin-agnostic transport for separately authorized paired epochs; it records direct receipts but never emits promotion or release verdicts;
+- repo-external D1/H1/S1 Packs: operator-controlled real prompts, rubrics, hashes, and per-epoch decision inputs;
+- `docs/quarantined-learnings.md`: the single proposal and human Candidate-decision owner;
+- `.github/workflows/source-package-gates.yml`: ordinary source/package CI only.
 
-Case-specific business logic must not be added directly to the generic runner. New fixture behavior belongs in a registered case oracle.
+Candidate receipts use `evidence_class: candidate_direction`. They cannot verify runtime, cache, marketplace, release, UAT, or customer readiness. Direct Groundwork runtime behavior requires a separately authorized `release_runtime_verification` receipt under `skills/_shared/RELEASE-EVIDENCE-CLAIM.md`; the Candidate runner is not a release phase.
 
-Tests should prefer schema, reference-graph, package-shape, and behavioral invariants over copying entire prose paragraphs into exact-string assertions.
+Old Eval runners, callable checkers, score/report schemas, active CSV suites, clean-benchmark wrappers, fixtures, baselines, and compatibility/shadow verdict paths are not part of the current tree or current architecture. Historical PRDs and Git history may describe them, but cannot revive them as current authority.
+
+Tests should prefer contract, reference-graph, package-shape, and behavioral invariants over copying entire prose paragraphs into exact-string assertions.
 
 ## Evidence Model
 

@@ -29,7 +29,7 @@ The adapter must stay synchronized with:
 - Result Package shape
 - conflict preflight and package admissibility
 - selector enforcement terminology
-- dispatch eval scenarios
+- dispatch regression cases
 
 Keeping those contracts in the same repository makes dispatch the source of truth while still preventing default runtime execution.
 

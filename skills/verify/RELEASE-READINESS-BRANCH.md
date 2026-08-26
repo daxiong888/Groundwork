@@ -38,7 +38,7 @@ For version/fix attribution, mutable or cross-session UAT, and fix/redeploy/reru
 - Documentation, schema, fixture, PRD, issue-pack, CSV parse, or git diff checks alone are source-validation evidence.
 - Source-validation evidence must set runtime, cache, release, UAT, marketplace, and cache-refresh evidence to `unverified` or `not_applicable` unless qualifying evidence is named.
 - Missing current `dist/`, installed cache, cache/source equivalence, runtime/browser evidence, release evidence, or user-provided evidence must be reported under `Not Covered`, `Unverified Claims`, or `blocked needs-info`.
-- Historical baselines, old release notes, old handoffs, old runtime trials, and `evals/baselines/` may orient a strict verification only when the user explicitly asks for historical, eval, baseline, release-evidence, or Groundwork-maintainer evidence, or when a current source artifact cites a specific baseline path.
+- Historical records, old release notes, old handoffs, and old runtime trials may orient a strict verification only when the user explicitly asks for historical, baseline, release-evidence, or Groundwork-maintainer evidence, or when a current source artifact cites a specific historical record.
 - Historical evidence never replaces current qualifying runtime, cache, release, UAT, marketplace, installed-plugin, or cache-refresh evidence.
 - Release readiness is not inferred from PRD acceptance, issue-pack completion, fixture pass, package completeness, clean review, or implementation self-check.
 - Codex App Handoff execution evidence is separate from Groundwork package/schema evidence and must be represented as commands or trials before it can support a release or handoff-readiness claim.

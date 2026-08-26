@@ -1,5 +1,8 @@
 # PRD v0.5: Prototype-first Skill Expansion and Runtime-aware Workflow Gates
 
+> [!IMPORTANT]
+> 本文保留 v0.5 功能决策与实现历史。文中 `evals/` 路径、旧 Eval 命令和 suite 要求已由 `docs/prd-plugin-candidate-trial-migration-v1.md` 的减法迁移废止，只能作为历史事实，不能作为当前架构、命令或 Candidate authority。
+
 Target Reader: Groundwork maintainers, implementation agents, reviewers, verifier roles, runtime adapter authors, and skill authors planning v0.5.
 Reader Action Needed: Review this consolidated PRD as the single v0.5 source of truth; do not use the former addenda as parallel acceptance sources.
 Decision Supported: Whether Groundwork should accept a prototype-first, role-separated, capability-aware, quality-gated skill expansion direction for v0.5, and which parts belong in MVP versus later releases.

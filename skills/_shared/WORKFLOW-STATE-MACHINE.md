@@ -1,13 +1,13 @@
 # Workflow State Machine
 
-Target Reader: public skills, eval authors, reviewers, and maintainers needing one route-transition contract.
+Target Reader: public skills, behavior-case authors, reviewers, and maintainers needing one route-transition contract.
 Reader Action Needed: validate accepted pre-state, produced state, legal next route, and stop gate.
 Decision Supported: whether a transition is legal, blocked, explicitly bypassed, or recommendation-level.
 Artifact Type: shared guardrail.
-Source of Truth: `scripts/codex-hooks/groundwork_route_registry.json`; this document, public skill trigger contracts, and eval prompt fields must validate against it.
+Source of Truth: `scripts/codex-hooks/groundwork_route_registry.json`; this document and public skill trigger contracts must validate against it.
 Scope: transitions for `to-prd`, `to-issues`, `triage`, `write-plan`, `prototype`, `implement`, `verify`, `handoff`, `dispatch`, `wiki`, plus direct/blocked behavior.
 Out of Scope: runtime adapter lifecycle, tracker mutation, task CRUD, automatic state writes, release/UAT approval, or replacing skill-specific contracts.
-Evidence Level: source-derived routing/eval contract; runtime behavior requires installed-plugin/cache evidence.
+Evidence Level: source-derived routing contract; runtime behavior requires installed-plugin/cache evidence.
 
 ## Core Rule
 
@@ -126,7 +126,7 @@ The loop exits at one of four boundaries: the scoped claim is verified; the next
 - `dispatch` accepts only accepted ready tasks or verified follow-up packages and must not claim runtime execution.
 - `prototype`, `handoff`, and `wiki` may preserve/explain state but must not upgrade mock observations, summaries, or synthesis into source truth, clean review, verification, runtime, release, or UAT evidence.
 
-## Eval Usage
+## Transition Reference
 
 | Scenario | expected_state_transition |
 | --- | --- |

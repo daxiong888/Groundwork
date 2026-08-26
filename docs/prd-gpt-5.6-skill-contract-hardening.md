@@ -1,15 +1,15 @@
 # PRD: GPT-5.6 Groundwork Skill 契约收敛
 
 Target Reader: Groundwork maintainers、skill authors、implementers、reviewers 与 eval maintainers。
-Reader Action Needed: 按 Phase 0 → Phase 1 的冻结顺序实施独立变更片；保持 Phase 2–4 未启动，除非其 evidence gate 通过并另有 accepted slice。
+Reader Action Needed: 仅作为 2026-07-31 的历史优化范围阅读；不要执行其旧 Eval baseline、Phase 2–4 或 Candidate 路径。
 Decision Supported: Groundwork 在保留当前 10 个 public skill 与渐进披露架构的前提下，如何先校正评测基线、再修确定性契约错误，并限制后续优化范围。
 Artifact Type: PRD
-Source of Truth: 当前仓库 `main` 的 `e070e1cdb75e649b651471ef53f2ade22bb7a8db` 源码；本 PRD 已被 maintainer 接受，是本轮优化的 canonical product decision。十份只读 skill 评估与 maintainer 提供的 GPT-5.6 Pro 评审属于决策输入，不是 runtime 证据。
+Source of Truth: 历史仓库快照 `e070e1cdb75e649b651471ef53f2ade22bb7a8db` 与当时 maintainer 决策；当前架构由 `docs/plugin-architecture.md` 和 `docs/prd-plugin-candidate-trial-migration-v1.md` 定义。
 Scope: active eval baseline sanitation；`handoff` schema authority；`dispatch` package-only/approval boundary；`to-issues` verification terminology、artifact-promotion 与 lifecycle-preflight trigger；`to-prd` durable reference-loading contract；对应的 source/deterministic validation；以及后续优化的 evidence gates。
 Out of Scope: Phase 2–4 的真实 skill 修改、全局提示词压缩、10 个 skill 的批量重写、public skill 拆分/合并/新增、统一跨模型矩阵、新通用评测平台、无证据的 description 改写、默认拆分 shared references、installed-cache/runtime/release/UAT/customer readiness。
 Evidence Level: 当前源码、直接 reference、十份有界静态评估、独立 GPT-5.6 Pro 评审和 OpenAI 官方文档共同支持的 planning/source-validation PRD；不证明隐式触发率、实际 reference read trace、runtime token、installed cache、release 或 UAT。
 Safe to Share / Redaction Notes: 可公开分享；不包含 secrets、credentials、PII、private URLs、生产数据、raw logs 或敏感 payload。
-Status: Accepted and frozen for implementation
+Status: Historical / superseded by the accepted Plugin Candidate Trial subtractive migration. The legacy Eval baseline and authority described here are removed from the current tree.
 Baseline: Groundwork `0.5.7`; `to-prd` baseline commit `e070e1c`; `skills/to-prd/SKILL.md` SHA-256 `f36c01865616069417f385d41b3ec4efe038023c4fa1516798899639d4f64745`
 Last Updated: 2026-07-31
 

@@ -58,15 +58,13 @@ What stays source-only:
 
 - `AGENTS.md`
 - `docs/`
-- `evals/`
-- `schemas/`
+- `tests/`
 - `artifacts/`
-- `examples/`
 - `research/`
 - maintainer scripts outside `scripts/codex-hooks/`
 - local state such as `.git/`, `.codegraph/`, `.groundwork/`, `.trellis/`, `dist/`, and `refer/`
 
-Bundled router-observability hooks are dormant by default. They no-op unless a project explicitly opts in or a controlled process force-enables them. Hook cards, local scores, docs, evals, and source checks are improvement evidence; they do not by themselves prove runtime behavior, cache refresh, release readiness, UAT readiness, customer readiness, marketplace readiness, or hook trust.
+Bundled router-observability hooks are dormant by default. They no-op unless a project explicitly opts in or a controlled process force-enables them. Hook candidates, historical records, docs, and ordinary source/package checks are improvement evidence; they do not by themselves prove runtime behavior, cache refresh, release readiness, UAT readiness, customer readiness, marketplace readiness, or hook trust.
 
 ## Install Locally
 
@@ -105,7 +103,7 @@ python3 scripts/build_local_marketplace.py --output ~/.codex/plugins/groundwork-
 codex plugin add groundwork@groundwork
 ```
 
-If the local marketplace was ever pointed directly at a working checkout, rebuild it with `scripts/build_local_marketplace.py`, re-add the generated marketplace path, and reinstall. A healthy installed cache should contain the runtime package only, not source-only docs, evals, artifacts, schemas, maintainer history, or local scratch state.
+If the local marketplace was ever pointed directly at a working checkout, rebuild it with `scripts/build_local_marketplace.py`, re-add the generated marketplace path, and reinstall. A healthy installed cache should contain the runtime package only, not source-only docs, tests, artifacts, maintainer history, or local scratch state.
 
 ## Privacy
 
@@ -116,5 +114,5 @@ Groundwork is local-first. It has no service backend, analytics endpoint, accoun
 - I want to use it: read [README.runtime.md](README.runtime.md) for the installed package contract, then install from the generated marketplace.
 - I want to understand the workflow: read [docs/maintainer-workflows.md](docs/maintainer-workflows.md).
 - I want to maintain or review it: read [AGENTS.md](AGENTS.md) and [docs/plugin-architecture.md](docs/plugin-architecture.md).
-- I want evidence details: inspect [evals/baselines/](evals/baselines/) and the relevant eval docs, but keep source-validation, runtime, cache, release, UAT, and customer-readiness claims separate.
+- I want evidence details: read [docs/release-evidence-claim-boundary.md](docs/release-evidence-claim-boundary.md).
 - I want version history: read [CHANGELOG.md](CHANGELOG.md).

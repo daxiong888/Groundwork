@@ -58,15 +58,13 @@ Groundwork 分为一个小型已安装运行时包和一个更大的维护者仓
 
 - `AGENTS.md`
 - `docs/`
-- `evals/`
-- `schemas/`
+- `tests/`
 - `artifacts/`
-- `examples/`
 - `research/`
 - `scripts/codex-hooks/` 之外的维护者脚本
 - 本地状态，如 `.git/`、`.codegraph/`、`.groundwork/`、`.trellis/`、`dist/` 和 `refer/`
 
-内置的路由可观测性 hook 默认处于休眠状态。除非项目显式启用，或受控流程强制启用，否则它们什么都不做。Hook 卡片、本地评分、文档、eval 和源码检查是改进证据；它们本身并不能证明运行时行为、缓存刷新、发布就绪、UAT 就绪、客户就绪、市场就绪或 hook 可信度。
+内置的路由可观测性 hook 默认处于休眠状态。除非项目显式启用，或受控流程强制启用，否则它们什么都不做。Hook 候选信号、历史记录、文档和普通源码/包检查是改进证据；它们本身并不能证明运行时行为、缓存刷新、发布就绪、UAT 就绪、客户就绪、市场就绪或 hook 可信度。
 
 ## 本地安装
 
@@ -105,7 +103,7 @@ python3 scripts/build_local_marketplace.py --output ~/.codex/plugins/groundwork-
 codex plugin add groundwork@groundwork
 ```
 
-如果本地 marketplace 曾直接指向工作检出目录，请用 `scripts/build_local_marketplace.py` 重新构建，重新添加生成的 marketplace 路径，并重新安装。一个健康的已安装缓存应只包含运行时包，不应包含仅属于源码仓库的 docs、evals、artifacts、schemas、维护者历史或本地临时状态。
+如果本地 marketplace 曾直接指向工作检出目录，请用 `scripts/build_local_marketplace.py` 重新构建，重新添加生成的 marketplace 路径，并重新安装。一个健康的已安装缓存应只包含运行时包，不应包含仅属于源码仓库的 docs、tests、artifacts、维护者历史或本地临时状态。
 
 ## 隐私
 
@@ -116,5 +114,5 @@ Groundwork 是本地优先的。它没有服务后端、分析端点、账号系
 - 我想使用它：阅读 [README.runtime.md](README.runtime.md) 了解已安装包的契约，然后从生成的 marketplace 安装。
 - 我想了解工作流：阅读 [docs/maintainer-workflows.md](docs/maintainer-workflows.md)。
 - 我想维护或评审它：阅读 [AGENTS.md](AGENTS.md) 和 [docs/plugin-architecture.md](docs/plugin-architecture.md)。
-- 我想看证据细节：查看 [evals/baselines/](evals/baselines/) 和相关 eval 文档，但请注意区分源码验证、运行时、缓存、发布、UAT 和客户就绪等不同声明。
+- 我想看证据细节：阅读 [docs/release-evidence-claim-boundary.md](docs/release-evidence-claim-boundary.md)。
 - 我想看版本历史：阅读 [CHANGELOG.md](CHANGELOG.md)。

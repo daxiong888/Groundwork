@@ -1,5 +1,8 @@
 # PRD v0.5.2: Public Wiki Skill and LLM Wiki Artifact Contract
 
+> [!IMPORTANT]
+> 本文保留 v0.5.2 功能决策与实现历史。文中 `evals/` 路径、旧 Eval 命令和 suite 要求已由 `docs/prd-plugin-candidate-trial-migration-v1.md` 的减法迁移废止，只能作为历史事实，不能作为当前架构、命令或 Candidate authority。
+
 Target Reader: Groundwork maintainers, skill authors, implementers, clean reviewers, verifiers, handoff authors, and workflow designers planning project-level long-lived knowledge support.
 Reader Action Needed: Review this PRD as the proposed v0.5.2 planning source of truth for adding a public `wiki` skill backed by a shared LLM Wiki artifact contract, templates, route boundaries, and hard-negative evals.
 Decision Supported: Whether Groundwork should accept `wiki` as a tenth public skill source-validation release for creating, maintaining, querying, auditing, updating, deprecating, and archiving project-level LLM Wiki artifacts while preserving source-truth and verification boundaries.

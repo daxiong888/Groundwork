@@ -1,5 +1,8 @@
 # PRD v0.3.3: Managed Worktree Lifecycle, Clean Review Fan-out, and Serial Dispatch Closeout
 
+> [!IMPORTANT]
+> 本文保留 v0.3.3 功能决策与实现历史。文中 `evals/` 路径、旧 Eval 命令和 suite 要求已由 `docs/prd-plugin-candidate-trial-migration-v1.md` 的减法迁移废止，只能作为历史事实，不能作为当前架构、命令或 Candidate authority。
+
 Target Reader: Groundwork maintainers, Codex App managed worktree adapter implementers, dispatch reviewers, and future implementation agents working from the v0.3.2 dispatch runtime router.
 Reader Action Needed: Use this PRD to implement the v0.3.3 hardening layer for managed worktree thread lifecycle, review fan-out, merge-back, archive, branch cleanup, stable runtime identity, Goal Mode enforcement, and serial dispatch barriers.
 Decision Supported: Whether Groundwork should add lifecycle and closeout protocols behind the existing `dispatch` runtime router without expanding the public skill surface.

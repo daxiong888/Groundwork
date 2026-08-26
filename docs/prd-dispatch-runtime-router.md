@@ -1,5 +1,8 @@
 # PRD v2：Groundwork Dispatch Runtime Router 与多运行时适配层
 
+> [!IMPORTANT]
+> 本文保留 dispatch 功能决策与实现历史。文中 `evals/` 路径、旧 Eval 命令和 suite 要求已由 `docs/prd-plugin-candidate-trial-migration-v1.md` 的减法迁移废止，只能作为历史事实，不能作为当前架构、命令或 Candidate authority。
+
 ## Target Reader
 
 本地 Codex 实施线程、Groundwork 维护者、`codex-managed-worktree-threads` 维护者、未来 runtime adapter 维护者。

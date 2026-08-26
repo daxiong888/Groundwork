@@ -69,7 +69,7 @@ Keep these layers separate in packages and final reports:
 | User-observed model menu seed | Dated visible labels for one observed surface | Universal availability, API support, per-subagent support, per-worktree support, runtime execution, or selector enforcement |
 | Official docs | Dated product guidance when cited and current enough for the claim | User-specific availability, installed plugin behavior, or selector enforcement |
 | Community evidence | Supporting signal or research context | Mandatory acceptance gate, representative consensus, or runtime/tool enforcement |
-| Local characterization eval | Groundwork-specific fit for a profile or workflow | Universal benchmark, release readiness, or customer/UAT readiness |
+| Local characterization trial | Groundwork-specific fit for a profile or workflow | Universal benchmark, release readiness, or customer/UAT readiness |
 
 ### Canonical Runtime Evidence Layer Enum
 

@@ -4,7 +4,7 @@ Target Reader: Groundwork maintainers hardening existing public skills.
 Reader Action Needed: Apply a compact, repeatable pattern when adding skill guardrails.
 Decision Supported: Whether a hardening rule belongs in the owning skill or in `skills/_shared/`, and what minimum verification is required.
 Scope: Maintainer-facing pattern for `CHECKPOINTS`, `Failure Branches`, `Do Not`, ownership boundaries, issue references, and validation expectations.
-Out of Scope: General skill authoring, new public skills, runtime eval design, issue tracker mutation, and copying one skill's concrete guardrails into another skill.
+Out of Scope: General skill authoring, new public skills, model-trial design, issue tracker mutation, and copying one skill's concrete guardrails into another skill.
 Evidence Level: Derived from PR #35's `to-prd` hardening trial, issue #42 acceptance criteria, and existing hardening examples across Groundwork skills.
 
 Use this pattern when a hardening issue improves an existing Groundwork skill by making real failure boundaries easier to scan and harder to bypass. The goal is not to make every skill longer. Each hardening increment for one skill should normally add only 15-30 lines, biased toward incident-backed guardrails that would have prevented or shortened a real failure.
@@ -48,7 +48,7 @@ Keep broad safety or platform policy out of a skill unless the owning workflow c
 
 ## Hardening Workflow
 
-Before editing a skill, identify the real failure pattern: the incident, review finding, eval failure, or maintainer correction that the new guardrail should catch. Then decide the smallest owning surface:
+Before editing a skill, identify the real failure pattern: the incident, review finding, behavior failure, or maintainer correction that the new guardrail should catch. Then decide the smallest owning surface:
 
 1. Start in the owning skill when the failure is workflow-specific.
 2. Extract to `skills/_shared/` only after the three-skill repetition threshold or a true cross-skill runtime need is met.
@@ -65,11 +65,11 @@ After a hardening change, run the fastest checks that prove the touched surface 
 ```bash
 git diff --check
 python3 -m json.tool .codex-plugin/plugin.json >/dev/null
-python3 -c "import csv, pathlib; [list(csv.DictReader(open(p, newline=''))) for p in pathlib.Path('evals/prompts').glob('*.csv')]; print('csv ok')"
+python3 -m unittest <narrowest-tests.module>
 ```
 
 Also run a link or path check for any new reference. For docs-only changes with no inbound reference, file existence is enough.
 
-Run a runtime-neutrality check against the diff or changed files. The report must not claim installed plugin cache refresh, runtime evidence, a full eval suite, browser evidence, or release readiness unless those checks actually ran.
+Run a runtime-neutrality check against the diff or changed files. The report must not claim installed plugin cache refresh, runtime evidence, model-trial coverage, browser evidence, or release readiness unless those checks actually ran.
 
 Finally, get a clean subagent dry-run or equivalent read-only re-review focused on whether the pattern reduces duplication instead of adding ceremony. The reviewer should check that new rules are incident-backed, compact, owned by the right surface, and not copied from another skill without evidence.

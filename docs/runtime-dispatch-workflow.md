@@ -152,11 +152,10 @@ Remote writes, destructive actions, branch deletion, commit, push, PR creation, 
 
 Use the narrowest relevant checks first:
 
-- `evals/prompts/dispatch.csv` for base route and package behavior;
-- `evals/prompts/dispatch-managed-worktree-lifecycle.csv` for adapter and closeout boundaries;
-- `evals/prompts/serial-dispatch-barrier.csv` for dependent-write barriers;
-- `evals/prompts/clean-review-fanout.csv` for fresh review and coordinator-intake boundaries;
-- `evals/test_progressive_disclosure.py` for base/delta ownership and Result Package vocabulary;
+- `python3 -m unittest tests.test_pipeline_ownership` for base/delta ownership and Result Package vocabulary;
+- `python3 -m unittest tests.test_review_contract` for fresh review, coordinator intake, and closeout boundaries;
+- `python3 -m unittest tests.test_route_registry` for shared route ownership;
+- `python3 -m unittest tests.test_runtime_package_manifest` for generated package ownership;
 - `scripts/check_runtime_package_boundary.py` for packaged reference integrity and complexity budgets.
 
-These are source and generated-package checks unless the run separately names installed-plugin/cache equivalence and actual runtime evidence.
+These are source and generated-package checks only. Runtime evidence requires a separately authorized direct `release_runtime_verification` receipt.

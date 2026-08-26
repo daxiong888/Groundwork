@@ -43,7 +43,7 @@ Even on this fast path, keep the verify safety boundary: concrete claim, `Covere
 
 Start from the user-visible claim and the smallest current evidence set that can prove or disprove it: user-provided evidence or paths, current source/diff/tests/check output, named artifacts, runtime/browser evidence when requested, and installed cache or local `dist/` only when the claim concerns plugin install, cache, marketplace, package, or release readiness.
 
-Do not default to `evals/baselines/`, `artifacts/`, `research/`, `examples/`, historical release notes, old handoffs, old runtime trials, or broad `docs/prd-v*` archaeology.
+Do not default to `artifacts/`, `research/`, historical release notes, old handoffs, old runtime trials, Git-history archaeology, or broad `docs/prd-v*` archaeology.
 
 ## Required Output
 

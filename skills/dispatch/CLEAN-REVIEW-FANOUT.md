@@ -5,7 +5,7 @@ Reader Action Needed: Decide when coordinator intake is enough, when completed i
 Decision Supported: Whether a completed result/review package can stay in coordinator intake or must route to `clean_reviewer` / read-only `codex_subagent`.
 Artifact Type: shared guardrail
 Source of Truth: PRD v0.3.3 FR-7/Issue 6, dispatch runtime adapter profiles, `skills/_shared/REVIEW-LOOP.md`, and `skills/_shared/LOW-RISK-COORDINATOR-INTAKE.md`.
-Scope: Clean-review routing thresholds, package-only reviewer context, read-only actions, coordinator boundaries, and eval hooks.
+Scope: Clean-review routing thresholds, package-only reviewer context, read-only actions, coordinator boundaries, and regression boundaries.
 Out of Scope: Public skill creation, runtime execution, reviewer file edits, automatic subagent spawning, self-approval, final readiness, remote writes, commits, pushes, PRs, archive, or branch cleanup.
 Evidence Level: Source-validation policy for clean-review routing.
 Safe to Share / Redaction Notes: Safe to share as-is; contains no secrets, credentials, PII, private logs, or production payloads.
@@ -52,6 +52,6 @@ review_findings
 
 When findings require writes, route remediation to a write owner, keep it scoped, require self-check/checks/risks, mark previous review stale when material files changed, and rerun clean review before verify, merge-back, archive, branch cleanup, or closeout claims unless valid low-risk intake applies.
 
-## Eval Hooks
+## Regression Boundaries
 
 Reject coordinator-only deep review for large/multiple/high-risk returns, self-review as clean review, reviewer edits, parent-history/forked/nested reviewers as clean-review pass, missing validation guessed as pass, clean review without covered/not-covered scope, low-risk intake relabeled as clean review, and any clean-review pass that claims final readiness/archive/merge/branch/remote/runtime/release/UAT.

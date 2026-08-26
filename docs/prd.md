@@ -1,5 +1,8 @@
 # Groundwork MVP PRD
 
+> [!IMPORTANT]
+> This is the historical v0.1 product PRD. It preserves the original MVP decisions but is not the current architecture, command, evaluation, or release authority. Use `docs/plugin-architecture.md`, current shared contracts, and `docs/prd-plugin-candidate-trial-migration-v1.md` for the current state; removed v0.1 Eval material remains available only through Git history.
+
 ## Problem Statement
 
 Codex is already useful for day-to-day engineering work, but complex R&D work still loses shape across PRD writing, task slicing, prototype exploration, implementation, verification, UAT evidence, and handoff. Existing workflow frameworks contain useful patterns, but adopting any full framework would add too much installation, ceremony, role-play, runtime ownership, or task-system lock-in.

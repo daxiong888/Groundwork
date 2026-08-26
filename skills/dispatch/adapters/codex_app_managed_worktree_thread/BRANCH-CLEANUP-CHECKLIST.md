@@ -58,6 +58,6 @@ Remote deletion is never automatic. It requires explicit approval, remote branch
 | Dirty/untracked/stash state unknown or may belong to branch | `retain_branch` or `human_decision` |
 | Remote deletion approval missing or force deletion needed | `human_decision` |
 
-## Reporting And Eval Hooks
+## Reporting And Regression Boundaries
 
 Report whether this is a recommendation, approval gate, or completed runtime action; cite branch/protection/merge/worktree evidence; keep archive, worktree cleanup, branch cleanup, and merge-back separate. Reject packages that treat archive as branch cleanup, delete unknown/high-risk branches, delete remote branches without approval, force-delete without human decision, or use broad `cleanup_action` instead of `branch_cleanup`.

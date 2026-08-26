@@ -1,4 +1,4 @@
-"""Runtime-safe route and evidence marker detection shared by hooks and evals."""
+"""Runtime-safe route and evidence marker detection used by hooks and ordinary source tests."""
 
 import json
 from pathlib import Path

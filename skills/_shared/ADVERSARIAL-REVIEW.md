@@ -4,7 +4,7 @@ Purpose: internal falsification lens for material claims; source-validation guid
 
 ## Public Surface Boundary
 
-Do not create `skills/adversarial-review/SKILL.md` for this behavior by default. Adversarial review is a shared lens inside existing routes unless an accepted public-surface scope proves a distinct invocation moment, route negatives, hard-negative evals, skill-quality review, and maintainer acceptance.
+Do not create `skills/adversarial-review/SKILL.md` for this behavior by default. Adversarial review is a shared lens inside existing routes unless an accepted public-surface scope proves a distinct invocation moment, route negatives, hard-negative behavior evidence, skill-quality review, and maintainer acceptance.
 
 ## Core Definition
 

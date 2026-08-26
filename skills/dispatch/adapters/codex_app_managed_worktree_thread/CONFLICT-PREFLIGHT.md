@@ -68,7 +68,7 @@ Treat these as conflict or serialization signals:
 
 - overlapping intended pathspecs;
 - shared package schemas, adapter contracts, public interfaces, state machines, or generated artifacts;
-- shared fixture, eval suite, route, migration, config, or lockfile surface;
+- shared fixture, behavior-case surface, route, migration, config, or lockfile surface;
 - dependency on a prior task's changed source, tests, docs contract, result package shape, or merge-back protocol;
 - same `conflict_group` without an explicit merge-order hint;
 - unknown base, unknown merge-back state, unknown clean-review state, or unknown base-refresh state.

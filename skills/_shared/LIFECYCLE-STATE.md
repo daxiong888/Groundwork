@@ -126,4 +126,4 @@ Explicit project-global summaries stay conversation-only by default, or become n
 
 ## Validation
 
-Evals should cover: small tasks reject lifecycle state; pause/resume references state; verify gaps recover; re-verify closes stale gaps; roadmap only for multi-milestone contexts; `.planning`, `.gsd`, and project-global lifecycle state are rejected; handoff references state without owning it; state never overrides canonical source truth.
+Behavior evidence should cover: small tasks reject lifecycle state; pause/resume references state; verify gaps recover; re-verify closes stale gaps; roadmap only for multi-milestone contexts; `.planning`, `.gsd`, and project-global lifecycle state are rejected; handoff references state without owning it; state never overrides canonical source truth.

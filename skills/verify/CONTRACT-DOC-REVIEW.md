@@ -48,6 +48,6 @@ Rules:
 
 - Check contract claims against backend source, API schema, docs, or explicitly confirmed user evidence.
 - Mark missing backend source truth as `unverified`; do not convert a draft into fact.
-- If no draft or backend/source truth is present in the current eval context, return `blocked` or `unverified` after the scope block instead of inventing endpoint, request, response, or error details.
+- If no draft or backend/source truth is present in the current review context, return `blocked` or `unverified` after the scope block instead of inventing endpoint, request, response, or error details.
 - Keep implementation notes out of frontend-facing docs unless the target reader needs them to call the API.
 - Use `skills/_shared/FRONTEND-CONTRACT-DOC.md` when creating or rewriting a frontend-facing contract artifact.

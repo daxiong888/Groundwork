@@ -12,7 +12,7 @@ Apply `EB-VERIFY-001` from `skills/_shared/EVIDENCE-BOUNDARY.md` before using co
 
 Questions asking whether limited evidence can support a stronger label run as `verify-lite` unless the user explicitly asks for TASK/PRD conformance, runtime/cache/release readiness, or another strict branch.
 
-Read only the claim, user-provided evidence/paths, and current conversation evidence. Do not search historical baselines, artifacts, research, examples, old handoffs, or broad PRDs unless explicitly requested or directly cited by current source.
+Read only the claim, user-provided evidence/paths, and current conversation evidence. Do not search historical baselines, artifacts, research, old handoffs, Git history, or broad PRDs unless explicitly requested or directly cited by current source.
 
 Use this safe shape:
 
