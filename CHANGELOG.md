@@ -4,25 +4,28 @@ All notable changes to Groundwork are documented in this file.
 
 ## Unreleased
 
+## v0.5.8 - 2026-08-26
+
 ### Added
 
-- Added conditional prototype annotation presentation decisions with stable `Annotation ID` carry-through, disposition-specific audience-source or companion-reference fields, and targeted prototype/handoff/verify regression coverage.
-- Added targeted UAT evidence-window and cross-boundary contract-lineage contracts with canonical fixture binding, conservative evidence boundaries, and deterministic schema/output checks.
+- Added a dormant, standard-library-only Candidate Trial transport with fresh sealed workspaces, AB/BA order, SHA-bound package receipts, repo-external output, and no automatic retry, verdict, promotion, release, or runtime claim.
+- Added ordinary deterministic owner tests and a source/package GitHub Actions gate for runtime boundaries, hook contracts, public-surface invariants, skill entry budgets, Candidate transport behavior, and stale old-Eval references.
+- Added a Simplified Chinese user-facing README alongside the canonical English README.
 
 ### Changed
 
-- Hardened runtime-packaged `prototype`, `verify`, `handoff`, and shared evidence/reference contracts while preserving the existing ten-skill public surface and conditional progressive-disclosure paths.
+- Replaced the heavyweight legacy Eval platform with a plugin-agnostic Candidate-direction loop that supports one bounded human proposal decision; the public skill surface remains unchanged at ten skills.
+- Hardened conditional prototype annotations, deployment-aware UAT evidence windows, cross-boundary contract lineage, `to-prd` acceptance and durable-reference loading, `to-issues` terminology, native handoff schema ownership, Dispatch execution ownership, and clean-review proportionality and stopping rules.
+- Bumped plugin metadata to `0.5.8` for the Candidate Trial migration and post-`v0.5.7` skill-contract fixes.
 
-### Fixed
+### Removed
 
-- Made full prompt-schema validation cover targeted-only and fixture-only rows before runtime filtering; reject malformed, header-only/zero-row, incomplete trace-ready, non-canonical-ID, and confusable-label CSV/source contracts; and bind the sole legacy internal route exception to the registered, non-symlink canonical repository `evals/prompts/goal-contract.csv`.
-- Prevented lossy suite/group/case/prompt-file trial identities and case-result filename collisions through exact selector identities plus reversible artifact encoding; also rejected arbitrary same-named browser/runtime executables, non-canonical runtime runners, collection/setup failures masquerading as QA reproductions, and Playwright option values masquerading as observed targets.
-- Tightened contract-lineage negative polarity across every clause of each structured implement/verify/write-plan field, including cross-script and modal/adjectival/adverbial non-assertive language; also tightened bidirectional installed/source-root independence, canonical HTML body visibility including non-presentational containers, annotation purpose binding, exact browser target identity, and forbidden UAT-window reverse constraints across headings, fields, tables, definition lists, hidden, non-rendered, Unicode, and contradictory variants.
+- Removed the old Eval runners, schedulers, prompt suites, baselines, score/report pipeline, Eval-owned schemas and fixtures, CI workflow, and duplicate platform documentation after moving still-valid deterministic safeguards to their actual source/package/hook owners.
 
 ### Notes
 
-- This section describes source changes after the `v0.5.7` tag. The current source is unreleased and must not be described as the released `v0.5.7` artifact; plugin metadata intentionally remains `0.5.7` until a separate release scope approves a version bump.
-- Local source, unit, schema, and generated-package validation remain distinct from installed-cache equivalence, runtime execution, release publication, UAT, and customer-readiness evidence.
+- Candidate Trial receipts have `evidence_class: candidate_direction`. They support one human proposal decision only and do not establish generic cross-plugin quality, future-model stability, runtime behavior, release readiness, UAT readiness, or customer readiness.
+- Local source validation, generated-package validation, installed-cache equivalence, direct runtime execution, release publication, UAT, and customer readiness remain separate evidence layers.
 
 ## v0.5.7 - 2026-07-15
 
