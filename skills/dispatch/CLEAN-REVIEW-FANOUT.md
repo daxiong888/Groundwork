@@ -16,7 +16,7 @@ Clean review is independent fresh-context review of a completed package. It is n
 
 Coordinator intake may check package completeness, reject incomplete packages, decide whether low-risk intake applies, or prepare a clean-review package. It must not perform deep review for large/multiple/high-risk packages, infer hidden context, approve closeout/archive/final readiness from child self-check, or edit files.
 
-Use `skills/_shared/REVIEW-LOOP.md` for the post-implementation loop. Remediation changes make prior clean review stale unless a recorded low-risk coordinator-intake exception applies.
+Use `skills/_shared/REVIEW-LOOP.md` for the post-implementation loop, including finding proportionality and no-delta stop rules. Remediation changes make prior clean review stale unless a recorded low-risk coordinator-intake exception applies.
 
 ## Fan-out Triggers
 
@@ -41,17 +41,17 @@ Reviewer rules: read-only, `file_edits_allowed: false`, no nested agents, no par
 ```text
 review_findings
 - verdict: pass | needs_remediation | blocked | unverified
-- findings: P0/P1/P2/P3 ordered
+- findings: [] | grounded P0/P1/P2/P3 findings ordered by severity
 - coverage: covered / not_covered
 - evidence:
 - missing_evidence:
 - recommended_next_route: verify | triage | dispatch_write_task | human_decision | done
 ```
 
-`pass` means no blocking package-level conformance issue within supplied evidence. It is not UAT, release, customer readiness, archive, merge-back, branch cleanup, or final acceptance. Covered/not-covered scope is mandatory.
+`pass` means no grounded P0-P2 conformance finding remains within supplied scope; `findings: []` is valid and informative, and a grounded P3 may accompany `pass` without requiring remediation. `needs_remediation` requires at least one reachable P0-P2 finding. `blocked` means required source, diff, scope, or validation input prevents a bounded review; `unverified` means supplied evidence cannot support `pass` although bounded findings may still be reported. Every finding traces to supplied source truth, an acceptance criterion, a contract or invariant, or required review evidence and names a reachable consequence. Omit theoretical possibilities, unrequested future-proofing, optional confidence work, duplicate validation, and personal style preferences unless that review class was requested. Do not request another check or review without a live uncertainty and a materially different next action; unchanged material, evidence, and scope stop coordinator-generated confidence loops, while an explicit user request for another independent review remains a fan-out trigger. A `pass` remains implementation-conformance evidence only, not UAT, release, customer readiness, archive, merge-back, branch cleanup, or final acceptance; covered/not-covered scope is mandatory.
 
 When findings require writes, route remediation to a write owner, keep it scoped, require self-check/checks/risks, mark previous review stale when material files changed, and rerun clean review before verify, merge-back, archive, branch cleanup, or closeout claims unless valid low-risk intake applies.
 
 ## Regression Boundaries
 
-Reject coordinator-only deep review for large/multiple/high-risk returns, self-review as clean review, reviewer edits, parent-history/forked/nested reviewers as clean-review pass, missing validation guessed as pass, clean review without covered/not-covered scope, low-risk intake relabeled as clean review, and any clean-review pass that claims final readiness/archive/merge/branch/remote/runtime/release/UAT.
+Reject coordinator-only deep review for large/multiple/high-risk returns, self-review as clean review, reviewer edits, parent-history/forked/nested reviewers as clean-review pass, missing validation guessed as pass, clean review without covered/not-covered scope, low-risk intake relabeled as clean review, manufactured P3 findings, coordinator-generated no-delta review, and any clean-review pass that claims final readiness/archive/merge/branch/remote/runtime/release/UAT.

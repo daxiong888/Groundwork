@@ -23,11 +23,11 @@ Use this lens when:
 - handoff must preserve the strongest remaining risk and do-not-assume boundary;
 - public skill, shared guardrail, adapter contract, package template, schema, fixture, state-machine, or shared-config changes need stricter review.
 
-Do not use it as ceremony for tiny mechanical edits, direct answers, or low-risk local changes where no material claim, route, artifact, or evidence boundary would change.
+Do not use it as ceremony for tiny mechanical edits, direct answers, low-risk local changes, or another attack round without a material-change, evidence, hypothesis, or claim-scope delta.
 
 ## Lens Questions
 
-Use the questions internally. Surface only adversarial findings that change scope, verdict, evidence needs, or remaining risk; do not print the full lens by default.
+Use the questions internally. Surface only findings that change scope, verdict, evidence needs, or remaining risk and are reachable through supported use, current data, supplied evidence, or a stated trust boundary. Theoretical possibilities, optional future-proofing, duplicate confidence work, and personal preferences are not adversarial findings. Stop after the strongest live counterexample is resolved or none remains; preserve a surviving conclusion plainly and do not force the full lens or another objection. Requested security, migration, verification, review, and real trust boundaries remain in scope.
 
 ```text
 Adversarial Review Lens

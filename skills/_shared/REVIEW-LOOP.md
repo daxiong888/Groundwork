@@ -19,7 +19,7 @@ Material implementation follows this loop:
 ```text
 implementation + self-check
 -> fresh read-only clean review
--> scoped remediation when findings exist
+-> scoped remediation when grounded P0-P2 findings require changes
 -> self-check the remediation
 -> fresh read-only clean review of the latest diff
 -> verify/readiness only when the claimed boundary needs it
@@ -56,9 +56,9 @@ For material work, reports name `Role`, `Self-check Evidence`, `Clean Review Evi
 ## Evidence Rules
 
 - `Self-check Evidence`: checks, tests, diff inspection, and conformance notes produced by the same role/session that designed or implemented the change.
-- `Clean Review Evidence`: findings or pass evidence from a fresh read-only independent reviewer that did not edit the reviewed material.
+- `Clean Review Evidence`: findings or pass evidence from a fresh read-only independent reviewer that did not edit the reviewed material. A finding must trace to supplied source truth, an AC, contract, invariant, or required evidence and name a consequence reachable through supported use, current data, or a stated trust boundary; `findings: []` is valid, and theoretical possibilities, optional confidence work, duplicate validation, style preferences, or manufactured P3s are not findings.
 - `Independent Verification Evidence`: explicit-scope evidence from an independent verifier or qualifying tool-backed run for the claimed boundary.
-- A clean-review pass is implementation-conformance evidence only. It is not final readiness, UAT, release, runtime, browser, merge, archive, branch cleanup, commit, push, PR, or customer approval.
+- A clean-review pass means no grounded P0-P2 conformance finding remains within supplied scope; grounded P3 observations may accompany `pass` but are not remediation requirements. It is implementation-conformance evidence only, not final readiness, UAT, release, runtime, browser, merge, archive, branch cleanup, commit, push, PR, or customer approval. Requested security, migration, verification, role separation, fresh review after material remediation, and evidence boundaries remain required.
 
 ## Review Loop States
 
@@ -90,7 +90,7 @@ review_loop:
   next_route: "clean_reviewer | dispatch_write_task | verify | triage | human_decision | done"
 ```
 
-Set `next_review_required: true` whenever the latest material change lacks current clean-review evidence. Source loop state in a review input package is context, not proof that review passed.
+Set `next_review_required: true` whenever the latest material change lacks current clean-review evidence. Source loop state in a review input package is context, not proof that review passed. Before requesting another check or review round, name the live uncertainty and how different outcomes change the next action; unchanged material, evidence, and claim scope stop only coordinator-generated confidence loops, while an explicit user request for another independent review remains a fan-out trigger.
 
 ## Low-Risk Coordinator Intake
 
@@ -123,7 +123,7 @@ This status is not `clean_review_passed`, independent verification, readiness, m
 
 ## Remediation Flow
 
-When review returns findings:
+When review returns grounded P0-P2 findings that require changes:
 
 1. Keep review read-only and route writes through the owning implementation path.
 2. Fix only cited findings or explicitly accepted gap-closure items.
@@ -132,7 +132,7 @@ When review returns findings:
 5. Mark the previous review stale when material files changed.
 6. Route the latest diff to a fresh independent reviewer unless the complete low-risk exception applies.
 
-Do not expand a review finding into unrelated cleanup or let the reviewer directly fix and approve the same material change.
+Do not expand a review finding into unrelated cleanup or let the reviewer directly fix and approve the same material change. Pass-level P3 observations stay outside this flow unless separately accepted as new work.
 
 ## Hard Failures
 
@@ -140,7 +140,7 @@ Do not expand a review finding into unrelated cleanup or let the reviewer direct
 - A reviewer edits the change and still claims clean-review authority for it.
 - A previous review is reused after a material fix.
 - Low-risk intake is used for material work, without complete eligibility, or as clean-review/readiness evidence.
-- A pass omits reviewed scope or covered/not-covered evidence.
+- A pass omits reviewed scope or covered/not-covered evidence, or a reviewer manufactures findings, severity, or a coordinator-generated repeat without a grounded violation, live evidence gap, or material delta.
 - Prompt preference is presented as reviewer, subagent, child-thread, runtime, cache, or selector execution evidence.
 
 ## Skill Ownership
