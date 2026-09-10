@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+import importlib.util
 import os
 import re
 import subprocess
@@ -28,6 +29,107 @@ def run_hook(event_name, event, cwd, env=None):
         env=hook_env,
         check=True,
     )
+
+
+class ToolResponseTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        spec = importlib.util.spec_from_file_location("telemetry_result_tests", HOOKS / "groundwork_router_telemetry.py")
+        cls.telemetry = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.telemetry)
+
+    def summary(self, response):
+        return self.telemetry.tool_response_summary({"tool_response": response})
+
+    def test_completed_status_and_nonzero_exit_are_independent_persisted_facts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            event = {
+                "cwd": str(root), "session_id": "s1", "turn_id": "t1",
+                "tool_name": "Bash", "tool_use_id": "check-1",
+                "tool_response": {"status": "completed", "exit_code": 1},
+            }
+            result = run_hook("PostToolUse", event, root, {"GROUNDWORK_ROUTER_OBSERVABILITY": "1"})
+            self.assertEqual(result.stderr, "")
+            row = json.loads((root / ".groundwork/harness/router-observability/s1/t1/tool-events.jsonl").read_text())
+            self.assertEqual(row["tool_response_status"], "completed")
+            self.assertEqual(row["tool_response_exit_code"], 1)
+            self.assertIs(type(row["tool_response_exit_code"]), int)
+            self.assertEqual(row["tool_response_status_sources"], ["tool_response.status"])
+            self.assertEqual(row["tool_response_exit_code_sources"], ["tool_response.exit_code"])
+            self.assertEqual(row["tool_response_status_unknown_reason"], "")
+            self.assertEqual(row["tool_response_exit_code_unknown_reason"], "")
+            self.assertEqual(row["tool_response_acceptance"], "unknown")
+
+    def test_missing_and_arbitrary_json_responses_remain_unknown(self):
+        missing = self.telemetry.tool_response_summary({})
+        self.assertFalse(missing["tool_response_present"])
+        self.assertEqual(missing["tool_response_status_unknown_reason"], "response_missing")
+        self.assertEqual(missing["tool_response_exit_code_unknown_reason"], "response_missing")
+        for response in (None, False, 0, "", "Process exited with code 0", '{"exit_code": 0}', [], [{"exit_code": 0}], {}, {"output": "success"}, {"result": {"exit_code": 0}}, {"isError": False}):
+            with self.subTest(response=response):
+                summary = self.summary(response)
+                self.assertTrue(summary["tool_response_present"])
+                self.assertTrue(summary["tool_response_sha256"])
+                self.assertEqual(summary["tool_response_status"], "")
+                self.assertIsNone(summary["tool_response_exit_code"])
+                self.assertTrue(summary["tool_response_status_unknown_reason"])
+                self.assertTrue(summary["tool_response_exit_code_unknown_reason"])
+                self.assertEqual(summary["tool_response_acceptance"], "unknown")
+
+    def test_exit_aliases_accept_only_json_integers_and_zero_is_not_acceptance(self):
+        for field in ("exit_code", "returncode", "rc"):
+            for value in (0, 1, -9):
+                with self.subTest(field=field, value=value):
+                    summary = self.summary({field: value})
+                    self.assertEqual(summary["tool_response_exit_code"], value)
+                    self.assertEqual(summary["tool_response_exit_code_sources"], [f"tool_response.{field}"])
+                    self.assertEqual(summary["tool_response_status"], "")
+                    self.assertEqual(summary["tool_response_acceptance"], "unknown")
+            for value in (False, True, 0.0, "0", "1", None, {}, []):
+                with self.subTest(field=field, invalid=value):
+                    summary = self.summary({field: value})
+                    self.assertIsNone(summary["tool_response_exit_code"])
+                    self.assertEqual(summary["tool_response_exit_code_unknown_reason"], "unrecognized_field_value")
+
+    def test_conflicting_fields_are_not_resolved_by_precedence(self):
+        summary = self.summary({"status": "completed", "outcome": "failed", "exit_code": 0, "rc": 1})
+        self.assertEqual(summary["tool_response_status"], "")
+        self.assertIsNone(summary["tool_response_exit_code"])
+        self.assertEqual(summary["tool_response_status_unknown_reason"], "conflicting_fields")
+        self.assertEqual(summary["tool_response_exit_code_unknown_reason"], "conflicting_fields")
+        self.assertEqual(summary["tool_response_exit_code_sources"], ["tool_response.exit_code", "tool_response.rc"])
+        summary = self.summary({"status": "token=synthetic-secret", "exit_code": 1})
+        self.assertEqual(summary["tool_response_status_unknown_reason"], "unrecognized_field_value")
+        self.assertEqual(summary["tool_response_exit_code"], 1)
+        self.assertNotIn("synthetic-secret", json.dumps(summary))
+
+    def test_response_alias_reports_its_source_and_never_overrides_tool_response(self):
+        summary = self.telemetry.tool_response_summary({"response": {"outcome": "completed", "returncode": 0}})
+        self.assertEqual(summary["tool_response_status_sources"], ["response.outcome"])
+        self.assertEqual(summary["tool_response_exit_code_sources"], ["response.returncode"])
+        summary = self.telemetry.tool_response_summary({"tool_response": None, "response": {"exit_code": 0}})
+        self.assertIsNone(summary["tool_response_exit_code"])
+        self.assertEqual(summary["tool_response_exit_code_unknown_reason"], "unsupported_response_type")
+
+    def test_top_level_status_is_not_persisted_for_tools_or_permissions(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for status in ("token=synthetic-status-secret", {"token": "synthetic-status-secret"}, "completed", None):
+                event = {"cwd": tmp, "session_id": "s1", "turn_id": "t1", "tool_name": "Bash",
+                         "status": status, "tool_response": {"status": "completed", "exit_code": 1}}
+                for phase in ("PostToolUse", "PermissionRequest"):
+                    run_hook(phase, event, root, {"GROUNDWORK_ROUTER_OBSERVABILITY": "1"})
+            directory = root / ".groundwork/harness/router-observability/s1/t1"
+            for filename in ("tool-events.jsonl", "permission-events.jsonl"):
+                text = (directory / filename).read_text()
+                self.assertNotIn("synthetic-status-secret", text)
+                rows = [json.loads(line) for line in text.splitlines()]
+                self.assertEqual(len(rows), 4)
+                self.assertTrue(all("status" not in row for row in rows))
+            tool = json.loads((directory / "tool-events.jsonl").read_text().splitlines()[0])
+            self.assertEqual(tool["tool_response_status"], "completed")
+            self.assertEqual(tool["tool_response_exit_code"], 1)
 
 
 class RouterHookTests(unittest.TestCase):

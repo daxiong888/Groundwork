@@ -13,6 +13,8 @@ import os
 import re
 import time
 import uuid
+from functools import wraps
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -140,74 +142,148 @@ def load_config(cwd):
 
 
 def ids_from_event_with_sources(event):
-    session_source = "session_id"
-    session_id = event.get("session_id")
-    if not session_id:
-        session_source, session_id = "conversation_id", event.get("conversation_id")
-    if not session_id:
-        session_source, session_id = "thread_id", event.get("thread_id")
-    if not session_id:
-        session_source, session_id = "fallback", "session-unknown"
+    session_source, session_id = next(
+        ((field, source_id(event, field)) for field in ("session_id", "conversation_id", "thread_id") if source_id(event, field)),
+        ("fallback", None),
+    )
+    turn_id = source_id(event, "turn_id")
+    return session_id, turn_id, session_source, "turn_id" if turn_id else "unresolved"
 
-    turn_source = "turn_id"
-    turn_id = event.get("turn_id")
-    if not turn_id:
-        turn_source, turn_id = "request_id", event.get("request_id")
-    if not turn_id:
-        turn_source, turn_id = "event_id", event.get("event_id")
-    if not turn_id and event.get("tool_use_id"):
-        turn_source = "tool_use_id_fallback"
-        turn_id = stable_hash(f"{session_id}:tool:{event.get('tool_use_id')}")[:12]
-    if not turn_id and event.get("transcript_path"):
-        turn_source = "transcript_path_fallback"
-        turn_id = stable_hash(f"{session_id}:transcript:{event.get('transcript_path')}")[:12]
-    if not turn_id:
-        turn_source = "event_hash_fallback"
-        turn_id = stable_hash(json.dumps(event, sort_keys=True))[:12]
-    return str(session_id), str(turn_id), session_source, turn_source
+
+def source_id(event, field):
+    value = event.get(field)
+    return value if isinstance(value, str) and value.strip() else None
 
 
 def safe_path_component(value):
-    text = str(value or "unknown")
-    if text in {".", ".."}:
-        return stable_hash(text)[:16]
-    return text if re.fullmatch(r"[A-Za-z0-9._-]+", text) else stable_hash(text)[:16]
+    if value is None:
+        return "_unresolved-session"
+    text = str(value)
+    # Preserve ordinary legacy IDs, but never reuse the old truncated-hash
+    # namespace. Special legacy directories remain historical, not migrated.
+    reserved = {"config.json", "active-turn.json", "tool-turns", "session-unknown", "con", "prn", "aux", "nul"}
+    if (re.fullmatch(r"[a-z0-9][a-z0-9._-]{0,198}[a-z0-9_-]|[a-z0-9]", text)
+            and text not in reserved and text.split(".")[0] not in reserved
+            and not re.fullmatch(r"(?:[0-9a-f]{16}|com[1-9](?:\..*)?|lpt[1-9](?:\..*)?)", text)):
+        return text
+    return "~" + stable_hash(text)
 
 
 def turn_dir(cwd, session_id, turn_id):
     return checked_telemetry_path(
-        cwd, Path(safe_path_component(session_id)) / safe_path_component(turn_id)
+        cwd, Path(safe_path_component(session_id)) / (safe_path_component(turn_id) if turn_id else "_unresolved")
     )
 
 
 def correlated_ids(cwd, event, event_name):
+    identity = correlation_metadata(cwd, event, event_name)
+    return tuple(identity[key] for key in ("session_id", "turn_id", "session_id_source", "turn_id_source"))
+
+
+def correlation_metadata(cwd, event, event_name):
+    """Only native turns and unambiguous invocation bindings establish a turn.
+
+    Call under the session lock when persisting events. Request/event ids are
+    retained as source hashes, never interpreted as turns or active pointers.
+    """
     session_id, turn_id, session_source, turn_source = ids_from_event_with_sources(event)
-    active_path = checked_telemetry_path(
-        cwd, turn_dir(cwd, session_id, "active").parent / "active-turn.json"
-    )
-    if event_name == "UserPromptSubmit":
-        if turn_source == "turn_id":
+    reason = "" if turn_id else "missing_native_turn_id"
+    binding_turns = []
+    tool_id = source_id(event, "tool_use_id")
+    # Only the documented invocation identity can bridge Pre/Post delivery order.
+    if source_id(event, "session_id") and tool_id and event_name in {"PreToolUse", "PostToolUse"}:
+        binding_path = checked_telemetry_path(
+            cwd, turn_dir(cwd, session_id, None).parent / "tool-turns" / (stable_hash(tool_id) + ".json")
+        )
+        binding = read_json(binding_path) or {}
+        binding_turns = binding.get("turn_ids", [])
+        if turn_id:
+            binding_turns = sorted(set(binding_turns) | {turn_id})
+        if len(binding_turns) > 1:
+            reason = "tool_use_id_turn_conflict"
+        elif not turn_id and len(binding_turns) == 1:
+            turn_id, turn_source, reason = binding_turns[0], "tool_use_id_binding", ""
+        elif not turn_id:
+            reason = "tool_use_id_unbound"
+        # Exact replays keep their first capture bucket even if later evidence
+        # could resolve them. This avoids cross-file moves and double counting.
+        delivery = source_event_metadata(event, event_name)
+        delivery_key = stable_hash(compact_jsonish([event_name, delivery["source_event_key"], delivery["source_event_sha256"]]))
+        locations = binding.setdefault("event_turns", {})
+        if not source_id(event, "turn_id") and delivery_key in locations:
+            turn_id = locations[delivery_key]
+            turn_source = "tool_use_id_binding" if turn_id else "unresolved"
+            if not turn_id and len(binding_turns) <= 1:
+                reason = "original_delivery_unresolved"
+        locations.setdefault(delivery_key, turn_id)
+        if binding.get("turn_ids", []) != binding_turns:
+            for affected_turn in binding_turns:
+                invalidate_coverage(cwd, turn_dir(cwd, session_id, affected_turn))
+        write_json(binding_path, {**binding, "turn_ids": binding_turns})
+    return {
+        "session_id": session_id,
+        "turn_id": turn_id,
+        "session_id_source": session_source,
+        "turn_id_source": turn_source,
+        "correlation_scope": "capture_time_only",
+        "correlation_status": "conflict" if len(binding_turns) > 1 else ("resolved" if turn_id else "unresolved"),
+        "correlation_reason": reason,
+        "source_identity_sha256": {
+            key: stable_hash(source_id(event, key))
+            for key in ("session_id", "conversation_id", "thread_id", "turn_id", "request_id", "event_id", "tool_use_id", "agent_id")
+            if source_id(event, key)
+        },
+        "binding_turn_ids": binding_turns,
+    }
+
+
+@contextmanager
+def session_lock(cwd, session_dir):
+    lock_path = checked_telemetry_path(cwd, session_dir / ".telemetry.lock")
+    with open_output(lock_path, os.O_RDWR | os.O_CREAT, "r+") as handle:
+        if os.name == "nt":
+            import msvcrt
+            lock = lambda: msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+            lock = lambda: fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        deadline = time.monotonic() + 1
+        while True:
             try:
-                active_path.unlink()
-            except FileNotFoundError:
-                pass
-            return session_id, turn_id, session_source, turn_source
-        if turn_source != "request_id":
-            turn_id = f"fallback-{time.time_ns():x}"
-            turn_source = "generated_prompt_fallback"
-        write_json(active_path, {"turn_id": turn_id, "created_at": utc_now()})
-        return session_id, turn_id, session_source, turn_source
-    if turn_source == "turn_id":
-        return session_id, turn_id, session_source, turn_source
-    active = read_json(active_path)
-    if isinstance(active, dict) and active.get("turn_id"):
-        return session_id, str(active["turn_id"]), session_source, "active_prompt_fallback"
-    return session_id, turn_id, session_source, turn_source
+                lock()
+                break
+            except (BlockingIOError, PermissionError):
+                if time.monotonic() >= deadline:
+                    raise TimeoutError("telemetry session lock unavailable")
+                time.sleep(0.01)
+        yield
+
+
+def serialized_telemetry(handler):
+    """Keep capture writes short; compute derived Stop coverage after unlocking."""
+    @wraps(handler)
+    def run(event, *args):
+        cwd = cwd_from_event(event)
+        config, source = load_config(cwd)
+        if not config or not config.get("enabled"):
+            return None
+        session_id, _, _, _ = ids_from_event_with_sources(event)
+        with session_lock(cwd, turn_dir(cwd, session_id, None).parent):
+            snapshot = handler(event, *args, cwd=cwd, config=config, source=source)
+        if snapshot is not None:
+            refresh_coverage(cwd, *snapshot)
+        return None
+    return run
 
 
 def write_json(path, value):
-    with open_output(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, "w") as handle:
-        handle.write(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+    temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+    try:
+        with open_output(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, "w") as handle:
+            handle.write(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def append_jsonl(path, value):
@@ -248,10 +324,32 @@ def read_jsonl_with_diagnostics(path):
     return rows, malformed
 
 
-def ordered_events_for_stop(out_dir):
+def ordered_events_for_stop(cwd, out_dir):
     tool_events, malformed_tool_events = read_jsonl_with_diagnostics(out_dir / "tool-events.jsonl")
     permission_events, malformed_permission_events = read_jsonl_with_diagnostics(out_dir / "permission-events.jsonl")
-    events = tool_events + permission_events
+    captured_events = tool_events + permission_events
+    events, seen = [], {}
+    for event in captured_events:
+        key, fingerprint = event.get("source_event_key"), event.get("source_event_sha256")
+        if key and fingerprint:
+            fingerprints = seen.setdefault(key, set())
+            if fingerprint in fingerprints:
+                continue
+            fingerprints.add(fingerprint)
+        events.append(event)
+    unique_captured_count = len(events)
+    current_events, bindings = [], {}
+    for event in events:
+        if event.get("turn_id_source") == "tool_use_id_binding":
+            tool_id = event.get("tool_use_id")
+            if tool_id not in bindings:
+                binding_path = checked_telemetry_path(cwd, out_dir.parent / "tool-turns" / (stable_hash(tool_id) + ".json"))
+                bindings[tool_id] = read_json(binding_path) or {}
+            binding = bindings[tool_id]
+            if binding.get("turn_ids") != [event.get("turn_id")]:
+                continue
+        current_events.append(event)
+    events = current_events
     events.sort(key=lambda event: (int(event.get("observed_at_ns") or 0), str(event.get("event_uuid") or "")))
     for index, event in enumerate(events, start=1):
         event["event_index"] = index
@@ -260,13 +358,19 @@ def ordered_events_for_stop(out_dir):
     unsupported_event_count = sum(event.get("coverage_status") == "unsupported" for event in events)
     classified_event_count = supported_event_count + unsupported_event_count
     return events, {
-        "schema_version": "router_telemetry.captured_event_coverage.v1",
+        "schema_version": "router_telemetry.captured_event_coverage.v2",
         "coverage_scope": "captured_hook_records_only",
-        "captured_record_count": len(events) + malformed_event_count,
-        "parsed_event_count": len(events),
+        "turn_event_completeness": "unknown",
+        "captured_record_count": len(captured_events) + malformed_event_count,
+        "parsed_event_count": len(captured_events),
+        "unique_captured_event_count": unique_captured_count,
+        "unique_event_count": len(events),
+        "excluded_correlation_event_count": unique_captured_count - len(events),
+        "duplicate_event_count": len(captured_events) - unique_captured_count,
+        "conflicting_event_identity_count": sum(len(values) > 1 for values in seen.values()),
         "classified_event_count": classified_event_count,
-        "tool_events": len(tool_events),
-        "permission_events": len(permission_events),
+        "tool_events": sum(event.get("hook_event_name") in {"PreToolUse", "PostToolUse"} for event in events),
+        "permission_events": sum(event.get("hook_event_name") == "PermissionRequest" for event in events),
         "malformed_tool_events": malformed_tool_events,
         "malformed_permission_events": malformed_permission_events,
         "malformed_event_count": malformed_event_count,
@@ -326,43 +430,86 @@ def tool_response_summary(event):
     response = event.get("tool_response", marker)
     if response is marker:
         response = event.get("response", marker)
-    if response is marker:
-        return {
-            "tool_response_present": False,
-            "tool_response_status": "",
-            "tool_response_length": 0,
-            "tool_response_sha256": "",
-        }
-    text = compact_jsonish(response)
-    status = ""
-    if isinstance(response, dict):
-        for key in ("status", "outcome", "exit_code", "returncode", "rc"):
-            if key in response and response.get(key) is not None:
-                status = str(response.get(key))
-                break
-    return {
-        "tool_response_present": True,
-        "tool_response_status": status,
+    present = response is not marker
+    text = compact_jsonish(response) if present else ""
+    prefix = "tool_response" if "tool_response" in event else "response"
+    summary = {
+        "tool_response_present": present,
         "tool_response_length": len(text),
-        "tool_response_sha256": stable_hash(text),
+        "tool_response_sha256": stable_hash(text) if present else "",
+        # An execution result never supplies business acceptance evidence.
+        "tool_response_acceptance": "unknown",
     }
+    known_statuses = {"completed", "success", "failed", "error", "running", "in_progress", "pending", "cancelled", "canceled", "timeout", "timed_out"}
+    for name, keys, valid, unknown in (
+        ("status", ("status", "outcome"), lambda value: isinstance(value, str) and value in known_statuses, ""),
+        ("exit_code", ("exit_code", "returncode", "rc"), lambda value: type(value) is int, None),
+    ):
+        fields = {key: response[key] for key in keys if key in response} if isinstance(response, dict) else {}
+        reason = "response_missing" if not present else "unsupported_response_type"
+        value = unknown
+        if isinstance(response, dict):
+            reason = "field_missing"
+            if fields:
+                if not all(valid(item) for item in fields.values()):
+                    reason = "unrecognized_field_value"
+                elif len(set(fields.values())) > 1:
+                    reason = "conflicting_fields"
+                else:
+                    value, reason = next(iter(fields.values())), ""
+        summary[f"tool_response_{name}"] = value
+        summary[f"tool_response_{name}_sources"] = [f"{prefix}.{key}" for key in fields]
+        summary[f"tool_response_{name}_unknown_reason"] = reason
+    return summary
 
 
-def handle_user_prompt_submit(event):
-    cwd = cwd_from_event(event)
-    config, source = load_config(cwd)
-    if not config or not config.get("enabled"):
+def source_event_metadata(event, event_name):
+    session_id, tool_id = source_id(event, "session_id"), source_id(event, "tool_use_id")
+    key = ""
+    if session_id and tool_id and event_name in {"PreToolUse", "PostToolUse"}:
+        key = stable_hash(compact_jsonish([session_id, source_id(event, "turn_id"), tool_id, event_name]))
+    return {"source_event_key": key, "source_event_sha256": stable_hash(compact_jsonish(event))}
+
+
+def invalidate_coverage(cwd, out_dir, *, create=False):
+    path = checked_telemetry_path(cwd, out_dir / "coverage.json")
+    if not create and not path.exists():
         return None
-    session_id, turn_id, session_id_source, turn_id_source = correlated_ids(cwd, event, "UserPromptSubmit")
+    snapshot_id = uuid.uuid4().hex
+    # Drop obsolete counters, not just their label. Invalidate before mutating
+    # records/bindings so interruption cannot leave an apparently current view.
+    write_json(path, {
+        "schema_version": "router_telemetry.captured_event_coverage.v2",
+        "coverage_scope": "captured_hook_records_only",
+        "turn_event_completeness": "unknown",
+        "snapshot_status": "stale",
+        "snapshot_id": snapshot_id,
+        "stale_reason": "capture_or_binding_changed; recompute on Stop",
+    })
+    return snapshot_id
+
+
+def refresh_coverage(cwd, out_dir, snapshot_id):
+    """Optimistic snapshot: no capture lock during history/binding reads."""
+    checked_telemetry_path(cwd, out_dir / "tool-events.jsonl")
+    checked_telemetry_path(cwd, out_dir / "permission-events.jsonl")
+    _, coverage = ordered_events_for_stop(cwd, out_dir)
+    with session_lock(cwd, out_dir.parent):
+        path = checked_telemetry_path(cwd, out_dir / "coverage.json")
+        if (read_json(path) or {}).get("snapshot_id") == snapshot_id:
+            write_json(path, {**coverage, "snapshot_status": "current", "snapshot_id": snapshot_id})
+
+
+@serialized_telemetry
+def handle_user_prompt_submit(event, *, cwd, config, source):
+    identity = correlation_metadata(cwd, event, "UserPromptSubmit")
+    session_id, turn_id = identity["session_id"], identity["turn_id"]
     prompt = prompt_from_event(event)
     decision = entry_decision_from_prompt(prompt)
     out_dir = turn_dir(cwd, session_id, turn_id)
     prompt_metadata = {
         "schema_version": "router_telemetry.prompt_metadata.v1",
-        "session_id": session_id,
-        "turn_id": turn_id,
-        "session_id_source": session_id_source,
-        "turn_id_source": turn_id_source,
+        **identity,
         "created_at": utc_now(),
         "prompt_sha256": stable_hash(prompt),
         "prompt_length": len(str(prompt or "")),
@@ -372,10 +519,7 @@ def handle_user_prompt_submit(event):
     }
     router_decision = {
         "schema_version": "router_telemetry.prompt_candidate.v2",
-        "session_id": session_id,
-        "turn_id": turn_id,
-        "session_id_source": session_id_source,
-        "turn_id_source": turn_id_source,
+        **identity,
         "created_at": utc_now(),
         "cwd_sha256": stable_hash(str(cwd)),
         "activation_source": source,
@@ -392,6 +536,12 @@ def handle_user_prompt_submit(event):
             "route candidate only; no requirement-state, source-truth, risk, lifecycle, actual route, or skill-load inference"
         ],
     }
+    if turn_id is None:
+        append_jsonl(checked_telemetry_path(cwd, out_dir / "prompt-events.jsonl"), {
+            **prompt_metadata, **event_metadata(), "prompt_route_candidate": router_decision["prompt_route_candidate"],
+            **(raw_capture_payload("prompt", prompt) if config.get("raw_capture") else {}),
+        })
+        return None
     write_json(checked_telemetry_path(cwd, out_dir / "prompt-metadata.json"), prompt_metadata)
     write_json(checked_telemetry_path(cwd, out_dir / "router-decision.json"), router_decision)
     if config.get("raw_capture"):
@@ -399,21 +549,16 @@ def handle_user_prompt_submit(event):
     return None
 
 
-def handle_tool_event(event, hook_event_name):
-    cwd = cwd_from_event(event)
-    config, _ = load_config(cwd)
-    if not config or not config.get("enabled"):
-        return None
+@serialized_telemetry
+def handle_tool_event(event, hook_event_name, *, cwd, config, source):
     tool_name = tool_name_from_event(event)
     command = command_from_event(event)
-    session_id, turn_id, session_id_source, turn_id_source = correlated_ids(cwd, event, hook_event_name)
+    identity = correlation_metadata(cwd, event, hook_event_name)
+    session_id, turn_id = identity["session_id"], identity["turn_id"]
     tool_input = event.get("tool_input") or event.get("input") or {}
     row = {
         "schema_version": "router_telemetry.tool_event.v1",
-        "session_id": session_id,
-        "turn_id": turn_id,
-        "session_id_source": session_id_source,
-        "turn_id_source": turn_id_source,
+        **identity,
         "hook_event_name": hook_event_name,
         "tool_name": tool_name,
         "tool_use_id": str(event.get("tool_use_id") or ""),
@@ -422,59 +567,53 @@ def handle_tool_event(event, hook_event_name):
         "coverage_status": "observed_supported" if tool_name in {"Bash", "apply_patch"} or tool_name.startswith("mcp__") else "unsupported",
         "risk_markers": risk_markers(command, tool_name),
         "evidence_markers": evidence_markers(command),
-        "status": str(event.get("status") or "unknown"),
         **tool_response_summary(event),
+        **source_event_metadata(event, hook_event_name),
         **event_metadata(),
     }
-    append_jsonl(checked_telemetry_path(cwd, turn_dir(cwd, session_id, turn_id) / "tool-events.jsonl"), row)
+    out_dir = turn_dir(cwd, session_id, turn_id)
+    invalidate_coverage(cwd, out_dir)
+    append_jsonl(checked_telemetry_path(cwd, out_dir / "tool-events.jsonl"), row)
     return None
 
 
-def handle_permission_event(event):
-    cwd = cwd_from_event(event)
-    config, _ = load_config(cwd)
-    if not config or not config.get("enabled"):
-        return None
-    session_id, turn_id, session_id_source, turn_id_source = correlated_ids(cwd, event, "PermissionRequest")
+@serialized_telemetry
+def handle_permission_event(event, *, cwd, config, source):
+    identity = correlation_metadata(cwd, event, "PermissionRequest")
+    session_id, turn_id = identity["session_id"], identity["turn_id"]
     tool_name = tool_name_from_event(event)
     command = command_from_event(event)
     row = {
         "schema_version": "router_telemetry.permission_event.v1",
-        "session_id": session_id,
-        "turn_id": turn_id,
-        "session_id_source": session_id_source,
-        "turn_id_source": turn_id_source,
+        **identity,
         "hook_event_name": "PermissionRequest",
         "permission": str(event.get("permission") or event.get("action") or "unknown"),
         "command_class": classify_command(command, tool_name),
         "coverage_status": "observed_supported",
         "risk_markers": risk_markers(command, tool_name),
         "evidence_markers": evidence_markers(command),
-        "status": str(event.get("status") or "unknown"),
         **event_metadata(),
     }
-    append_jsonl(
-        checked_telemetry_path(cwd, turn_dir(cwd, session_id, turn_id) / "permission-events.jsonl"), row
-    )
+    out_dir = turn_dir(cwd, session_id, turn_id)
+    invalidate_coverage(cwd, out_dir)
+    append_jsonl(checked_telemetry_path(cwd, out_dir / "permission-events.jsonl"), row)
     return None
 
 
-def handle_stop(event):
-    cwd = cwd_from_event(event)
-    config, _ = load_config(cwd)
-    if not config or not config.get("enabled"):
-        return None
-    session_id, turn_id, _, _ = correlated_ids(cwd, event, "Stop")
+@serialized_telemetry
+def handle_stop(event, *, cwd, config, source):
+    identity = correlation_metadata(cwd, event, "Stop")
+    session_id, turn_id = identity["session_id"], identity["turn_id"]
     out_dir = turn_dir(cwd, session_id, turn_id)
+    snapshot_id = invalidate_coverage(cwd, out_dir, create=True)
     decision = read_json(checked_telemetry_path(cwd, out_dir / "router-decision.json"))
     if not isinstance(decision, dict):
-        return None
+        decision = {}
     final_message = final_message_from_event(event)
     response_route, _ = detect_route_from_text(final_message)
     final_metadata = {
         "schema_version": "router_telemetry.final_metadata.v1",
-        "session_id": decision.get("session_id", "unknown"),
-        "turn_id": decision.get("turn_id", "unknown"),
+        **identity,
         "created_at": utc_now(),
         "final_sha256": stable_hash(final_message),
         "final_length": len(str(final_message or "")),
@@ -488,6 +627,12 @@ def handle_stop(event):
         "skill_hits": [],
         "limitations": ["response shape is not actual route or skill-load evidence"],
     }
+    if turn_id is None:
+        append_jsonl(checked_telemetry_path(cwd, out_dir / "stop-events.jsonl"), {
+            **final_metadata, **event_metadata(),
+            **(raw_capture_payload("final", final_message) if config.get("raw_capture") else {}),
+        })
+        return out_dir, snapshot_id
     write_json(checked_telemetry_path(cwd, out_dir / "final-metadata.json"), final_metadata)
     if config.get("raw_capture"):
         final_raw = raw_capture_payload("final", final_message)
@@ -505,8 +650,4 @@ def handle_stop(event):
                 "redaction": final_raw["redaction"],
             },
         )
-    checked_telemetry_path(cwd, out_dir / "tool-events.jsonl")
-    checked_telemetry_path(cwd, out_dir / "permission-events.jsonl")
-    _, coverage = ordered_events_for_stop(out_dir)
-    write_json(checked_telemetry_path(cwd, out_dir / "coverage.json"), coverage)
-    return None
+    return out_dir, snapshot_id

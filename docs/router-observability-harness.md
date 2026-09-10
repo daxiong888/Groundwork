@@ -78,7 +78,8 @@ Tool and permission stages record:
 
 - event identity and stable ordering fields;
 - tool/command class;
-- input and response hashes/lengths;
+- tool input and response hashes/lengths;
+- recognized response status and integer exit code as separate facts, with field sources and unknown reasons; string/unknown responses remain unknown, and even exit code `0` leaves acceptance unknown;
 - supported/unsupported coverage status;
 - risk and evidence markers.
 
@@ -89,7 +90,7 @@ Stop stage records:
 - `response_shape_candidate`;
 - `response_shape_source=response_shape_heuristic`;
 - `authoritative_skill_load_trace=unavailable` and `skill_hits=[]` until the host supplies stronger evidence;
-- ordered event coverage and malformed-line counts.
+- a request to compute ordered event coverage and malformed-line counts outside the capture lock; publication is conditional on the captured data remaining unchanged.
 
 These are three distinct concepts:
 
@@ -97,20 +98,22 @@ These are three distinct concepts:
 prompt_route_candidate != authoritative_skill_load_trace != response_shape_candidate
 ```
 
-When the host does not provide a native `turn_id` or request-scoped id, `UserPromptSubmit` creates a unique fallback turn id and later tool, permission, and stop events reuse the session's active fallback id. A later prompt advances the active id without overwriting the earlier turn directory. Event-local ids are not promoted into turn identity.
-
 No hit rate may treat them as interchangeable.
+
+Native `turn_id` takes precedence. For tool events missing it, only an unambiguous `tool_use_id` binding established with a native session and turn can supply a capture-time association. `request_id`, `event_id`, transcript paths, and the session's old active pointer do not establish turn identity. Insufficient or conflicting evidence stays unresolved; source identity hashes are retained separately.
+
+Raw records describe capture-time evidence (`correlation_scope=capture_time_only`). Later binding conflicts invalidate inferred associations in derived coverage, while native associations remain. Tool replays with the same native-session invocation identity, event phase, and source payload stay in their first capture directory and count once; distinct calls and Pre/Post stages remain separate. Permission records and tool records without stable invocation identity remain separate observations. This does not promise complete or exactly-once host delivery.
 
 ## Scratch Layout
 
 ```text
-.groundwork/harness/router-observability/<session-id>/<turn-id>/
+.groundwork/harness/router-observability/<session-component>/<turn-component>/
   prompt-metadata.json
   router-decision.json
   tool-events.jsonl              # when tool hooks fire
   permission-events.jsonl        # when permission hooks fire
   final-metadata.json
-  coverage.json
+  coverage.json                 # current snapshot or stale marker without counters
   prompt.raw.json                # optional raw_capture
   final.raw.txt                  # optional raw_capture
   final.raw.meta.json            # optional raw_capture
@@ -118,11 +121,24 @@ No hit rate may treat them as interchangeable.
 
 Runtime hooks do not write `dispatch-decision.json`, `router-score.json`, or `router-card.md`.
 
+Ordinary safe lowercase IDs retain their directory names. Other IDs, internal filenames, and the old 16-character hash namespace use `~` plus a full SHA-256 digest, keeping literal IDs separate from encoded ones and avoiding case-only aliases. Existing special-ID directories remain historical: they are not migrated, merged, or used as fallback paths. A missing session uses `_unresolved-session`; a missing turn uses the session's `_unresolved` directory with `turn_id=null`. Unresolved prompts and stops append to `prompt-events.jsonl` and `stop-events.jsonl`. Session-local `.telemetry.lock` and `tool-turns/` hold coordination state, not native turns.
+
+## Reading Coverage
+
+Before changing captured tool/permission records or a relevant binding, the hook replaces any existing coverage with `snapshot_status=stale` and removes obsolete counters. A captured Stop requests recomputation outside the session write lock. The result is published as `snapshot_status=current` only if its `snapshot_id` still matches when the lock is briefly reacquired. A concurrent write or conflict leaves the newer stale marker intact; a later Stop can request another computation.
+
+> [!IMPORTANT]
+> Read counters only from a coverage document with `snapshot_status=current`. A stale, missing, malformed, or legacy document without that status is a coverage gap, not zero events or successful completion. Do not recover current counts by summing capture-time turn assignments: later conflicts can invalidate inferred records. Preserve the gap until a fresh snapshot is available.
+
+Even a current snapshot covers only captured hook records and keeps `turn_event_completeness=unknown`. Cancellation, interruption, or failed capture can leave gaps. `unique_captured_event_count` counts distinct captured observations; `excluded_correlation_event_count` identifies those excluded from current association counts, while `duplicate_event_count` reports recognized replays.
+
 ## Privacy
 
 `enabled`, `snippet_capture`, and `raw_capture` must use JSON booleans; string values such as `"false"` make the project config invalid and keep hooks disabled unless the process-level force-enable variable is explicitly set. The project config file and every path component below the project root must not be symlinks; a symlinked config path is invalid, and process-level force-enable ignores its capture options. `snippet_capture` and `raw_capture` default to `false`. Raw capture, when explicitly enabled, is always redacted by runtime hooks. Unredacted semantic reproduction is not a runtime-hook capability; it requires a separately approved maintainer-only workflow with its own retention and deletion controls.
 
 Hashes reduce exposure but do not make an artifact public. Keep `.groundwork/harness/` ignored and local.
+
+Tool and permission records do not retain the arbitrary top-level `status` field. Recognized `tool_response` status/exit fields remain separate minimized facts; unsupported values are represented by unknown reasons and the response hash, not raw text.
 
 ## Offline Improvement Loop
 

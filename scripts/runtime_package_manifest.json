@@ -42,11 +42,11 @@
   ],
   "budgets": {
     "max_runtime_files": 125,
-    "max_runtime_lines_excluding_generated_manifest": 9800,
+    "max_runtime_lines_excluding_generated_manifest": 9900,
     "max_skill_files": 112,
     "max_skill_lines": 8400,
     "max_codex_hook_files": 4,
-    "max_codex_hook_lines": 1200,
+    "max_codex_hook_lines": 1320,
     "max_public_entry_reference_depth": 20
   }
 }
