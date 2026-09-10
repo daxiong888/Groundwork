@@ -1,6 +1,6 @@
 # Lifecycle Preflight Contract
 
-Target Reader: Groundwork skills deciding the next action before file writes, artifacts, git mutation, or verification.
+Target Reader: Groundwork skills whose next decision depends on recovery, task-state transition, or downstream artifact promotion.
 Reader Action Needed: Classify request, choose workflow mode, and apply the right gate before acting.
 Decision Supported: Whether the next step is direct work, PRD/grill, issue split, implementation, verification, handoff, artifact promotion, git topology handling, or stop.
 Artifact Type: shared guardrail
@@ -25,9 +25,9 @@ Promote only cross-session recovery facts: source truth, current mode, scope, ve
 
 ## Trigger Policy
 
-Run preflight before non-trivial actions involving new requirements, issue/task splitting, implementation/delivery/commit/push/PR/closeout, verification/UAT/release/customer-safe evidence, handoff/resume, durable artifacts, git/remote/data/customer/runtime/shared-file mutation, locale conflicts, host-mode ambiguity, or possible `STATE.md`/`ROADMAP.md` need.
+Run preflight only when recovery, task-state transition, or downstream artifact promotion affects the next decision; reconcile workflow/source/host-mode conflicts within that scope. Missing source facts in an ordinary fix call for source inspection or material clarification. Implementation, shared-file edits, local tests, and readiness topics alone do not trigger lifecycle loading; evidence claims use their corresponding evidence references, and topology choices use the conditions below.
 
-Skip for small direct answers, trivial rewrites, simple explanations, and one-off edits with no artifact, git action, verification claim, or remote mutation.
+Skip full preflight for small direct answers, trivial rewrites, simple explanations, and ordinary one-off fixes with clear scope, authority, and working location. Keep source inspection, current git state, relevant diffs, dirty-file protection, lightweight planning, and focused checks in the owning branch. Preserve user checkpoints and host permissions; dangerous or external actions still require their matching authorization/gates. This exception does not create state files or bypass recovery checks when recovery is actually needed.
 
 The only issue/task-splitting lazy-load exception is `to-issues` with a canonical accepted local artifact or an external accepted source with explicit owner/authority, clear acceptance criteria, no mixed or conflicting source truth, output explicitly limited to current-conversation review, and explicitly no durable, paste-ready tracker use, remote, cross-session/agent, implementation, verification, handoff, git, or other downstream intent. A format-only paste-ready preview explicitly limited to current-conversation review with no external use is not downstream intent. Unknown or ambiguous downstream intent does not qualify and must run full preflight. This exception skips loading the full reference only; it does not bypass artifact promotion or the local source, acceptance, criteria, artifact, and downstream-intent checks.
 
@@ -49,7 +49,7 @@ Lifecycle State:
 Stop Condition:
 ```
 
-Use `WORKFLOW-STATE-MACHINE.md` for transition legality and `expected_state_transition` tokens; this file only computes transient preflight fields.
+Use `WORKFLOW-STATE-MACHINE.md` only when transition legality or `expected_state_transition` tokens are needed; this file only computes transient preflight fields.
 
 ## Field Rules
 
@@ -62,8 +62,8 @@ Use `WORKFLOW-STATE-MACHINE.md` for transition legality and `expected_state_tran
 | `Source of Truth` | `conversation`, `accepted_prd`, `local_artifact`, `external_issue`, `pull_request`, `source_code`, `test_evidence`, `runtime_evidence`, `state_md`, `mixed`, `unknown` | Source truth beats lifecycle state; stale state must not override code/tests/runtime/PRD/accepted issue/user confirmation. |
 | `Requirement State` | `raw`, `grilled`, `prd_draft`, `prd_accepted`, `issue_ready`, `implementation_ready`, `verified`, `blocked` | Raw cannot split/implement without explicit bypass; draft is not accepted; issue/implementation readiness require scope, ACs, source, verification, and topology as applicable. |
 | `Artifact Promotion` | `none`, `recommended`, `required`, `external_source_of_truth` | Use `ARTIFACT-PROMOTION.md` before durable downstream issue/implementation/verification/UAT/release/PR/handoff use. |
-| `Execution Topology` | `read_only`, `conversation_only`, `artifact_only`, `current_branch_ok`, `branch_required`, `worktree_required`, `blocked` | Use `GIT-TOPOLOGY-GATE.md` for implementation, delivery, commit, push, PR, or issue closeout. |
-| `Risk Gate` | `none`, `git_write`, `remote_write`, `destructive`, `customer_visible`, `data_write`, `secrets_or_pii`, `blocked` | If not `none`, surface target, effect, recovery, and approval need before action. |
+| `Execution Topology` | `read_only`, `conversation_only`, `artifact_only`, `current_branch_ok`, `branch_required`, `worktree_required`, `blocked` | Use `GIT-TOPOLOGY-GATE.md` only for PR-bound requirements, an unresolved branch/worktree choice, unsafe dirty state, or planned git/remote delivery. |
+| `Risk Gate` | `none`, `git_write`, `remote_write`, `destructive`, `customer_visible`, `data_write`, `secrets_or_pii`, `blocked` | Assess risk against existing authorization. Request approval only if the action, target, scope, or risk exceeds it, or a user/host checkpoint requires it; complete independent authorized preparation first. |
 | `Verification Strategy` | `none`, `smoke`, `scoped`, `full`, `serial`, `bounded_parallel`, `blocked` | Scope-first; parallel scheduling is not evidence. |
 | `Lifecycle State` | `not_needed`, `read_existing`, `recommend_update`, `must_update_before_handoff`, `stale` | Use only for pause/resume, recovery, gap closure, UAT/release reuse, multi-artifact/milestone work, or pending human decision. |
 | `Stop Condition` | concrete blocker | Missing PRD/source truth/artifact promotion/safe topology/remote scope/verification evidence or stale required state. |
@@ -77,7 +77,7 @@ These interpret the state machine; they do not replace it.
 - `triage`: classify readiness, blocker, source state, lifecycle need, and next owner only.
 - `write-plan`: accepted-enough scope only; produce sequence/checkpoints, not issue split/runtime dispatch/implementation.
 - `prototype`: throwaway question-answering artifact; do not promote mock/prototype fields into backend/API truth.
-- `implement`: run git topology gate before writes; PR-bound work on `main`/`master`/`trunk`, empty branch, or detached HEAD needs branch/worktree decision.
+- `implement`: keep local source/git/diff checks in the implementation branch; load topology details only for PR-bound requirements, an unresolved branch/worktree choice, unsafe dirty state, or planned git/remote delivery. Apply the selected gate before the affected action.
 - `verify`: final report begins with `Verification Scope`; lifecycle updates come after scope body.
 - `handoff`: reference existing state when present; create/update only when thresholds are met.
 - `dispatch`: accepted ready tasks only; package-only routing, no execution/validation/clean-review claims without evidence.

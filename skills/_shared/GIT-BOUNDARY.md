@@ -74,4 +74,4 @@ shared global skills outside this repository
 
 ## Gate Boundary
 
-Push, PR creation, deployment, remote tracker mutation, migration, destructive commands, history rewrite, and shared skill mutation require explicit approval through the active runtime and the skill gate rule.
+Push, PR creation, deployment, remote tracker mutation, migration, destructive commands, history rewrite, and shared skill mutation require authorization covering the concrete action, target, scope, and risk. An explicit user request or earlier approval can supply that authorization; do not ask again when it remains sufficient. Host permission requirements still apply. Complete authorized local preparation before asking for missing approval for a later action.

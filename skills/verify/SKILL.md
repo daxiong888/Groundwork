@@ -77,4 +77,4 @@ Apply shared evidence, role-separation, runtime, release, wiki, cognitive-budget
 - Stop before any verdict unless `Verification Scope` has a concrete claim, covered evidence, and missing evidence or an explicit `none` supported by inspection.
 - Do not claim `pass`, readiness, UAT, release, runtime, browser, data, environment, or customer confidence without fresh in-scope evidence.
 - If only source, doc, diff, summary, or historical evidence is available, state that boundary and keep stronger claims unverified.
-- If verification is paired with push, deploy, publish, migration, destructive command, data write, remote tracker mutation, or shared skill mutation, output the approval gate before action.
+- If verification is paired with push, deploy, publish, migration, destructive command, data write, remote tracker mutation, or shared skill mutation, check existing authorization for that action, target, scope, and risk. Complete authorized verification and local preparation first; output the approval gate only for missing permission or expanded scope/risk. Preserve user-requested pauses, approval checkpoints, and host permissions.

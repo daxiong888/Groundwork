@@ -15,7 +15,7 @@ Safe to Share / Redaction Notes: Safe to share as-is; contains no secrets, crede
 1. Start with the compact `Verification Scope` block from `SCOPE-EVIDENCE-TEMPLATE.md`; escalate to the extended block only when its risk or consumption conditions apply.
 2. State the named lens or branch being used.
 3. State the claimed behavior before judging it.
-4. Run `skills/_shared/LIFECYCLE-PREFLIGHT.md` when `STATE.md`, task-state, source-truth, UAT/release, or closeout claims are in scope.
+4. Run `skills/_shared/LIFECYCLE-PREFLIGHT.md` only when the decision depends on lifecycle/task-state transition (including closeout), recovery, or downstream artifact promotion. For topology-only actions, use `skills/_shared/GIT-TOPOLOGY-GATE.md` directly. Ordinary source-truth or evidence-sufficiency questions do not load lifecycle machinery solely because they mention source, UAT, or release; use the matching evidence branch for the claim.
 5. Choose `verify-lite`, `verify-standard`, or `verify-strict` and apply the Evidence Search Boundary before expanding reads.
 6. Inspect source, diff, test, runtime, browser, data, environment, or user-provided evidence only as needed for the active claim.
 7. Load only the matching Branch Index file from `SKILL.md`.

@@ -13,12 +13,14 @@ Do not use for raw requirements, task slicing, readiness/UAT/release verificatio
 
 ## Route First
 
-Choose the branch that matches the current decision and risk. Gating overrides ordinary execution; branch selection limits procedure loading, not solution depth:
+User instructions take precedence over this skill's workflow guidance, subject to higher-priority instructions and host permissions. Carry forward existing authorization within its scope; a sufficiently specified user request is an accepted task without a separate PRD or bypass phrase. Honor user-requested pauses and approval checkpoints. Ask only for a material missing decision, expanded scope/risk, or required permission, and continue independent authorized work while it is unresolved.
+
+Choose the branch that matches the current decision and risk. A gate blocks only the action that lacks required authority or evidence; branch selection limits procedure loading, not solution depth:
 
 - `diagnose-before-edit`: inspect or reproduce first; edit only after a confirmed cause, failing check, or concrete test seam exists.
 - `ordinary-implementation`: accepted task or explicit PRD/spec bypass; inspect source and write the five-line mini-plan before editing.
 - `read-only-conformance`: inspect task/PRD, source, tests, and git boundary; report implementation conformance only and do not edit.
-- `gated-implementation`: push, PR, issue closeout, customer-visible, destructive, data-write, deploy, publish, migration, remote mutation, or shared-skill mutation.
+- `gated-implementation`: the next action needs permission for push, PR, issue closeout, customer-visible delivery, destructive/data writes, deploy, publish, migration, remote mutation, or shared-skill mutation. Complete authorized local preparation first; do not re-request approval already granted for the same scope and risk.
 - `review-loop-remediation`: fix only cited verification or clean-review findings. For a QA failure, require explicit `qa_gap_closure` admission; otherwise diagnose or stop before edits. Rerun the original or narrowest relevant check and mark prior review stale when material files change.
 
 ## Solution Depth

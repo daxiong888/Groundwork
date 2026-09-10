@@ -5,12 +5,12 @@ Purpose: branch details for routed `implement` work; source-validation guidance 
 ## Source And Gate Workflow
 
 1. Confirm source task, scope, and stop condition.
-2. Run `skills/_shared/LIFECYCLE-PREFLIGHT.md` and the git topology gate when the task may write files, create artifacts, or mutate git/remote state.
-3. Inspect current branch, dirty state, relevant diffs, and whether branch/worktree is required before editing.
+2. Load `skills/_shared/LIFECYCLE-PREFLIGHT.md` only when recovery, task-state transition, or downstream artifact promotion affects the next decision; reconcile workflow/source/host-mode conflicts within that scope. Ordinary one-off fixes do not load it merely because they edit files or run local checks.
+3. Inspect current branch, dirty state, relevant diffs, and whether branch/worktree is required before editing. Load `skills/_shared/GIT-TOPOLOGY-GATE.md` only for PR-bound requirements, an unresolved branch/worktree choice, unsafe dirty state, or planned git/remote delivery.
 4. Choose the implementation branch:
    - `diagnose-before-edit`: reproduce or inspect first, separate confirmed cause from hypothesis, then continue only with a sufficient root-cause fix inside accepted scope or stop with diagnosis evidence.
    - `read-only-conformance`: inspect task/PRD, source, tests, and git boundary; output conformance findings and stop without edits.
-   - `gated-implementation`: run git topology and remote-write gates before editing or remote action.
+   - `gated-implementation`: check topology before local edits; apply remote-write approval to the remote action. Complete authorized local preparation and checks before requesting any missing approval for that action.
    - `ordinary-implementation`: continue with the lightweight plan and focused edit path.
 5. Inspect relevant code, tests, config, and shared helpers before editing.
 6. Use TDD-lite where feasible; otherwise name the no-test justification.
@@ -48,7 +48,7 @@ State the non-readiness boundary once when a reader could otherwise mistake impl
 
 ## Gated Actions
 
-When `Risk Gate` is not `none`, or when the prompt asks for git, customer-visible, data-write, destructive, push, PR, issue-closeout, deploy, publish, migration, remote, or shared-skill execution, include these labels before executing:
+Assess the next action, target, scope, and risk against the user's existing authorization and host permissions. A risk category is not a request for fresh approval. Only when approval is actually required, include these labels before that action:
 
 ```text
 Proposed Action:
@@ -58,7 +58,7 @@ Rollback/Undo:
 Approval Needed:
 ```
 
-For PR-bound work on `main` / `master` / `trunk`, empty branch name, detached `HEAD`, or unsafe dirty worktree, stop before edits and include:
+Follow the user's explicit current-directory or branch instruction under `skills/_shared/GIT-TOPOLOGY-GATE.md`. For PR-bound work without such an instruction on `main` / `master` / `trunk`, empty branch name, detached `HEAD`, or a worktree that cannot safely preserve unrelated changes, stop before the affected edits and include:
 
 ```text
 Execution Topology: branch_required / worktree_required / blocked

@@ -10,7 +10,7 @@ Related Issues: #29, #28, #33.
 
 ## Core Rule
 
-PR-bound implementation must not start writing files on `main` / `master` / `trunk`, an empty branch name, or detached `HEAD` until Groundwork has made an explicit branch or worktree decision.
+Follow the user's explicit branch/current-directory instruction over this skill's topology defaults, subject to higher-priority instructions and host permissions. Do not create or switch branches or worktrees against that instruction. Inspect relevant diffs and preserve unrelated changes; stop only affected edits when safe separation is impossible. Without an explicit user topology instruction, PR-bound implementation on `main` / `master` / `trunk`, an empty branch name, or detached `HEAD` needs a branch/worktree decision before edits. Local preparation does not authorize commit, push, PR creation, or deployment.
 
 This gate runs before file writes and again before commit, push, PR, or remote issue closeout.
 
@@ -21,11 +21,9 @@ This gate runs before file writes and again before commit, push, PR, or remote i
 A task is PR-bound when at least one is true:
 
 - the user expects a PR;
-- there is a GitHub/GitLab/Linear/Jira issue or task to close;
-- the work needs multiple commits or reviewable delivery;
-- the work changes shared project files;
-- the task is part of a release, UAT, customer-visible change, or multi-session workstream;
-- the user asks to push, create PR, close an issue, or deliver code.
+- the accepted task or applicable project instructions require a PR for delivery or issue closeout.
+
+Editing shared files, preparing a user-visible change locally, or asking for review does not by itself imply PR delivery.
 
 ### Unrelated dirty files
 
@@ -43,7 +41,7 @@ git diff --name-only
 git diff --cached --name-only
 ```
 
-Then decide:
+Honor an explicit user topology instruction first. Otherwise use these defaults:
 
 ```text
 current branch is main/master/trunk + PR-bound implementation
@@ -59,7 +57,7 @@ dirty worktree + all dirty files belong to current task
   -> feature branch is acceptable only after listing dirty files
 
 dirty worktree + unrelated files
-  -> worktree_required or blocked
+  -> current_branch_ok only when preceding PR-bound topology requirements are satisfied and scoped edits can preserve unrelated changes; otherwise worktree_required or blocked
 
 multiple issues / multiple PRs / long-running workstream
   -> prefer worktree
@@ -83,7 +81,7 @@ Only do this when the worktree is clean or the dirty files are listed and all be
 
 ## Worktree Decision
 
-Use worktree when unrelated dirty files exist, the task is long-running, or multiple issue streams should stay isolated.
+Consider a worktree when unrelated changes cannot be safely separated or concurrent issue streams need isolation. Honor explicit current-directory instructions; if they leave an actual write conflict, report that conflict instead of creating a worktree or stopping unrelated safe work.
 
 Suggested shape:
 
@@ -95,7 +93,7 @@ Do not move, stash, discard, or overwrite user changes without explicit approval
 
 ## Pre-remote Gate
 
-Before `push`, `pull --rebase`, PR creation, issue closeout, release tagging, or tracker mutation, show:
+Before `push`, `pull --rebase`, PR creation, issue closeout, release tagging, or tracker mutation, check existing authorization for the concrete target, scope, and risk. Show this block only when permission is still required; do not ask again for unchanged authorized work:
 
 ```text
 Proposed Action:
@@ -105,7 +103,7 @@ Rollback/Undo:
 Approval Needed:
 ```
 
-Block these by default:
+Existing authorization never permits overwriting unrelated changes or bypassing host permissions. Block these by default:
 
 - `git push origin main`;
 - direct `main` delivery for PR-bound implementation;
@@ -162,6 +160,8 @@ Stop Condition:
 
 ## Failure Examples
 
+The PR-delivery examples below assume that the user authorized those git/remote actions and did not request a different topology. They do not grant that authorization.
+
 ### Wrong
 
 ```text
@@ -211,12 +211,8 @@ push feature branch only after approval gate
 create PR with linked issues
 ```
 
-### Right when dirty unrelated files exist
+### Right when unrelated changes require isolation
 
-```text
-current branch: main
-dirty unrelated files detected
-recommend worktree
-create codex/<slug> worktree
-write only scoped files there
-```
+On `main` with unrelated changes that cannot safely share the checkout, propose a worktree; create it only with authorization and write only scoped files there.
+
+For “edit here; no worktree, branch change, commit, or push”, inspect relevant diffs, preserve unrelated changes, edit/check only authorized files here when safe, and report local evidence.
