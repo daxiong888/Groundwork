@@ -13,8 +13,8 @@ NOW = 2_000_000_000.0
 
 class FeedbackTest(unittest.TestCase):
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(dir="/private/tmp")
-        self.project = Path(self.temporary.name)
+        self.temporary = tempfile.TemporaryDirectory()
+        self.project = Path(self.temporary.name).resolve()
         self.target = self.project / "target.md"
         self.execution = self.project / "execution.json"
         self.tool_output = self.project / "tool.out"
