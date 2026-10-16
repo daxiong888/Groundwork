@@ -192,7 +192,7 @@ class ReviewContractTests(unittest.TestCase):
         self.assertNotIn("--phase", workflow)
         self.assertNotIn("codex exec", workflow)
         self.assertNotIn("plugin add", workflow)
-        self.assertIn("tests.test_plugin_candidate_trial", workflow)
+        self.assertIn("python -m unittest discover -s tests", workflow)
         self.assertIn("scripts/check_runtime_package_boundary.py", workflow)
 
 

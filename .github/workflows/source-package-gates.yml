@@ -44,15 +44,7 @@ jobs:
 
       - name: Ordinary source tests
         run: |
-          python -m unittest tests.test_child_goal_prompt_linter
-          python -m unittest tests.test_pipeline_ownership
-          python -m unittest tests.test_plugin_candidate_trial
-          python -m unittest tests.test_review_contract
-          python -m unittest tests.test_route_registry
-          python -m unittest tests.test_router_hooks
-          python -m unittest tests.test_rsi_candidates tests.test_rsi_feedback tests.test_rsi_resolver tests.test_rsi_sources
-          python -m unittest tests.test_runtime_package_manifest
-          python -m unittest tests.test_wiki_templates
+          python -m unittest discover -s tests
 
       - name: Whitespace
         run: |
