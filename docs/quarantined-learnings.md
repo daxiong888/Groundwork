@@ -27,7 +27,9 @@ observe-only signal
 -> observe again through a new record if regression recurs
 ```
 
-Telemetry or a separately authorized Candidate Trial may create observed signals only. They must not automatically reproduce, quarantine, accept, patch, promote, revert, mutate a tracker, or change `main`. Candidate direction remains the proposal's explicit human decision.
+Runtime telemetry and the dormant Candidate Trial transport create observed signals only. The authorized P1 maintenance consumer may incrementally collect, resolve and organize evidence into complete private candidates; it cannot create user decisions or apply patches. Candidate acceptance still needs an applicable recorded user interaction.
+
+New P1 candidates, revisions, decisions and receipts have one private authority: `.groundwork/harness/rsi/v1/state.sqlite3`, governed by the [current P1 PRD](prd-vnext-evidence-governed-bounded-run-wedge.md) and [consumer runbook](router-observability-harness.md#bounded-rsi-consumer). Their collecting/ready/accepted/validating/watching states do not overwrite the legacy MIP lifecycle below. Existing MIP records retain their historical owner; P1 may reference their IDs, but does not migrate or duplicate their mutable decision state. Automatic preparation can propose add/narrow/remove changes; verification binds the actual result and adoption version. It never substitutes for a human decision, runtime evidence or explicit publication authorization.
 
 ## Orthogonal Axes
 

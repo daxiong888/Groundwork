@@ -31,6 +31,8 @@ jobs:
             scripts/check_runtime_package_boundary.py \
             scripts/check_skill_entry_budget.py \
             scripts/run_plugin_candidate_trial.py \
+            scripts/groundwork_rsi.py \
+            scripts/rsi/*.py \
             scripts/codex-hooks/groundwork_route_detection.py \
             scripts/codex-hooks/groundwork_router_event.py \
             scripts/codex-hooks/groundwork_router_telemetry.py
@@ -48,6 +50,7 @@ jobs:
           python -m unittest tests.test_review_contract
           python -m unittest tests.test_route_registry
           python -m unittest tests.test_router_hooks
+          python -m unittest tests.test_rsi_candidates tests.test_rsi_feedback tests.test_rsi_resolver tests.test_rsi_sources
           python -m unittest tests.test_runtime_package_manifest
           python -m unittest tests.test_wiki_templates
 

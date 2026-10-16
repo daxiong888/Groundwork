@@ -2,7 +2,7 @@
 
 Target Reader: Groundwork 维护者，以及需要评审或实现本轮改动的开发者。
 
-Reader Action Needed: 以两个已完成 P0 的实际字段和规则为基线，按本文接口、依赖和验收实施两个 P1。日常使用者只需在启用时选择范围，在完整候选出现时作决定。
+Reader Action Needed: 按第 11 节核对已交付源码与尚缺的宿主证据；启用时选择实际来源、语义服务和调度范围，在完整候选出现时作决定。
 
 Decision Supported: 哪些现有规则或工具应立即修正，以及如何用一个有界的维护侧流程持续准备、验证和跟踪改进候选。
 
@@ -14,13 +14,13 @@ Scope: 两个 P0 源码修正；维护侧的自动候选准备 P1-A；验证、�
 
 Out of Scope: 新 agent runtime、常驻 daemon、全量 sessions 数据库、自动修改长期规则、自动安装/发布、固定六组任务门槛、新公共 skill、通用评测平台、多机共享状态、自动网页爬虫。
 
-Evidence Level: 官方能力说明、供应商工程实验、可复现源码问题与规划设计。局部源码验证、真实模型行为、自动调度闭环、安装后行为和整体收益分别验收。
+Evidence Level: 官方能力说明、供应商工程实验、本地源码回归、冻结源码的独立只读评审、9 项正式 CLI 合成离线验收、合成输入上的有限原生模型演示、真实项目 hook 接线、原生 heartbeat 唤醒及首轮结束后 451 秒的独立暂停观察。9 月 22 日真实 packet 分析已执行，但消息解析超预算、ingest 鲜度检查未通过；完整语义闭环、模型质量、安装后行为和整体收益未由本次有限验收证明。
 
 Safe to Share / Redaction Notes: 本文只含公开产品设计及匿名反例。原始 sessions、私有映射、客户数据、凭据和个人信息不进入本文或公开夹具；运行中取证遵循本文的数据授权合同。
 
-Status: 两个独立 local、非 worktree P0 的源码补修、各自独立只读评审、当前 checkout 联合回归与合包验证已完成。P1 设计及 P0 消费接口已收口，可按分块实施；P1 尚未实现、安装或启用。提交、发布和新数据范围仍按实际用户授权执行。
+Status: 两个 P0 已完成源码交付。P1-A/B 及当前宿主的 exact-file qualification 已实现；9 月 10 日冻结版本通过独立只读评审。9 月 22 日离线修复及评审发现的问题已收口，独立只读复核无剩余实质性问题；82 项 P1 回归、200 项全量源码测试、包边界、插件 JSON 检查及 9 项正式 CLI 合成离线验收通过。2026 年 10 月 16 日再次通过 82 项 P1 回归、200 项全量源码测试、包边界和插件 JSON 检查，P1 测试及语法检查已纳入 CI。真实有限验收已结束：项目 hook、Groundwork dispatch、locator 和原生自动唤醒已确认，首轮结束后的 451 秒独立暂停窗口通过；正式 packet 含 20 条 fact、0 条 message，模型判断 evidence_insufficient，ingest 返回 freshness_unconfirmed，完整语义闭环未通过。离线修复没有重新开展真实取证，未扩大范围或预算。临时 hook 已移除，scope 已撤回，consumer/projection disabled、cleanup complete；主验收及回看均 PAUSED，不启用每日运行。安装缓存未刷新，安装后行为与发布就绪仍未验证。
 
-Last Updated: 2026-09-10。
+Last Updated: 2026-10-16。
 
 ## 1. 本轮要交付什么
 
@@ -57,11 +57,11 @@ Groundwork 提供证据准备和反馈连接。模型与宿主负责已有的推
 
 这些是截至 2026-09-10 的输入。记录实际观察的模型和宿主能力；不把模型名称写死为长期产品合同，也不预测未来版本。
 
-当前 runtime 已有默认关闭、项目 opt-in、observe-only 的五类 hooks。默认概要以哈希、长度、调用身份、部分结果及路由/输出形状候选为主；哈希不能提供语义。[既有观测设计](prd-router-observability-and-self-improvement.md)与[使用说明](router-observability-harness.md)仍主要依赖人工后处理。
+当前 runtime 已有默认关闭、项目 opt-in、observe-only 的五类 hooks。默认概要以哈希、长度、调用身份、部分结果及路由/输出形状候选为主；哈希不能提供语义。[既有观测设计](prd-router-observability-and-self-improvement.md)与[使用说明](router-observability-harness.md)已补充维护侧 P1 自动整理和候选入口，用户决定与真实生效证据仍分别记录。
 
 两个 P0 已完成源码交付：结果状态与整数退出码分别保留；缺少可靠轮次身份时保持 unresolved，迟到结果不沿 active-turn 串轮；coverage 重算移出采集锁并有条件发布，身份目录防碰撞，顶层任意状态原文不再落盘。规则已对齐实际授权与按需加载条件，保留源码/Git 检查和必要门槛。各自最终独立只读评审未发现剩余阻断，当前合同与审查记录见第 3 节对应文档。
 
-2026-09-10 当前 checkout 联合验证通过：55 项源码/合同回归与 18 项包清单测试，共 73 项；生成包为 114 文件/9858 行，4 个 hook 文件/1315 行，105 个 skill 文件/8395 行。hook 行数上限为 1320，总行数上限为 9900，包路径和 skill 预算保持不变。合成反例不证明真实宿主中的事故频率，静态规则检查不证明模型行为收益；安装缓存和真实宿主效果仍未验证。
+2026-09-10 P0 提交基线验证通过 55 项源码/合同回归与 18 项包清单测试，共 73 项。P1 locator 增加 73 行净 runtime 职责后，当前生成包为 114 文件/9931 行，4 个 hook 文件/1388 行，105 个 skill 文件/8395 行；hook 行数上限为 1400，总行数上限为 9950，包路径和 skill 预算保持不变。新增维护侧 CLI 不进入安装包。合成反例不证明真实宿主中的事故频率，静态规则检查不证明模型行为收益；安装缓存和真实宿主效果仍未验证。
 
 同日新增的三轮 Pro 讨论依次审查产品闭环、四命令与状态合同、locator 来源接线和端到端反例。它是设计输入；当前合同以本文为准，Pro 讨论不替代对后续修改的审查或运行验证。
 
@@ -73,8 +73,8 @@ Groundwork 提供证据准备和反馈连接。模型与宿主负责已有的推
 | --- | --- | --- |
 | P0-A：结果与身份保真 | 独立保存状态、整数退出码和结果覆盖；可靠身份绑定，未知保持 unresolved；迟到与重放不串轮；采集锁不承载逐事件全量重算，ID 不与内部路径碰撞，状态概要不保留任意原文。 | 源码已完成，见[观测合同与读取说明](router-observability-harness.md)。源码反例、正常例、交错/迟到/冲突/并发及输入边界验证、独立只读评审和包检查已完成。 |
 | P0-B：当前模型规则兼容 | 修正已定位的冲突审批、无关拓扑 gate 和已授权任务重复停工；统一按需加载条件；保留必要源码/Git 检查、实际危险动作、用户 checkpoint 和宿主权限。 | 源码已完成，见[规则兼容性审查记录](model-guidance-compatibility-review-20260910.md)。逐项依据、最小 diff、正反例、独立只读评审和包检查已完成；静态合同通过不冒充模型行为提升。 |
-| P1-A：自动准备可审候选 | 增量消费、授权取证、双入口、原生 heartbeat、prepare/ingest、完整候选及静默去重。 | 接口已收口，按实施分块落地并适配 P0-A 最终实际字段。机械测试和真实宿主闭环分别交付。 |
-| P1-B：验证与后续反馈 | feedback/status、唯一决定记录、候选版本绑定、实际改动和验证引用、适用版本上的复发观察。 | 与 P1-A 共用同一存储和 schema；状态/回执接口可并行开发，整体验收依赖候选流程。 |
+| P1-A：自动准备可审候选 | 增量消费、授权取证、双入口、原生 heartbeat prompt、prepare/ingest、完整候选及静默去重。 | 源码已实现，P0 实际字段、current coverage、原子游标、独立计量、定位与补证有合成回归；真实项目 hook、locator、heartbeat 唤醒及首轮结束后 451 秒的独立暂停观察已有证据。真实消息解析超预算，ingest 鲜度检查未通过，完整取证闭环未通过。 |
+| P1-B：验证与后续反馈 | feedback/status、唯一决定记录、候选版本绑定、实际改动和验证引用、适用版本上的复发观察。 | 共用 SQLite 已接通；写前 implementation_start、A→B、结构化执行回执、实际生效与复发引用有聚焦测试。真实采用或收益未由这些测试证明。 |
 
 两个 P0 共享源码 checkout，文件所有权分开；不创建 worktree。P1-A/B 是两个产品任务，不是两套运行系统。已有 admission / Slice 1 工作不由本文自动晋级、合并或重启。
 
@@ -111,6 +111,8 @@ Groundwork 提供证据准备和反馈连接。模型与宿主负责已有的推
 
 每个新 session 在已授范围内自动登记，缺 locator、绑定冲突或格式未知只降级该来源。locator 只用于本地解析，不能进入模型 packet、候选视图或模型可见错误。运行侧只读一个由 `feedback kind=policy` 生成的项目私有 locator 授权投影，含 generation、范围与到期条件；SQLite 是决定来源，投影不是新的可编辑授权源。投影缺失、无效、过期或撤回时停止登记；启用/撤回需更新并核验该投影，部分写入失败明确报告，不宣称已完成。runtime 不导入或打开维护数据库。
 
+宿主未提供格式声明时，可由交互维护入口核查实际 header/context 元数据，登记可选 `transcript_bindings`：限定 session、文件身份、适配器、元数据 digest 和启用时的字节起点。消费者记录 `format_source=interactive_host_schema_check`，同时保留宿主声明为 unknown。消息与滚动签名不越过起点；起点前仅核验指定元数据及边界换行。替换、截断或绑定变化停止该来源，不能回到历史正文重新扫描。本次有限验收曾采用此限定方式，结束后已撤回该范围，完整字段见运行说明。
+
 同一 scope 的控制更新串行执行。启用先提交 SQLite 授权，再核对当前 generation 并原子发布对应投影；旧启用操作不能覆盖较新的撤回。投影发布失败只报告接线未完成，不把数据库登记成功当成 hook 已启用。
 
 撤回分三步：先在一个 SQLite 短事务内把 policy 标为 `revoking` 并递增 generation；再失效/移除投影，清理已登记的本地衍生数据；核验完成后标为 `revoked`。从首个事务提交起，该 scope 停止新取证、导出正文和接受在途结果，旧 generation locator 一律拒绝消费；已开始的本地读取结果也不得继续导出。每个 CLI 入口先恢复未完成撤回；恢复失败时保持拒绝，status 仍可返回不含正文的阶段与失败原因。恢复沿用该次 generation，重复撤回不重新授权；未完成撤回时不允许重新启用同一 scope。
@@ -125,7 +127,7 @@ Groundwork 提供证据准备和反馈连接。模型与宿主负责已有的推
 
 `metadata_only` 只做确定性整理，不发起语义候选分析，也不让模型用线程历史补空白。heartbeat 本身运行在所选模型服务，有限状态概要仍可能进入模型上下文，不能宣传整个流程纯本地。`semantic` 在明确范围授权后自动取证并将有限片段交给已选 Codex 服务，不让用户逐次整理日志。项目公开文件也必须属于登记范围。
 
-模型可提交结构化补证请求，只能引用 packet 中的登记来源或已允许目标，不能新增路径权限。prepare 进行一次有界补取，所有 bytes 和工作项计入同一预算；仍不足则留内部 observing，待新证据出现，不生成空待办。
+模型可提交结构化补证请求，只能引用 packet 中的登记来源或已允许目标，不能新增路径权限。prepare 进行一次有界补取，所有 bytes 和工作项计入同一预算；语义证据仍不足时，ingest 为 evidence_insufficient 后留内部 observing，待新证据出现，不生成空待办。临时读取预算不足则按第 6 节延迟发布，保留 pending 工作和可恢复游标。
 
 ## 6. 四个命令和唯一状态源
 
@@ -154,7 +156,15 @@ P0 的 `event_uuid` 是捕获标识，`source_event_key` 是派生关联提示�
 
 coverage 按可变快照读取并保留 `snapshot_status` 与 `snapshot_id`；仅 `snapshot_status=current` 可消费计数，stale、缺失、损坏或无该状态的旧文档均记覆盖缺口。prepare/ingest 的相关来源鲜度检查同时重读 coverage；旧计数不得沿用，也不能按 capture-time 归属自行汇总补回。目录定位遵循[现行 Scratch Layout](router-observability-harness.md#scratch-layout)，身份以记录字段为准；旧特殊 ID 目录只保留历史，不作为新目录的 fallback，不自动迁移或混入当前来源。
 
+预算短读、读取期间变化和不可读的 coverage 为 `snapshot_status=unavailable`，另带明确 reason，不混为内容 `invalid`。每次快照检查按实际路径去重；prepare 先为两次快照读取留额度，再分配语义读取。transcript 每次以打开文件时的长度为扫描终点，并在本次额度内保留收尾锚点空间；签名短读不得保存为有效签名。没有可靠的 turn 完结边界时，仍按授权后的 session 后缀增量推进，不因遇到其他 turn 就宣称完整。
+
+语义来源扫描尚未完成、解析预算不足或快照无法核对时，prepare 返回 `limit/degraded`，attempt 为 `deferred`，不发布 packet；保留已计费的游标进度，释放鲜度预留，工作留 pending。该领取仍计入每日领取额度。永久超大/损坏记录保留 gap，跳过期间清空不可靠的 context，后续明确 native context 才恢复消息关联；扫描完成不代表这些缺口消失。
+
+packet 的 `transcript_snapshots` 绑定来源 generation 与累计缺口摘要；每次新增永久缺口都会改变摘要，重复同类缺口也不能被已有 gap 集合掩盖。ingest 完成扫描后若摘要变化，返回 `transcript_evidence_changed` 并使旧分析失效；预算不足不冒充新证据。缺少该绑定的旧 packet 保守拒收。上下文的 cwd、turn_id 必须为非空字符串；畸形上下文记 `malformed_context`，清除关联并跨扫描保留，直到有效上下文恢复。字段合法但 cwd 属于其他项目时只清除当前关联，不记录损坏缺口，也不因此使当前分析失效。
+
 prepare 原子预留预算并领取一个工作项；重复调度返回 busy。prepare/status 在最终发布 packet 或正文时，与 scope 控制更新在短临界区内串行核对有效 policy 状态和 generation；不能只在入口检查后继续输出已撤回材料。ingest 先在有界范围摄取相关已登记来源的新增证据，再按 attempt、工作项 evidence_revision、有效 policy 状态和 policy_generation 条件更新，并重验相关目标资产 digest 及来源 snapshot。prepared 后发生撤回，即使模型已经完成分析也拒绝旧结果。无法核对当前增量时返回 freshness_unconfirmed，不能仅比较旧快照就写当前 ready。prepare 必须预留鲜度检查预算，实际读取也计入当日限额；无关事件或维护代理自述不使全部分析失效。
+
+ingest 的增量摄取、消息解析、引用核验和 coverage 共用一个鲜度额度账本，异常读取也保留计量。`freshness_unconfirmed` 返回具体 `freshness_failures` 和已计费 `freshness_bytes`，原因同时保存到 attempt 与 diagnostics；仅预算失败不增加 evidence revision。`evidence_insufficient` 不豁免鲜度校验。
 
 成功后相同 payload 重放返回原结果，异 payload 返回 conflict。Stop 后仍接受新事实，迟到证据递增 revision；旧分析留 superseded 诊断，不能覆盖新结果。无 ingest 的 prepared 不算 analyzed。过期后重新领取并计预算，不做续租、自动 rebase，也不承诺模型调用恰好一次。
 
@@ -253,10 +263,54 @@ A/C 的数据合同统一后可并行；B 依赖已知 adapter 和授权 profile
 
 若比较行为，保持模型、信息、权限和资源条件相当；历史修复答案与待测输入隔离；在调过的案例上通过只能叫回归。准备成本比较从相同原始材料开始，执行比较从相当的已整理输入开始，按实际主张选用，不把两者设成统一前置流程。
 
-## 11. 接下来怎样实施
+## 11. 实现证据与运行交接
 
-两个 P0 已完成源码交付与联合验证，P1 PRD 及其消费接口已收口。下一阶段先统一存储与反馈的数据合同，并行实现 A/C，再接 B 和 D；locator 以已完成的 P0-A 为基线。当前尚未启动 P1 代码或调度。
+[`scripts/groundwork_rsi.py`](../scripts/groundwork_rsi.py) 是四命令入口；`scripts/rsi/` 分开维护 schema/store、安全读取、控制/撤回、来源适配、resolver、候选与反馈。模型分析在当前 Codex 任务完成，CLI 不启动模型。新增范围有五个合成测试文件（含共享夹具），反馈模块由独立 Sol/high 子代理实现；9 月 10 日冻结版本经 fresh-context Astra/high 独立只读评审，未发现当时剩余源码合同阻断。评审者独立重跑四个边界反例，覆盖迟到首个 locator、撤去历史回填、官方条目过期正文副本和读取费用不可随事务回滚退回。该评审不覆盖后续 9 月 22 日离线修复。
 
-实施者的第一步是将本文 schema、命令结果枚举和正反例落为小型确定性测试，再完成 SQLite 消费与反馈接口。接入真实来源时核对 P0 最终字段和当前宿主格式；不把未知格式适配、调度配置或真实模型质量藏进“已完成”。
+| ID | 当前覆盖与证据 | 未由本轮证明 |
+| --- | --- | --- |
+| AC-01 | [source adapter 回归](../tests/test_rsi_sources.py)覆盖原始身份、状态/退出码、unknown、current/stale coverage 和旧特殊目录。 | 当前安装宿主的实际事件交付率。 |
+| AC-02 | 同一回归覆盖原子回滚、半行游标、替换/截断、原生重放去重和独立来源位置。 | 宿主保证完整或 exactly-once 交付。 |
+| AC-03 | [候选回归](../tests/test_rsi_candidates.py)与[反馈回归](../tests/test_rsi_feedback.py)覆盖首次 policy、决定来源绑定、ingest 权限、revision/lease 和分层状态。 | JSON 来源记录不是独立人类认证。 |
+| AC-04 | [resolver 回归](../tests/test_rsi_resolver.py)、候选与来源回归覆盖路径/角色/秘密模式、持久化读预算、策略缩窄、撤回各阶段恢复和发布前 generation 检查。 | 宿主所有工具的统一隔离、全部秘密识别及 token/费用硬上限。 |
+| AC-05 | 正常自修、后置需求、外部恢复、缺 Post、预期红测和 family 重复均进入分析合同；六份冻结合成 packet 由当前原生 Codex 实际分类并经正式 ingest 接收：五项 `not_candidate`、缺 Post 为 `evidence_insufficient`，全部 `notify=false`。 | 构造和分类共用当前上下文，属于有限语义回归，不是独立盲测、保留集评估或真实误报率。 |
+| AC-06 | 官方 snapshot 与资产 digest 进入主动工作，过期正文清理、不静默补回及完整候选结构有回归。有限模型演示提出了有反例和检查的缩窄候选。 | 官方变化适用性判断、add/narrow/remove 的真实模型质量或净收益。 |
+| AC-07 | 合成 hook/transcript 经正式 prepare 自动补证，由当前原生 Codex 手动分析，正式 ingest 生成 ready 候选；人工补找日志为 0 次。 | 日常真实事故的候选质量、独立语义评估或 scheduler 自发运行。 |
+| AC-08 | 候选回归覆盖重复 ingest、单领取、过期领取、新文件/消息/locator 鲜度、预算耗尽和状态修订。 | 真实调度与用户通知的宿主送达效果。 |
+| AC-09 | 2026-09-22 15:30 北京时间原生 heartbeat 自发唤醒当前任务，并在开头通过原生工具暂停；正式 prepare、当前模型分析及 ingest 调用均已执行。主轮次 15:40:29 结束，独立回看 15:48:00 唤醒，间隔 451 秒且无中间轮次；两项 automation 均 PAUSED。 | message 解析 over_limit，ingest 返回 freshness_unconfirmed，未接收结果，完整 AC-09 未通过。独立回看消除了本窗口内主轮次忙碌的混杂因素，仅支持有限暂停观察，不证明无限期停止。 |
+| AC-10 | 反馈回归覆盖 A→B/B→B2、旧回执拒绝、漂移重取、最新检查、source/installed/loaded 分层与复发归属；独立评审者用正式 CLI 跑通七步合成链至 `recurrence_confirmed`。 | 真实项目采用、实际安装/加载以及后续生产复发。 |
+| AC-11 | 真实 hook 子进程搭配已知格式合成输入，覆盖独立 opt-in、自动 locator、native join、替换和路径不外泄；9 月 10 日核验实际 session header/context。9 月 22 日四项项目 hook 为 enabled/trusted；重开后收到当前桌面任务实际回执，Groundwork dispatch 与 locator 登记均已观察，scope/session/turn 匹配。 | 真实 packet 的 message 引用为 0，解析 over_limit；消息引用层的启用后字节边界与完整语义链路未通过验收。使用项目源码 hook，不证明已安装插件缓存与源码等价。 |
+| AC-12 | 来源与候选回归覆盖超大行 skip、到期视图/正文清理、保留游标的物理空间回收、容量恢复和撤权通道；本次正式 revoke/status 确认 consumer/projection 均 disabled、cleanup complete。 | 关机期间准时物理删除；已发送任务内容无法由本地删除撤销。 |
 
-本文是本轮唯一规划入口；运行说明继续放到现有维护文档，候选和用户决定只在本地私有状态源。两类能力都以实际可审候选和验证回流作为交付，候选数量不是成功指标。
+AC-07 演示使用选定的当前 Codex 模型，未取得独立宿主模型身份认证；全部输入为有限合成材料，缺 coverage 的计数保持未知。AC-10 的 CLI 合成链为 `ingest(candidate) → decision → implementation_start → implementation → check → loaded adoption → recurrence_confirmed`，七次命令退出码均为 0。复发 fact 来自正常 intake，执行回执绑定实际合成输出文件；未直接向数据库插入确认结果。
+
+AC-05 的六项分类与 AC-07 的一项 ready 候选构成有限正反例演示。分类文本由当前模型读取 prepare 的实际输出后编写；Python 只序列化模型输出并逐项调用 `python3 scripts/groundwork_rsi.py --project <synthetic-project> ingest --attempt <actual-attempt> --result <private-analysis.json>`，六次退出码均为 0，没有程序分类器替代语义判断。脱敏材料、packet/analysis digest 和命令响应留在本机临时合成目录，未写入真实项目状态或公共候选文档。
+
+9 月 10 日冻结源码的历史检查：
+
+- `python3 -m unittest tests.test_rsi_sources tests.test_rsi_resolver tests.test_rsi_candidates tests.test_rsi_feedback`：61 tests，OK；独立评审者已复跑此前 59 项和新增的两项撤回回归，均通过。
+- `python3 -m unittest discover -s tests -p 'test_*.py'`：179 tests，OK。
+- `python3 scripts/check_runtime_package_boundary.py`：通过；114 个 runtime 文件、9931 行，4 个 hook 文件、1388 行，105 个 skill 文件、8395 行，引用深度 19。
+- `python3 -m json.tool .codex-plugin/plugin.json >/dev/null`：退出码 0。
+- `python3 -m py_compile scripts/groundwork_rsi.py scripts/rsi/*.py tests/rsi_support.py tests/test_rsi_sources.py tests/test_rsi_resolver.py tests/test_rsi_candidates.py tests/test_rsi_feedback.py`：退出码 0。
+- `git diff --check`：通过。
+
+9 月 22 日离线修复后的当前源码检查：`PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_rsi_sources tests.test_rsi_resolver tests.test_rsi_candidates tests.test_rsi_feedback` 为 82 tests、OK；`PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p 'test_*.py'` 为 200 tests、OK；`python3 scripts/check_runtime_package_boundary.py` 与 `python3 -m json.tool .codex-plugin/plugin.json >/dev/null` 均通过。回归覆盖游标锚点短读、资格元数据预算失败、coverage 路径去重、共享鲜度计量、延迟发布、超大记录恢复、固定扫描终点、半行补齐、预算失败不虚增 revision，以及同现场预算形态下的跨预算日恢复。新增缺口与重复同类缺口必须使旧 packet 失效；畸形上下文在单次和跨扫描中可恢复，合法跨项目上下文不使当前分析失效。
+
+修复后的独立只读复核无剩余实质性问题，17 个冻结输入的起止 SHA-256 一致，独立重跑 82 项 RSI 与 200 项全量测试均通过。随后在临时合成项目调用正式 `scripts/groundwork_rsi.py` 的 `feedback/prepare/ingest/status`，9 项验收通过：正常闭环与幂等重放、大记录跨预算日恢复、迟到消息拒收、撤权后旧结果拒收、4096 字节鲜度上限、新缺口拒收、重复同类缺口拒收、畸形上下文恢复、合法跨项目上下文隔离。全部状态变更走正式 CLI，SQLite 仅只读观察；所有合成 scope 已撤回，consumer/projection disabled、cleanup complete。大记录场景的预算日切换使用显式的子进程时钟偏移，不代表真实定时执行；analysis 为人工合成合同输入，没有模型调用或质量结论。离线验收不恢复真实数据授权、hook 或自动化，也不证明原生完整语义闭环。
+
+本次有限验收在北京时间 2026-09-10 17:57:11 收到原生 heartbeat，17:58:17 已完成暂停并核验状态；暂停后观察超过 330 秒，任务仍为 PAUSED，原生任务查询未发现第二次自动 turn。独立 scheduler run ID 未由宿主提供，保留 unknown；实际 native turn ID 只作为已注明来源的唤醒关联标识。首个自动 turn 在观察期间持续运行，因此该有限窗口不能独立证明空闲任务也不会再次唤醒。
+
+9 月 10 日临时项目 hook 没有执行回执或 locator，正式 prepare 返回 `degraded` / `source_gap_unreadable`，事实、消息、attempt 和 candidate 均为 0，未进行真实对话 packet 分析或 ingest。当时证据不能区分项目配置未重新加载与 hook 信任问题；电脑控制工具明确禁止操作 Codex 窗口，未绕过限制或手写信任指纹。9 月 22 日补验已取得原生 hook 执行证据，但不能据此反推此前无回执的唯一根因。
+
+结束时已按原字节和 digest 核对并移除本次新建的 `.codex/hooks.json`，停用临时 wrapper，通过正式 `feedback operation=revoke` 与 `status` 确认 `policy_revoked`、consumer/projection disabled、cleanup complete。没有证据包的场景曾暴露缺失输出父目录导致清理卡住的问题；`remove()` 现将不存在的父目录视为无文件可删，其他错误仍保留清理待完成，新增两项回归和独立只读增量评审已通过。最小验收元数据留在私有状态，自动化保持 PAUSED，不启用每日运行。
+
+完整可审 prompt、policy/source/decision/receipt 合同、启用/暂停/撤回顺序见[运行说明](router-observability-harness.md#bounded-rsi-consumer)。本次授权仅覆盖当前任务的有限验收，不扩大到其他任务或历史正文。没有支持的宿主格式声明或交互核验绑定，以及缺 native join 的来源，仍保持 unsupported。
+
+9 月 22 日专项补验采用元数据探针，在进入 Groundwork dispatcher 前写入 `host_entered` 回执。隔离副本的合成反例验证任务范围、到期停用、不输出正文及 dispatch 失败前仍留入口回执；这些合成运行不进入真实回执文件。用户完成原生信任审查后，CLI 0.154.0 的 `hooks/list` 复核四项 enabled/trusted、零解析错误；重开后真实回执覆盖 UserPromptSubmit、PreToolUse、PostToolUse、Stop。停用时保留 78 次宿主入口、56 次 Groundwork 正常返回、0 次 dispatch 失败；前期仅探针模式不执行 dispatch，两个计数不要求相等。真实 locator 的 scope/session/turn 匹配。资格核验仅导出指定 header/context 元数据，634295 bytes 已计入有限范围预算；宿主格式声明仍为 unknown，适配器来自交互核验绑定。
+
+北京时间 15:30 收到本次原生 heartbeat，开头先暂停主 automation。首次 prepare 因新工作静默期返回 idle，等候 16 秒后生成 packet，含已结束观察轮次的 20 条真实 fact、0 条 message。对话来源返回 over_limit/native_message_join_unavailable，覆盖快照为 invalid；当前 Codex 只基于正式 packet 作 evidence_insufficient 分析，未产生候选。正式 ingest 返回 freshness_unconfirmed，attempt 为 superseded，last_successful_ingest 仍为空。消费计量为 1870284/2097152 bytes，剩余 226868 bytes 小于重试必须保留的 262144 bytes，未重试、延长或扩大取证范围。这证明执行到分析和拒绝接收路径，不证明完整语义闭环通过。离线合成复现已定位并修复预算耗尽污染游标锚点、coverage 短读误报 invalid、重复快照读取及鲜度阶段额度分散等缺陷；真实验收没有保存拒绝子原因，不能唯一还原当时触发分支。相同 2 MiB 日额度、256 KiB 鲜度预留和 634295 字节资格费用的合成回归，首日明确延迟，下一模拟预算日从保留游标恢复消息并成功 ingest 为 evidence_insufficient，未扩大限额或重开真实数据。
+
+本次 wrapper 已停用，临时项目 hook 仅在原字节与 digest 匹配后移除。正式 feedback revoke/status 确认 generation=2、policy_revoked、consumer/projection disabled、cleanup complete。主原生轮次于北京时间 15:40:29 完成，独立回看于 15:48:00 唤醒，开头即通过原生工具自暂停。原生任务元数据确认两轮之间相隔 451 秒且无其他轮次，超过约定的 330 秒；主调度仍为 PAUSED，回看自身不计作主调度再次唤醒。这是首轮已结束后的有限空闲窗口证据，不证明无限期停止。回看无需重排，最终主验收与回看均 PAUSED，取证仍关闭且清理完成，不启用每日运行。
+
+本文继续是本轮唯一规划入口；运行说明放在已有维护文档，实际候选、决定和回执留在私有状态。没有安装、发布、缓存刷新、整体时间节省或净收益主张。

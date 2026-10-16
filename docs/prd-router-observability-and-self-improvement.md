@@ -90,7 +90,7 @@ Hooks may record minimized event metadata, hashes, command classes, risk/evidenc
 
 ## Maintainer Lab Contract
 
-Offline analysis may:
+Authorized maintenance analysis, including the bounded P1 consumer, may:
 
 - replay natural prompts;
 - compare source-backed expected behavior;
@@ -100,7 +100,7 @@ Offline analysis may:
 - add an ordinary source test when deterministic behavior has a real source owner;
 - prepare a Candidate Trial Pack only in a separately authorized epoch.
 
-`docs/quarantined-learnings.md` owns the Maintainer Lab learning-state and the single human decision. Telemetry may only provide an observed signal; it cannot create a Candidate verdict, change `human_decision`, mutate a proposal, or satisfy release evidence. Reproduction, quarantine, acceptance, ordinary implementation, clean review, target-specific validation, Candidate Trial authorization, and promotion remain separately owned gates.
+`docs/quarantined-learnings.md` retains the state and decision owner of existing MIP records. New P1 records are governed by [the current P1 PRD](prd-vnext-evidence-governed-bounded-run-wedge.md) and stored only in private SQLite; the [runbook](router-observability-harness.md#bounded-rsi-consumer) describes prepare/ingest/feedback/status and native scheduling. The consumer may automatically prepare complete candidates from authorized facts and verified official snapshots. Runtime telemetry and the consumer cannot manufacture user decisions, automatically apply proposals, or satisfy release evidence. Interactive acceptance, actual implementation, target-specific verification, optional Candidate Trial authorization and publication remain distinct.
 
 Offline analysis must keep three test concerns orthogonal:
 
